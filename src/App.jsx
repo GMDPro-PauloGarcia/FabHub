@@ -4562,6 +4562,27 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       return nd;
     }));
   };
+  // Notify Jessica (Operations & Sales Admin) that a project was awarded and needs
+  // its billing milestones set up. Billing schedules are no longer auto-generated —
+  // this is the hand-off that prompts her to open Billing and use the
+  // "Set Up Billing Milestones" dialogue for the project.
+  const notifyBillingSetup=(dealId,client,contractVal,terms)=>{
+    const termLine=terms
+      ?`\n📄 Terms on file: DP ${terms.dp||0}% · Progress ${terms.progress||0}% · Final ${terms.final||0}% · Retention ${terms.retention||0}%`
+      :`\n⚠️ No payment terms captured yet — set terms first, then create the milestones.`;
+    const msg=
+      `💳 <b>Billing Milestones Needed</b>\n`+
+      `Jessica — a project was just awarded and needs its billing milestones set up.\n\n`+
+      `Client: <b>${client||dealId}</b>\n`+
+      (botSettings.hideValueInBots?"":`Contract Value: ₱${Number(contractVal||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\n`)+
+      termLine+
+      `\n\n👉 Open <b>Billing</b> and use “Set Up Billing Milestones” to create the schedule.`;
+    // Finance is where billing setup lives; sales and management are copied for visibility.
+    sendTelegramNotification("finance",msg);
+    sendTelegramNotification("sales",msg);
+    sendTelegramNotification("management",msg);
+    logActivity(dealId,"Billing Setup Requested",`Jessica notified to set up billing milestones for ${client||"the awarded project"}.`,session?.name||role);
+  };
   const updateMilestone=(id,ch)=>{
     if(ch.status==='Fully Paid'){
       const ms=billings.find(b=>b.id===id);
@@ -6318,16 +6339,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       (form.specialInstructions?`\n⚠️ Special Instructions:\n${form.specialInstructions}\n`:"")+
       `\n🚀 All departments — please mobilize!`
     );
-    // Save payment terms if set in Step 3, and generate the billing schedule
-    // immediately so an awarded project never sits with terms on file but no
-    // invoices — see generateBillingSchedule for why this can't wait for
-    // someone to happen to open the Billing page.
+    // Save payment terms if set in Step 3. Billing milestones are NOT generated
+    // automatically anymore — instead Jessica (Operations & Sales Admin) is
+    // notified that a project was awarded and sets up the billing milestones
+    // deliberately through the Set Up Billing Milestones dialogue in Billing.
     if(form.paymentTerms){
       upDeals(ds=>ds.map(d=>d.id===id?{...d,paymentTerms:form.paymentTerms}:d));
       const termsOk=isSupabaseReady()?await sbUpdate('deals',id,{payment_terms_json:JSON.stringify(form.paymentTerms),updated_at:new Date().toISOString()}):true;
       stepResults.push({label:"Payment Terms",ok:termsOk});
-      generateBillingSchedule(id,form.paymentTerms,contractVal);
     }
+    // Notify Jessica to set up the billing milestones for the newly awarded project.
+    notifyBillingSetup(id,awardModal.client,contractVal,form.paymentTerms);
     const failedSteps=stepResults.filter(s=>!s.ok);
     if(failedSteps.length) toastEmit(`⚠️ ${awardModal.client} awarded, but needs attention: ${failedSteps.map(f=>f.label).join(", ")} — check console.`,"warning",10000);
     }catch(err){
@@ -14385,7 +14407,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         projs={projs} overallProg={overallProg}
         toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification}/>
     </Wrap>
-    {payTermsModal&&<PaymentTermsModal dealId={payTermsModal} deals={deals} onClose={()=>setPayTermsModal(null)} onSave={(dealId,terms)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,paymentTerms:terms}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{payment_terms_json:JSON.stringify(terms),updated_at:new Date().toISOString()}).catch(()=>{});generateBillingSchedule(dealId,terms,deals.find(d=>d.id===dealId)?.value);toastEmit("✅ Payment terms saved — billing schedule generated.","success");setPayTermsModal(null);}} session={session}/>}
+    {payTermsModal&&<PaymentTermsModal dealId={payTermsModal} deals={deals} onClose={()=>setPayTermsModal(null)} onSave={(dealId,terms)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,paymentTerms:terms}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{payment_terms_json:JSON.stringify(terms),updated_at:new Date().toISOString()}).catch(()=>{});toastEmit("✅ Payment terms saved. Use “Set Up Billing Milestones” in Billing to create the schedule.","success");setPayTermsModal(null);}} session={session}/>}
     </>
   );
 
@@ -21840,18 +21862,6 @@ function DeductionForm({ms,updateMilestone,session,role,today,toastEmit,sendTele
   );
 }
 
-function AutoGenerateBilling({selDeal,autoGenerate,setAutoGenDone}){
-  React.useEffect(()=>{
-    autoGenerate();
-    setAutoGenDone(p=>({...p,[selDeal]:true}));
-  },[selDeal]);
-  return(
-    <div style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:10,padding:"10px 14px",fontSize:".78rem",color:"#1d4ed8",fontWeight:600}}>
-      ⚡ Billing schedule generated from payment terms…
-    </div>
-  );
-}
-
 // ─── AUDIT VIEW (Policy §5) ──────────────────────────────────────────────────
 function AuditView({findings,addFinding,updateFinding,session,role}){
   const[showForm,setShowForm]=useState(false);
@@ -21981,28 +21991,13 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const[selDeal,  setSelDeal]  =useState(initialDeal||null);
   React.useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearInitialDeal&&clearInitialDeal();}},[]);
   const[showForm, setShowForm] =useState(false);
-  const[autoGenDone,setAutoGenDone]=useState({});
-  // Deals whose schedule this session already kicked off. addMilestone updates the
-  // billings store asynchronously, so between the calls and the re-render the effect
-  // could fire again (its deps include billings.length) with existingMs still empty
-  // and generate a SECOND full schedule. This ref is the synchronous latch that
-  // stops the duplicate before the store catches up.
-  const autoGenStartedRef=React.useRef(new Set());
-  React.useEffect(()=>{
-    const canEdit=["Manager","Finance","SalesOpsAdmin"].includes(role);
-    if(!canEdit) return;
-    wonDeals.forEach(d=>{
-      const terms=d.paymentTerms;
-      const val=Number(d.value||0);
-      const existingMs=billings.filter(b=>b.dealId===d.id);
-      if(terms&&existingMs.length===0&&val>0&&!d.billingGenerated&&!autoGenStartedRef.current.has(d.id)){
-        autoGenStartedRef.current.add(d.id);
-        // Single guarded, idempotent generator (also sets deal.billingGenerated).
-        generateBillingSchedule(d.id,terms,val);
-        setAutoGenDone(p=>({...p,[d.id]:true}));
-      }
-    });
-  },[wonDeals.length,billings.length]);
+  // Tracks which deals had their schedule set up this session so the "Set Up
+  // Billing Milestones" call-to-action collapses immediately after Jessica (or
+  // Finance) confirms the dialogue, without waiting for the billings store to
+  // round-trip. Billing schedules are NEVER auto-generated — the old useEffect
+  // that silently created them for every awarded deal was removed; Jessica is
+  // notified on award and sets them up deliberately via the dialogue below.
+  const[setupDone,setSetupDone]=useState({});
   const[showPay,  setShowPay]  =useState(null);
   const[editPay,  setEditPay]  =useState(null);     // {msId, payId} being edited
   const[editMs,   setEditMs]   =useState(null);     // milestone id being edited
@@ -22890,17 +22885,32 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
             );
           })()}
 
-          {/* Payment Terms & Auto-Generate Banner */}
+          {/* Payment Terms & Manual Milestone Setup */}
           {(()=>{
             const terms=deal?.paymentTerms;
             const existingMs=billings.filter(b=>b.dealId===selDeal);
             const val=Number(deal?.value||0);
             const onboardingReady=dealOnboardingGate(deal).ready;
             const canGenerate=canEdit&&terms&&existingMs.length===0&&val>0&&!deal?.billingGenerated&&onboardingReady;
-            const autoGenerate=()=>{
-              // Single guarded, idempotent generator (sets deal.billingGenerated).
+            // Billing schedules are no longer created automatically. This opens a
+            // confirmation dialogue previewing the milestones derived from the
+            // saved payment terms; only on explicit confirmation are they created.
+            const setupMilestones=async()=>{
+              const lines=[
+                terms.dp>0&&`• Down Payment (${terms.dp}%) — ₱${Math.round(val*terms.dp/100).toLocaleString("en-PH")}`,
+                terms.progress>0&&`• Progress Billing (${terms.progress}%) — ₱${Math.round(val*terms.progress/100).toLocaleString("en-PH")}`,
+                terms.final>0&&`• Final Billing (${terms.final}%) — ₱${Math.round(val*terms.final/100).toLocaleString("en-PH")}`,
+                terms.retention>0&&`• Retention (${terms.retention}%) — ₱${Math.round(val*terms.retention/100).toLocaleString("en-PH")}`,
+              ].filter(Boolean).join("\n");
+              const ok=await uiConfirm({
+                title:"Set Up Billing Milestones",
+                message:`Create the following billing milestones for ${deal?.client||"this project"} from the payment terms on file?\n\n${lines}\n\nYou can edit each milestone's amount and dates after they're created.`,
+                confirmLabel:"Create Milestones",
+              });
+              if(!ok) return;
               generateBillingSchedule(selDeal,terms,val);
-              toastEmit&&toastEmit("Billing milestones generated from payment terms","success");
+              setSetupDone(p=>({...p,[selDeal]:true}));
+              toastEmit&&toastEmit("Billing milestones created from payment terms","success");
             };
             return(
               <div style={{marginBottom:14}}>
@@ -22921,7 +22931,12 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                     </div>
                   )}
                 </div>
-                {canGenerate&&!autoGenDone[selDeal]&&<AutoGenerateBilling selDeal={selDeal} autoGenerate={autoGenerate} setAutoGenDone={setAutoGenDone}/>}
+                {canGenerate&&!setupDone[selDeal]&&(
+                  <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:10,padding:"10px 14px"}}>
+                    <span style={{fontSize:".78rem",color:"#1d4ed8",fontWeight:600}}>💳 No billing milestones set up yet — create them from the payment terms on file.</span>
+                    <button onClick={setupMilestones} style={{marginLeft:"auto",background:"#1d4ed8",border:"none",borderRadius:8,padding:"6px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:"#fff",cursor:"pointer",whiteSpace:"nowrap"}}>📋 Set Up Billing Milestones</button>
+                  </div>
+                )}
               </div>
             );
           })()}
