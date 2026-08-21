@@ -10352,7 +10352,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ── Pipeline tab bar (shared) ───────────────────────────────────────────
   const PipeTabBar=()=>(
     <div style={{display:"flex",gap:0,borderBottom:"2px solid #e2e8f0",marginBottom:20}}>
-      {[["pipeline","📊 Pipeline"],["awarded","🏆 Awarded"],["updates","📝 AE Updates"]].map(([t,l])=>(
+      {[["pipeline","📊 Pipeline"],["awarded","💰 Commissions"],["updates","📝 AE Updates"]].map(([t,l])=>(
         <button key={t} onClick={()=>setPipeTab(t)}
           style={{padding:"9px 20px",border:"none",background:"none",cursor:"pointer",fontSize:".88rem",fontWeight:pipeTab===t?700:500,color:pipeTab===t?"#3b82f6":"#64748b",borderBottom:pipeTab===t?"2px solid #3b82f6":"2px solid transparent",marginBottom:-2,fontFamily:"inherit"}}>
           {l}{t==="updates"&&aeUpdates.length>0&&<span style={{marginLeft:5,background:"#3b82f6",color:"#fff",borderRadius:20,padding:"1px 6px",fontSize:".65rem",fontWeight:700}}>{aeUpdates.filter(u=>u.date===today).length||""}</span>}
@@ -10614,7 +10614,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           <>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10,marginBottom:6}}>
               <div>
-                <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>🏆 Awarded Projects</h2>
+                <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>💰 Commissions</h2>
                 <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{rows.length} awarded project{rows.length!==1?"s":""} · {scope==="team"?"whole team":"your projects"} · {todayL}</div>
               </div>
               {isMgr&&(
