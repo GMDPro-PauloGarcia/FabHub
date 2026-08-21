@@ -5829,7 +5829,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       const clientLower=data.client.toLowerCase();
       const titleLower=(data.product||data.contact||"").toLowerCase();
       const dupes=deals.filter(d=>{
-        if(d.stage==="Cancelled") return false;
+        if(isLostStage(d.stage)) return false;
         if(d.client.toLowerCase()!==clientLower) return false;
         const existTitle=(d.product||d.contact||"").toLowerCase();
         const titleMatch=titleLower&&existTitle&&(existTitle.includes(titleLower)||titleLower.includes(existTitle));
@@ -5843,7 +5843,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // opened), which can be stale/colliding if another device saved a deal
     // since then.
     const claimedCeNo=editDeal?data.ceNo:await claimCENo(data.ceNo,deals.map(d=>d.ceNo));
-    const prob=WON_STAGES.includes(data.stage)?100:data.stage==="Cancelled"?0:Number(data.probability);
+    const prob=WON_STAGES.includes(data.stage)?100:isLostStage(data.stage)?0:Number(data.probability);
     const rec={...data,ceNo:claimedCeNo,product:data.product||data.ceType||"",id:editDeal||uid(),value:data.standbyPO?0:Number(data.value),poBudget:data.standbyPO?(Number(data.poBudget)||0):"",invoiced:Number(data.invoiced||0),amountPaid:Number(data.amountPaid||0),probability:prob,
       addedBy:editDeal?(data.addedBy||""):(session?.name||""),
       addedAt:editDeal?(data.addedAt||today):today,

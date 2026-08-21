@@ -37,6 +37,7 @@ export const STAGE_ALIASES={
   "project close-out":"12 · Close-Out","close out":"12 · Close-Out","closeout":"12 · Close-Out","close-out":"12 · Close-Out","12":"12 · Close-Out",
   "completed":"14 · Completed","project completed":"14 · Completed","closed":"14 · Completed","project closed":"14 · Completed","done":"14 · Completed","14":"14 · Completed",
   "cancelled":"Cancelled","canceled":"Cancelled",
+  "did not win":"Did Not Win","didnotwin":"Did Not Win","not won":"Did Not Win","lost":"Did Not Win","deal lost":"Did Not Win","closed lost":"Did Not Win","lost deal":"Did Not Win",
 };
 
 export const normalizeStage=(s)=>{
