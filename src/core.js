@@ -199,7 +199,7 @@ export const roleLabel = r => ROLE_LABEL[r] || r;
 // NOTE: a few tables carry finer server rules than a role list can express — deals
 // DELETE is Manager + the named sales leads (jena/wyn/paolo); design UPDATE/senior
 // reads are username-tiered. Those are flagged in PERM_NOTES and shown as caveats.
-export const PERM_ROLES = ["Manager","Sales","ProjectMover","Finance","FinanceAssistant","Accounting","Procurement","QS","SalesOpsAdmin","Design","Warehouse"];
+export const PERM_ROLES = ["Manager","Sales","ProjectMover","Finance","FinanceAssistant","Accounting","Procurement","QS","SalesOpsAdmin","Design","Warehouse","Audit","HRAdmin"];
 
 const AUTH = "AUTH";
 export const PERMISSIONS = {
@@ -210,8 +210,8 @@ export const PERMISSIONS = {
   projects:            { label:"Projects",                 group:"Operations",  select:[AUTH], insert:["Manager","ProjectMover"], update:["Manager","ProjectMover"], delete:["Manager"] },
   project_cards:       { label:"Project Cards",            group:"Operations",  select:[AUTH], insert:["Manager","ProjectMover","Finance"], update:["Manager","ProjectMover","Finance"], delete:["Manager"] },
   daily_logs:          { label:"Daily Site Logs",          group:"Operations",  select:["Manager","ProjectMover","Sales"], insert:["Manager","ProjectMover"], update:["Manager","ProjectMover"], delete:["Manager"] },
-  checklists:          { label:"Calendar / Checklists",    group:"Operations",  select:[AUTH], insert:[AUTH], update:[AUTH], delete:["Manager"] },
-  addenda:             { label:"Scope Changes (Addenda)",  group:"Operations",  select:["Manager","ProjectMover","Sales","Finance","FinanceAssistant","Procurement","SalesOpsAdmin"], insert:["Manager","ProjectMover","Procurement","Design"], update:["Manager"], delete:["Manager"] },
+  checklists:          { label:"Calendar / Checklists",    group:"Operations",  select:[AUTH], insert:[AUTH], update:[AUTH], delete:["Manager","ProjectMover"] },
+  addenda:             { label:"Scope Changes (Addenda)",  group:"Operations",  select:["Manager","ProjectMover","Sales","Finance","FinanceAssistant","Procurement","SalesOpsAdmin"], insert:["Manager","ProjectMover","Procurement","Design"], update:["Manager","ProjectMover"], delete:["Manager"] },
   project_blockers:    { label:"Project Blockers",         group:"Operations",  select:[AUTH], insert:["Manager","ProjectMover"], update:["Manager","ProjectMover"], delete:["Manager"] },
   ae_updates:          { label:"Account / PM Updates",     group:"Operations",  select:["Manager","ProjectMover","Sales","Finance","QS","SalesOpsAdmin"], insert:["Manager","ProjectMover","Sales","Finance","QS","SalesOpsAdmin"], update:["Manager","ProjectMover"], delete:["Manager","ProjectMover","Sales","Finance","QS","SalesOpsAdmin"] },
   billing_milestones:  { label:"Billing Milestones",       group:"Finance",     select:["Manager","Sales","Finance","Accounting","FinanceAssistant","SalesOpsAdmin"], insert:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"], update:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"], delete:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"] },
@@ -229,11 +229,13 @@ export const PERMISSIONS = {
   stock_movements:     { label:"Stock Movements",          group:"Warehouse",   select:["Manager","Finance","FinanceAssistant","Procurement","Warehouse"], insert:["Manager","Warehouse"], update:["Manager","Warehouse"], delete:["Manager"] },
   boq_library:         { label:"BOQ Library",              group:"QS / Cost",   select:["Manager","Finance","FinanceAssistant","QS","ProjectMover"], insert:["Manager","QS"], update:["Manager","QS"], delete:["Manager"] },
   project_budgets:     { label:"Project Budgets",          group:"QS / Cost",   select:["Manager","Finance","FinanceAssistant","QS","ProjectMover"], insert:["Manager","QS"], update:["Manager","Finance","FinanceAssistant","QS"], delete:["Manager"] },
+  audit_findings:      { label:"Audit Findings",           group:"Audit",       select:["Manager","Finance","Audit","HRAdmin"], insert:["Manager","Audit","HRAdmin"], update:["Manager","Audit","HRAdmin"], delete:["Manager","Audit","HRAdmin"] },
 };
 
 // Human-readable caveats for rules a plain role list can't express.
 export const PERM_NOTES = {
   deals:"Delete is limited to Managers plus the named sales leads (Jena, Wyn, Paolo).",
+  daily_logs:"Beyond Managers, the person who wrote a log can delete their own — the ✓ column shows Manager only, but authors can remove their own entry.",
   design_requests:"Design reads/edits are further tiered by designer — senior designers (Gab, Miaa) see more than the rest of the team.",
   project_budgets:"Finance can edit an existing budget, but creating the first budget row for a project is limited to Managers and QS.",
 };

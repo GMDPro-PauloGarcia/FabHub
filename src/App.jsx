@@ -6925,8 +6925,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     return r;
   };
   const delDailyLog=async(id)=>{
-    // Deleting a site log is Manager-only server-side (RLS), even for its author.
-    if(!await guardWrite('delete','daily_logs','a site log')) return;
+    // RLS (migration 052) allows a delete by a Manager OR the log's author
+    // (matched on the logged-by name). Mirror that ownership check here so the
+    // author isn't wrongly blocked and a non-author gets a clear message.
+    const log=dailyLogs.find(l=>l.id===id);
+    const isMgr=(ROLE_ALIASES[role]||role)==="Manager";
+    const isAuthor=log&&log.loggedBy&&log.loggedBy===session?.name;
+    if(!isMgr&&!isAuthor){
+      await uiAlert({title:"Not allowed for your role",message:"Only a manager or the person who wrote a site log can delete it.\n\nNothing was changed.",tone:"warning"});
+      return;
+    }
     upDailyLogs(ls=>ls.filter(l=>l.id!==id));
     if(isSupabaseReady()) sbDelete("daily_logs",id).catch(()=>{});
   };
