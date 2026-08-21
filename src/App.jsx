@@ -4577,8 +4577,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       (botSettings.hideValueInBots?"":`Contract Value: ₱${Number(contractVal||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\n`)+
       termLine+
       `\n\n👉 Open <b>Billing</b> and use “Set Up Billing Milestones” to create the schedule.`;
-    // Finance is where billing setup lives; management is copied for visibility.
+    // Finance is where billing setup lives; sales and management are copied for visibility.
     sendTelegramNotification("finance",msg);
+    sendTelegramNotification("sales",msg);
     sendTelegramNotification("management",msg);
     logActivity(dealId,"Billing Setup Requested",`Jessica notified to set up billing milestones for ${client||"the awarded project"}.`,session?.name||role);
   };
