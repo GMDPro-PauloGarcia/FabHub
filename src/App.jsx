@@ -12802,6 +12802,21 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(page==="accounts"&&(role==="Manager"||role==="Finance")) return(
       <Wrap>
         <AccountsManager users={users} session={session} onApprove={approveUser} onReject={rejectUser} onDeactivate={deactivateUser} onDelete={deleteUser} onResetPw={resetPw} onCreateUser={createUser} ROLES={ROLES}/>
+        {/* Role Permissions reference (Manager only) — who can view/create/edit/
+            delete each record type, right where you set a person's role. */}
+        {role==="Manager"&&(
+          <div style={{maxWidth:1180,margin:"18px auto 0",padding:isMobile?"0 10px":"0 20px"}}>
+            <button onClick={()=>setAccountsPermOpen(o=>!o)}
+              style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"14px 16px",cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
+              <span>
+                <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:"#0f172a"}}>🔐 Role Permissions</span>
+                <span style={{display:"block",fontSize:".76rem",color:"#64748b",marginTop:2}}>Who can view, create, edit or delete each record type — mirrors the database security rules.</span>
+              </span>
+              <span style={{fontSize:".9rem",color:"#64748b",transform:accountsPermOpen?"rotate(180deg)":"none",transition:"transform .15s"}}>▾</span>
+            </button>
+            {accountsPermOpen&&<div style={{marginTop:10}}><PermissionsMatrix Wrap={Wrap} isMobile={isMobile} embedded/></div>}
+          </div>
+        )}
       </Wrap>
     );
   
