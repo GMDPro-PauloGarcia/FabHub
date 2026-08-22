@@ -6,7 +6,7 @@ import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -31,6 +31,7 @@ const useStableComponent=(impl)=>{
 const PageLoading=()=><div style={{padding:"24px 20px",maxWidth:1100,margin:"0 auto"}}><PageSkeleton/></div>;
 const _lazyView=(load)=>{const L=React.lazy(load);return function LazyView(props){return <React.Suspense fallback={<PageLoading/>}><L {...props}/></React.Suspense>;};};
 const ConstructionCalendar=_lazyView(()=>import('./views/ConstructionCalendar'));
+const PermissionsMatrix=_lazyView(()=>import('./views/PermissionsMatrix'));
 const BOQBuilder=_lazyView(()=>import('./views/BOQBuilder'));
 const LiquidationView=_lazyView(()=>import('./views/LiquidationView'));
 const DailyCashPosition=_lazyView(()=>import('./views/DailyCashPosition'));
@@ -3084,6 +3085,7 @@ export default function App(){
 
   // Offline write queue: track how many writes are still pending and keep
   // retrying them on mount / focus / reconnect until they reach the server.
+  const[accountsPermOpen,setAccountsPermOpen]=useState(false); // Role Permissions panel on the Accounts page
   const[pendingSync,setPendingSync]=useState(sbQueueSize());
   useEffect(()=>{
     const off=sbOnQueueChange(n=>setPendingSync(n));
@@ -3451,7 +3453,11 @@ export default function App(){
     subcon_work_orders:["Manager","Finance","FinanceAssistant","Procurement"],
     addenda:["Manager","ProjectMover","Procurement","Design"],
     swatches:["Manager","Procurement","Design"],
-    checklists:["Manager","ProjectMover"],
+    // checklists: intentionally UNMAPPED. Migration 049 opened checklists
+    // INSERT/UPDATE to any logged-in user (AUTH); leaving it out of this map
+    // means roleCanInsert returns true, matching the server. (Previously listed
+    // Manager/ProjectMover only, which wrongly blocked the bulk-sync push for
+    // Sales/Design/Finance even though RLS now allows them.)
     expenses:["Manager","Finance","Accounting","FinanceAssistant"],
     billing_milestones:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"],
     billing_payments:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"],
@@ -3464,6 +3470,24 @@ export default function App(){
     if(!allowed) return true; // unmapped table → don't change push behavior
     const canon=ROLE_ALIASES[role]||role;
     return allowed.includes(canon);
+  };
+  // ── Permission guard for user-initiated writes ──────────────────────────────
+  // Checks the PERMISSIONS map (client mirror of RLS) BEFORE a role-gated write
+  // and, if the current role isn't allowed, shows a clear dialog and returns
+  // false so the caller can abort — instead of optimistically changing local
+  // state that the next server resync silently reverts. Used at the write sites
+  // where RLS is stricter than the UI (addendum status, daily-log/calendar
+  // deletes). Unmapped tables/actions are allowed, so this never over-blocks.
+  const roleCanDo=(action,table)=>roleCan(ROLE_ALIASES[role]||role,action,table);
+  const guardWrite=async(action,table,label)=>{
+    if(roleCanDo(action,table)) return true;
+    const verb={select:"view",insert:"add",update:"edit",delete:"delete"}[action]||action;
+    await uiAlert({
+      title:"Not allowed for your role",
+      message:`Your role (${roleLabel(role)}) can't ${verb} ${label||table}.\n\nThis is limited to: ${rolesAllowedLabel(action,table)}.\n\nNothing was changed. Ask a manager if you need access.`,
+      tone:"warning",
+    });
+    return false;
   };
   const sbSyncOne=(table,record,mapper)=>{
     if(!isSupabaseReady()||!record) return Promise.resolve(false);
@@ -4943,7 +4967,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   };
   const delPcard     =(id)=>{upPcards(ps=>{const n={...ps};delete n[id];return n;});if(isSupabaseReady()) sbDeleteWhere('project_cards','deal_id',id);};
   const delBudget    =(id)=>{upBudgets(bs=>{const n={...bs};delete n[id];return n;});if(isSupabaseReady()) sbDeleteWhere('project_budgets','deal_id',id);};
-  const delChecklist =(id)=>{upChecklist(cs=>cs.filter(c=>c.id!==id));if(isSupabaseReady()) sbDelete('checklists',id).catch(()=>{});};
+  const delChecklist =async(id)=>{if(!await guardWrite('delete','checklists','a checklist item')) return;upChecklist(cs=>cs.filter(c=>c.id!==id));if(isSupabaseReady()) sbDelete('checklists',id).catch(()=>{});};
   const upMreqs    =useCallback(fn=>setMreqs(p=>{const n=fn(p);persist(KEYS.mreqs,n);return n;}),[persist]);
   const upBreqs    =useCallback(fn=>setBreqs(p=>{const n=fn(p);persist(KEYS.breqs,n);return n;}),[persist]);
   const addMR=(mr)=>{
@@ -5283,7 +5307,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     sendTelegramNotification("procurement",msg);
     sendTelegramNotification("management",msg);
   };
-  const updateAddendumStatus=(dealId,addId,status)=>{
+  const updateAddendumStatus=async(dealId,addId,status)=>{
+    // Advancing an addendum's status is a Manager-only UPDATE server-side (RLS).
+    // Guard first so a PM/Ops user gets a clear dialog instead of a change that
+    // reverts on the next resync.
+    if(!await guardWrite('update','addenda','a scope change status')) return;
     upDeals(ds=>ds.map(d=>d.id===dealId?{...d,addenda:(d.addenda||[]).map(a=>a.id===addId?{...a,status}:a)}:d));
     if(isSupabaseReady()) sbUpdate('addenda',addId,{status,updated_at:new Date().toISOString()}).catch(()=>{});
   };
@@ -5858,7 +5886,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       const clientLower=data.client.toLowerCase();
       const titleLower=(data.product||data.contact||"").toLowerCase();
       const dupes=deals.filter(d=>{
-        if(d.stage==="Cancelled") return false;
+        if(isLostStage(d.stage)) return false;
         if(d.client.toLowerCase()!==clientLower) return false;
         const existTitle=(d.product||d.contact||"").toLowerCase();
         const titleMatch=titleLower&&existTitle&&(existTitle.includes(titleLower)||titleLower.includes(existTitle));
@@ -5872,7 +5900,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // opened), which can be stale/colliding if another device saved a deal
     // since then.
     const claimedCeNo=editDeal?data.ceNo:await claimCENo(data.ceNo,deals.map(d=>d.ceNo));
-    const prob=WON_STAGES.includes(data.stage)?100:data.stage==="Cancelled"?0:Number(data.probability);
+    const prob=WON_STAGES.includes(data.stage)?100:isLostStage(data.stage)?0:Number(data.probability);
     const rec={...data,ceNo:claimedCeNo,product:data.product||data.ceType||"",id:editDeal||uid(),value:data.standbyPO?0:Number(data.value),poBudget:data.standbyPO?(Number(data.poBudget)||0):"",invoiced:Number(data.invoiced||0),amountPaid:Number(data.amountPaid||0),probability:prob,
       addedBy:editDeal?(data.addedBy||""):(session?.name||""),
       addedAt:editDeal?(data.addedAt||today):today,
@@ -6926,7 +6954,27 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     logActivity(r.dealId||null,"Daily Log",`Site log${r.workDone?`: ${r.workDone.slice(0,80)}`:""}`,r.loggedBy);
     return r;
   };
-  const delDailyLog=(id)=>{upDailyLogs(ls=>ls.filter(l=>l.id!==id));if(isSupabaseReady()) sbDelete("daily_logs",id).catch(()=>{});};
+  const delDailyLog=async(id)=>{
+    // RLS (migration 052) allows a delete by a Manager OR the log's author
+    // (matched on the logged-by name). Mirror that ownership check here so the
+    // author isn't wrongly blocked and a non-author gets a clear message.
+    const log=dailyLogs.find(l=>l.id===id);
+    const isMgr=(ROLE_ALIASES[role]||role)==="Manager";
+    const isAuthor=log&&log.loggedBy&&log.loggedBy===session?.name;
+    if(!isMgr&&!isAuthor){
+      await uiAlert({title:"Not allowed for your role",message:"Only a manager or the person who wrote a site log can delete it.\n\nNothing was changed.",tone:"warning"});
+      return;
+    }
+    upDailyLogs(ls=>ls.filter(l=>l.id!==id));
+    if(isSupabaseReady()) sbDelete("daily_logs",id).catch(()=>{});
+  };
+  // Deleting a calendar item (checklists table) is Manager-only server-side —
+  // migration 049 opened create/edit to everyone but left delete to Managers.
+  const delOpsEvent=async(id)=>{
+    if(!await guardWrite('delete','checklists','a calendar item')) return;
+    upChecklist(cs=>cs.filter(c=>c.id!==id));
+    if(isSupabaseReady()) sbDelete('checklists',id).catch(()=>{});
+  };
 
   const saveSwatch=()=>{
     if(!swForm.name) return;
@@ -7977,7 +8025,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const autoBudgets=wonDeals.filter(d=>budgets[d.id]?.autoGenerated);
         // Unpriced pipeline deals — Sales created but QS has not set value yet
         const wonIds=new Set(wonDeals.map(d=>d.id));
-        const unpricedDeals=deals.filter(d=>!wonIds.has(d.id)&&!d.standbyPO&&(!Number(d.value)||Number(d.value)===0)&&d.stage&&!["12 · Close-Out","14 · Completed"].includes(d.stage));
+        const unpricedDeals=deals.filter(d=>!wonIds.has(d.id)&&!d.standbyPO&&(!Number(d.value)||Number(d.value)===0)&&d.stage&&!isLostStage(d.stage)&&!["12 · Close-Out","14 · Completed"].includes(d.stage));
         const withBudget=wonDeals.filter(d=>budgets[d.id]);
         const overBudget=withBudget.filter(d=>{
           const b=budgets[d.id];const total=(b.Materials||0)+(b.Labor||0)+(b.Overhead||0)+(b.Subcon||0);
@@ -8720,7 +8768,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       checklists={checklist} session={session}
       addOpsEvent={data=>{const rec={...data,id:uid(),dept:"Operations",createdDate:today,createdBy:session?.name||role};upChecklist(cs=>[...cs,rec]);if(isSupabaseReady())sbInsert('checklists',toSbChecklist(rec)).catch(err=>{console.error("Calendar item sync:",err);toastEmit&&toastEmit("Calendar item saved locally only — tap 🔄 sync to push it to the server.","warning",8000);});const proj=wonDeals.find(d=>d.id===rec.projectId);const msg=`📅 <b>Calendar Item Added</b>\n<b>${rec.type||"Event"}</b>: ${rec.title||""}\nDate: ${rec.dueDate||"—"}${proj?`\nProject: ${proj.client}${proj.ceNo?" ("+proj.ceNo+")":""}`:""}\nBy: ${rec.createdBy||"—"}`;const _t=(rec.type||"").toLowerCase();if(_t==="turnover"){sendTelegramNotification("ops",msg);sendTelegramNotification("sales",msg);sendTelegramNotification("management",msg);}else if(_t==="po delivery"){sendTelegramNotification("procurement",msg);sendTelegramNotification("warehouse",msg);}else if(_t.includes("billing")){sendTelegramNotification("financialcontrol",msg);sendTelegramNotification("management",msg);}else if(_t.includes("drf")||_t.includes("design")){sendTelegramNotification("design",msg);}else if(_t==="inspection"){sendTelegramNotification("ops",msg);sendTelegramNotification("management",msg);}else if(_t==="maintenance"){sendTelegramNotification("ops",msg);}else{sendTelegramNotification("ops",msg);sendTelegramNotification("sales",msg);}}}
       updateOpsEvent={(id,ch)=>{upChecklist(cs=>cs.map(c=>c.id===id?{...c,...ch}:c));if(isSupabaseReady())sbUpdate('checklists',id,toSbChecklist({...checklist.find(c=>c.id===id),...ch})).catch(()=>{});}}
-      deleteOpsEvent={id=>{upChecklist(cs=>cs.filter(c=>c.id!==id));if(isSupabaseReady())sbDelete('checklists',id).catch(()=>{});}}
+      deleteOpsEvent={delOpsEvent}
       updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())sbUpsert('project_cards',{deal_id:dealId,target_end_date:date},'deal_id').catch(()=>{});}}
     />
   );
@@ -9634,7 +9682,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       checklists={checklist} session={session}
       addOpsEvent={data=>{const rec={...data,id:uid(),dept:"Operations",createdDate:today,createdBy:session?.name||role};upChecklist(cs=>[...cs,rec]);if(isSupabaseReady())sbInsert('checklists',toSbChecklist(rec)).catch(err=>{console.error("Calendar item sync:",err);toastEmit&&toastEmit("Calendar item saved locally only — tap 🔄 sync to push it to the server.","warning",8000);});const proj=wonDeals.find(d=>d.id===rec.projectId);const msg=`📅 <b>Calendar Item Added</b>\n<b>${rec.type||"Event"}</b>: ${rec.title||""}\nDate: ${rec.dueDate||"—"}${proj?`\nProject: ${proj.client}${proj.ceNo?" ("+proj.ceNo+")":""}`:""}\nBy: ${rec.createdBy||"—"}`;const _t=(rec.type||"").toLowerCase();if(_t==="turnover"){sendTelegramNotification("ops",msg);sendTelegramNotification("sales",msg);sendTelegramNotification("management",msg);}else if(_t==="po delivery"){sendTelegramNotification("procurement",msg);sendTelegramNotification("warehouse",msg);}else if(_t.includes("billing")){sendTelegramNotification("financialcontrol",msg);sendTelegramNotification("management",msg);}else if(_t.includes("drf")||_t.includes("design")){sendTelegramNotification("design",msg);}else if(_t==="inspection"){sendTelegramNotification("ops",msg);sendTelegramNotification("management",msg);}else if(_t==="maintenance"){sendTelegramNotification("ops",msg);}else{sendTelegramNotification("ops",msg);sendTelegramNotification("sales",msg);}}}
       updateOpsEvent={(id,ch)=>{upChecklist(cs=>cs.map(c=>c.id===id?{...c,...ch}:c));if(isSupabaseReady())sbUpdate('checklists',id,toSbChecklist({...checklist.find(c=>c.id===id),...ch})).catch(()=>{});}}
-      deleteOpsEvent={id=>{upChecklist(cs=>cs.filter(c=>c.id!==id));if(isSupabaseReady())sbDelete('checklists',id).catch(()=>{});}}
+      deleteOpsEvent={delOpsEvent}
       updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())sbUpsert('project_cards',{deal_id:dealId,target_end_date:date},'deal_id').catch(()=>{});}}
     />
   );
@@ -10370,7 +10418,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const AV_COLORS=["#3b82f6","#8b5cf6","#059669","#f59e0b","#ef4444","#06b6d4","#ec4899","#f97316"];
         const colorFor=name=>AV_COLORS[(name||"").split("").reduce((s,c)=>s+c.charCodeAt(0),0)%AV_COLORS.length];
         const closedIds=new Set(deals.filter(d=>d.stage==="12 · Close-Out"||d.stage==="14 · Completed").map(d=>d.id));
-        const pipelineIds=new Set(deals.filter(d=>!WON_STAGES.includes(d.stage)).map(d=>d.id));
+        const pipelineIds=new Set(deals.filter(d=>isActivePipeline(d.stage)).map(d=>d.id));
         const wonIds=new Set(wonDeals.map(d=>d.id));
 
         const filteredUpdates=aeUpdates.filter(u=>{
@@ -10452,7 +10500,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             </div>
             <div style={{fontSize:".7rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Tag a project (optional)</div>
             <div style={{display:"flex",gap:0,background:"#f1f5f9",borderRadius:7,padding:2,marginBottom:8}}>
-              {[["active","🏗 Active",wonDeals.length],["pipeline","📊 Pipeline",deals.filter(d=>!WON_STAGES.includes(d.stage)).length]].map(([t,l,cnt])=>(
+              {[["active","🏗 Active",wonDeals.length],["pipeline","📊 Pipeline",deals.filter(d=>isActivePipeline(d.stage)).length]].map(([t,l,cnt])=>(
                 <button key={t} onClick={()=>{setAeUpdateDealType(t);setAeUpdateDealId("");}}
                   style={{flex:1,padding:"5px 8px",border:"none",borderRadius:5,fontFamily:"inherit",fontSize:".75rem",fontWeight:aeUpdateDealType===t?700:500,cursor:"pointer",background:aeUpdateDealType===t?"#fff":"transparent",color:aeUpdateDealType===t?"#1d4ed8":"#64748b",boxShadow:aeUpdateDealType===t?"0 1px 3px rgba(0,0,0,.1)":"none",transition:"all .15s",textAlign:"center"}}>
                   {l} <span style={{fontSize:".62rem",opacity:.7}}>({cnt})</span>
@@ -10464,7 +10512,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               <option value="">— No project tag —</option>
               {aeUpdateDealType==="active"
                 ? wonDeals.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed").map(d=><option key={d.id} value={d.id}>{d.contact||d.client}{d.ceNo?" · "+d.ceNo:""}</option>)
-                : deals.filter(d=>!WON_STAGES.includes(d.stage)).map(d=><option key={d.id} value={d.id}>{d.contact||d.client}{d.ceNo?" · "+d.ceNo:""}</option>)
+                : deals.filter(d=>isActivePipeline(d.stage)).map(d=><option key={d.id} value={d.id}>{d.contact||d.client}{d.ceNo?" · "+d.ceNo:""}</option>)
               }
             </select>
             <textarea value={aeUpdateText} onChange={e=>setAeUpdateText(e.target.value)}
@@ -10934,7 +10982,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         {pipeSearch&&(
           <div style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:10,padding:"8px 16px",marginBottom:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <span style={{fontSize:".82rem",color:"#1d4ed8"}}>
-              🔍 Showing results for "<strong>{pipeSearch}</strong>" — {deals.filter(d=>d.stage!=="Cancelled"&&[d.client,d.contact,d.ceNo,d.salesOwner,d.product].join(" ").toLowerCase().includes(pipeSearch.toLowerCase())).length} deals found
+              🔍 Showing results for "<strong>{pipeSearch}</strong>" — {deals.filter(d=>isActivePipeline(d.stage)&&[d.client,d.contact,d.ceNo,d.salesOwner,d.product].join(" ").toLowerCase().includes(pipeSearch.toLowerCase())).length} deals found
             </span>
             <button onClick={()=>setPipeSearch("")} style={{background:"transparent",border:"none",color:"#3b82f6",cursor:"pointer",fontSize:".8rem",fontWeight:700}}>Clear ✕</button>
           </div>
@@ -13535,7 +13583,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} deleteMR={delMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
-    if(page==="calendar") return(<ConstructionCalendar wonDeals={wonDeals} completedDeals={completedDeals} deals={deals} pcards={pcards} jos={jos} prs={prs} billings={billings} drfs={drfs} ceReqs={ceReqs} setPage={setPage} setJumpDeal={setJumpDeal} today={today} Wrap={Wrap} checklists={checklist} session={session} addOpsEvent={data=>{const rec={...data,id:uid(),dept:"Operations",createdDate:today,createdBy:session?.name||role};upChecklist(cs=>[...cs,rec]);if(isSupabaseReady())sbInsert('checklists',toSbChecklist(rec)).catch(err=>{console.error("Calendar item sync:",err);toastEmit&&toastEmit("Calendar item saved locally only — tap 🔄 sync to push it to the server.","warning",8000);});const proj=wonDeals.find(d=>d.id===rec.projectId);const msg=`📅 <b>Calendar Item Added</b>\n<b>${rec.type||"Event"}</b>: ${rec.title||""}\nDate: ${rec.dueDate||"—"}${proj?`\nProject: ${proj.client}${proj.ceNo?" ("+proj.ceNo+")":""}`:""}\nBy: ${rec.createdBy||"—"}`;const _t=(rec.type||"").toLowerCase();if(["installation","backjob","turnover","site visit","repair"].some(t=>_t.includes(t))){sendTelegramNotification("ops",msg);sendTelegramNotification("sales",msg);}else if(_t.includes("drf")||_t.includes("design")){sendTelegramNotification("design",msg);}else if(_t.includes("billing")){sendTelegramNotification("finance",msg);}else{sendTelegramNotification("ops",msg);}}} updateOpsEvent={(id,ch)=>{upChecklist(cs=>cs.map(c=>c.id===id?{...c,...ch}:c));if(isSupabaseReady())sbUpdate('checklists',id,toSbChecklist({...checklist.find(c=>c.id===id),...ch})).catch(()=>{});}} deleteOpsEvent={id=>{upChecklist(cs=>cs.filter(c=>c.id!==id));if(isSupabaseReady())sbDelete('checklists',id).catch(()=>{});}}/>);
+    if(page==="calendar") return(<ConstructionCalendar wonDeals={wonDeals} completedDeals={completedDeals} deals={deals} pcards={pcards} jos={jos} prs={prs} billings={billings} drfs={drfs} ceReqs={ceReqs} setPage={setPage} setJumpDeal={setJumpDeal} today={today} Wrap={Wrap} checklists={checklist} session={session} addOpsEvent={data=>{const rec={...data,id:uid(),dept:"Operations",createdDate:today,createdBy:session?.name||role};upChecklist(cs=>[...cs,rec]);if(isSupabaseReady())sbInsert('checklists',toSbChecklist(rec)).catch(err=>{console.error("Calendar item sync:",err);toastEmit&&toastEmit("Calendar item saved locally only — tap 🔄 sync to push it to the server.","warning",8000);});const proj=wonDeals.find(d=>d.id===rec.projectId);const msg=`📅 <b>Calendar Item Added</b>\n<b>${rec.type||"Event"}</b>: ${rec.title||""}\nDate: ${rec.dueDate||"—"}${proj?`\nProject: ${proj.client}${proj.ceNo?" ("+proj.ceNo+")":""}`:""}\nBy: ${rec.createdBy||"—"}`;const _t=(rec.type||"").toLowerCase();if(["installation","backjob","turnover","site visit","repair"].some(t=>_t.includes(t))){sendTelegramNotification("ops",msg);sendTelegramNotification("sales",msg);}else if(_t.includes("drf")||_t.includes("design")){sendTelegramNotification("design",msg);}else if(_t.includes("billing")){sendTelegramNotification("finance",msg);}else{sendTelegramNotification("ops",msg);}}} updateOpsEvent={(id,ch)=>{upChecklist(cs=>cs.map(c=>c.id===id?{...c,...ch}:c));if(isSupabaseReady())sbUpdate('checklists',id,toSbChecklist({...checklist.find(c=>c.id===id),...ch})).catch(()=>{});}} deleteOpsEvent={delOpsEvent}/>);
   }
 
   // ─── DESIGN ───────────────────────────────────────────────────────────────
@@ -15229,6 +15277,25 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   if(role==="Manager"&&page==="accounts") return(
     <Wrap>
       <AccountsManager users={users} session={session} onApprove={approveUser} onReject={rejectUser} onDeactivate={deactivateUser} onDelete={deleteUser} onResetPw={resetPw} onCreateUser={createUser} ROLES={ROLES}/>
+      {/* Permissions reference — who each role can view/create/edit/delete.
+          Lives alongside account management so it's one place to answer
+          "what can this person do?" right where you set their role. */}
+      {(()=>{
+        const open=accountsPermOpen;
+        return(
+          <div style={{maxWidth:1180,margin:"18px auto 0",padding:isMobile?"0 10px":"0 20px"}}>
+            <button onClick={()=>setAccountsPermOpen(o=>!o)}
+              style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"14px 16px",cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
+              <span>
+                <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:"#0f172a"}}>🔐 Role Permissions</span>
+                <span style={{display:"block",fontSize:".76rem",color:"#64748b",marginTop:2}}>Who can view, create, edit or delete each record type — mirrors the database security rules.</span>
+              </span>
+              <span style={{fontSize:".9rem",color:"#64748b",transform:open?"rotate(180deg)":"none",transition:"transform .15s"}}>▾</span>
+            </button>
+            {open&&<div style={{marginTop:10}}><PermissionsMatrix Wrap={Wrap} isMobile={isMobile} embedded/></div>}
+          </div>
+        );
+      })()}
       {/* Demo Data Loader */}
       {(()=>{
         const demoDealsExist=deals.some(d=>d.id?.startsWith("demo-"));
