@@ -10658,6 +10658,54 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           </div>
         );
 
+        // Per-salesperson breakdown for the manager "Whole team" view.
+        const groups=(()=>{
+          const m=new Map();
+          rows.forEach(d=>{const k=d.salesOwner||"— Unassigned —";(m.get(k)||m.set(k,[]).get(k)).push(d);});
+          return [...m.entries()].map(([owner,ds])=>({
+            owner, ds,
+            val:ds.reduce((s,d)=>s+(Number(d.value)||0),0),
+            coll:ds.reduce((s,d)=>s+(Number(d.amountPaid)||0),0),
+            earned:ds.reduce((s,d)=>s+commissionEarned(d),0),
+            proj:ds.reduce((s,d)=>s+commissionProjected(d),0),
+          })).sort((a,b)=>b.earned-a.earned);
+        })();
+
+        const renderRow=(d)=>{
+          const collected=Number(d.amountPaid)||0, contract=Number(d.value)||0;
+          const pct=contract>0?Math.min(100,Math.round(collected/contract*100)):0;
+          const earned=commissionEarned(d), proj=commissionProjected(d);
+          const payClr=PAY_CLR[d.paymentStatus]||"#94a3b8";
+          const stgClr=STAGE_CLR[d.stage]||"#64748b";
+          return(
+            <tr key={d.id} onClick={()=>openEditDeal(d)} style={{borderBottom:"1px solid #f1f5f9",cursor:"pointer"}}
+              onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
+              <td style={{padding:"11px 13px",verticalAlign:"middle"}}>
+                <div style={{fontFamily:"monospace",fontSize:".68rem",color:"#94a3b8"}}>{d.ceNo||"—"}</div>
+                <div style={{fontWeight:700,color:"#0f172a"}}>{d.contact||d.client}</div>
+                {d.contact&&d.client&&<div style={{fontSize:".72rem",color:"#64748b"}}>{d.client}</div>}
+              </td>
+              <td style={{padding:"11px 13px",whiteSpace:"nowrap",color:"#475569"}}>{d.salesOwner||"—"}</td>
+              <td style={{padding:"11px 13px"}}>
+                <span style={{fontSize:".68rem",fontWeight:700,padding:"3px 9px",borderRadius:20,whiteSpace:"nowrap",color:done(d.stage)?"#065f46":stgClr,background:done(d.stage)?"#dcfce7":stgClr+"1a"}}>{d.stage}</span>
+              </td>
+              <td style={{padding:"11px 13px",textAlign:"right",fontVariantNumeric:"tabular-nums",whiteSpace:"nowrap",color:"#0f172a"}}>{peso(contract)}</td>
+              <td style={{padding:"11px 13px",textAlign:"right",minWidth:130}}>
+                <div style={{fontVariantNumeric:"tabular-nums",color:"#0f172a"}}>{peso(collected)}</div>
+                <div style={{height:5,borderRadius:20,background:"#e2e8f0",overflow:"hidden",marginTop:4}}><div style={{height:"100%",width:pct+"%",background:"#059669",borderRadius:20}}/></div>
+                <div style={{fontSize:".66rem",color:"#94a3b8",marginTop:2}}>{pct}% collected</div>
+              </td>
+              <td style={{padding:"11px 13px"}}>
+                <span style={{fontSize:".68rem",fontWeight:700,padding:"3px 9px",borderRadius:20,color:payClr,background:payClr+"1a",whiteSpace:"nowrap"}}>{d.paymentStatus||"Unpaid"}</span>
+              </td>
+              <td style={{padding:"11px 13px",textAlign:"right",whiteSpace:"nowrap"}}>
+                <div style={{fontWeight:800,color:"#059669",fontVariantNumeric:"tabular-nums"}}>{peso(earned)}</div>
+                <div style={{fontSize:".66rem",color:"#94a3b8",fontVariantNumeric:"tabular-nums"}}>of {peso(proj)}</div>
+              </td>
+            </tr>
+          );
+        };
+
         return(
           <>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10,marginBottom:6}}>
@@ -10702,40 +10750,25 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.map(d=>{
-                      const collected=Number(d.amountPaid)||0, contract=Number(d.value)||0;
-                      const pct=contract>0?Math.min(100,Math.round(collected/contract*100)):0;
-                      const earned=commissionEarned(d), proj=commissionProjected(d);
-                      const payClr=PAY_CLR[d.paymentStatus]||"#94a3b8";
-                      const stgClr=STAGE_CLR[d.stage]||"#64748b";
-                      return(
-                        <tr key={d.id} onClick={()=>openEditDeal(d)} style={{borderBottom:"1px solid #f1f5f9",cursor:"pointer"}}
-                          onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
-                          <td style={{padding:"11px 13px",verticalAlign:"middle"}}>
-                            <div style={{fontFamily:"monospace",fontSize:".68rem",color:"#94a3b8"}}>{d.ceNo||"—"}</div>
-                            <div style={{fontWeight:700,color:"#0f172a"}}>{d.contact||d.client}</div>
-                            {d.contact&&d.client&&<div style={{fontSize:".72rem",color:"#64748b"}}>{d.client}</div>}
-                          </td>
-                          <td style={{padding:"11px 13px",whiteSpace:"nowrap",color:"#475569"}}>{d.salesOwner||"—"}</td>
-                          <td style={{padding:"11px 13px"}}>
-                            <span style={{fontSize:".68rem",fontWeight:700,padding:"3px 9px",borderRadius:20,whiteSpace:"nowrap",color:done(d.stage)?"#065f46":stgClr,background:done(d.stage)?"#dcfce7":stgClr+"1a"}}>{d.stage}</span>
-                          </td>
-                          <td style={{padding:"11px 13px",textAlign:"right",fontVariantNumeric:"tabular-nums",whiteSpace:"nowrap",color:"#0f172a"}}>{peso(contract)}</td>
-                          <td style={{padding:"11px 13px",textAlign:"right",minWidth:130}}>
-                            <div style={{fontVariantNumeric:"tabular-nums",color:"#0f172a"}}>{peso(collected)}</div>
-                            <div style={{height:5,borderRadius:20,background:"#e2e8f0",overflow:"hidden",marginTop:4}}><div style={{height:"100%",width:pct+"%",background:"#059669",borderRadius:20}}/></div>
-                            <div style={{fontSize:".66rem",color:"#94a3b8",marginTop:2}}>{pct}% collected</div>
-                          </td>
-                          <td style={{padding:"11px 13px"}}>
-                            <span style={{fontSize:".68rem",fontWeight:700,padding:"3px 9px",borderRadius:20,color:payClr,background:payClr+"1a",whiteSpace:"nowrap"}}>{d.paymentStatus||"Unpaid"}</span>
-                          </td>
-                          <td style={{padding:"11px 13px",textAlign:"right",whiteSpace:"nowrap"}}>
-                            <div style={{fontWeight:800,color:"#059669",fontVariantNumeric:"tabular-nums"}}>{peso(earned)}</div>
-                            <div style={{fontSize:".66rem",color:"#94a3b8",fontVariantNumeric:"tabular-nums"}}>of {peso(proj)}</div>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {scope==="team"
+                      ? groups.map(g=>(
+                          <React.Fragment key={g.owner}>
+                            <tr style={{background:"#eef2ff",borderBottom:"1px solid #e2e8f0"}}>
+                              <td colSpan={3} style={{padding:"9px 13px",fontWeight:800,color:"#1e293b"}}>
+                                {g.owner} <span style={{fontWeight:600,color:"#94a3b8",fontSize:".72rem"}}>· {g.ds.length} project{g.ds.length!==1?"s":""}</span>
+                              </td>
+                              <td style={{padding:"9px 13px",textAlign:"right",fontVariantNumeric:"tabular-nums",color:"#475569"}}>{peso(g.val)}</td>
+                              <td style={{padding:"9px 13px",textAlign:"right",fontVariantNumeric:"tabular-nums",color:"#475569"}}>{peso(g.coll)}</td>
+                              <td></td>
+                              <td style={{padding:"9px 13px",textAlign:"right",whiteSpace:"nowrap"}}>
+                                <div style={{fontWeight:800,color:"#059669",fontVariantNumeric:"tabular-nums"}}>{peso(g.earned)}</div>
+                                <div style={{fontSize:".66rem",color:"#94a3b8",fontVariantNumeric:"tabular-nums"}}>of {peso(g.proj)}</div>
+                              </td>
+                            </tr>
+                            {g.ds.map(renderRow)}
+                          </React.Fragment>
+                        ))
+                      : rows.map(renderRow)}
                     {rows.length===0&&(
                       <tr><td colSpan={7} style={{padding:"36px 16px",textAlign:"center",color:"#94a3b8"}}>No awarded projects{scope==="mine"?" credited to you yet":" yet"}. Deals appear here once they reach stage 06 · Kickoff.</td></tr>
                     )}
