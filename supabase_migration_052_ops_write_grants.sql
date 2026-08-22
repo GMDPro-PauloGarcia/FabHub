@@ -23,7 +23,7 @@ alter table public.checklists enable row level security;
 -- the person's name (e.g. "David Melendez"), not their username/id, so an
 -- author-scoped rule can't use app_username()/app_sub().
 create or replace function public.app_name() returns text language sql stable as
-  $fn$ select coalesce(current_setting('request.jwt.claims', true)::jsonb ->> 'name', '') $fn$;
+  $fn$ select coalesce(nullif(current_setting('request.jwt.claims', true),'')::jsonb ->> 'name','') $fn$;
 grant execute on function public.app_name() to authenticated, anon;
 
 -- ── #1 · Addenda (scope changes): let Project Movers advance the status ───────
