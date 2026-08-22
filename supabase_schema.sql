@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS deals (
   priority            TEXT DEFAULT 'Normal',
   sales_owner         TEXT,
   biz_dev_source      TEXT,
+  lead_origin         TEXT DEFAULT 'Given',
   date_acquired       DATE,
   due_date            DATE,
   follow_up           TEXT,

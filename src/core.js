@@ -137,6 +137,25 @@ export const SWATCH_STATUS   = ["To Buy","Ordered","Received","Client Approved",
 
 export const PAY_STATUS      = ["Unpaid","Partial","Deposited","Paid"];
 
+// ── Sales commission (v1) ────────────────────────────────────────────────────
+// Commission accrues on CASH COLLECTED (deal.amountPaid) — not on award and not
+// on invoiced value. A peso is only commissionable once the client has actually
+// paid it, so the earned figure moves as payments land in the billing ledger.
+// The rate depends on how the client came to the sales team:
+//   • Self-sourced (the AE brought the client in)  → 1.5%
+//   • Given (client handed to the sales team)      → 0.5%
+// Lead origin is declared per-deal on `deal.leadOrigin`. Until that field is set
+// (the explicit deal flag ships in a follow-up), it defaults to "Given" — the
+// conservative lower rate — so no deal is ever over-credited by omission.
+export const LEAD_ORIGINS       = ["Given","Self-sourced"];
+export const DEFAULT_LEAD_ORIGIN= "Given";
+export const COMMISSION_RATE    = { "Self-sourced":0.015, "Given":0.005 };
+export const leadOriginOf       = (deal)=>LEAD_ORIGINS.includes(deal&&deal.leadOrigin)?deal.leadOrigin:DEFAULT_LEAD_ORIGIN;
+export const commissionRate     = (deal)=>COMMISSION_RATE[leadOriginOf(deal)];
+// Earned so far = rate × cash actually collected; projected = rate × full contract value.
+export const commissionEarned   = (deal)=>Math.round((Number(deal&&deal.amountPaid)||0)*commissionRate(deal));
+export const commissionProjected= (deal)=>Math.round((Number(deal&&deal.value)||0)*commissionRate(deal));
+
 export const MONTHS          = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 export const PRIORITIES      = ["Normal","High","Urgent"];
@@ -644,7 +663,7 @@ export const emptyDeal={
   progressBilled:0,progressPaid:0,finalBilled:0,finalPaid:0,
   // GMD fields
   ceNo:"",ceType:"Fabrication / General",salesOwner:"",dateAcquired:today,
-  assignedAE:"",bizDevSource:"",location:"",
+  assignedAE:"",bizDevSource:"",leadOrigin:DEFAULT_LEAD_ORIGIN,location:"",
   // File links (Drive + FabHub)
   salesRepoLink:"",proposalFolderLink:"",salesRepoNote:"",
   // Design Request (inline DRF)
