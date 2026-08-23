@@ -22630,10 +22630,22 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     const ms=billings.filter(b=>b.dealId===d.id);
     const billed   =ms.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+n(m.amount),0);
     const collected=ms.reduce((s,m)=>s+(m.payments||[]).filter(p=>!p.bounced).reduce((ps,p)=>ps+n(p.amount),0),0);
+    // Output VAT embedded in what's been collected. Each milestone's payments are
+    // VAT-inclusive (the client pays the gross, less any EWT withheld), so the VAT
+    // share of that cash is vat/netReceivable for the milestone, applied
+    // proportionally to partial collections. This is the 12% GMD owes the BIR —
+    // NOT revenue — so it's surfaced separately from the gross Collected figure.
+    const vatCollected=ms.reduce((s,m)=>{
+      const paid=(m.payments||[]).filter(p=>!p.bounced).reduce((ps,p)=>ps+n(p.amount),0);
+      if(paid<=0) return s;
+      const tx=calcTax(n(m.amount),m.receiptType??m.receipt_type??d.receiptType??"OR",m.withholding??d.withholding??false);
+      return s+(tx.netReceivable>0?paid*(tx.vat/tx.netReceivable):0);
+    },0);
+    const collectedExVat=collected-vatCollected;
     const balance  =Math.max(0,billed-collected);
     const hasOverdue=ms.some(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled");
     const fullyPaid=billed>0&&balance===0;
-    return{d,ms,billed,collected,balance,hasOverdue,fullyPaid,milestoneCount:ms.length};
+    return{d,ms,billed,collected,vatCollected,collectedExVat,balance,hasOverdue,fullyPaid,milestoneCount:ms.length};
   });
   // Count of awarded projects with no billing set up yet — hidden by default.
   const notBilledCount=_allSummaries.filter(s=>s.milestoneCount===0).length;
@@ -22818,7 +22830,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         </div>
         )}
         {wonDeals.length===0&&<div style={{padding:"32px",textAlign:"center",color:"#94a3b8"}}>No awarded projects. Award a deal to start billing.</div>}
-        {projectSummaries.map(({d,ms,billed,collected,balance,hasOverdue,fullyPaid,milestoneCount},i)=>{
+        {projectSummaries.map(({d,ms,billed,collected,vatCollected,collectedExVat,balance,hasOverdue,fullyPaid,milestoneCount},i)=>{
           const statusBadge=(
             <>
               {hasOverdue&&<span style={{fontSize:".68rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Overdue</span>}
@@ -22861,6 +22873,13 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
           );
           const billedCell=billed>0?fmt(billed):<span style={{color:"#e2e8f0",fontSize:".78rem"}}>Not billed</span>;
           const collectedCell=collected>0?fmt(collected):<span style={{color:"#e2e8f0",fontSize:".78rem"}}>—</span>;
+          // VAT breakdown of the collected cash: output VAT (owed to BIR) vs the
+          // ex-VAT amount that is GMD's actual revenue.
+          const vatSubline=collected>0&&vatCollected>0
+            ?<div style={{fontSize:".62rem",color:"#94a3b8",marginTop:1,lineHeight:1.3}}>
+               incl. <span style={{color:"#f59e0b",fontWeight:700}}>{fmt(vatCollected)}</span> VAT · <span style={{color:"#059669",fontWeight:600}}>{fmt(collectedExVat)}</span> ex-VAT
+             </div>
+            :null;
           const balanceCell=balance>0?fmt(balance):"✓ Clear";
 
           if(mob){
@@ -22880,6 +22899,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                   <div>
                     <div style={{fontSize:".6rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".6px",fontWeight:700}}>Collected</div>
                     <div style={{fontWeight:600,color:"#059669",fontSize:".82rem",marginTop:2}}>{collectedCell}</div>
+                    {vatSubline}
                   </div>
                   <div>
                     <div style={{fontSize:".6rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".6px",fontWeight:700}}>Balance</div>
@@ -22899,7 +22919,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
               onMouseLeave={e=>e.currentTarget.style.background=hasOverdue?"#fffafa":i%2?"#fafafa":"#fff"}>
               {projectCell}
               <div style={{fontWeight:600,color:"#3b82f6",fontSize:".88rem"}}>{billedCell}</div>
-              <div style={{fontWeight:600,color:"#059669",fontSize:".88rem"}}>{collectedCell}</div>
+              <div><div style={{fontWeight:600,color:"#059669",fontSize:".88rem"}}>{collectedCell}</div>{vatSubline}</div>
               <div style={{fontWeight:700,color:balance>0?"#ef4444":"#059669",fontSize:".88rem"}}>{balanceCell}</div>
               <div>{statusBadge}</div>
               <div style={{display:"flex",gap:5,alignItems:"center"}}>{actionButtons}</div>
