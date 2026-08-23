@@ -22827,7 +22827,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         {/* Table header — desktop only; mobile uses self-labeling cards */}
         {!mob&&(
         <div style={{display:"grid",gridTemplateColumns:BILL_COLS,background:"#1e293b",padding:"10px 18px",gap:12,minWidth:BILL_MINW}}>
-          {[["Project","left"],["Gross","right"],["VAT","right"],["Total","right"],["Paid","right"],["Balance","right"],["Status","left"],["Actions","left"]].map(([h,al])=>(
+          {[["Project","left"],["VATEx","right"],["VAT","right"],["Total","right"],["Paid","right"],["Balance","right"],["Status","left"],["Actions","left"]].map(([h,al])=>(
             <div key={h} style={{fontSize:".68rem",fontWeight:700,color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".8px",textAlign:al}}>{h}</div>
           ))}
         </div>
@@ -22895,7 +22895,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                   <div style={{flexShrink:0}}>{statusBadge}</div>
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,margin:"12px 0",padding:"10px 0",borderTop:"1px solid #f1f5f9",borderBottom:"1px solid #f1f5f9"}}>
-                  {[["Gross",grossCell,"#3b82f6"],["VAT",vatCell,"#f59e0b"],["Total",totalCell,"#0f172a"],["Paid",paidCell,"#059669"],["Balance",balanceCell,balance>0?"#ef4444":"#059669"]].map(([lbl,val,clr])=>(
+                  {[["VATEx",grossCell,"#3b82f6"],["VAT",vatCell,"#f59e0b"],["Total",totalCell,"#0f172a"],["Paid",paidCell,"#059669"],["Balance",balanceCell,balance>0?"#ef4444":"#059669"]].map(([lbl,val,clr])=>(
                     <div key={lbl}>
                       <div style={{fontSize:".6rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".6px",fontWeight:700}}>{lbl}</div>
                       <div style={{fontWeight:lbl==="Total"||lbl==="Balance"?700:600,color:clr,fontSize:".82rem",marginTop:2}}>{val}</div>
