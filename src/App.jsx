@@ -2693,9 +2693,24 @@ const TV_PRI_CLR={High:"#ef4444",Urgent:"#dc2626",Normal:"#0ea5e9",Low:"#64748b"
 const tvPeso=n=>{const v=Number(n||0);try{return "₱"+v.toLocaleString("en-PH",{maximumFractionDigits:0});}catch{return "₱"+Math.round(v);}};
 const tvDayLabel=iso=>{if(!iso)return "";try{const d=new Date(iso+"T00:00:00");return d.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});}catch{return iso;}};
 
-function OfficeTVDashboard({deals=[],wonDeals=[],checklists=[],announcements=[],today,todayL,onLogout}){
+const TV_JOB_TYPES=[{label:"Installation",code:"I"},{label:"Repair",code:"R"},{label:"Punchlist",code:"P"},{label:"Construction",code:"C"},{label:"Site Visit",code:"P"},{label:"Inspection",code:"P"},{label:"Site Meeting",code:"P"},{label:"Backjob",code:"R"},{label:"Others",code:"O"}];
+function OfficeTVDashboard({deals=[],wonDeals=[],checklists=[],announcements=[],today,todayL,onLogout,onAddJob}){
   const[tab,setTab]=React.useState("overview");
   const[now,setNow]=React.useState(()=>new Date());
+  const[jobModal,setJobModal]=React.useState(false);
+  const emptyJob={type:"Installation",dueDate:today,projectId:"",title:"",location:"",assignedTo:"",notes:""};
+  const[jobForm,setJobForm]=React.useState(emptyJob);
+  const openJob=()=>{setJobForm({...emptyJob,dueDate:today});setJobModal(true);};
+  const saveJob=()=>{
+    const hasProject=!!jobForm.projectId;
+    const title=(jobForm.title||"").trim();
+    if(!jobForm.dueDate){toastEmit("Pick a date for the job.","warning");return;}
+    if(!hasProject&&!title){toastEmit("Choose a project or type a job title.","warning");return;}
+    const meta=TV_JOB_TYPES.find(t=>t.label===jobForm.type)||TV_JOB_TYPES[0];
+    onAddJob&&onAddJob({type:jobForm.type,category:meta.code,dueDate:jobForm.dueDate,projectId:jobForm.projectId||"",title:hasProject?"":title,workDetail:jobForm.notes||"",location:jobForm.location||"",assignedTo:jobForm.assignedTo||"",notes:jobForm.notes||"",status:"Scheduled"});
+    toastEmit("Job added to the calendar.","success");
+    setJobModal(false);
+  };
   // Live clock — ticks every second. Guarded new Date() is fine at runtime.
   React.useEffect(()=>{const t=setInterval(()=>setNow(new Date()),1000);return()=>clearInterval(t);},[]);
 
@@ -2737,7 +2752,12 @@ function OfficeTVDashboard({deals=[],wonDeals=[],checklists=[],announcements=[],
   // ── Panel renderers ───────────────────────────────────────────────────────
   const CalendarPanel=({compact})=>(
     <div style={panel}>
-      <div style={panelHead}><span style={{fontSize:"1.7rem"}}>📅</span><span style={panelTitle}>Site Calendar</span><span style={{marginLeft:"auto",color:C.dim,fontSize:"1rem"}}>{upcoming.reduce((s,d)=>s+d.items.length,0)} upcoming</span></div>
+      <div style={panelHead}><span style={{fontSize:"1.7rem"}}>📅</span><span style={panelTitle}>Site Calendar</span>
+        <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:14}}>
+          <span style={{color:C.dim,fontSize:"1rem"}}>{upcoming.reduce((s,d)=>s+d.items.length,0)} upcoming</span>
+          {onAddJob&&<button onClick={openJob} style={{background:C.teal,color:"#fff",border:"none",borderRadius:12,padding:"10px 18px",fontSize:"1.05rem",fontWeight:800,cursor:"pointer"}}>+ Add Job</button>}
+        </div>
+      </div>
       <div style={scroll}>
         {upcoming.length===0&&<div style={{color:C.dim,textAlign:"center",padding:"40px 0",fontSize:"1.2rem"}}>No scheduled site work.</div>}
         {upcoming.map(({date,items})=>(
@@ -2840,6 +2860,39 @@ function OfficeTVDashboard({deals=[],wonDeals=[],checklists=[],announcements=[],
         {tab==="awarded"&&<div style={{height:"100%"}}><AwardedPanel/></div>}
         {tab==="notices"&&<div style={{height:"100%"}}><NoticesPanel/></div>}
       </div>
+      {/* Add-job modal — touch-optimized, dark theme */}
+      {jobModal&&(()=>{
+        const lbl={display:"block",color:C.dim,fontSize:".85rem",fontWeight:700,textTransform:"uppercase",letterSpacing:.5,margin:"14px 0 6px"};
+        const inp={width:"100%",background:C.panel2,color:C.text,border:`1px solid ${C.border}`,borderRadius:12,padding:"14px 16px",fontSize:"1.15rem",fontFamily:"inherit",boxSizing:"border-box"};
+        return(
+        <div onClick={()=>setJobModal(false)} style={{position:"fixed",inset:0,background:"rgba(2,6,18,.72)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:10000,padding:24}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:20,width:"min(640px,94vw)",maxHeight:"90vh",overflowY:"auto",padding:"26px 30px",boxShadow:"0 20px 60px rgba(0,0,0,.5)"}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.9rem",marginBottom:4}}>📅 Add Site Job</div>
+            <div style={{color:C.dim,fontSize:"1rem",marginBottom:8}}>Schedules a job on the operations calendar.</div>
+            <label style={lbl}>Work Type</label>
+            <select value={jobForm.type} onChange={e=>setJobForm(f=>({...f,type:e.target.value}))} style={inp}>{TV_JOB_TYPES.map(t=><option key={t.label} value={t.label}>{TV_EVENT_ICONS[t.label]||"📌"} {t.label}</option>)}</select>
+            <label style={lbl}>Date</label>
+            <input type="date" value={jobForm.dueDate} onChange={e=>setJobForm(f=>({...f,dueDate:e.target.value}))} style={inp}/>
+            <label style={lbl}>Project (optional)</label>
+            <select value={jobForm.projectId} onChange={e=>setJobForm(f=>({...f,projectId:e.target.value}))} style={inp}>
+              <option value="">— No project / other —</option>
+              {wonDeals.map(d=><option key={d.id} value={d.id}>{(d.contact||d.product||d.client)}{d.client?` — ${d.client}`:""}</option>)}
+            </select>
+            {!jobForm.projectId&&(<><label style={lbl}>Job Title</label><input value={jobForm.title} onChange={e=>setJobForm(f=>({...f,title:e.target.value}))} placeholder="e.g. Punchlist — SM North kiosk" style={inp}/></>)}
+            <label style={lbl}>Location</label>
+            <input value={jobForm.location} onChange={e=>setJobForm(f=>({...f,location:e.target.value}))} placeholder="Site / address" style={inp}/>
+            <label style={lbl}>Assigned To</label>
+            <input value={jobForm.assignedTo} onChange={e=>setJobForm(f=>({...f,assignedTo:e.target.value}))} placeholder="Coordinator / team" style={inp}/>
+            <label style={lbl}>Notes</label>
+            <textarea value={jobForm.notes} onChange={e=>setJobForm(f=>({...f,notes:e.target.value}))} rows={3} placeholder="What's the job?" style={{...inp,resize:"vertical"}}/>
+            <div style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:22}}>
+              <button onClick={()=>setJobModal(false)} style={{background:"transparent",color:C.dim,border:`1px solid ${C.border}`,borderRadius:12,padding:"14px 24px",fontSize:"1.1rem",fontWeight:700,cursor:"pointer"}}>Cancel</button>
+              <button onClick={saveJob} style={{background:C.teal,color:"#fff",border:"none",borderRadius:12,padding:"14px 32px",fontSize:"1.1rem",fontWeight:800,cursor:"pointer"}}>Add Job</button>
+            </div>
+          </div>
+        </div>
+        );
+      })()}
     </div>
   );
 }
@@ -5383,6 +5436,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     upSwatches(ss=>ss.filter(s=>s.id!==id));if(isSupabaseReady()) sbDelete('swatches',id).catch(()=>{});
   };
   const upChecklist=useCallback(fn=>setChecklist(p=>{const n=fn(p);persist(KEYS.checklist,n);return n;}),[persist]);
+  // Create an Operations calendar job (checklists row). Shared by the normal
+  // Construction Calendar and the office TV wall board. Mirrors the inline
+  // addOpsEvent handlers used by ConstructionCalendar so a job entered on the
+  // wall behaves identically to one entered in the app.
+  const addOpsEvent=useCallback(data=>{
+    const rec={...data,id:uid(),dept:"Operations",createdDate:today,createdBy:session?.name||role};
+    upChecklist(cs=>[...cs,rec]);
+    if(isSupabaseReady()) sbInsert('checklists',toSbChecklist(rec)).catch(err=>{console.error("Calendar item sync:",err);toastEmit&&toastEmit("Job saved locally only — tap 🔄 sync to push it to the server.","warning",8000);});
+    return rec;
+  },[upChecklist,session,role]);
 
   // ── DRF CRUD ─────────────────────────────────────────────────────────────
   const upDrfs   =useCallback(fn=>setDrfs(p=>{const n=fn(p);persist(KEYS.drfs,n);return n;}),[persist]);
@@ -7965,7 +8028,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // The dedicated read-only kiosk account (role "Display") never sees the normal
   // app shell — it lands straight on the fullscreen, touch-navigable dashboard
   // built to fill the 65" office touchscreen. No nav, no write actions.
-  if(role==="Display") return <><OfficeTVDashboard deals={deals} wonDeals={wonDeals} checklists={checklist} announcements={announcements} today={today} todayL={todayL} onLogout={logout}/><Toaster/><DialogHost/></>;
+  if(role==="Display") return <><OfficeTVDashboard deals={deals} wonDeals={wonDeals} checklists={checklist} announcements={announcements} today={today} todayL={todayL} onLogout={logout} onAddJob={addOpsEvent}/><Toaster/><DialogHost/></>;
 
 
 
