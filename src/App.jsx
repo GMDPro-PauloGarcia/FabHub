@@ -3027,7 +3027,7 @@ export default function App(){
       if(n-last>30000){
         last=n;
         const text=kind==="auth"
-          ?"⚠️ Your session can't reach the server — try logging out and back in. Changes aren't being saved."
+          ?"⚠️ The server rejected a change — your account may not have permission to save this, or your session expired. Nothing is being saved to the server. If logging out and back in doesn't fix it, contact your administrator about your access."
           :kind==="data"
           ?"⚠️ The server rejected a change (bad data) — it won't be retried automatically. Please redo it or contact support."
           :"⚠️ Some changes aren't reaching the server — you may be offline. Working locally; they'll sync when the connection returns.";
