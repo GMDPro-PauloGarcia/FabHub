@@ -2694,6 +2694,15 @@ const tvPeso=n=>{const v=Number(n||0);try{return "₱"+v.toLocaleString("en-PH",
 const tvDayLabel=iso=>{if(!iso)return "";try{const d=new Date(iso+"T00:00:00");return d.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});}catch{return iso;}};
 
 const TV_JOB_TYPES=[{label:"Installation",code:"I"},{label:"Repair",code:"R"},{label:"Punchlist",code:"P"},{label:"Construction",code:"C"},{label:"Site Visit",code:"P"},{label:"Inspection",code:"P"},{label:"Site Meeting",code:"P"},{label:"Backjob",code:"R"},{label:"Others",code:"O"}];
+// Weekly Field Board — mirrors ConstructionCalendar's field board. Every field
+// job carries a top-level work code (I/R/P/C/O); auto-derived event types map
+// onto a code via TV_CAT_FROM_TYPE.
+const TV_WORK_CATEGORIES=[{code:"I",label:"Installation",color:"#17998a"},{code:"R",label:"Repair",color:"#3b82f6"},{code:"P",label:"Punchlist",color:"#f59e0b"},{code:"C",label:"Construction",color:"#c0392b"},{code:"O",label:"Others",color:"#64748b"}];
+const TV_CAT_COLOR=Object.fromEntries(TV_WORK_CATEGORIES.map(c=>[c.code,c.color]));
+const TV_CODE_FROM_LABEL=Object.fromEntries(TV_WORK_CATEGORIES.map(c=>[c.label,c.code]));
+const TV_CAT_FROM_TYPE=t=>TV_CODE_FROM_LABEL[t]||({Turnover:"I","Site Visit":"P",Inspection:"P","Site Meeting":"P",Backjob:"R",Maintenance:"R"}[t])||"R";
+const TV_DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const tvIsoDate=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 function OfficeTVDashboard({deals=[],wonDeals=[],checklists=[],announcements=[],today,todayL,onLogout,onAddJob}){
   const[tab,setTab]=React.useState("overview");
   const[now,setNow]=React.useState(()=>new Date());
@@ -2711,6 +2720,23 @@ function OfficeTVDashboard({deals=[],wonDeals=[],checklists=[],announcements=[],
     toastEmit("Job added to the calendar.","success");
     setJobModal(false);
   };
+  // ── Weekly Field Board ────────────────────────────────────────────────────
+  const[boardMonday,setBoardMonday]=React.useState(()=>{const d=new Date(today+"T00:00:00");d.setDate(d.getDate()-((d.getDay()+6)%7));d.setHours(0,0,0,0);return d;});
+  const boardDays=React.useMemo(()=>Array.from({length:6},(_,i)=>{const d=new Date(boardMonday);d.setDate(d.getDate()+i);return{date:tvIsoDate(d),dow:TV_DOW[d.getDay()],dd:`${String(d.getMonth()+1).padStart(2,"0")}.${String(d.getDate()).padStart(2,"0")}`};}),[boardMonday]);
+  const boardJobs=React.useMemo(()=>{
+    const start=boardDays[0]?.date,end=boardDays[5]?.date;const map={};boardDays.forEach(d=>map[d.date]=[]);
+    if(!start||!end) return map;
+    (checklists||[]).filter(c=>c.dept==="Operations"&&TV_OPS_TYPES.includes(c.type)&&c.dueDate&&c.dueDate>=start&&c.dueDate<=end).forEach(c=>{const cat=c.category||TV_CAT_FROM_TYPE(c.type);const proj=wonDeals.find(d=>d.id===c.projectId);(map[c.dueDate]=map[c.dueDate]||[]).push({...c,cat,projName:proj?.contact||proj?.client||c.title||"Untitled",client:proj?.client||""});});
+    Object.values(map).forEach(a=>a.sort((x,y)=>(x.cat||"").localeCompare(y.cat||"")));
+    return map;
+  },[checklists,boardDays,wonDeals]);
+  const boardCoordLoad=React.useMemo(()=>{const m={};Object.values(boardJobs).flat().forEach(j=>{const who=(j.assignedTo||"").trim();if(who)m[who]=(m[who]||0)+1;});return Object.entries(m).map(([name,count])=>({name,count})).sort((a,b)=>b.count-a.count);},[boardJobs]);
+  const boardTotal=React.useMemo(()=>Object.values(boardJobs).reduce((s,a)=>s+a.length,0),[boardJobs]);
+  const boardMaxLoad=boardCoordLoad.length?boardCoordLoad[0].count:0;
+  const shiftWeek=n=>setBoardMonday(m=>{const d=new Date(m);d.setDate(d.getDate()+n*7);return d;});
+  const thisMonday=()=>{const d=new Date(today+"T00:00:00");d.setDate(d.getDate()-((d.getDay()+6)%7));d.setHours(0,0,0,0);setBoardMonday(d);};
+  const addJobOn=dateIso=>{setJobForm({...emptyJob,dueDate:dateIso});setJobModal(true);};
+
   // Live clock — ticks every second. Guarded new Date() is fine at runtime.
   React.useEffect(()=>{const t=setInterval(()=>setNow(new Date()),1000);return()=>clearInterval(t);},[]);
 
@@ -2828,7 +2854,77 @@ function OfficeTVDashboard({deals=[],wonDeals=[],checklists=[],announcements=[],
     </div>
   );
 
-  const TABS=[{id:"overview",l:"Overview",icon:"🖥️"},{id:"calendar",l:"Calendar",icon:"📅"},{id:"awarded",l:"Awarded",icon:"🏆"},{id:"notices",l:"Notices",icon:"📢"}];
+  const FieldBoardPanel=()=>{
+    const wkNo=(()=>{const d=new Date(boardMonday);const oneJan=new Date(d.getFullYear(),0,1);return Math.ceil((((d-oneJan)/86400000)+oneJan.getDay()+1)/7);})();
+    const rangeLbl=`${boardMonday.toLocaleDateString("en-PH",{month:"short",day:"numeric"})} – ${new Date(boardMonday.getTime()+5*86400000).toLocaleDateString("en-PH",{day:"numeric"})}`;
+    const navBtn={background:C.panel2,color:C.text,border:`1px solid ${C.border}`,borderRadius:10,padding:"8px 16px",fontSize:"1rem",fontWeight:700,cursor:"pointer"};
+    return(
+      <div style={{...panel,height:"100%"}}>
+        {/* Board header */}
+        <div style={{display:"flex",flexWrap:"wrap",gap:12,alignItems:"flex-end",justifyContent:"space-between",padding:"16px 22px",borderBottom:`4px solid ${C.amber}`,flexShrink:0}}>
+          <div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:".14em",fontSize:".8rem",color:C.amber,textTransform:"uppercase"}}>GMD Productions · Operations</div>
+            <div style={{...panelTitle,fontSize:"2rem"}}>Weekly Field Board</div>
+          </div>
+          <div style={{textAlign:"right",lineHeight:1.3}}>
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginBottom:6}}>
+              <button onClick={()=>shiftWeek(-1)} style={navBtn}>‹</button>
+              <button onClick={thisMonday} style={navBtn}>This week</button>
+              <button onClick={()=>shiftWeek(1)} style={navBtn}>›</button>
+            </div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,fontSize:"1.4rem"}}>WK {wkNo} · {rangeLbl}</div>
+            <div style={{fontSize:".9rem",color:C.dim}}>{boardTotal} job{boardTotal!==1?"s":""} · {boardCoordLoad.length} coordinator{boardCoordLoad.length!==1?"s":""}</div>
+          </div>
+        </div>
+        {/* Legend + coordinator load */}
+        <div style={{display:"flex",flexWrap:"wrap",gap:16,justifyContent:"space-between",alignItems:"center",padding:"10px 22px",background:C.panel2,borderBottom:`1px solid ${C.border}`,flexShrink:0}}>
+          <div style={{display:"flex",flexWrap:"wrap",gap:14}}>
+            {TV_WORK_CATEGORIES.map(c=><span key={c.code} style={{display:"flex",alignItems:"center",gap:6,fontSize:".9rem",color:"#d7dee8",fontWeight:600}}><span style={{width:12,height:12,borderRadius:3,background:c.color}}/>{c.label}</span>)}
+          </div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:8,alignItems:"center"}}>
+            <span style={{fontSize:".72rem",letterSpacing:".12em",textTransform:"uppercase",color:C.dim,fontWeight:700}}>Load</span>
+            {boardCoordLoad.length===0&&<span style={{fontSize:".85rem",color:C.dim}}>— none assigned</span>}
+            {boardCoordLoad.map(c=>{const hot=c.count>=Math.max(3,boardMaxLoad);return(<span key={c.name} style={{display:"flex",alignItems:"center",gap:6,background:hot?"rgba(245,158,11,.18)":"rgba(255,255,255,.06)",border:`1px solid ${hot?C.amber:C.border}`,padding:"3px 10px",borderRadius:20,fontSize:".9rem",fontWeight:600,color:hot?"#ffd9b8":C.text}}>{c.name} <b style={{color:hot?C.amber:C.text}}>{c.count}</b></span>);})}
+          </div>
+        </div>
+        {/* Week grid */}
+        <div style={{flex:1,minHeight:0,overflowY:"auto",padding:14}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:10,minHeight:"100%"}}>
+            {boardDays.map(day=>{
+              const jobs=boardJobs[day.date]||[];const isToday=day.date===today;const slack=jobs.length<=1;
+              return(
+                <div key={day.date} style={{background:C.panel2,border:`1px solid ${isToday?C.amber:C.border}`,borderRadius:12,display:"flex",flexDirection:"column",minHeight:220,overflow:"hidden"}}>
+                  <div style={{padding:"10px 12px",background:isToday?"rgba(245,158,11,.14)":"rgba(255,255,255,.03)",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+                    <div>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,textTransform:"uppercase",letterSpacing:".06em",fontSize:"1.1rem",color:isToday?C.amber:C.text}}>{day.dow}</div>
+                      <div style={{fontSize:".75rem",color:C.dim,fontFamily:"monospace"}}>{day.dd}</div>
+                    </div>
+                    <span style={{fontFamily:"monospace",fontSize:".8rem",color:"#0b1220",background:slack?C.amber:C.teal,borderRadius:10,padding:"2px 9px",fontWeight:800}}>{jobs.length}</span>
+                  </div>
+                  <div style={{padding:8,display:"flex",flexDirection:"column",gap:8,flex:1}}>
+                    {jobs.length===0&&<div style={{fontSize:".85rem",color:C.dim,textAlign:"center",padding:"16px 0"}}>—</div>}
+                    {jobs.map(j=>{const clr=TV_CAT_COLOR[j.cat]||"#64748b";const done=j.status==="Done";return(
+                      <div key={j.id} style={{background:C.panel,border:`1px solid ${C.border}`,borderLeft:`5px solid ${clr}`,borderRadius:8,padding:"9px 10px",position:"relative",opacity:done?.55:1}}>
+                        <span style={{position:"absolute",top:8,right:8,width:22,height:22,borderRadius:6,fontFamily:"monospace",fontWeight:800,fontSize:".8rem",color:"#fff",background:clr,display:"flex",alignItems:"center",justifyContent:"center"}}>{j.cat}</span>
+                        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:"1.1rem",lineHeight:1.1,paddingRight:26,textDecoration:done?"line-through":"none"}}>{j.projName}</div>
+                        {j.workDetail&&<div style={{fontSize:".8rem",color:clr,marginTop:2,fontWeight:700}}>{j.workDetail}</div>}
+                        {j.location&&<div style={{fontSize:".82rem",color:C.dim,marginTop:2}}>{j.location}</div>}
+                        {j.assignedTo&&<div style={{display:"inline-flex",alignItems:"center",gap:5,marginTop:5,fontSize:".8rem",fontWeight:600}}><span style={{width:6,height:6,borderRadius:"50%",background:C.dim}}/>{j.assignedTo}</div>}
+                      </div>
+                    );})}
+                    {onAddJob&&<button onClick={()=>addJobOn(day.date)} style={{marginTop:"auto",background:"transparent",border:`1px dashed ${C.border}`,borderRadius:8,padding:"8px",fontSize:".85rem",color:C.dim,cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>+ Add job</button>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <div style={{fontSize:".8rem",color:C.dim,padding:"8px 22px",borderTop:`1px solid ${C.border}`,flexShrink:0,fontFamily:"monospace"}}>I · Installation&nbsp;&nbsp; R · Repair&nbsp;&nbsp; P · Punchlist&nbsp;&nbsp; C · Construction&nbsp;&nbsp; O · Others&nbsp;&nbsp;·&nbsp;&nbsp;Sunday is a rest day and is hidden.</div>
+      </div>
+    );
+  };
+
+  const TABS=[{id:"overview",l:"Overview",icon:"🖥️"},{id:"field",l:"Field Board",icon:"🗂"},{id:"calendar",l:"Calendar",icon:"📅"},{id:"awarded",l:"Awarded",icon:"🏆"},{id:"notices",l:"Notices",icon:"📢"}];
 
   return(
     <div style={shell}>
@@ -2856,6 +2952,7 @@ function OfficeTVDashboard({deals=[],wonDeals=[],checklists=[],announcements=[],
             <CalendarPanel compact/><AwardedPanel compact/><NoticesPanel/>
           </div>
         )}
+        {tab==="field"&&<div style={{height:"100%"}}><FieldBoardPanel/></div>}
         {tab==="calendar"&&<div style={{height:"100%"}}><CalendarPanel/></div>}
         {tab==="awarded"&&<div style={{height:"100%"}}><AwardedPanel/></div>}
         {tab==="notices"&&<div style={{height:"100%"}}><NoticesPanel/></div>}
