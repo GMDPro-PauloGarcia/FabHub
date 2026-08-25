@@ -22954,6 +22954,22 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
             );
           })()}
 
+          {/* Receipt-type consistency guard — a milestone whose receipt type disagrees with
+              its deal prints VAT differently than the app shows (OR adds 12% VAT, AR does not),
+              which silently produces a phantom balance-due on the printed invoice. Surface it so
+              Finance reconciles the deal header instead of letting it drift. */}
+          {(()=>{
+            const bad=billings.filter(m=>m.dealId===selDeal&&m.status!=="Cancelled"
+              &&m.receiptType&&deal?.receiptType&&m.receiptType!==deal.receiptType);
+            if(!bad.length)return null;
+            return(
+              <div style={{marginBottom:12,padding:"10px 14px",background:"#fffbeb",border:"1.5px solid #fcd34d",borderRadius:8,fontSize:".78rem",color:"#92400e"}}>
+                <div style={{fontWeight:700,marginBottom:3}}>⚠️ Receipt-type mismatch</div>
+                {bad.length} milestone{bad.length>1?"s":""} ({bad.map(m=>m.invoiceNo||m.name).join(", ")}) {bad.length>1?"are":"is"} set to <strong>{[...new Set(bad.map(m=>m.receiptType))].join("/")}</strong> but this deal is <strong>{deal.receiptType}</strong>. Printed invoices use the milestone's type, so the invoice and the deal summary can show different tax. Align the deal's receipt type (Edit terms) so new milestones inherit the correct VAT treatment.
+              </div>
+            );
+          })()}
+
           {/* Contract breakdown (original + addenda) — shown when this project has change orders */}
           {(addenda||[]).some(a=>a.dealId===selDeal&&a.status!=="Rejected")&&<div style={{marginBottom:12}}><ContractBreakdown deal={deal} addenda={addenda}/></div>}
 
