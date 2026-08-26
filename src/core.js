@@ -205,11 +205,14 @@ export const SW_CLR    = { "To Buy":"#ef4444",Ordered:"#f59e0b",Received:"#10b98
 
 export const DRF_TYPES = ["Module / Display Fixture","Signage","Retail Fit-Out","Counter / Reception","Kiosk","Wall Panel / Decor","Custom Furniture","Other"];
 
+// Project category as supplied by the Sales brief template (Kiosk / In-line / Event / Other).
+export const DRF_CATEGORIES = ["Kiosk","In-line","Event","Other"];
+
 export const DRF_STATUSES = ["New","Acknowledged","In Progress","For Review","Revision","Approved","Production","Done"];
 
 export const DRF_CLR   = {New:"#94a3b8",Acknowledged:"#3b82f6","In Progress":"#f97316","For Review":"#8b5cf6",Revision:"#ef4444",Approved:"#10b981",Production:"#0ea5e9",Done:"#059669"};
 
-export const emptyDRF  = ()=>({dealId:"",client:"",location:"",designer:"",designDeadline:"",projectTitle:"",type:DRF_TYPES[0],size:"",description:"",accessories:[],refLinks:["","",""],notes:"",approvedLink:"",status:"New",createdBy:""});
+export const emptyDRF  = ()=>({dealId:"",client:"",location:"",designer:"",designDeadline:"",projectTitle:"",type:DRF_TYPES[0],category:"",size:"",platform:"",finishes:"",maxHeight:"",brandGuideLink:"",budget:"",description:"",accessories:[],refLinks:["","",""],notes:"",approvedLink:"",status:"New",createdBy:""});
 
 export const ROLE_CLR  = { Manager:"#f59e0b",Sales:"#10b981",Finance:"#3b82f6",Accounting:"#6366f1",Procurement:"#06b6d4",QS:"#8b5cf6",Operations:"#f97316",Design:"#ec4899",ProjectMover:"#0ea5e9",Warehouse:"#64748b",SalesOpsAdmin:"#14b8a6",FinanceAssistant:"#1d4ed8",Audit:"#dc2626",HRAdmin:"#7c3aed" };
 
