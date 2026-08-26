@@ -13817,9 +13817,42 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               </div>
             )}
             <Fld label="Designer"><Sel value={proj.design?.designer||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,designer:e.target.value}}))}><option value="">— Select —</option>{DESIGN_MEMBERS.map(m=><option key={m}>{m}</option>)}</Sel></Fld>
-            <Fld label="Due Date"><Inp type="date" value={proj.design?.dueDate||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,dueDate:e.target.value}}))}/></Fld>
+            <Fld label="Due Date">
+              <Inp type="date" value={proj.design?.dueDate||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,dueDate:e.target.value}}))}/>
+              {proj.design?.dueDate&&!hasApproval&&(()=>{
+                const d=Math.ceil((new Date(proj.design.dueDate)-new Date(today))/86400000);
+                const over=d<0,soon=d>=0&&d<=2;
+                const c=over?"#dc2626":soon?"#f59e0b":"#059669";
+                return <div style={{marginTop:5,fontSize:".72rem",fontWeight:700,color:c}}>{over?`⚠ Overdue by ${Math.abs(d)} day${Math.abs(d)!==1?"s":""}`:d===0?"⏰ Due today":`⏳ ${d} day${d!==1?"s":""} left`}</div>;
+              })()}
+            </Fld>
             <Fld label="Revision No." hint="e.g. Rev 3 — lock this before handoff to Ops"><Inp value={proj.design?.revisionNo||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,revisionNo:e.target.value}}))} placeholder="e.g. Rev 3"/></Fld>
             <Fld label="File / Link (Google Drive, Figma, etc.)"><Inp type="url" value={proj.design?.link||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,link:e.target.value}}))} placeholder="https://drive.google.com/…"/></Fld>
+            {/* ── Revision Log ─────────────────────────────── */}
+            <div style={{gridColumn:"1/-1"}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+                <div style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px"}}>📑 Revision Log</div>
+                <button onClick={()=>{
+                  if(!proj.design?.revisionNo&&!proj.design?.link){toastEmit("⚠ Set a Revision No. and file link before logging a revision.","warning");return;}
+                  const rev={no:proj.design?.revisionNo||`Rev ${(proj.design?.revisions||[]).length+1}`,link:proj.design?.link||"",date:today,by:session?.name||"Design",status:proj.design?.status||""};
+                  upProj(selProj,p=>({...p,design:{...p.design,revisions:[...(p.design?.revisions||[]),rev]}}));
+                  toastEmit(`📑 Logged ${rev.no}`,"success");
+                }} style={{background:"#f5f3ff",border:"1.5px solid #ddd6fe",borderRadius:8,padding:"5px 12px",fontFamily:"inherit",fontSize:".73rem",color:"#6d28d9",cursor:"pointer",fontWeight:700}}>+ Log current revision</button>
+              </div>
+              {(proj.design?.revisions||[]).length===0
+                ? <div style={{fontSize:".74rem",color:"#94a3b8",fontStyle:"italic",padding:"4px 0"}}>No revisions logged yet — set the Revision No. + file link above, then log it to keep an iteration history.</div>
+                : <div style={{border:"1px solid #eef2f7",borderRadius:10,overflow:"hidden"}}>
+                    {[...proj.design.revisions].reverse().map((r,i,arr)=>(
+                      <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderBottom:i<arr.length-1?"1px solid #f8fafc":"none",background:i===0?"#faf5ff":"#fff"}}>
+                        <span style={{fontWeight:700,color:"#6d28d9",fontSize:".78rem",minWidth:60}}>{r.no}</span>
+                        <span style={{fontSize:".72rem",color:"#94a3b8"}}>{r.date}{r.by?` · ${r.by}`:""}{r.status?` · ${r.status}`:""}</span>
+                        {r.link&&<a href={r.link} target="_blank" rel="noreferrer" style={{marginLeft:"auto",fontSize:".73rem",color:"#3b82f6",fontWeight:600,textDecoration:"none"}}>📂 View</a>}
+                        <button onClick={async()=>{if(await uiConfirm(`Remove ${r.no} from the log?`)){const idx=proj.design.revisions.length-1-i;upProj(selProj,p=>({...p,design:{...p.design,revisions:p.design.revisions.filter((_,j)=>j!==idx)}}));}}} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".75rem",marginLeft:r.link?8:"auto"}} title="Remove">✕</button>
+                      </div>
+                    ))}
+                  </div>
+              }
+            </div>
             <Fld label="Notes"><Inp rows={2} value={proj.design?.notes||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,notes:e.target.value}}))}/></Fld>
             {/* ── Approval Stamp ───────────────────────────── */}
             <div style={{marginTop:16,background:hasApproval?"#f0fdf4":"#fffbeb",border:`1.5px solid ${hasApproval?"#bbf7d0":"#fde68a"}`,borderRadius:12,padding:"14px 16px"}}>
