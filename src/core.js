@@ -156,6 +156,22 @@ export const commissionRate     = (deal)=>COMMISSION_RATE[leadOriginOf(deal)];
 export const commissionEarned   = (deal)=>Math.round((Number(deal&&deal.amountPaid)||0)*commissionRate(deal));
 export const commissionProjected= (deal)=>Math.round((Number(deal&&deal.value)||0)*commissionRate(deal));
 
+// ── Commission payouts (what's actually been disbursed to the rep) ───────────
+// Earned (above) is what a rep has accrued on cash collected. A PAYOUT is money
+// Finance has actually handed over, recorded per rep per period and approved by
+// a Manager. Only APPROVED payouts count as "paid"; a "Recorded" one is pending.
+//   Paid    = Σ approved payouts for the rep
+//   Pending = Σ recorded-but-not-yet-approved payouts
+//   Payable = Earned − Paid   (what the company still owes the rep)
+export const PAYOUT_STATUS = ["Recorded","Approved","Void"];
+export const isPayoutApproved = (p)=>p&&p.status==="Approved";
+export const isPayoutPending  = (p)=>p&&p.status==="Recorded";
+// Sum helpers over a list of payout rows (optionally pre-filtered to one payee).
+export const payoutsPaid    = (list)=>(list||[]).filter(isPayoutApproved).reduce((s,p)=>s+(Number(p.amount)||0),0);
+export const payoutsPending = (list)=>(list||[]).filter(isPayoutPending ).reduce((s,p)=>s+(Number(p.amount)||0),0);
+// Payable never goes negative — an over-payment reads as fully settled, not owed-back.
+export const commissionPayable = (earned,paid)=>Math.max(0,Math.round((Number(earned)||0)-(Number(paid)||0)));
+
 export const MONTHS          = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 export const PRIORITIES      = ["Normal","High","Urgent"];
@@ -252,6 +268,7 @@ export const PERMISSIONS = {
   boq_library:         { label:"BOQ Library",              group:"QS / Cost",   select:["Manager","Finance","FinanceAssistant","QS","ProjectMover"], insert:["Manager","QS"], update:["Manager","QS"], delete:["Manager"] },
   project_budgets:     { label:"Project Budgets",          group:"QS / Cost",   select:["Manager","Finance","FinanceAssistant","QS","ProjectMover"], insert:["Manager","QS"], update:["Manager","Finance","FinanceAssistant","QS"], delete:["Manager"] },
   audit_findings:      { label:"Audit Findings",           group:"Audit",       select:["Manager","Finance","Audit","HRAdmin"], insert:["Manager","Audit","HRAdmin"], update:["Manager","Audit","HRAdmin"], delete:["Manager","Audit","HRAdmin"] },
+  commission_payouts:  { label:"Commission Payouts",       group:"Sales",       select:["Manager","Sales","Finance","FinanceAssistant","Accounting","SalesOpsAdmin"], insert:["Manager","Finance","FinanceAssistant"], update:["Manager","Finance","FinanceAssistant"], delete:["Manager"] },
 };
 
 // Human-readable caveats for rules a plain role list can't express.

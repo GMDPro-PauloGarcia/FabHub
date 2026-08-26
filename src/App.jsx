@@ -5,8 +5,8 @@ import{idbGetMany,idbSetMany}from'./idb.js';
 import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable} from './shared';
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
-import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
+import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb} from './data/mappers';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -2736,7 +2736,7 @@ export default function App(){
           KEYS.botsettings,KEYS.customclients,KEYS.addenda,KEYS.budgets,
           KEYS.billings,KEYS.vvip,KEYS.actlog,KEYS.pcards,KEYS.inventory,
           KEYS.stocklog,KEYS.swos,"gmdv5:payables","gmdv5:loans","gmdv5:clientprofiles",
-          "gmdv5:aeUpdates","gmdv5:auditFindings",KEYS.vouchers,"gmdv5:standaloneBoqs","gmdv5:chartOfAccounts",KEYS.dailylogs,KEYS.ceReqs
+          "gmdv5:aeUpdates","gmdv5:auditFindings",KEYS.vouchers,"gmdv5:standaloneBoqs","gmdv5:chartOfAccounts",KEYS.dailylogs,KEYS.ceReqs,KEYS.payouts
         ]);
         if(idb[KEYS.deals]){setDeals(idb[KEYS.deals].map(x=>({...x,stage:normalizeStage(x.stage)})));}
         if(idb[KEYS.projects])    setProjs(idb[KEYS.projects]);
@@ -2775,6 +2775,7 @@ export default function App(){
         if(idb[KEYS.evouchers])   setEvouchers(idb[KEYS.evouchers]);
         if(idb[KEYS.dailylogs])   setDailyLogs(idb[KEYS.dailylogs]);
         if(idb[KEYS.ceReqs])      setCeReqs(idb[KEYS.ceReqs]);
+        if(idb[KEYS.payouts])     setPayouts(idb[KEYS.payouts]);
       } catch(err){ console.error("IDB load error:", err); }
       _log("IndexedDB cache read → app interactive",_t0);
       setReady(true);
@@ -3125,6 +3126,7 @@ export default function App(){
     if(data.loans?.length){const ls=data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]}));setLoans(prev=>mergeLocalOnly(ls,prev));idbE.push(["gmdv5:loans",ls]);}
     if(data.dailyLogs?.length){const dl=data.dailyLogs.map(l=>({...l,dealId:l.deal_id,date:l.log_date,workDone:l.work_done,progressNote:l.progress_note,loggedBy:l.logged_by,createdAt:l.created_at}));setDailyLogs(prev=>mergeLocalOnly(dl,prev));idbE.push([KEYS.dailylogs,dl]);}
     if(data.ceReqs?.length){const cr=data.ceReqs.map(ceReqFromSb);setCeReqs(prev=>mergeLocalOnly(cr,prev));idbE.push([KEYS.ceReqs,cr]);}
+    if(data.commissionPayouts?.length){const po=data.commissionPayouts.map(commissionPayoutFromSb);setPayouts(prev=>mergeLocalOnly(po,prev));idbE.push([KEYS.payouts,po]);}
     // These tables were previously set only by the boot-time load, never here.
     // Because this function is the LOGIN / Retry-Sync / focus-refresh path, a
     // freshly-provisioned account (e.g. a designer who just got a user_profiles
@@ -3421,6 +3423,7 @@ export default function App(){
     expenses:["Manager","Finance","Accounting","FinanceAssistant"],
     billing_milestones:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"],
     billing_payments:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"],
+    commission_payouts:["Manager","Finance","FinanceAssistant"],
     project_budgets:["Manager","QS"],
     // activity_log is INSERT=AUTH server-side — any logged-in user may write it.
   };
@@ -5615,6 +5618,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[finTab,    setFinTab]   =useState("overview");
   const[cashSub,   setCashSub]  =useState("daily");   // Cash Position sub-tab: daily | weekly | monthly
   const[payables,  setPayables] =useState([]);
+  const[payouts,   setPayouts]  =useState([]);
   const[payModal,  setPayModal] =useState(false);
   const emptyPayForm=()=>({vendor:"",amount:"",paidAmount:"",dueDate:"",invoiceNumber:"",invoiceDate:"",projectId:null,category:"Supplier",accountCode:"",notes:"",invoiceRef:""});
   const[payForm,   setPayForm]  =useState(emptyPayForm());
@@ -5695,6 +5699,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[pipeSearch,   setPipeSearch]   = useState("");     // pipeline search query
   const[pipeTab,      setPipeTab]      = useState("pipeline"); // "pipeline" | "awarded" | "updates"
   const[awardScope,   setAwardScope]   = useState("mine");     // Awarded tab: "mine" | "team" (team is manager-only)
+  const[payoutDraft,  setPayoutDraft]  = useState(null);       // Commissions tab: open record-payout form (null = closed)
   const[aeUpdates,    setAeUpdates]    = useState([]);
   const[auditFindings,setAuditFindings]= useState([]);
   const[aeUpdateText, setAeUpdateText] = useState("");
@@ -6505,6 +6510,35 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   };
 
   const upPayables=fn=>{const next=fn(payables);setPayables(next);persist(KEYS.payables,next);};
+
+  // ── Commission payouts (what Finance has disbursed to each rep) ─────────────
+  const upPayouts=fn=>{const next=fn(payouts);setPayouts(next);persist(KEYS.payouts,next);};
+  // Finance records a lump payout for a rep/period. It starts "Recorded" and
+  // only counts as paid once a Manager approves it.
+  const recordPayout=async(rec)=>{
+    if(!await guardWrite("insert","commission_payouts","record a commission payout")) return;
+    const row={id:uid(),payee:rec.payee||"",periodLabel:rec.periodLabel||"",periodStart:rec.periodStart||null,periodEnd:rec.periodEnd||null,
+      amount:Number(rec.amount)||0,status:"Recorded",payBank:rec.payBank||"",payMethod:rec.payMethod||"",payRef:rec.payRef||"",notes:rec.notes||"",
+      recordedBy:session?.name||"",recordedAt:new Date().toISOString(),approvedBy:"",approvedAt:null,createdAt:new Date().toISOString()};
+    upPayouts(ps=>[row,...ps]);
+    if(isSupabaseReady()) sbUpsert("commission_payouts",commissionPayoutToSb(row),"id")
+      .catch(e=>{console.error("commission_payouts sync:",e.message);toastEmit("⚠️ Payout saved locally but NOT synced to server.","warning",8000);});
+    toastEmit("Commission payout recorded — pending Manager approval.","success");
+  };
+  // Manager approves a recorded payout, which makes it count as paid.
+  const approvePayout=async(id)=>{
+    if(role!=="Manager"){toastEmit("Only a Manager can approve payouts.","warning");return;}
+    const patch={status:"Approved",approvedBy:session?.name||"",approvedAt:new Date().toISOString()};
+    upPayouts(ps=>ps.map(p=>p.id===id?{...p,...patch}:p));
+    if(isSupabaseReady()) sbUpsert("commission_payouts",{id,...commissionPayoutToSb({...patch})},"id").catch(()=>{});
+    toastEmit("Payout approved.","success");
+  };
+  const voidPayout=async(id)=>{
+    if(!await guardWrite("update","commission_payouts","void a commission payout")) return;
+    if(!await uiConfirm("Void this commission payout? It will no longer count as paid.")) return;
+    upPayouts(ps=>ps.map(p=>p.id===id?{...p,status:"Void"}:p));
+    if(isSupabaseReady()) sbUpsert("commission_payouts",{id,status:"Void"},"id").catch(()=>{});
+  };
   // Human AP reference in the finance team's format: AP-YYYY-000N. Assigned
   // locally (year-scoped, next after the current max) so PO-derived payables get a
   // number the moment they're created without an extra async round-trip. Two
@@ -10619,6 +10653,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const tProj  =rows.reduce((s,d)=>s+commissionProjected(d),0);
         const who    =scope==="team"?"the sales team":(session?.name||"you");
 
+        // ── Payouts: what's actually been disbursed to the rep(s) in view ──────
+        // Scope payouts the same way as the deal rows: "mine" = my own payouts,
+        // "team" = everyone's. Only APPROVED payouts count as paid.
+        const scopedPayouts=(payouts||[]).filter(p=>p.status!=="Void").filter(p=>scope==="team"?true:p.payee===session?.name);
+        const paidByRep=(()=>{const m={};(payouts||[]).filter(isPayoutApproved).forEach(p=>{m[p.payee]=(m[p.payee]||0)+(Number(p.amount)||0);});return m;})();
+        const tPaid    =payoutsPaid(scopedPayouts);
+        const tPending =payoutsPending(scopedPayouts);
+        const tPayable =commissionPayable(tEarn,tPaid);
+        const canRecord=roleCanInsert("commission_payouts");
+        const payeeOptions=[...new Set(awarded.map(d=>d.salesOwner).filter(Boolean))].sort();
+
         const kpi=(lbl,val,sub,accent)=>(
           <div style={{flex:"1 1 180px",background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"13px 15px",...(accent?{background:"linear-gradient(180deg,#ecfdf5,#fff)",borderColor:"#a7f3d0"}:{})}}>
             <div style={{fontSize:".68rem",fontWeight:700,letterSpacing:".5px",textTransform:"uppercase",color:accent?"#059669":"#94a3b8"}}>{lbl}</div>
@@ -10682,20 +10727,26 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>💰 Commissions</h2>
                 <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{rows.length} awarded project{rows.length!==1?"s":""} · {scope==="team"?"whole team":"your projects"} · {todayL}</div>
               </div>
-              {isMgr&&(
-                <div style={{display:"flex",background:"#f1f5f9",borderRadius:9,padding:3}}>
-                  {[["mine","My projects"],["team","Whole team"]].map(([v,l])=>(
-                    <button key={v} onClick={()=>setAwardScope(v)} style={{border:"none",background:awardScope===v?"#3b82f6":"transparent",color:awardScope===v?"#fff":"#475569",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",padding:"6px 14px",borderRadius:6,cursor:"pointer"}}>{l}</button>
-                  ))}
-                </div>
-              )}
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                {canRecord&&(
+                  <button onClick={()=>setPayoutDraft({payee:scope==="team"?"":(session?.name||""),periodLabel:`${MONTHS[new Date().getMonth()]} ${new Date().getFullYear()}`,amount:"",payBank:"",payMethod:"",payRef:"",notes:""})}
+                    style={{border:"none",background:"#059669",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",padding:"8px 14px",borderRadius:8,cursor:"pointer"}}>+ Record payout</button>
+                )}
+                {isMgr&&(
+                  <div style={{display:"flex",background:"#f1f5f9",borderRadius:9,padding:3}}>
+                    {[["mine","My projects"],["team","Whole team"]].map(([v,l])=>(
+                      <button key={v} onClick={()=>setAwardScope(v)} style={{border:"none",background:awardScope===v?"#3b82f6":"transparent",color:awardScope===v?"#fff":"#475569",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",padding:"6px 14px",borderRadius:6,cursor:"pointer"}}>{l}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:12}}>
-              {kpi("Awarded value",peso(tVal),`${rows.length} projects · ${who}`)}
-              {kpi("Collected",peso(tColl),tVal>0?`${Math.round(tColl/tVal*100)}% of contract value in`:"—")}
-              {kpi("Outstanding",peso(tOut),"still to be collected")}
               {kpi("Commission · earned",peso(tEarn),`${peso(tProj)} projected at full collection`,true)}
+              {kpi("Paid out",peso(tPaid),tEarn>0?`${Math.round(tPaid/tEarn*100)}% of earned disbursed`:"—")}
+              {kpi("Payable",peso(tPayable),"earned but not yet paid")}
+              {kpi("Pending approval",peso(tPending),tPending>0?"recorded, awaiting Manager":"none awaiting")}
             </div>
 
             <div style={{display:"flex",gap:10,alignItems:"flex-start",background:"#ecfdf5",border:"1.5px solid #a7f3d0",borderRadius:12,padding:"11px 15px",marginBottom:16,fontSize:".78rem",color:"#334155",lineHeight:1.55}}>
@@ -10704,6 +10755,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 <b style={{color:"#065f46"}}>Commission accrues on cash collected, not on award.</b> Each awarded deal earns
                 its sales owner <b>{(COMMISSION_RATE["Self-sourced"]*100)}%</b> (self-sourced client) or <b>{(COMMISSION_RATE["Given"]*100)}%</b> (client given to the team) of every peso collected.
                 <b style={{color:"#059669"}}> Earned</b> moves each time a payment is logged; <b>Projected</b> is the full commission once the contract is paid off.
+                <b style={{color:"#059669"}}> Paid</b> is what Finance has disbursed (Manager-approved); <b>Payable</b> is earned minus paid — what you're still owed.
                 <span style={{color:"#94a3b8"}}> Lead origin is set per deal — deals default to the {DEFAULT_LEAD_ORIGIN.toLowerCase()} rate until flagged.</span>
               </div>
             </div>
@@ -10756,9 +10808,88 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 </table>
               </div>
             </div>
+
+            {/* ── Payout ledger: what's been disbursed to the rep(s) ─────────── */}
+            <div style={{marginTop:22,background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,overflow:"hidden"}}>
+              <div style={{padding:"12px 15px",borderBottom:"1.5px solid #f1f5f9",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+                <div>
+                  <div style={{fontWeight:800,color:"#0f172a"}}>💸 Payout history</div>
+                  <div style={{fontSize:".72rem",color:"#64748b",marginTop:2}}>{scopedPayouts.length} payout{scopedPayouts.length!==1?"s":""} · {scope==="team"?"whole team":(session?.name||"you")}</div>
+                </div>
+                {canRecord&&(
+                  <button onClick={()=>setPayoutDraft({payee:scope==="team"?"":(session?.name||""),periodLabel:`${MONTHS[new Date().getMonth()]} ${new Date().getFullYear()}`,amount:"",payBank:"",payMethod:"",payRef:"",notes:""})}
+                    style={{border:"none",background:"#059669",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".76rem",padding:"7px 13px",borderRadius:8,cursor:"pointer"}}>+ Record payout</button>
+                )}
+              </div>
+              <div style={{overflowX:"auto"}}>
+                <table style={{borderCollapse:"collapse",width:"100%",minWidth:720,fontSize:".82rem"}}>
+                  <thead>
+                    <tr style={{background:"#f8fafc",textAlign:"left"}}>
+                      {["Rep","Period","Amount","Status","Recorded by","Ref","",""].map((h,i)=>(
+                        <th key={i} style={{padding:"9px 13px",fontSize:".65rem",fontWeight:700,letterSpacing:".5px",textTransform:"uppercase",color:"#94a3b8",borderBottom:"1.5px solid #e2e8f0",whiteSpace:"nowrap",textAlign:i===2?"right":"left"}}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {scopedPayouts.slice().sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||""))).map(p=>{
+                      const sc=p.status==="Approved"?"#059669":p.status==="Void"?"#94a3b8":"#d97706";
+                      return(
+                        <tr key={p.id} style={{borderBottom:"1px solid #f1f5f9"}}>
+                          <td style={{padding:"10px 13px",fontWeight:700,color:"#0f172a"}}>{p.payee||"—"}</td>
+                          <td style={{padding:"10px 13px",color:"#475569"}}>{p.periodLabel||"—"}</td>
+                          <td style={{padding:"10px 13px",textAlign:"right",fontVariantNumeric:"tabular-nums",fontWeight:700,color:p.status==="Void"?"#94a3b8":"#0f172a"}}>{peso(p.amount)}</td>
+                          <td style={{padding:"10px 13px"}}><span style={{fontSize:".68rem",fontWeight:700,padding:"3px 9px",borderRadius:20,color:sc,background:sc+"1a",whiteSpace:"nowrap"}}>{p.status}</span></td>
+                          <td style={{padding:"10px 13px",color:"#64748b",fontSize:".76rem"}}>{p.recordedBy||"—"}{p.approvedBy?<div style={{color:"#94a3b8"}}>✓ {p.approvedBy}</div>:null}</td>
+                          <td style={{padding:"10px 13px",color:"#64748b",fontSize:".76rem"}}>{[p.payMethod,p.payRef].filter(Boolean).join(" · ")||"—"}</td>
+                          <td style={{padding:"10px 13px",textAlign:"right"}}>{isMgr&&p.status==="Recorded"&&<button onClick={()=>approvePayout(p.id)} style={{border:"none",background:"#059669",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",padding:"5px 11px",borderRadius:7,cursor:"pointer"}}>Approve</button>}</td>
+                          <td style={{padding:"10px 13px",textAlign:"right"}}>{canRecord&&p.status!=="Void"&&<button onClick={()=>voidPayout(p.id)} style={{border:"1px solid #e2e8f0",background:"#fff",color:"#94a3b8",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",padding:"5px 9px",borderRadius:7,cursor:"pointer"}}>Void</button>}</td>
+                        </tr>
+                      );
+                    })}
+                    {scopedPayouts.length===0&&(
+                      <tr><td colSpan={8} style={{padding:"28px 16px",textAlign:"center",color:"#94a3b8"}}>No payouts recorded yet.{canRecord?" Use “Record payout” to log a disbursement.":" Finance records these as commissions are paid."}</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </>
         );
       })()}
+
+      {/* Record-payout form (Finance / Manager) */}
+      {payoutDraft&&(
+        <Modal open onClose={()=>setPayoutDraft(null)} title="Record commission payout">
+          <div style={{display:"flex",flexDirection:"column",gap:12,minWidth:300}}>
+            <Fld label="Rep (sales owner)">
+              <Sel value={payoutDraft.payee} onChange={e=>setPayoutDraft(d=>({...d,payee:e.target.value}))}>
+                <option value="">— Select rep —</option>
+                {[...new Set([...payeeOptions,...(payoutDraft.payee?[payoutDraft.payee]:[])])].sort().map(n=><option key={n} value={n}>{n}</option>)}
+              </Sel>
+            </Fld>
+            <Fld label="Period" hint="e.g. the month the payout covers">
+              <Inp value={payoutDraft.periodLabel} onChange={e=>setPayoutDraft(d=>({...d,periodLabel:e.target.value}))} placeholder="Aug 2026"/>
+            </Fld>
+            <Fld label="Amount (₱)">
+              <Inp type="number" value={payoutDraft.amount} onChange={e=>setPayoutDraft(d=>({...d,amount:e.target.value}))} placeholder="0"/>
+            </Fld>
+            <div style={{display:"flex",gap:10}}>
+              <Fld label="Method"><Inp value={payoutDraft.payMethod} onChange={e=>setPayoutDraft(d=>({...d,payMethod:e.target.value}))} placeholder="Bank transfer"/></Fld>
+              <Fld label="Reference"><Inp value={payoutDraft.payRef} onChange={e=>setPayoutDraft(d=>({...d,payRef:e.target.value}))} placeholder="Ref #"/></Fld>
+            </div>
+            <Fld label="Notes"><Inp value={payoutDraft.notes} onChange={e=>setPayoutDraft(d=>({...d,notes:e.target.value}))} placeholder="Optional"/></Fld>
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:4}}>
+              <button onClick={()=>setPayoutDraft(null)} style={{border:"1px solid #e2e8f0",background:"#fff",color:"#475569",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",padding:"9px 16px",borderRadius:9,cursor:"pointer"}}>Cancel</button>
+              <button onClick={async()=>{
+                  if(!payoutDraft.payee){toastEmit("Please select a rep.","warning");return;}
+                  if(!(Number(payoutDraft.amount)>0)){toastEmit("Enter a payout amount.","warning");return;}
+                  await recordPayout(payoutDraft);
+                  setPayoutDraft(null);
+                }} style={{border:"none",background:"#059669",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",padding:"9px 18px",borderRadius:9,cursor:"pointer"}}>Record payout</button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </Wrap>
   );
 
