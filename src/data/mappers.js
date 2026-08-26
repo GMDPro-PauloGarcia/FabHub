@@ -20,6 +20,12 @@ export const payableToSb=p=>({id:p.id,vendor:p.vendor||"",amount:Number(p.amount
 
 export const loanToSb=l=>({id:l.id,lender:l.lender||"",type:l.type||"Bank Loan",principal:Number(l.principal)||0,disbursed_date:l.disbursedDate||null,term_months:Number(l.termMonths)||null,interest_rate:Number(l.interestRate)||0,monthly_payment:Number(l.monthlyPayment)||0,notes:l.notes||"",created_at:l.createdAt||null});
 
+// Commission payout: a lump commission disbursed to one sales owner for a period,
+// recorded by Finance and approved by a Manager (migration 054).
+export const commissionPayoutToSb=p=>({id:p.id,payee:p.payee||"",period_label:p.periodLabel||"",period_start:p.periodStart||null,period_end:p.periodEnd||null,amount:Number(p.amount)||0,status:p.status||"Recorded",pay_bank:p.payBank||"",pay_method:p.payMethod||"",pay_ref:p.payRef||"",notes:p.notes||"",recorded_by:p.recordedBy||"",recorded_at:p.recordedAt||null,approved_by:p.approvedBy||"",approved_at:p.approvedAt||null,created_at:p.createdAt||null});
+
+export const commissionPayoutFromSb=r=>({...r,payee:r.payee||"",periodLabel:r.period_label||"",periodStart:r.period_start||null,periodEnd:r.period_end||null,amount:Number(r.amount)||0,status:r.status||"Recorded",payBank:r.pay_bank||"",payMethod:r.pay_method||"",payRef:r.pay_ref||"",notes:r.notes||"",recordedBy:r.recorded_by||"",recordedAt:r.recorded_at||null,approvedBy:r.approved_by||"",approvedAt:r.approved_at||null,createdAt:r.created_at||null});
+
 export const subconToSb=s=>({company_name:s.companyName||s.company_name||"",rating:s.rating||"",specialty:s.specialty||"",strengths_weaknesses:s.strengthsWeaknesses||s.strengths_weaknesses||"",contact_no:s.contactNo||s.contact_no||"",payment_terms:s.paymentTerms||s.payment_terms||"",address:s.address||"",remarks:s.remarks||"",rate_structure:s.rateStructure||s.rate_structure||"",payment_structure:s.paymentStructure||s.payment_structure||"",location_note:s.locationNote||s.location_note||"",notes:s.notes||"",status:s.status||"Active",created_by:s.createdBy||s.created_by||""});
 
 export const cvToSb=v=>({id:v.id,cv_no:v.cvNo||"",date:v.date||null,payee:v.payee||"",amount:Number(v.amount)||0,description:v.description||"",project_id:v.projectId||null,bank:v.bank||"",notes:v.notes||"",status:v.status||"Draft",released_by:v.releasedBy||null,released_date:v.releasedDate||null,created_by:v.createdBy||"",created_at:v.createdAt||null,po_ref:v.poRef||"",ap_ref:v.apRef||"",payable_id:v.payableId||null,check_no:v.checkNo||"",cleared_date:v.clearedDate||null,is_cleared:v.isCleared||false});
