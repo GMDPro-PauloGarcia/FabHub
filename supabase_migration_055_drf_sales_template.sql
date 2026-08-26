@@ -1,4 +1,4 @@
--- ── Migration 054: DRF Sales-brief template fields ───────────────────────────
+-- ── Migration 055: DRF Sales-brief template fields ───────────────────────────
 -- The Design team asked that the Sales Department supply a fuller brief on every
 -- Design Request Form (DRF): project category (Kiosk / In-line / Event / Other),
 -- with/without platform, ideal finishes, maximum height, a brand-guideline link,
@@ -16,4 +16,4 @@ ALTER TABLE public.design_request_forms
   ADD COLUMN IF NOT EXISTS brand_guide_link TEXT,
   ADD COLUMN IF NOT EXISTS budget           TEXT;
 
-SELECT 'Migration 054 applied — DRF sales-template columns added to design_request_forms' AS status;
+SELECT 'Migration 055 applied — DRF sales-template columns added to design_request_forms' AS status;
