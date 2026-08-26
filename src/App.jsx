@@ -22943,8 +22943,21 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
             const billedNet=ms.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+calcTax(m.amount,m.receiptType??rt,m.withholding??wh).netReceivable,0);
             const collected=ms.reduce((s,m)=>s+(m.payments||[]).filter(p=>!p.bounced).reduce((ps,p)=>ps+n(p.amount),0),0);
             const tx=calcTax(deal?.value||0,rt,wh);
+            // ── Guardrail: milestone bases must reconcile to the contract value ──
+            // Milestone amounts are entered VAT-exclusive (base), same basis as the
+            // contract value, so their sum should equal the contract. A sum over the
+            // contract means the project is over-billed (e.g. retention added on top
+            // of a 100% DP+Progress split → 110%); a sum under it means the schedule
+            // isn't fully set up yet. Cancelled milestones don't count.
+            const billedBase=ms.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+n(m.amount),0);
+            const contractBase=n(deal?.value);
+            const diff=Math.round((billedBase-contractBase)*100)/100;
+            const pctOfContract=contractBase>0?Math.round(billedBase/contractBase*100):0;
+            const overBilled=diff>0.5;                 // sums to more than the contract
+            const underBilled=diff<-0.5&&ms.some(m=>m.status!=="Cancelled"); // short, but has milestones
             return(
-              <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:16}}>
+              <>
+              <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:overBilled||underBilled?10:16}}>
                 {[
                   {l:"Contract Value",v:fmt(deal?.value||0),    c:"#0f172a"},
                   {l:"Total Billed (net)",v:fmt(billedNet),     c:"#3b82f6"},
@@ -22957,6 +22970,24 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                   </div>
                 ))}
               </div>
+              {overBilled&&(
+                <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:10,padding:"10px 14px",marginBottom:16,display:"flex",alignItems:"center",gap:10}}>
+                  <span style={{fontSize:"1rem"}}>⚠️</span>
+                  <span style={{fontSize:".8rem",color:"#b91c1c"}}>
+                    <strong>Over-billed: milestones total {pctOfContract}% of the contract.</strong>{" "}
+                    Milestone bases sum to {fmt(billedBase)} vs contract {fmt(contractBase)} — {fmt(diff)} too high. Check the milestone amounts (they should be VAT-exclusive and sum to the contract value).
+                  </span>
+                </div>
+              )}
+              {underBilled&&(
+                <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"10px 14px",marginBottom:16,display:"flex",alignItems:"center",gap:10}}>
+                  <span style={{fontSize:"1rem"}}>ℹ️</span>
+                  <span style={{fontSize:".8rem",color:"#92400e"}}>
+                    Milestones cover {pctOfContract}% of the contract ({fmt(billedBase)} of {fmt(contractBase)}). {fmt(-diff)} not yet scheduled — expected if the billing schedule is still being set up.
+                  </span>
+                </div>
+              )}
+              </>
             );
           })()}
 
