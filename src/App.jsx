@@ -4562,11 +4562,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // before billings hydrates.
     if(deals.find(d=>d.id===dealId)?.billingGenerated) return;
     if(billings.some(b=>b.dealId===dealId)) return; // already has milestones — never duplicate
+    // Split the contract value across milestones by percentage, rounding each
+    // share to centavos (not whole pesos) so the milestone bases sum back to the
+    // exact contract value — whole-peso rounding drifts the total (e.g. a
+    // ₱892,857.14 contract would foot to ₱1,000,000.96 VAT-inc instead of the
+    // intended ₱1,000,000.00).
+    const share=pct=>Math.round(val*pct/100*100)/100;
     const milestones=[
-      terms.dp>0&&{name:`Down Payment (${terms.dp}%)`,amount:Math.round(val*terms.dp/100),description:"Upon signing of contract / Purchase Order"},
-      terms.progress>0&&{name:`Progress Billing (${terms.progress}%)`,amount:Math.round(val*terms.progress/100),description:"Upon completion of fabrication / midpoint delivery"},
-      terms.final>0&&{name:`Final Billing (${terms.final}%)`,amount:Math.round(val*terms.final/100),description:"Upon delivery and installation completion"},
-      terms.retention>0&&{name:`Retention (${terms.retention}%) — Release: ${terms.retentionRelease||"Project Completion"}`,amount:Math.round(val*terms.retention/100),description:`Held as retention. Release condition: ${terms.retentionRelease||"Project Completion"}`},
+      terms.dp>0&&{name:`Down Payment (${terms.dp}%)`,amount:share(terms.dp),description:"Upon signing of contract / Purchase Order"},
+      terms.progress>0&&{name:`Progress Billing (${terms.progress}%)`,amount:share(terms.progress),description:"Upon completion of fabrication / midpoint delivery"},
+      terms.final>0&&{name:`Final Billing (${terms.final}%)`,amount:share(terms.final),description:"Upon delivery and installation completion"},
+      terms.retention>0&&{name:`Retention (${terms.retention}%) — Release: ${terms.retentionRelease||"Project Completion"}`,amount:share(terms.retention),description:`Held as retention. Release condition: ${terms.retentionRelease||"Project Completion"}`},
     ].filter(Boolean);
     if(!milestones.length) return;
     // Add the whole batch in one state update and do ONE deal.invoiced recompute
@@ -23034,11 +23040,13 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
             // confirmation dialogue previewing the milestones derived from the
             // saved payment terms; only on explicit confirmation are they created.
             const setupMilestones=async()=>{
+              const share=pct=>Math.round(val*pct/100*100)/100;
+              const peso=x=>x.toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
               const lines=[
-                terms.dp>0&&`• Down Payment (${terms.dp}%) — ₱${Math.round(val*terms.dp/100).toLocaleString("en-PH")}`,
-                terms.progress>0&&`• Progress Billing (${terms.progress}%) — ₱${Math.round(val*terms.progress/100).toLocaleString("en-PH")}`,
-                terms.final>0&&`• Final Billing (${terms.final}%) — ₱${Math.round(val*terms.final/100).toLocaleString("en-PH")}`,
-                terms.retention>0&&`• Retention (${terms.retention}%) — ₱${Math.round(val*terms.retention/100).toLocaleString("en-PH")}`,
+                terms.dp>0&&`• Down Payment (${terms.dp}%) — ₱${peso(share(terms.dp))}`,
+                terms.progress>0&&`• Progress Billing (${terms.progress}%) — ₱${peso(share(terms.progress))}`,
+                terms.final>0&&`• Final Billing (${terms.final}%) — ₱${peso(share(terms.final))}`,
+                terms.retention>0&&`• Retention (${terms.retention}%) — ₱${peso(share(terms.retention))}`,
               ].filter(Boolean).join("\n");
               const ok=await uiConfirm({
                 title:"Set Up Billing Milestones",
