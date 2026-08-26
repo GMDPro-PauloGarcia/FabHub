@@ -308,11 +308,12 @@ export function bizDaysRemaining(startDateStr, sla=BUSINESS_DAYS_SLA){
 }
 
 export const calcTax = (base, receiptType="OR", withholding=false) => {
-  const b   = Number(base)||0;
-  const vat = receiptType==="OR" ? b*0.12 : 0;        // 12% VAT on base (OR only)
-  const gross = b + vat;                                // total amount billed to client
-  const ewt = (receiptType==="OR" && withholding) ? b*0.02 : 0; // EWT only on OR, not AR
-  const netReceivable = gross - ewt;                    // what GMD actually receives
+  const c   = x => Math.round(x*100)/100;               // round to centavos — currency has 2 decimals
+  const b   = c(Number(base)||0);
+  const vat = receiptType==="OR" ? c(b*0.12) : 0;       // 12% VAT on base (OR only)
+  const gross = c(b + vat);                              // total amount billed to client
+  const ewt = (receiptType==="OR" && withholding) ? c(b*0.02) : 0; // EWT only on OR, not AR
+  const netReceivable = c(gross - ewt);                 // what GMD actually receives
   return { base:b, vat, gross, ewt, netReceivable };
 };
 

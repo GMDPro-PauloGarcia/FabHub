@@ -4562,11 +4562,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // before billings hydrates.
     if(deals.find(d=>d.id===dealId)?.billingGenerated) return;
     if(billings.some(b=>b.dealId===dealId)) return; // already has milestones — never duplicate
+    // Split the contract value across milestones by percentage, rounding each
+    // share to centavos (not whole pesos) so the milestone bases sum back to the
+    // exact contract value — whole-peso rounding drifts the total (e.g. a
+    // ₱892,857.14 contract would foot to ₱1,000,000.96 VAT-inc instead of the
+    // intended ₱1,000,000.00).
+    const share=pct=>Math.round(val*pct/100*100)/100;
     const milestones=[
-      terms.dp>0&&{name:`Down Payment (${terms.dp}%)`,amount:Math.round(val*terms.dp/100),description:"Upon signing of contract / Purchase Order"},
-      terms.progress>0&&{name:`Progress Billing (${terms.progress}%)`,amount:Math.round(val*terms.progress/100),description:"Upon completion of fabrication / midpoint delivery"},
-      terms.final>0&&{name:`Final Billing (${terms.final}%)`,amount:Math.round(val*terms.final/100),description:"Upon delivery and installation completion"},
-      terms.retention>0&&{name:`Retention (${terms.retention}%) — Release: ${terms.retentionRelease||"Project Completion"}`,amount:Math.round(val*terms.retention/100),description:`Held as retention. Release condition: ${terms.retentionRelease||"Project Completion"}`},
+      terms.dp>0&&{name:`Down Payment (${terms.dp}%)`,amount:share(terms.dp),description:"Upon signing of contract / Purchase Order"},
+      terms.progress>0&&{name:`Progress Billing (${terms.progress}%)`,amount:share(terms.progress),description:"Upon completion of fabrication / midpoint delivery"},
+      terms.final>0&&{name:`Final Billing (${terms.final}%)`,amount:share(terms.final),description:"Upon delivery and installation completion"},
+      terms.retention>0&&{name:`Retention (${terms.retention}%) — Release: ${terms.retentionRelease||"Project Completion"}`,amount:share(terms.retention),description:`Held as retention. Release condition: ${terms.retentionRelease||"Project Completion"}`},
     ].filter(Boolean);
     if(!milestones.length) return;
     // Add the whole batch in one state update and do ONE deal.invoiced recompute
@@ -22937,8 +22943,21 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
             const billedNet=ms.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+calcTax(m.amount,m.receiptType??rt,m.withholding??wh).netReceivable,0);
             const collected=ms.reduce((s,m)=>s+(m.payments||[]).filter(p=>!p.bounced).reduce((ps,p)=>ps+n(p.amount),0),0);
             const tx=calcTax(deal?.value||0,rt,wh);
+            // ── Guardrail: milestone bases must reconcile to the contract value ──
+            // Milestone amounts are entered VAT-exclusive (base), same basis as the
+            // contract value, so their sum should equal the contract. A sum over the
+            // contract means the project is over-billed (e.g. retention added on top
+            // of a 100% DP+Progress split → 110%); a sum under it means the schedule
+            // isn't fully set up yet. Cancelled milestones don't count.
+            const billedBase=ms.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+n(m.amount),0);
+            const contractBase=n(deal?.value);
+            const diff=Math.round((billedBase-contractBase)*100)/100;
+            const pctOfContract=contractBase>0?Math.round(billedBase/contractBase*100):0;
+            const overBilled=diff>0.5;                 // sums to more than the contract
+            const underBilled=diff<-0.5&&ms.some(m=>m.status!=="Cancelled"); // short, but has milestones
             return(
-              <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:16}}>
+              <>
+              <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:overBilled||underBilled?10:16}}>
                 {[
                   {l:"Contract Value",v:fmt(deal?.value||0),    c:"#0f172a"},
                   {l:"Total Billed (net)",v:fmt(billedNet),     c:"#3b82f6"},
@@ -22951,6 +22970,24 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                   </div>
                 ))}
               </div>
+              {overBilled&&(
+                <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:10,padding:"10px 14px",marginBottom:16,display:"flex",alignItems:"center",gap:10}}>
+                  <span style={{fontSize:"1rem"}}>⚠️</span>
+                  <span style={{fontSize:".8rem",color:"#b91c1c"}}>
+                    <strong>Over-billed: milestones total {pctOfContract}% of the contract.</strong>{" "}
+                    Milestone bases sum to {fmt(billedBase)} vs contract {fmt(contractBase)} — {fmt(diff)} too high. Check the milestone amounts (they should be VAT-exclusive and sum to the contract value).
+                  </span>
+                </div>
+              )}
+              {underBilled&&(
+                <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"10px 14px",marginBottom:16,display:"flex",alignItems:"center",gap:10}}>
+                  <span style={{fontSize:"1rem"}}>ℹ️</span>
+                  <span style={{fontSize:".8rem",color:"#92400e"}}>
+                    Milestones cover {pctOfContract}% of the contract ({fmt(billedBase)} of {fmt(contractBase)}). {fmt(-diff)} not yet scheduled — expected if the billing schedule is still being set up.
+                  </span>
+                </div>
+              )}
+              </>
             );
           })()}
 
@@ -23050,11 +23087,13 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
             // confirmation dialogue previewing the milestones derived from the
             // saved payment terms; only on explicit confirmation are they created.
             const setupMilestones=async()=>{
+              const share=pct=>Math.round(val*pct/100*100)/100;
+              const peso=x=>x.toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
               const lines=[
-                terms.dp>0&&`• Down Payment (${terms.dp}%) — ₱${Math.round(val*terms.dp/100).toLocaleString("en-PH")}`,
-                terms.progress>0&&`• Progress Billing (${terms.progress}%) — ₱${Math.round(val*terms.progress/100).toLocaleString("en-PH")}`,
-                terms.final>0&&`• Final Billing (${terms.final}%) — ₱${Math.round(val*terms.final/100).toLocaleString("en-PH")}`,
-                terms.retention>0&&`• Retention (${terms.retention}%) — ₱${Math.round(val*terms.retention/100).toLocaleString("en-PH")}`,
+                terms.dp>0&&`• Down Payment (${terms.dp}%) — ₱${peso(share(terms.dp))}`,
+                terms.progress>0&&`• Progress Billing (${terms.progress}%) — ₱${peso(share(terms.progress))}`,
+                terms.final>0&&`• Final Billing (${terms.final}%) — ₱${peso(share(terms.final))}`,
+                terms.retention>0&&`• Retention (${terms.retention}%) — ₱${peso(share(terms.retention))}`,
               ].filter(Boolean).join("\n");
               const ok=await uiConfirm({
                 title:"Set Up Billing Milestones",
