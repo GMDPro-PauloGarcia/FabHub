@@ -6,7 +6,7 @@ import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -7096,7 +7096,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Requests",  items:[{id:"costanalysis",l:"Cost Analysis"}]},
     ],
     Design:[
-      {group:"Overview",    items:[{id:"home",l:"Projects"},{id:"myfolder",l:"My Folder"}]},
+      {group:"Overview",    items:[{id:"home",l:"Projects"},{id:"myfolder",l:"My Projects"}]},
       // Sales Pipeline is limited to the Head Designer — the rest of the design
       // team only sees their design work, not the sales funnel.
       ...(isHeadDesigner(session?.name)?[{group:"Sales", items:[{id:"pipeline",l:"Sales Pipeline"}]}]:[]),
@@ -13642,67 +13642,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // The Head Designer sees every designer's folder; others see only their own.
     if(page==="myfolder") return(
       <Wrap>
-        {(()=>{
-          const me=session?.name||"";
-          const head=isHeadDesigner(me);
-          // Build a folder per designer: assigned project cards + assigned DRFs.
-          const folderFor=(member)=>{
-            const projItems=projList.filter(d=>(projs[d.id]?.design?.designer||"")===member).map(d=>({kind:"project",id:d.id,client:d.client,title:projs[d.id]?.design?.projectTitle||d.product||d.client,status:projs[d.id]?.design?.status||"Briefing",deal:d}));
-            const drfItems=(drfs||[]).filter(x=>(x.designer||"")===member).map(x=>({kind:"drf",id:x.id,client:x.client,title:x.projectTitle,status:x.status,due:x.designDeadline}));
-            return {member,projItems,drfItems,total:projItems.length+drfItems.length};
-          };
-          // Head Designer sees all designers (own folder first); others just theirs.
-          const members=head?[me,...DESIGN_MEMBERS.filter(m=>m!==me)]:[me];
-          const folders=members.map(folderFor);
-          return(
-            <div>
-              <div style={{marginBottom:18}}>
-                <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>📁 My Folder</h2>
-                <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{head?"Every designer's folder of assigned projects — yours first.":"Your assigned projects and design requests."}</div>
-              </div>
-              {folders.map(({member,projItems,drfItems,total})=>{
-                const mine=member===me;
-                return(
-                  <div key={member} style={{background:"#fff",borderRadius:12,border:`1.5px solid ${mine?"#ec489966":"#e2e8f0"}`,overflow:"hidden",marginBottom:14}}>
-                    <div style={{background:mine?"#be185d":"#1e293b",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                      <span style={{fontWeight:700,color:"#fff",fontSize:".9rem"}}>📁 {member}{mine?" (You)":""}</span>
-                      <span style={{fontSize:".72rem",color:"rgba(255,255,255,.7)",fontWeight:600}}>{total} item{total!==1?"s":""}</span>
-                    </div>
-                    {total===0
-                      ? <div style={{padding:"18px 16px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No projects assigned yet.</div>
-                      : <div>
-                          {projItems.map((it,i)=>{
-                            const c=DS_CLR[it.status]||"#94a3b8";
-                            return(
-                              <div key={"p"+it.id} {...clickable(()=>{setSelProj(it.id);setOpsTab("design");})} aria-label="Open project design" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",borderBottom:"1px solid #f8fafc",cursor:"pointer"}}>
-                                <div style={{flex:1,minWidth:0}}>
-                                  <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{it.client}</div>
-                                  <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>{it.title}</div>
-                                </div>
-                                <span style={{marginLeft:12,fontSize:".68rem",fontWeight:700,color:c,background:c+"18",border:`1px solid ${c}44`,borderRadius:20,padding:"2px 9px",whiteSpace:"nowrap"}}>{it.status}</span>
-                              </div>
-                            );
-                          })}
-                          {drfItems.map((it)=>{
-                            const c=DRF_CLR[it.status]||"#94a3b8";
-                            return(
-                              <div key={"d"+it.id} onClick={()=>setPage("drf")} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",borderBottom:"1px solid #f8fafc",cursor:"pointer"}}>
-                                <div style={{flex:1,minWidth:0}}>
-                                  <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>🖌️ {it.title||it.client}</div>
-                                  <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>{it.client}{it.due?` · due ${it.due}`:""}</div>
-                                </div>
-                                <span style={{marginLeft:12,fontSize:".68rem",fontWeight:700,color:c,background:c+"18",border:`1px solid ${c}44`,borderRadius:20,padding:"2px 9px",whiteSpace:"nowrap"}}>{it.status}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                    }
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })()}
+        <MyFolderView session={session} projList={projList} projs={projs} drfs={drfs} updateDRF={updateDRF} upProj={upProj} setSelProj={setSelProj} setOpsTab={setOpsTab}/>
       </Wrap>
     );
     if(page==="home") return(
@@ -16399,11 +16339,165 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
 }
 
 // ─── DESIGN REQUEST FORM (DRF) VIEW ──────────────────────────────────────────
+// ─── DESIGN — MY FOLDER (year folders + inline editable dropdowns) ────────────
+// Each designer gets a folder of the projects + DRFs assigned to them, split into
+// year sub-folders (2026, 2027, …) and sortable by client or due date. Clicking a
+// project/DRF opens an inline editable dropdown (status · details · timeline)
+// instead of redirecting to the Design Request tab.
+function MyFolderView({session,projList,projs,drfs,updateDRF,upProj,setSelProj,setOpsTab}){
+  const me=session?.name||"";
+  const head=isHeadDesigner(me);
+  const[sortBy,setSortBy]=useState("client");
+  const[openItem,setOpenItem]=useState(null); // `${kind}:${id}`
+  const mob=window.innerWidth<768;
+  const yearOf=(...cands)=>{for(const c of cands){const m=/(\d{4})/.exec(c||"");if(m)return m[1];}return "Undated";};
+
+  const folderFor=(member)=>{
+    const projItems=projList.filter(d=>(projs[d.id]?.design?.designer||"")===member).map(d=>({
+      kind:"project",id:d.id,client:d.client,
+      title:projs[d.id]?.design?.projectTitle||d.product||d.client,
+      status:projs[d.id]?.design?.status||"Briefing",
+      due:projs[d.id]?.design?.dueDate||"",deal:d,
+    }));
+    const drfItems=(drfs||[]).filter(x=>(x.designer||"")===member).map(x=>({
+      kind:"drf",id:x.id,client:x.client,title:x.projectTitle,status:x.status,due:x.designDeadline||"",drf:x,
+    }));
+    return {member,items:[...projItems,...drfItems]};
+  };
+  const members=head?[me,...DESIGN_MEMBERS.filter(m=>m!==me)]:[me];
+  const folders=members.map(folderFor);
+
+  const sortItems=(items)=>[...items].sort((a,b)=>{
+    if(sortBy==="due"){
+      const av=a.due||"9999",bv=b.due||"9999";
+      return av.localeCompare(bv);
+    }
+    return (a.client||"").localeCompare(b.client||"");
+  });
+
+  return(
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:18,flexWrap:"wrap",gap:12}}>
+        <div>
+          <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>📁 My Projects</h2>
+          <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{head?"Every designer's projects, filed by year — yours first.":"Your assigned projects and design requests, filed by year."}</div>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <span style={{fontSize:".72rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>Sort</span>
+          <select value={sortBy} onChange={e=>setSortBy(e.target.value)}
+            style={{border:"1.5px solid #e2e8f0",borderRadius:10,padding:"7px 11px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
+            <option value="client">Client (A–Z)</option>
+            <option value="due">Due Date</option>
+          </select>
+        </div>
+      </div>
+
+      {folders.map(({member,items})=>{
+        const mine=member===me;
+        // Split into year sub-folders, newest year first (Undated last).
+        const years={};
+        items.forEach(it=>{const y=yearOf(it.due);(years[y]=years[y]||[]).push(it);});
+        const yearKeys=Object.keys(years).sort((a,b)=>{
+          if(a==="Undated") return 1; if(b==="Undated") return -1; return b.localeCompare(a);
+        });
+        return(
+          <div key={member} style={{background:"#fff",borderRadius:12,border:`1.5px solid ${mine?"#ec489966":"#e2e8f0"}`,overflow:"hidden",marginBottom:14}}>
+            <div style={{background:mine?"#be185d":"#1e293b",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{fontWeight:700,color:"#fff",fontSize:".9rem"}}>📁 {member}{mine?" (You)":""}</span>
+              <span style={{fontSize:".72rem",color:"rgba(255,255,255,.7)",fontWeight:600}}>{items.length} item{items.length!==1?"s":""}</span>
+            </div>
+            {items.length===0
+              ? <div style={{padding:"18px 16px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No projects assigned yet.</div>
+              : yearKeys.map(yr=>(
+                <div key={yr}>
+                  <div style={{background:"#f8fafc",borderBottom:"1px solid #eef2f7",borderTop:"1px solid #eef2f7",padding:"7px 16px",display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontWeight:800,color:"#475569",fontSize:".82rem",letterSpacing:".3px"}}>🗂 {yr}</span>
+                    <span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:600}}>{years[yr].length} project{years[yr].length!==1?"s":""}</span>
+                  </div>
+                  {sortItems(years[yr]).map(it=>{
+                    const isDrf=it.kind==="drf";
+                    const c=(isDrf?DRF_CLR[it.status]:DS_CLR[it.status])||"#94a3b8";
+                    const key=`${it.kind}:${it.id}`;
+                    const open=openItem===key;
+                    return(
+                      <div key={key} style={{borderBottom:"1px solid #f8fafc"}}>
+                        <div onClick={()=>setOpenItem(open?null:key)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",cursor:"pointer",background:open?"#fdf4ff":"#fff"}}>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{isDrf?"🖌️ ":""}{it.title||it.client}</div>
+                            <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>{it.client}{it.due?` · due ${it.due}`:""}</div>
+                          </div>
+                          <span style={{marginLeft:12,fontSize:".68rem",fontWeight:700,color:c,background:c+"18",border:`1px solid ${c}44`,borderRadius:20,padding:"2px 9px",whiteSpace:"nowrap"}}>{it.status}</span>
+                          <span style={{marginLeft:10,color:"#94a3b8",fontSize:".7rem"}}>{open?"▲":"▼"}</span>
+                        </div>
+                        {open&&(
+                          <div style={{background:"#faf5ff",borderTop:"1px solid #e9d5ff",padding:"14px 18px"}}>
+                            <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:14}}>
+                              {/* Project Status */}
+                              <div>
+                                <div style={{fontSize:".65rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Project Status</div>
+                                {isDrf
+                                  ?<select value={it.status} onChange={e=>updateDRF(it.id,{status:e.target.value})}
+                                     style={{width:"100%",boxSizing:"border-box",border:`1.5px solid ${c}`,borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:c,background:c+"12",fontWeight:700,cursor:"pointer"}}>
+                                     {DRF_STATUSES.map(s=><option key={s} value={s} style={{color:"#0f172a",background:"#fff",fontWeight:400}}>{s}</option>)}
+                                   </select>
+                                  :<select value={it.status} onChange={e=>upProj(it.id,p=>({...p,design:{...p.design,status:e.target.value,statusHistory:[...(p.design?.statusHistory||[]),{status:e.target.value,date:todayL,by:session?.name||"Design"}]}}))}
+                                     style={{width:"100%",boxSizing:"border-box",border:`1.5px solid ${c}`,borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:c,background:c+"12",fontWeight:700,cursor:"pointer"}}>
+                                     {DESIGN_STATUSES.map(s=><option key={s} value={s} style={{color:"#0f172a",background:"#fff",fontWeight:400}}>{s}</option>)}
+                                   </select>
+                                }
+                              </div>
+                              {/* Timeline / Due Date */}
+                              <div>
+                                <div style={{fontSize:".65rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Timeline / Due Date</div>
+                                <input type="date" value={it.due||""}
+                                  onChange={e=>{const v=e.target.value;if(isDrf)updateDRF(it.id,{designDeadline:v});else upProj(it.id,p=>({...p,design:{...p.design,dueDate:v}}));}}
+                                  style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a"}}/>
+                              </div>
+                              {/* Project Details — editable */}
+                              <div style={{gridColumn:mob?"auto":"1/-1"}}>
+                                <div style={{fontSize:".65rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Project Details</div>
+                                {isDrf?(
+                                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                                    <input value={it.drf.projectTitle||""} onChange={e=>updateDRF(it.id,{projectTitle:e.target.value})} placeholder="Project title"
+                                      style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a"}}/>
+                                    <textarea value={it.drf.notes||""} onChange={e=>updateDRF(it.id,{notes:e.target.value})} placeholder="Notes / details" rows={2}
+                                      style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a",resize:"vertical"}}/>
+                                  </div>
+                                ):(
+                                  <textarea value={projs[it.id]?.design?.notes||""} onChange={e=>upProj(it.id,p=>({...p,design:{...p.design,notes:e.target.value}}))} placeholder="Design notes / details" rows={2}
+                                    style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a",resize:"vertical"}}/>
+                                )}
+                              </div>
+                            </div>
+                            <div style={{display:"flex",gap:8,marginTop:12,alignItems:"center"}}>
+                              {!isDrf&&(
+                                <button onClick={e=>{e.stopPropagation();setSelProj(it.id);setOpsTab("design");}}
+                                  style={{background:"#7c3aed",border:"none",borderRadius:8,padding:"7px 14px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".76rem",cursor:"pointer"}}>Open full design →</button>
+                              )}
+                              <span style={{fontSize:".7rem",color:"#94a3b8"}}>Changes save automatically.</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))
+            }
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
   const[showForm,setShowForm]=useState(false);
   const[editId,setEditId]=useState(null);
   const[form,setForm]=useState(emptyDRF());
   const[filterSt,setFilterSt]=useState("All");
+  const[filterDesigner,setFilterDesigner]=useState("All");
+  const[query,setQuery]=useState("");
   const mob=window.innerWidth<768;
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
 
@@ -16420,7 +16514,19 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
   const setRef=(i,v)=>f("refLinks",form.refLinks.map((r,ri)=>ri===i?v:r));
 
   const[expandedId,setExpandedId]=useState(null);
-  const shown=filterSt==="All"?drfs:drfs.filter(d=>d.status===filterSt);
+  const q=query.trim().toLowerCase();
+  const shown=(drfs||[]).filter(d=>{
+    if(filterSt!=="All"&&d.status!==filterSt) return false;
+    if(filterDesigner!=="All"){
+      if(filterDesigner==="Unassigned"){if(d.designer) return false;}
+      else if(d.designer!==filterDesigner) return false;
+    }
+    if(q){
+      const hay=[d.projectTitle,d.client,d.designer,d.drfNo,d.location,d.type,d.category].filter(Boolean).join(" ").toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
   const canCreate=["Manager","Sales","Operations","SalesOpsAdmin"].includes(role);
   const canAcknowledge=["Manager","Design"].includes(role);
 
@@ -16432,6 +16538,25 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
           <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>AE submits → Design receives brief → Approved files stored</div>
         </div>
         {canCreate&&<button onClick={openNew} style={{background:"#ec4899",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>+ New DRF</button>}
+      </div>
+
+      {/* Search + Designer filter */}
+      <div style={{display:"flex",gap:10,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
+        <div style={{position:"relative",flex:mob?"1 1 100%":"1 1 260px",minWidth:200}}>
+          <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:"#94a3b8",fontSize:".9rem",pointerEvents:"none"}}>🔍</span>
+          <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search project, client, designer…"
+            style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"9px 12px 9px 34px",fontFamily:"inherit",fontSize:".84rem",color:"#0f172a"}}/>
+          {query&&<button onClick={()=>setQuery("")} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"#94a3b8",cursor:"pointer",fontSize:".9rem",fontFamily:"inherit"}}>✕</button>}
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <span style={{fontSize:".72rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>Designer</span>
+          <select value={filterDesigner} onChange={e=>setFilterDesigner(e.target.value)}
+            style={{border:"1.5px solid #e2e8f0",borderRadius:10,padding:"9px 12px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
+            <option value="All">All Designers</option>
+            <option value="Unassigned">Unassigned</option>
+            {DESIGN_MEMBERS.map(m=><option key={m} value={m}>{m}</option>)}
+          </select>
+        </div>
       </div>
 
       {/* Status filter */}
@@ -16453,7 +16578,13 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
             <Fld label="Location"><Inp value={form.location} onChange={e=>f("location",e.target.value)} placeholder="e.g. SM Megamall Unit 3B"/></Fld>
             <div style={{gridColumn:"1/-1"}}><Fld label="Project Title" required><Inp value={form.projectTitle} onChange={e=>f("projectTitle",e.target.value)} placeholder="e.g. Golf Bag Organizer Rack / Shirts Display"/></Fld></div>
             <Fld label="Type"><Sel value={form.type} onChange={e=>f("type",e.target.value)}>{DRF_TYPES.map(t=><option key={t}>{t}</option>)}</Sel></Fld>
+            <Fld label="Project Type" hint="Kiosk / In-line / Event / Other"><Sel value={form.category||""} onChange={e=>f("category",e.target.value)}><option value="">— Select —</option>{DRF_CATEGORIES.map(t=><option key={t}>{t}</option>)}</Sel></Fld>
             <Fld label="Size / Dimensions"><Inp value={form.size} onChange={e=>f("size",e.target.value)} placeholder="e.g. W1200 x H1800 x D600mm"/></Fld>
+            <Fld label="Maximum Height"><Inp value={form.maxHeight||""} onChange={e=>f("maxHeight",e.target.value)} placeholder="e.g. 2400mm"/></Fld>
+            <Fld label="Platform"><Sel value={form.platform||""} onChange={e=>f("platform",e.target.value)}><option value="">— Select —</option><option>With Platform</option><option>Without Platform</option></Sel></Fld>
+            <Fld label="Ideal Finishes"><Inp value={form.finishes||""} onChange={e=>f("finishes",e.target.value)} placeholder="e.g. Matte laminate, powder-coated steel"/></Fld>
+            <Fld label="Brand Guideline Link"><Inp type="url" value={form.brandGuideLink||""} onChange={e=>f("brandGuideLink",e.target.value)} placeholder="https://…"/></Fld>
+            <Fld label="Budget (optional)"><Inp value={form.budget||""} onChange={e=>f("budget",e.target.value)} placeholder="e.g. ₱150,000"/></Fld>
             {/* Only the Design lead (Manager/Design) assigns who works the brief —
                 Sales/Ops requesting it don't pick the designer. */}
             {canAcknowledge
@@ -16503,7 +16634,7 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
       )}
 
       {/* DRF Table */}
-      {shown.length===0&&<div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8",fontSize:".84rem"}}>No design requests yet.</div>}
+      {shown.length===0&&<div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8",fontSize:".84rem"}}>{(q||filterSt!=="All"||filterDesigner!=="All")?"No design requests match your search / filters.":"No design requests yet."}</div>}
       {shown.length>0&&(
         <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
           <div style={{overflowX:mob?"visible":"auto"}}>
@@ -16571,7 +16702,17 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
                         <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:8}}>
                           {drf.location&&<span style={{fontSize:".72rem",color:"#64748b"}}>📍 {drf.location}</span>}
                           {drf.size&&<span style={{fontSize:".72rem",color:"#64748b"}}>📐 {drf.size}</span>}
+                          {drf.maxHeight&&<span style={{fontSize:".72rem",color:"#64748b"}}>↕ Max {drf.maxHeight}</span>}
+                          {drf.category&&<span style={{fontSize:".72rem",color:"#64748b"}}>🏷 {drf.category}</span>}
+                          {drf.platform&&<span style={{fontSize:".72rem",color:"#64748b"}}>🧱 {drf.platform}</span>}
                         </div>
+                        {(drf.finishes||drf.budget)&&(
+                          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:8,fontSize:".72rem",color:"#64748b"}}>
+                            {drf.finishes&&<span>🎨 Finishes: {drf.finishes}</span>}
+                            {drf.budget&&<span>💰 Budget: {drf.budget}</span>}
+                          </div>
+                        )}
+                        {drf.brandGuideLink&&<div style={{marginBottom:8}}><a href={drf.brandGuideLink} target="_blank" rel="noreferrer" style={{fontSize:".74rem",color:"#6366f1",fontWeight:600,textDecoration:"none"}}>📘 Brand Guideline →</a></div>}
                         {drf.description&&(
                           <div style={{fontSize:".78rem",color:"#475569",background:"#fff",borderRadius:8,padding:"10px 12px",whiteSpace:"pre-wrap",lineHeight:1.6,border:"1px solid #e9d5ff"}}>{drf.description}</div>
                         )}
@@ -16609,6 +16750,18 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
                     </div>
                     {/* Action buttons */}
                     <div style={{display:"flex",gap:7,flexWrap:"wrap",alignItems:"center"}}>
+                      {/* Inline status editing — available at any point after a DRF
+                          exists (incl. after acknowledgement), so the design lead can
+                          push it to In Progress / For Review / Revision / Approved etc.
+                          without opening the full edit form. */}
+                      {canAcknowledge&&(
+                        <select value={drf.status} onClick={e=>e.stopPropagation()}
+                          onChange={e=>{const status=e.target.value;updateDRF(drf.id,{status});}}
+                          title="Update status"
+                          style={{border:`1.5px solid ${statusClr}`,borderRadius:8,padding:"6px 10px",fontFamily:"inherit",fontSize:".75rem",color:statusClr,background:statusClr+"12",cursor:"pointer",fontWeight:700}}>
+                          {DRF_STATUSES.filter(s=>s!=="Approved"||role==="Manager"||isHeadDesigner(session?.name)).map(s=><option key={s} value={s} style={{color:"#0f172a",background:"#fff",fontWeight:400}}>{s}</option>)}
+                        </select>
+                      )}
                       {canAcknowledge&&(
                         <select value={drf.designer||""} onClick={e=>e.stopPropagation()}
                           onChange={e=>{const designer=e.target.value;updateDRF(drf.id,{designer,status:drf.status==="New"?"Acknowledged":drf.status});}}

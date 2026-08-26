@@ -2,9 +2,9 @@
 // App.jsx. No component state — each is a plain shape transform. (The
 // state-dependent mappers like toSbDeal/toSbBilling stay inside App as closures.)
 
-export const drfToSb  =(r)=>({id:r.id,deal_id:r.dealId||null,drf_no:r.drfNo||'',client:r.client||'',location:r.location||'',designer:r.designer||'',design_deadline:r.designDeadline||null,project_title:r.projectTitle||'',type:r.type||'',size:r.size||'',description:r.description||'',accessories:r.accessories||[],ref_links:r.refLinks||[],notes:r.notes||'',approved_link:r.approvedLink||'',status:r.status||'New',created_by:r.createdBy||''});
+export const drfToSb  =(r)=>({id:r.id,deal_id:r.dealId||null,drf_no:r.drfNo||'',client:r.client||'',location:r.location||'',designer:r.designer||'',design_deadline:r.designDeadline||null,project_title:r.projectTitle||'',type:r.type||'',category:r.category||'',size:r.size||'',platform:r.platform||'',finishes:r.finishes||'',max_height:r.maxHeight||'',brand_guide_link:r.brandGuideLink||'',budget:r.budget||'',description:r.description||'',accessories:r.accessories||[],ref_links:r.refLinks||[],notes:r.notes||'',approved_link:r.approvedLink||'',status:r.status||'New',created_by:r.createdBy||''});
 
-export const drfFromSb=(r)=>({...r,dealId:r.deal_id,drfNo:r.drf_no,designDeadline:r.design_deadline,projectTitle:r.project_title,refLinks:r.ref_links||[],approvedLink:r.approved_link,createdBy:r.created_by,createdAt:r.created_at});
+export const drfFromSb=(r)=>({...r,dealId:r.deal_id,drfNo:r.drf_no,designDeadline:r.design_deadline,projectTitle:r.project_title,maxHeight:r.max_height,brandGuideLink:r.brand_guide_link,refLinks:r.ref_links||[],approvedLink:r.approved_link,createdBy:r.created_by,createdAt:r.created_at});
 
 export const invToSb  =(r)=>({id:r.id,code:r.code||'',name:r.name||'',category:r.category||'',sub_category:r.subCategory||'',brand:r.brand||'',supplier:r.supplier||'',unit:r.unit||'',unit_size:r.unitSize||'',location:r.location||'Main Warehouse',qty_on_hand:Number(r.qtyOnHand)||0,reorder_point:Number(r.reorderPoint)||0,last_purchase_price:Number(r.lastPurchasePrice)||0,avg_cost:Number(r.avgCost)||0,last_updated:r.lastUpdated||null,notes:r.notes||'',status:r.status||'Active',ownership:r.ownership||'Project Stock',high_value:!!r.highValue,created_by:r.createdBy||''});
 
