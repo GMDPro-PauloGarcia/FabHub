@@ -13743,14 +13743,70 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 </div>
               )}
               {linkedDrf&&(
-                <div style={{marginTop:8,paddingTop:8,borderTop:"1px solid #e2e8f0",fontSize:".75rem",color:"#6366f1",fontWeight:600}}>
-                  📄 DRF on file: {linkedDrf.drfNo||"DRF"} · {linkedDrf.type||""} · {linkedDrf.designDeadline||"no deadline"}
-                  {linkedDrf.description&&<div style={{color:"#475569",fontWeight:400,marginTop:3}}>{linkedDrf.description}</div>}
+                <div style={{marginTop:8,paddingTop:8,borderTop:"1px solid #e2e8f0"}}>
+                  <div style={{fontSize:".75rem",color:"#6366f1",fontWeight:700}}>
+                    📄 DRF on file: {linkedDrf.drfNo||"DRF"} · {linkedDrf.type||""} · {linkedDrf.designDeadline||"no deadline"}
+                  </div>
+                  {/* Sales-brief template fields carried on the DRF. */}
+                  {(linkedDrf.category||linkedDrf.platform||linkedDrf.finishes||linkedDrf.maxHeight||linkedDrf.budget||linkedDrf.size)&&(
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"5px 16px",fontSize:".78rem",color:"#1e293b",marginTop:8}}>
+                      {linkedDrf.category&&<div><span style={{color:"#94a3b8",fontSize:".7rem"}}>Project Type</span><div style={{fontWeight:600}}>{linkedDrf.category}</div></div>}
+                      {linkedDrf.size&&<div><span style={{color:"#94a3b8",fontSize:".7rem"}}>Size / Dimensions</span><div style={{fontWeight:600}}>{linkedDrf.size}</div></div>}
+                      {linkedDrf.maxHeight&&<div><span style={{color:"#94a3b8",fontSize:".7rem"}}>Maximum Height</span><div style={{fontWeight:600}}>{linkedDrf.maxHeight}</div></div>}
+                      {linkedDrf.platform&&<div><span style={{color:"#94a3b8",fontSize:".7rem"}}>Platform</span><div style={{fontWeight:600}}>{linkedDrf.platform}</div></div>}
+                      {linkedDrf.finishes&&<div><span style={{color:"#94a3b8",fontSize:".7rem"}}>Ideal Finishes</span><div style={{fontWeight:600}}>{linkedDrf.finishes}</div></div>}
+                      {linkedDrf.budget&&<div><span style={{color:"#94a3b8",fontSize:".7rem"}}>Budget</span><div style={{fontWeight:600}}>{linkedDrf.budget}</div></div>}
+                    </div>
+                  )}
+                  {linkedDrf.description&&<div style={{color:"#475569",fontSize:".78rem",marginTop:8,whiteSpace:"pre-wrap"}}>{linkedDrf.description}</div>}
+                  <div style={{display:"flex",gap:12,flexWrap:"wrap",marginTop:8}}>
+                    {linkedDrf.brandGuideLink&&<a href={linkedDrf.brandGuideLink} target="_blank" rel="noreferrer" style={{fontSize:".74rem",color:"#6366f1",fontWeight:600,textDecoration:"none"}}>📘 Brand Guideline →</a>}
+                    {(linkedDrf.refLinks||[]).filter(Boolean).map((r,i)=>(
+                      <a key={i} href={r} target="_blank" rel="noreferrer" style={{fontSize:".74rem",color:"#6366f1",fontWeight:600,textDecoration:"none"}}>🖼 Ref {i+1}</a>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
             {/* ── Design Work ──────────────────────────────── */}
             <div style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px",marginBottom:10}}>🎨 Design Output</div>
+            {/* Project Status — same progression as the card pills, editable here.
+                Marking Done requires a file/link and advances the project to
+                Fabrication (mirrors the card behaviour). */}
+            {(()=>{const ds=proj.design?.status||"Briefing";return(
+              <Fld label="Project Status">
+                <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
+                  {DESIGN_STATUSES.map(s=>(
+                    <button key={s} onClick={()=>{
+                      if(s===ds) return;
+                      if(s==="Done"&&!proj.design?.link){toastEmit("⚠ Please add a file / link before marking Done.","warning");return;}
+                      const next={...proj.design,status:s,statusHistory:[...(proj.design?.statusHistory||[]),{status:s,date:today,by:session?.name||"Design"}]};
+                      upProj(selProj,x=>({...x,design:next}));
+                      if(s==="Done"&&proj.currentStage==="Design"){
+                        upProj(selProj,x=>({...x,currentStage:"Fabrication",progress:{...x.progress,Design:100},stageDates:{...x.stageDates,Design:{...x.stageDates?.Design,e:today},Fabrication:{...x.stageDates?.Fabrication,s:x.stageDates?.Fabrication?.s||today}}}));
+                        const msg=`🎨 <b>Design Complete — Ready for Fabrication</b>\nProject: <b>${deal?.client||"?"}</b>${deal?.ceNo?`\nCE: ${deal.ceNo}`:""}\nDesigner: ${next.designer||"—"}${next.revisionNo?`\nRevision: ${next.revisionNo}`:""}\n${next.link?`<a href="${next.link}">View Drawings</a>`:"No file link yet"}\nBy: ${session?.name||"Design"}`;
+                        sendTelegramNotification("ops",msg);sendTelegramNotification("management",msg);
+                      }
+                    }} style={{padding:"5px 12px",border:`1.5px solid ${ds===s?DS_CLR[s]:"#e2e8f0"}`,borderRadius:16,background:ds===s?DS_CLR[s]+"18":"#fff",color:ds===s?DS_CLR[s]:"#94a3b8",fontWeight:ds===s?700:400,cursor:"pointer",fontSize:".74rem",fontFamily:"inherit"}}>{s}</button>
+                  ))}
+                </div>
+              </Fld>
+            );})()}
+            {/* Status history timeline */}
+            {(proj.design?.statusHistory||[]).length>0&&(
+              <div style={{background:"#f8fafc",border:"1px solid #eef2f7",borderRadius:10,padding:"8px 12px",marginBottom:12}}>
+                <div style={{fontSize:".64rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:6}}>Status History</div>
+                <div style={{display:"flex",flexDirection:"column",gap:3}}>
+                  {[...proj.design.statusHistory].slice(-6).reverse().map((h,i)=>(
+                    <div key={i} style={{display:"flex",alignItems:"center",gap:8,fontSize:".74rem"}}>
+                      <span style={{width:8,height:8,borderRadius:99,background:DS_CLR[h.status]||"#94a3b8",flexShrink:0}}/>
+                      <span style={{fontWeight:600,color:"#334155"}}>{h.status}</span>
+                      <span style={{color:"#94a3b8",marginLeft:"auto"}}>{h.date}{h.by?` · ${h.by}`:""}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <Fld label="Designer"><Sel value={proj.design?.designer||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,designer:e.target.value}}))}><option value="">— Select —</option>{DESIGN_MEMBERS.map(m=><option key={m}>{m}</option>)}</Sel></Fld>
             <Fld label="Due Date"><Inp type="date" value={proj.design?.dueDate||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,dueDate:e.target.value}}))}/></Fld>
             <Fld label="Revision No." hint="e.g. Rev 3 — lock this before handoff to Ops"><Inp value={proj.design?.revisionNo||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,revisionNo:e.target.value}}))} placeholder="e.g. Rev 3"/></Fld>
