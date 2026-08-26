@@ -958,11 +958,12 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
   const setDrfRef=(i,v)=>f("drfRefLinks",(form.drfRefLinks||["","",""]).map((r,ri)=>ri===i?v:r));
   const mob=window.innerWidth<768;
   const[saving,setSaving]=useState(false);
+  const[vatErr,setVatErr]=useState(false);
 
   // Sync when modal opens or editId changes
   const formKey=`${open}-${editId||"new"}`;
   useEffect(()=>{
-    if(open){setForm(initialForm||emptyDeal);setSaving(false);}
+    if(open){setForm(initialForm||emptyDeal);setSaving(false);setVatErr(false);}
   },[open,editId]);
 
   const handleSave=async()=>{
@@ -970,6 +971,15 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
     // fast double-click before it resolves could re-run the whole save and
     // risk a second deal record. Guard with a local submitting lock.
     if(saving) return;
+    // Receipt type is a required, no-default choice once the deal carries a
+    // value: VAT (OR) vs VAT-exempt (AR) drives billing, milestones and the
+    // sales report, so a silent default is how a non-VAT project ends up
+    // showing 12% VAT. Force an explicit pick instead of assuming OR.
+    if(Number(form.value)>0 && !["OR","AR"].includes(form.receiptType)){
+      setVatErr(true);
+      return;
+    }
+    setVatErr(false);
     setSaving(true);
     // Pass local form data directly to saveDeal — bypasses async state sync
     _setForm(()=>form);
@@ -1175,17 +1185,17 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
           <div style={{fontWeight:700,color:"#92400e",fontSize:".88rem",marginBottom:12}}>🧾 Tax Settings</div>
           <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:14,marginBottom:14}}>
             <div>
-              <label style={{display:"block",fontSize:".68rem",fontWeight:700,color:"#92400e",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>Receipt Type</label>
+              <label style={{display:"block",fontSize:".68rem",fontWeight:700,color:"#92400e",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>Receipt Type <span style={{color:"#dc2626"}}>*</span></label>
               <div style={{display:"flex",gap:8}}>
                 {["OR","AR"].map(rt=>(
-                  <button key={rt} type="button" onClick={()=>setForm(p=>({...p,receiptType:rt,withholding:rt==="AR"?false:p.withholding}))}
-                    style={{flex:1,padding:"8px",border:`2px solid ${form.receiptType===rt?"#d97706":"#e2e8f0"}`,borderRadius:8,background:form.receiptType===rt?"#fef3c7":"#fff",color:form.receiptType===rt?"#92400e":"#64748b",fontWeight:form.receiptType===rt?700:400,cursor:"pointer",fontFamily:"inherit",fontSize:".82rem"}}>
+                  <button key={rt} type="button" onClick={()=>{setForm(p=>({...p,receiptType:rt,withholding:rt==="AR"?false:p.withholding}));setVatErr(false);}}
+                    style={{flex:1,padding:"8px",border:`2px solid ${form.receiptType===rt?"#d97706":(vatErr?"#fca5a5":"#e2e8f0")}`,borderRadius:8,background:form.receiptType===rt?"#fef3c7":"#fff",color:form.receiptType===rt?"#92400e":"#64748b",fontWeight:form.receiptType===rt?700:400,cursor:"pointer",fontFamily:"inherit",fontSize:".82rem"}}>
                     {rt==="OR"?"🧾 OR (with VAT)":"📄 AR (no VAT)"}
                   </button>
                 ))}
               </div>
-              <div style={{fontSize:".7rem",color:"#92400e",marginTop:5,opacity:.8}}>
-                {form.receiptType==="OR"?"Official Receipt — VAT 12% applies":"Acknowledgement Receipt — VAT exempted"}
+              <div style={{fontSize:".7rem",color:vatErr?"#dc2626":"#92400e",marginTop:5,opacity:vatErr?1:.8,fontWeight:vatErr?700:400}}>
+                {form.receiptType==="OR"?"Official Receipt — VAT 12% applies":form.receiptType==="AR"?"Acknowledgement Receipt — VAT exempted":vatErr?"⚠ Required — choose OR (with VAT) or AR (no VAT) before saving.":"Choose OR (with VAT) or AR (no VAT)."}
               </div>
             </div>
             {form.receiptType==="OR"?(
@@ -1203,13 +1213,13 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
             ):(
               <div style={{display:"flex",alignItems:"center"}}>
                 <div style={{background:"#f1f5f9",borderRadius:8,padding:"12px 16px",fontSize:".78rem",color:"#94a3b8",width:"100%",textAlign:"center"}}>
-                  📄 AR — No EWT applicable
+                  {form.receiptType==="AR"?"📄 AR — No EWT applicable":"Set receipt type to see EWT options"}
                 </div>
               </div>
             )}
           </div>
-          {(()=>{
-            const tx=calcTax(form.value,form.receiptType||"OR",form.withholding||false);
+          {["OR","AR"].includes(form.receiptType)&&(()=>{
+            const tx=calcTax(form.value,form.receiptType,form.withholding||false);
             return(
               <div style={{background:"rgba(255,255,255,.8)",borderRadius:8,padding:"12px 14px",display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(4,1fr)",gap:10,borderTop:"1px solid #fde68a"}}>
                 {[
@@ -3193,7 +3203,7 @@ export default function App(){
     due_date:r.dueDate||null, follow_up:r.followUp||null,
     value:Number(r.value)||0,
     invoiced:Number(r.invoiced)||0, amount_paid:Number(r.amountPaid)||0,
-    payment_status:r.paymentStatus||"Unpaid", receipt_type:r.receiptType||"OR",
+    payment_status:r.paymentStatus||"Unpaid", receipt_type:r.receiptType||null,
     withholding:r.withholding||false, comms_group:r.commsGroup||"",
     sales_repo_link:r.salesRepoLink||"", proposal_folder_link:r.proposalFolderLink||"",
     notes:r.notes||"", probability:Number(r.probability)||0,
@@ -14465,8 +14475,23 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       };
       return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} initialCoId={boqCoId} coRecord={co} saveCoBoq={boqCoReadOnly?undefined:saveCoBoq} readOnly={boqCoReadOnly} onBack={()=>{setBoqCoReadOnly(false);setBoqCoId(null);}}/></Wrap>);
     }
-    if(boqDealId) return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} initialDealId={boqDealId} clearBoqDeal={()=>setBoqDealId(null)} onBack={()=>setBoqDealId(null)} onBoqValue={(dealId,netTotal)=>{const v=Math.round((Number(netTotal)||0)*100)/100;const cur=deals.find(d=>d.id===dealId);if(cur&&Math.round((Number(cur.value)||0)*100)/100===v)return;upDeals(ds=>ds.map(d=>d.id===dealId?{...d,value:v}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{value:v}).catch(()=>{});}} onBoqData={(dealId,bd)=>upDeals(ds=>ds.map(d=>d.id===dealId?{...d,boqData:bd}:d))} onUnlinkToStandalone={(b)=>{const did=boqDealId;const id=uid();saveStandaloneBoq({id,title:b.boqTitle||"",location:b.location||"",quotationNo:b.quotationNo||"",boqDate:b.boqDate||today,items:b.items||[],sections:b.sections||[],vatEnabled:b.vatEnabled!==false,discount:b.discount||"",createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});try{const drafts=JSON.parse(localStorage.getItem(KEYS.boqDrafts)||"{}");delete drafts[did];localStorage.setItem(KEYS.boqDrafts,JSON.stringify(drafts));}catch{}if(isSupabaseReady())sbUpdate('deals',did,{boq_data:null}).catch(()=>{});setBoqDealId(null);setBoqStandaloneId(id);toastEmit&&toastEmit("✅ BOQ unlinked to Standalone","success");}}/></Wrap>);
-    if(boqStandaloneId) return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} standaloneBoqs={standaloneBoqs} saveStandaloneBoq={saveStandaloneBoq} initialStandaloneId={boqStandaloneId} clearBoqStandalone={()=>setBoqStandaloneId(null)} onBack={()=>setBoqStandaloneId(null)} onLinkToDeal={(dealId,boqData)=>{const sid=boqStandaloneId;try{const drafts=JSON.parse(localStorage.getItem(KEYS.boqDrafts)||"{}");drafts[dealId]=boqData;localStorage.setItem(KEYS.boqDrafts,JSON.stringify(drafts));}catch{}if(isSupabaseReady())sbUpdate('deals',dealId,{boq_data:boqData}).catch(()=>{});const bi=boqData.items||[];if(bi.length){const grand=bi.reduce((s,it)=>s+(Number(it.total)||0),0);const disc=Math.min(Math.max(Number(boqData.discount)||0,0),grand);const net=Math.round((grand-disc)*100)/100;upDeals(ds=>ds.map(d=>d.id===dealId?{...d,value:net,boqData}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{value:net}).catch(()=>{});}else{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,boqData}:d));}deleteStandaloneBoq(sid);setBoqStandaloneId(null);setBoqDealId(dealId);toastEmit&&toastEmit("✅ BOQ linked to project — deal value set from BOQ","success");}}/></Wrap>);
+    if(boqDealId) return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} initialDealId={boqDealId} clearBoqDeal={()=>setBoqDealId(null)} onBack={()=>setBoqDealId(null)} onBoqValue={(dealId,netTotal)=>{const v=Math.round((Number(netTotal)||0)*100)/100;const cur=deals.find(d=>d.id===dealId);if(cur&&Math.round((Number(cur.value)||0)*100)/100===v)return;upDeals(ds=>ds.map(d=>d.id===dealId?{...d,value:v}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{value:v}).catch(()=>{});}} onBoqData={(dealId,bd)=>upDeals(ds=>ds.map(d=>d.id===dealId?{...d,boqData:bd}:d))} onBoqVat={(dealId,vatEnabled)=>{
+      // BOQ pre-fills the deal's receipt type from its VAT checkbox, but only
+      // when the deal has no explicit choice yet — a receipt type set on the
+      // deal is treated as an intentional override and is never clobbered by a
+      // later BOQ save. vatEnabled must be a decided boolean (not the unset
+      // null) for the fill to apply. VAT on → OR, exempt → AR.
+      if(typeof vatEnabled!=="boolean")return;
+      const rt=vatEnabled?"OR":"AR";
+      const cur=deals.find(d=>d.id===dealId);
+      if(!cur||["OR","AR"].includes(cur.receiptType))return;
+      upDeals(ds=>ds.map(d=>d.id===dealId?{...d,receiptType:rt,withholding:rt==="AR"?false:d.withholding}:d));
+      if(isSupabaseReady())sbUpdate('deals',dealId,{receipt_type:rt,...(rt==="AR"?{withholding:false}:{})}).catch(()=>{});
+    }} onUnlinkToStandalone={(b)=>{const did=boqDealId;const id=uid();saveStandaloneBoq({id,title:b.boqTitle||"",location:b.location||"",quotationNo:b.quotationNo||"",boqDate:b.boqDate||today,items:b.items||[],sections:b.sections||[],vatEnabled:b.vatEnabled!==false,discount:b.discount||"",createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});try{const drafts=JSON.parse(localStorage.getItem(KEYS.boqDrafts)||"{}");delete drafts[did];localStorage.setItem(KEYS.boqDrafts,JSON.stringify(drafts));}catch{}if(isSupabaseReady())sbUpdate('deals',did,{boq_data:null}).catch(()=>{});setBoqDealId(null);setBoqStandaloneId(id);toastEmit&&toastEmit("✅ BOQ unlinked to Standalone","success");}}/></Wrap>);
+    if(boqStandaloneId) return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} standaloneBoqs={standaloneBoqs} saveStandaloneBoq={saveStandaloneBoq} initialStandaloneId={boqStandaloneId} clearBoqStandalone={()=>setBoqStandaloneId(null)} onBack={()=>setBoqStandaloneId(null)} onLinkToDeal={(dealId,boqData)=>{const sid=boqStandaloneId;try{const drafts=JSON.parse(localStorage.getItem(KEYS.boqDrafts)||"{}");drafts[dealId]=boqData;localStorage.setItem(KEYS.boqDrafts,JSON.stringify(drafts));}catch{}if(isSupabaseReady())sbUpdate('deals',dealId,{boq_data:boqData}).catch(()=>{});
+      // Pre-fill receipt type from the linked BOQ's VAT choice when the deal has
+      // none yet (decided boolean only; deal-side override is preserved).
+      if(typeof boqData.vatEnabled==="boolean"){const rt=boqData.vatEnabled?"OR":"AR";const cur=deals.find(d=>d.id===dealId);if(cur&&!["OR","AR"].includes(cur.receiptType)){upDeals(ds=>ds.map(d=>d.id===dealId?{...d,receiptType:rt,withholding:rt==="AR"?false:d.withholding}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{receipt_type:rt,...(rt==="AR"?{withholding:false}:{})}).catch(()=>{});}}const bi=boqData.items||[];if(bi.length){const grand=bi.reduce((s,it)=>s+(Number(it.total)||0),0);const disc=Math.min(Math.max(Number(boqData.discount)||0,0),grand);const net=Math.round((grand-disc)*100)/100;upDeals(ds=>ds.map(d=>d.id===dealId?{...d,value:net,boqData}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{value:net}).catch(()=>{});}else{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,boqData}:d));}deleteStandaloneBoq(sid);setBoqStandaloneId(null);setBoqDealId(dealId);toastEmit&&toastEmit("✅ BOQ linked to project — deal value set from BOQ","success");}}/></Wrap>);
     return(<Wrap><BOQHomeView standaloneBoqs={standaloneBoqs} deals={deals} session={session} role={role} today={today} onOpenStandalone={id=>{setBoqCoId(null);setBoqDealId(null);setBoqStandaloneId(id);}} onOpenDeal={id=>{setBoqCoId(null);setBoqStandaloneId(null);setBoqDealId(id);}} onNewStandalone={()=>{const id=uid();saveStandaloneBoq({id,title:"",location:"",quotationNo:"",boqDate:today,items:[],sections:[],vatEnabled:true,discount:"",createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});setBoqCoId(null);setBoqDealId(null);setBoqStandaloneId(id);}} onDeleteStandalone={deleteStandaloneBoq}/></Wrap>);
   }
 
