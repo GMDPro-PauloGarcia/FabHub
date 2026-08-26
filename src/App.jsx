@@ -13877,6 +13877,38 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               </div>
               {!hasApproval&&<div style={{fontSize:".72rem",color:"#92400e",marginTop:6}}>Fill in both fields above to lock this revision for handoff to Operations.</div>}
             </div>
+            {/* ── Client-facing Approval ───────────────────── */}
+            {(()=>{
+              const cs=proj.design?.clientStatus||"Not Sent";
+              const CS_CLR={"Not Sent":"#94a3b8","Sent for Review":"#3b82f6","Client Approved":"#059669","Client Revisions":"#ef4444"};
+              const clr=CS_CLR[cs];
+              return(
+              <div style={{marginTop:16,background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"14px 16px"}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap",marginBottom:10}}>
+                  <div style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px"}}>🤝 Client Approval</div>
+                  <span style={{fontSize:".7rem",fontWeight:700,color:clr,background:clr+"18",border:`1px solid ${clr}44`,borderRadius:20,padding:"2px 10px"}}>{cs}</span>
+                </div>
+                <Fld label="Client Review Link" hint="Shareable drawings / presentation link to send the client for sign-off">
+                  <div style={{display:"flex",gap:8}}>
+                    <Inp type="url" value={proj.design?.clientReviewLink||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,clientReviewLink:e.target.value}}))} placeholder="https://drive.google.com/…"/>
+                    {proj.design?.clientReviewLink&&<a href={proj.design.clientReviewLink} target="_blank" rel="noreferrer" style={{flexShrink:0,background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"8px 12px",fontSize:".75rem",color:"#1d4ed8",fontWeight:700,textDecoration:"none",alignSelf:"center"}}>Open ↗</a>}
+                  </div>
+                </Fld>
+                <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:10}}>
+                  <Fld label="Review Status"><Sel value={cs} onChange={e=>{const v=e.target.value;upProj(selProj,p=>({...p,design:{...p.design,clientStatus:v}}));if(v==="Client Approved"&&!proj.design?.clientSignoffDate)upProj(selProj,p=>({...p,design:{...p.design,clientSignoffDate:today}}));}}>{["Not Sent","Sent for Review","Client Approved","Client Revisions"].map(s=><option key={s}>{s}</option>)}</Sel></Fld>
+                  <Fld label="Client Sign-off (name)"><Inp value={proj.design?.clientSignoffName||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,clientSignoffName:e.target.value}}))} placeholder="Client contact who approved"/></Fld>
+                  <Fld label="Sign-off Date"><Inp type="date" value={proj.design?.clientSignoffDate||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,clientSignoffDate:e.target.value}}))}/></Fld>
+                  <Fld label="Client Feedback"><Inp value={proj.design?.clientFeedback||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,clientFeedback:e.target.value}}))} placeholder="Revisions requested, comments…"/></Fld>
+                </div>
+                {cs==="Client Approved"&&proj.design?.clientSignoffName&&(
+                  <div style={{marginTop:10,background:"#dcfce7",border:"1.5px solid #86efac",borderRadius:10,padding:"8px 14px",display:"inline-flex",gap:10,alignItems:"center"}}>
+                    <span style={{fontSize:"1.1rem"}}>✅</span>
+                    <div style={{fontSize:".76rem",color:"#166534",fontWeight:600}}>Client approved by {proj.design.clientSignoffName}{proj.design.clientSignoffDate?` · ${proj.design.clientSignoffDate}`:""}</div>
+                  </div>
+                )}
+              </div>
+              );
+            })()}
             <div style={{fontSize:".72rem",color:"#94a3b8",textAlign:"center",marginTop:10,marginBottom:4}}>Changes are saved automatically as you type.</div>
             <Btn full onClick={()=>setSelProj(null)}>Close</Btn>
           </Modal>
