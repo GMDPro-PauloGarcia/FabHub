@@ -1132,8 +1132,14 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
         </div>
         {form.drfReqCreate&&(
         <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:12,marginTop:12}}>
-          <Fld label="Size / Dimensions"><Inp value={form.drfSize||""} onChange={e=>f("drfSize",e.target.value)} placeholder="e.g. W1200 x H1800 x D600mm"/></Fld>
+          <Fld label="Project Type" hint="Kiosk / In-line / Event / Other"><Sel value={form.drfCategory||""} onChange={e=>f("drfCategory",e.target.value)}><option value="">— Select —</option>{DRF_CATEGORIES.map(t=><option key={t}>{t}</option>)}</Sel></Fld>
           <Fld label="Design Deadline"><Inp type="date" value={form.drfDeadline||""} onChange={e=>f("drfDeadline",e.target.value)}/></Fld>
+          <Fld label="Size / Dimensions"><Inp value={form.drfSize||""} onChange={e=>f("drfSize",e.target.value)} placeholder="e.g. W1200 x H1800 x D600mm"/></Fld>
+          <Fld label="Maximum Height"><Inp value={form.drfMaxHeight||""} onChange={e=>f("drfMaxHeight",e.target.value)} placeholder="e.g. 2400mm"/></Fld>
+          <Fld label="Platform"><Sel value={form.drfPlatform||""} onChange={e=>f("drfPlatform",e.target.value)}><option value="">— Select —</option><option>With Platform</option><option>Without Platform</option></Sel></Fld>
+          <Fld label="Ideal Finishes"><Inp value={form.drfFinishes||""} onChange={e=>f("drfFinishes",e.target.value)} placeholder="e.g. Matte laminate, powder-coated steel"/></Fld>
+          <Fld label="Brand Guideline Link"><Inp type="url" value={form.drfBrandGuideLink||""} onChange={e=>f("drfBrandGuideLink",e.target.value)} placeholder="https://…"/></Fld>
+          <Fld label="Budget (optional)"><Inp value={form.drfBudget||""} onChange={e=>f("drfBudget",e.target.value)} placeholder="e.g. ₱150,000"/></Fld>
           <div style={{gridColumn:"1/-1"}}><Fld label="Description / Details" hint="What needs to be designed? Include dimensions, function, and key specs."><Inp rows={4} value={form.drfDescription||""} onChange={e=>f("drfDescription",e.target.value)} placeholder={"RE-CREATE: Golf bag organizer rack\nSIZE: Must fit two large golf bags\nFUNCTION: Store bags + shoe shelf"}/></Fld></div>
           <div style={{gridColumn:"1/-1"}}>
             <div style={{fontSize:".8rem",fontWeight:700,color:"#64748b",marginBottom:6}}>Accessories / Components</div>
@@ -5968,7 +5974,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           dealId:rec.id, client:rec.client, location:"",
           designer:"", designDeadline:data.drfDeadline||"",
           projectTitle:data.drfProjectTitle||rec.contact||rec.client||"",
-          type:data.ceType||DRF_TYPES[0], size:data.drfSize||"",
+          type:data.ceType||DRF_TYPES[0], category:data.drfCategory||"",
+          size:data.drfSize||"", maxHeight:data.drfMaxHeight||"",
+          platform:data.drfPlatform||"", finishes:data.drfFinishes||"",
+          brandGuideLink:data.drfBrandGuideLink||"", budget:data.drfBudget||"",
           description:data.drfDescription||"",
           accessories:data.drfAccessories||[], refLinks:data.drfRefLinks||["","",""],
           notes:data.drfNotes||"", approvedLink:"", status:"New",
