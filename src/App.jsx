@@ -16942,16 +16942,28 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
                 {/* Expanded detail panel */}
                 {isExpanded&&(
                   <div style={{background:"#faf5ff",borderTop:"1px solid #e9d5ff",padding:"14px 18px"}}>
+                    {/* Standardized brief summary — the answered Sales form.
+                        Always shows the same four fields in the same order so
+                        every DRF reads consistently. */}
+                    <div style={{background:"#fff",border:"1px solid #e9d5ff",borderRadius:10,padding:"12px 14px",marginBottom:12}}>
+                      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:"10px 16px"}}>
+                        {[["Category",drf.category],["Client",drf.client],["Location",drf.location],["Size",drf.size]].map(([l,v])=>(
+                          <div key={l}>
+                            <div style={{fontSize:".62rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".6px",marginBottom:3}}>{l}</div>
+                            <div style={{fontSize:".82rem",color:v?"#0f172a":"#cbd5e1",fontWeight:600}}>{v||"—"}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                     <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14,marginBottom:12}}>
                       {/* Left: brief details */}
                       <div>
-                        <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:8}}>
-                          {drf.location&&<span style={{fontSize:".72rem",color:"#64748b"}}>📍 {drf.location}</span>}
-                          {drf.size&&<span style={{fontSize:".72rem",color:"#64748b"}}>📐 {drf.size}</span>}
-                          {drf.maxHeight&&<span style={{fontSize:".72rem",color:"#64748b"}}>↕ Max {drf.maxHeight}</span>}
-                          {drf.category&&<span style={{fontSize:".72rem",color:"#64748b"}}>🏷 {drf.category}</span>}
-                          {drf.platform&&<span style={{fontSize:".72rem",color:"#64748b"}}>🧱 {drf.platform}</span>}
-                        </div>
+                        {(drf.maxHeight||drf.platform)&&(
+                          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:8}}>
+                            {drf.maxHeight&&<span style={{fontSize:".72rem",color:"#64748b"}}>↕ Max {drf.maxHeight}</span>}
+                            {drf.platform&&<span style={{fontSize:".72rem",color:"#64748b"}}>🧱 {drf.platform}</span>}
+                          </div>
+                        )}
                         {(drf.finishes||drf.budget)&&(
                           <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:8,fontSize:".72rem",color:"#64748b"}}>
                             {drf.finishes&&<span>🎨 Finishes: {drf.finishes}</span>}
