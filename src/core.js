@@ -205,7 +205,7 @@ export const SW_CLR    = { "To Buy":"#ef4444",Ordered:"#f59e0b",Received:"#10b98
 
 export const DRF_TYPES = ["Module / Display Fixture","Signage","Retail Fit-Out","Counter / Reception","Kiosk","Wall Panel / Decor","Custom Furniture","Other"];
 
-// Project category as supplied by the Sales brief template (Kiosk / In-line / Event / Other).
+// Project category as supplied by the Sales brief template (Event / Kiosk / Store / Others).
 export const DRF_CATEGORIES = ["Event","Kiosk","Store","Others"];
 
 export const DRF_STATUSES = ["New","Acknowledged","In Progress","For Review","Revision","Approved","Production","Done"];
