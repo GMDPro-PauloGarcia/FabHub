@@ -395,6 +395,19 @@ const FileAttachments=({folder,label="Attachments"})=>{
   );
 };
 
+// Render free-text that may contain http(s) URLs, turning each URL into a
+// clickable link while leaving the rest as plain text. Used for DRF
+// notes/descriptions where the team pastes a Google Drive / reference link
+// inline. whiteSpace:"pre-wrap" on the parent preserves line breaks.
+const Linkify=({text,color="#2563eb"})=>{
+  if(text==null||text==="") return null;
+  const parts=String(text).split(/(https?:\/\/[^\s]+)/g);
+  return parts.map((p,i)=>/^https?:\/\//.test(p)
+    ? <a key={i} href={p} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()} style={{color,fontWeight:600,wordBreak:"break-all",textDecoration:"underline"}}>{p}</a>
+    : <React.Fragment key={i}>{p}</React.Fragment>
+  );
+};
+
 function SetPriceModal({deal,today,onClose,onSave}){
   const[val,setVal]=React.useState(deal?.value||"");
   const[note,setNote]=React.useState("");
@@ -15958,7 +15971,7 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
                     {drf.size&&(<div><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:3}}>Size / Dimensions</div><div style={{fontWeight:600,color:"#0f172a",fontSize:".84rem"}}>{drf.size}</div></div>)}
                     {drf.designer&&(<div><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:3}}>Assigned Designer</div><div style={{fontWeight:600,color:"#0f172a",fontSize:".84rem"}}>{drf.designer}</div></div>)}
                     {drf.designDeadline&&(<div><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:3}}>Design Deadline</div><div style={{fontWeight:600,color:"#dc2626",fontSize:".84rem"}}>{drf.designDeadline}</div></div>)}
-                    {drf.description&&(<div style={{gridColumn:"1/-1"}}><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:3}}>Description / Scope</div><div style={{color:"#334155",fontSize:".83rem",whiteSpace:"pre-wrap",lineHeight:1.5}}>{drf.description}</div></div>)}
+                    {drf.description&&(<div style={{gridColumn:"1/-1"}}><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:3}}>Description / Scope</div><div style={{color:"#334155",fontSize:".83rem",whiteSpace:"pre-wrap",lineHeight:1.5}}><Linkify text={drf.description}/></div></div>)}
                     {(drf.accessories||[]).filter(Boolean).length>0&&(<div style={{gridColumn:"1/-1"}}><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Accessories / Components</div><div style={{display:"flex",flexWrap:"wrap",gap:5}}>{drf.accessories.filter(Boolean).map((a,i)=><span key={i} style={{background:"#e0e7ff",color:"#4338ca",borderRadius:5,padding:"2px 9px",fontSize:".74rem",fontWeight:600}}>{a}</span>)}</div></div>)}
                     {(drf.refLinks||[]).filter(Boolean).length>0&&(<div style={{gridColumn:"1/-1"}}><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Reference Links</div><div style={{display:"flex",flexWrap:"wrap",gap:8}}>{drf.refLinks.filter(Boolean).map((r,i)=><a key={i} href={r} target="_blank" rel="noreferrer" style={{color:"#6366f1",fontSize:".76rem",fontWeight:600,textDecoration:"none"}}>🔗 Ref {i+1}</a>)}</div></div>)}
                   </div>
@@ -16972,7 +16985,7 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
                         )}
                         {drf.brandGuideLink&&<div style={{marginBottom:8}}><a href={drf.brandGuideLink} target="_blank" rel="noreferrer" style={{fontSize:".74rem",color:"#6366f1",fontWeight:600,textDecoration:"none"}}>📘 Brand Guideline →</a></div>}
                         {drf.description&&(
-                          <div style={{fontSize:".78rem",color:"#475569",background:"#fff",borderRadius:8,padding:"10px 12px",whiteSpace:"pre-wrap",lineHeight:1.6,border:"1px solid #e9d5ff"}}>{drf.description}</div>
+                          <div style={{fontSize:".78rem",color:"#475569",background:"#fff",borderRadius:8,padding:"10px 12px",whiteSpace:"pre-wrap",lineHeight:1.6,border:"1px solid #e9d5ff"}}><Linkify text={drf.description}/></div>
                         )}
                         {drf.accessories?.filter(Boolean).length>0&&(
                           <div style={{marginTop:8}}>
@@ -17002,7 +17015,7 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
                             <a href={drf.approvedLink} target="_blank" rel="noreferrer" style={{fontSize:".78rem",color:"#059669",fontWeight:700}}>✅ View Approved Files →</a>
                           </div>
                         )}
-                        {drf.notes&&<div style={{fontSize:".75rem",color:"#92400e",background:"#fffbeb",borderRadius:6,padding:"6px 10px",marginBottom:8}}>📝 {drf.notes}</div>}
+                        {drf.notes&&<div style={{fontSize:".75rem",color:"#92400e",background:"#fffbeb",borderRadius:6,padding:"6px 10px",marginBottom:8,whiteSpace:"pre-wrap"}}>📝 <Linkify text={drf.notes} color="#b45309"/></div>}
                         <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:4}}>Submitted by {drf.createdBy||"—"} · {drf.createdAt}</div>
                       </div>
                     </div>
