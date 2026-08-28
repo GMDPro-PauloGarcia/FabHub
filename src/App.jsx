@@ -16690,6 +16690,30 @@ function MyFolderView({session,projList,projs,drfs,updateDRF,upProj,setSelProj,s
                         </div>
                         {open&&(
                           <div style={{background:"#faf5ff",borderTop:"1px solid #e9d5ff",padding:"14px 18px"}}>
+                            {/* Standardized data card — same Category · Client ·
+                                Location · Size block as the DRF list, so a project
+                                reads consistently wherever it appears. For a project
+                                card the values come from its linked DRF, falling back
+                                to the deal's brief. */}
+                            {(()=>{
+                              const ld=isDrf?it.drf:(drfs||[]).find(r=>r.dealId===it.id);
+                              const cat=ld?.category||"";
+                              const client=it.client||it.deal?.client||"";
+                              const loc=ld?.location||it.deal?.location||"";
+                              const size=ld?.size||it.deal?.drfSize||"";
+                              return(
+                                <div style={{background:"#fff",border:"1px solid #e9d5ff",borderRadius:10,padding:"12px 14px",marginBottom:14}}>
+                                  <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(4,1fr)",gap:"10px 16px"}}>
+                                    {[["Category",cat],["Client",client],["Location",loc],["Size",size]].map(([l,v])=>(
+                                      <div key={l}>
+                                        <div style={{fontSize:".62rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".6px",marginBottom:3}}>{l}</div>
+                                        <div style={{fontSize:".82rem",color:v?"#0f172a":"#cbd5e1",fontWeight:600}}>{v||"—"}</div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })()}
                             <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:14}}>
                               {/* Project Status */}
                               <div>
