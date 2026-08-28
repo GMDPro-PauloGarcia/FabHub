@@ -38,7 +38,7 @@ const FINISH_LEVELS=["Budget","Mid-range","High-end","Premium/Luxury"];
 // long-standing default so an un-decided draft reads the same as before.
 const boqGeneralNotes=vatEnabled=>{
   const vatNote=vatEnabled===false
-    ? "VAT Exempt (VATEX) — quotation is exclusive of Value Added Tax"
+    ? "VAT Exclusive (VATEX) — quotation is exclusive of Value Added Tax"
     : "Inclusive of Value Added Taxes";
   return [
     "Inclusive of Labor Fees (Inclusive of Night Differential)",
