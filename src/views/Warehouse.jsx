@@ -1,6 +1,6 @@
 import React,{useState,useMemo,useEffect,useRef} from "react";
 import {fmt,today,uid,toastEmit,Fld,Inp,Sel,KPI,uiConfirm,uiAlert} from "../shared";
-import {moveNeedsWitness,SCRAP_MOVE_TYPE} from "../core";
+import {moveNeedsWitness,SCRAP_MOVE_TYPE,emptyPR} from "../core";
 
 const INV_CATEGORIES = [
   {main:"Sheet Materials",  subs:["Board / Panel","Acrylic / Glass","Foam / Upholstery"]},
@@ -109,7 +109,7 @@ function InlineCell({value,onSave,isNum,color,mono,canEdit,C,tdS,badge}){
   );
 }
 // ─── TAT SETTER COMPONENT ─────────────────────────────────────────────────────
-function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventoryItem,updateInventoryItem,deleteInventoryItem,clearAllInventory,logStockMove,suppliers=[],addSupplier,projs={},upProjs,deals=[],session,role}){
+function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addPR,addInventoryItem,updateInventoryItem,deleteInventoryItem,clearAllInventory,logStockMove,suppliers=[],addSupplier,printDR,projs={},upProjs,deals=[],session,role}){
   // ── theme colours matching the warehouse standalone app ─────────────────
   const C={bg:"#f0f2f5",card:"#ffffff",border:"#e4e8ef",text:"#1a2035",muted:"#7b8499",accent:"#f97316",green:"#22c55e",teal:"#14b8a6",blue:"#3b82f6",red:"#ef4444",yellow:"#eab308"};
 
@@ -179,6 +179,34 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
     toastEmit&&toastEmit(`✓ Received ${rq} ${pr.unit||""}${isPartial?" (partial)":""} · ${isStock?"added to GMD Stock (asset — expensed on release)":"stock updated"}`,"success");
     setReceiveModal(null);
   };
+  // ── Reorder → draft Purchase Request (warehouse → purchasing link) ──────────
+  // Turns a low/out-of-stock alert into a Draft PR for procurement to issue.
+  // Suggests a top-up to 2× the reorder point (min the reorder point, min 1),
+  // tagged to GMD Stocks since it's a warehouse restock, not a project buy.
+  const createReorderPR=(item)=>{
+    if(!addPR){toastEmit&&toastEmit("Purchasing link unavailable in this view.","error");return;}
+    const rem=Number(item._rem)||0;
+    const rop=Number(item.reorderPoint)||0;
+    const suggested=Math.max(rop>0?rop*2-rem:0, rop, 1);
+    const uc=Number(item.lastPurchasePrice)||Number(item.avgCost)||0;
+    addPR({
+      ...emptyPR(),
+      itemName:item.name,
+      category:item.category||"Materials",
+      unit:item.unit||"pcs",
+      qty:suggested,
+      estUnitCost:uc,
+      supplier:item.supplier||"",
+      projectId:"__gmd_stocks__",
+      projectName:"GMD Stocks",
+      status:"Draft",
+      requestedBy:session?.name||role||"Warehouse",
+      notes:`Auto-drafted from low-stock alert (${rem} ${item.unit||""} on hand${rop?`, reorder at ${rop}`:""})`,
+    });
+    toastEmit&&toastEmit(`🛒 Draft PR created for ${suggested} ${item.unit||""} of ${item.name} — issue it in Procurement.`,"success");
+  };
+  const[expProj,setExpProj]=useState(null); // expanded project row in the Projects consumption report
+  const[rxSearch,setRxSearch]=useState(""); // Delivery Receipts ledger search
   const[delivFilterSupplier,setDelivFilterSupplier]=useState("");
   const[delivFilterProject,setDelivFilterProject]=useState("");
   const[delivFilterDateFrom,setDelivFilterDateFrom]=useState("");
@@ -287,13 +315,65 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
   const usageByItem=useMemo(()=>{
     const m={};
     (stocklog||[]).forEach(s=>{
-      if(!s.itemId||!String(s.moveType||"").startsWith("OUT")||!s.projectId) return;
-      const nm=wonDeals.find(d=>d.id===s.projectId)?.client;
+      const pid=s.dealId||s.projectId;
+      if(!s.itemId||!String(s.moveType||"").startsWith("OUT")||!pid||pid==="__gmd_stocks__") return;
+      const nm=wonDeals.find(d=>d.id===pid)?.client;
       if(!nm) return;
       (m[s.itemId]||(m[s.itemId]=new Set())).add(nm);
     });
     return m;
   },[stocklog,wonDeals]);
+
+  // ── Per-project material consumption (warehouse → finance costing) ──────────
+  // Rolls stock movements up by project so each job's material draw-down and its
+  // peso value are visible alongside the finance expense ledger. OUT = consumed
+  // by the project (valued at the move's unit cost, or the SKU's avg cost).
+  const projConsumption=useMemo(()=>{
+    const invById={}; inventory.forEach(i=>{invById[i.id]=i;});
+    const m={};
+    (stocklog||[]).forEach(s=>{
+      const pid=s.dealId||s.projectId;
+      if(!pid||pid==="__gmd_stocks__") return;
+      const type=String(s.moveType||"");
+      const isOut=type.startsWith("OUT"), isIn=type.startsWith("IN");
+      if(!isOut&&!isIn) return;
+      const item=invById[s.itemId];
+      const qty=Number(s.qty)||0;
+      const uc=Number(s.unitCost)||Number(item?.avgCost)||0;
+      const val=qty*uc;
+      const g=m[pid]||(m[pid]={pid,outQty:0,outVal:0,inQty:0,inVal:0,moves:0,items:{}});
+      g.moves++;
+      if(isOut){g.outQty+=qty;g.outVal+=val;}
+      if(isIn){g.inQty+=qty;g.inVal+=val;}
+      const nm=item?.name||s.itemDesc||"(unknown item)";
+      const it=g.items[nm]||(g.items[nm]={name:nm,unit:item?.unit||s.unit||"",outQty:0,outVal:0});
+      if(isOut){it.outQty+=qty;it.outVal+=val;}
+    });
+    return Object.values(m).map(g=>({
+      ...g,
+      client:wonDeals.find(d=>d.id===g.pid)?.client||g.pid,
+      items:Object.values(g.items).filter(it=>it.outQty>0).sort((a,b)=>b.outVal-a.outVal),
+    })).sort((a,b)=>b.outVal-a.outVal);
+  },[stocklog,inventory,wonDeals]);
+
+  // ── Delivery Receipts ledger (purchasing → warehouse → finance trail) ───────
+  // Every PO delivery event surfaced as a receipt document: one row per shipment
+  // in a PO's deliveryHistory, or a single summary row for delivered POs that
+  // predate history tracking. Derived from `prs` so it stays in sync with
+  // purchasing status and the finance payment state — no separate DR store.
+  const receipts=useMemo(()=>{
+    const list=[];
+    (prs||[]).forEach(pr=>{
+      const deal=wonDeals.find(d=>d.id===(pr.dealId||pr.projectId));
+      const hist=Array.isArray(pr.deliveryHistory)?pr.deliveryHistory:[];
+      if(hist.length){
+        hist.forEach((h,idx)=>list.push({key:pr.id+"-"+idx,pr,deal,date:h.date||pr.deliveryDate||pr.createdDate||"",drNo:h.drNo||pr.drNo||"",qty:Number(h.qty)||0,recordedBy:h.recordedBy||""}));
+      } else if(["Delivered","Partially Delivered"].includes(pr.status)){
+        list.push({key:pr.id+"-s",pr,deal,date:pr.deliveryDate||pr.createdDate||"",drNo:pr.drNo||"",qty:Number(pr.qtyDelivered)||Number(pr.qty)||0,recordedBy:""});
+      }
+    });
+    return list.sort((a,b)=>(b.date>a.date?1:b.date<a.date?-1:0));
+  },[prs,wonDeals]);
 
   // ── KPIs ──────────────────────────────────────────────────────────────
   const totalVal=rows.reduce((s,i)=>s+i._rem*i._price,0);
@@ -614,7 +694,7 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
 
   // ── tab bar ───────────────────────────────────────────────────────────
   const demandGaps=allDemand.filter(d=>d.gap>0).length;
-  const TABS=[["dashboard","📊 Dashboard"],["deliveries",`📦 Deliveries${prs.filter(p=>!["Delivered","Cancelled"].includes(p.status)).length>0?" ("+prs.filter(p=>!["Delivered","Cancelled"].includes(p.status)).length+")":""}`],["inventory",`≡ Inventory (${rows.length})`],["demand",`🔮 Demand${demandGaps>0?" ⚠"+demandGaps:""}`],["alerts",`⚠ Alerts${(lowStock.length+outOfStk.length)>0?" ("+(lowStock.length+outOfStk.length)+")":""}`],["log",`⟳ Log (${stocklog.length})`]];
+  const TABS=[["dashboard","📊 Dashboard"],["deliveries",`📦 Deliveries${prs.filter(p=>!["Delivered","Cancelled"].includes(p.status)).length>0?" ("+prs.filter(p=>!["Delivered","Cancelled"].includes(p.status)).length+")":""}`],["receipts",`🧾 Receipts${receipts.length?" ("+receipts.length+")":""}`],["inventory",`≡ Inventory (${rows.length})`],["demand",`🔮 Demand${demandGaps>0?" ⚠"+demandGaps:""}`],["alerts",`⚠ Alerts${(lowStock.length+outOfStk.length)>0?" ("+(lowStock.length+outOfStk.length)+")":""}`],["projects",`🏗 Projects${projConsumption.length?" ("+projConsumption.length+")":""}`],["log",`⟳ Log (${stocklog.length})`]];
 
   return(
     <div style={{display:"flex",flexDirection:"column",gap:0,height:"100%"}}>
@@ -1095,6 +1175,7 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
                 <div key={i.id} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 14px",borderRadius:9,marginBottom:7,background:C.red+"0a",border:`1px solid ${C.red}25`}}>
                   <span>🔴</span>
                   <div style={{flex:1}}><div style={{fontWeight:700,fontSize:12,color:C.text}}>{i.name}</div><div style={{fontSize:10,color:C.red,fontFamily:"monospace"}}>Stock: {i._rem} {i.unit} — RESTOCK IMMEDIATELY</div></div>
+                  {canEdit&&addPR&&<button onClick={()=>createReorderPR(i)} title="Draft a purchase request for procurement" style={{background:"#fff",border:`1px solid ${C.blue}`,borderRadius:7,padding:"5px 10px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:C.blue,cursor:"pointer",whiteSpace:"nowrap"}}>🛒 Create PR</button>}
                   {canEdit&&<button onClick={()=>{setTab("inventory");setShowMove(i.id);setMoveForm({moveType:"IN — Delivery",qty:"",unitCost:String(i._price),projectId:"",notes:"",date:today});}} style={{background:C.green,border:"none",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#fff",cursor:"pointer"}}>↓ Receive</button>}
                 </div>
               ))}</>
@@ -1105,6 +1186,7 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
                 <div key={i.id} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 14px",borderRadius:9,marginBottom:7,background:C.yellow+"0a",border:`1px solid ${C.yellow}25`}}>
                   <span>🟡</span>
                   <div style={{flex:1}}><div style={{fontWeight:700,fontSize:12,color:C.text}}>{i.name}</div><div style={{fontSize:10,color:"#b45309",fontFamily:"monospace"}}>Depleted · Beginning: {i._beg} {i.unit}</div></div>
+                  {canEdit&&addPR&&<button onClick={()=>createReorderPR(i)} title="Draft a purchase request for procurement" style={{background:"#fff",border:`1px solid ${C.blue}`,borderRadius:7,padding:"5px 10px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:C.blue,cursor:"pointer",whiteSpace:"nowrap"}}>🛒 Create PR</button>}
                   {canEdit&&<button onClick={()=>{setTab("inventory");setShowMove(i.id);setMoveForm({moveType:"IN — Delivery",qty:"",unitCost:String(i._price),projectId:"",notes:"",date:today});}} style={{background:C.green,border:"none",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#fff",cursor:"pointer"}}>↓ Receive</button>}
                 </div>
               ))}</>
@@ -1115,6 +1197,7 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
                 <div key={i.id} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 14px",borderRadius:9,marginBottom:7,background:"#fffbeb",border:"1px solid #fde68a"}}>
                   <span>⚠️</span>
                   <div style={{flex:1}}><div style={{fontWeight:700,fontSize:12,color:C.text}}>{i.name}</div><div style={{fontSize:10,color:"#b45309",fontFamily:"monospace"}}>{i._rem} {i.unit} remaining · Reorder at {n(i.reorderPoint)}</div></div>
+                  {canEdit&&addPR&&<button onClick={()=>createReorderPR(i)} title="Draft a purchase request for procurement" style={{background:"#fff",border:`1px solid ${C.blue}`,borderRadius:7,padding:"5px 10px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:C.blue,cursor:"pointer",whiteSpace:"nowrap"}}>🛒 Create PR</button>}
                 </div>
               ))}</>
             )}
@@ -1235,6 +1318,132 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
           )}
         </div>
       )}
+
+      {/* ── DELIVERY RECEIPTS LEDGER (purchasing → warehouse → finance) ───── */}
+      {tab==="receipts"&&(()=>{
+        const fmtM=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+        const q=rxSearch.trim().toLowerCase();
+        const list=q?receipts.filter(r=>[r.drNo,r.pr.poNumber,r.pr.itemName||r.pr.item,r.pr.supplier,r.deal?.client].some(v=>String(v||"").toLowerCase().includes(q))):receipts;
+        const totVal=list.reduce((s,r)=>{const uc=Number(r.pr.actUnitCost||r.pr.estUnitCost||r.pr.estimatedCost||0);return s+uc*r.qty;},0);
+        const payClr=st=>/logged|paid|expense/i.test(st||"")?C.green:/pending/i.test(st||"")?C.accent:C.muted;
+        return(
+        <div style={{overflowY:"auto",flex:1,paddingBottom:20}}>
+          <div style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:8,padding:"9px 14px",fontSize:".78rem",color:"#1d4ed8",marginBottom:10}}>
+            🧾 <strong>Delivery Receipts</strong> — every received PO as a receipt document, linked to its purchase order and finance status. Print a branded GRN/DR for any line.
+          </div>
+          <input value={rxSearch} onChange={e=>setRxSearch(e.target.value)} placeholder="Search DR#, PO#, item, supplier, project…"
+            style={{width:"100%",border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:12,color:C.text,background:"#fff",boxSizing:"border-box",marginBottom:10}}/>
+          {list.length===0?(
+            <div style={{textAlign:"center",padding:"3rem",color:C.muted,fontSize:13}}>{receipts.length===0?"No delivery receipts yet — receive a PO in the Deliveries tab.":"No receipts match your search."}</div>
+          ):(
+            <div style={{background:C.card,borderRadius:10,border:`1px solid ${C.border}`,overflow:"hidden"}}>
+              <div style={{overflowX:"auto"}}><div style={{minWidth:860}}>
+                <div style={{display:"grid",gridTemplateColumns:"100px 1.6fr 1fr 1fr 60px 110px 120px 70px",background:"#1e293b",padding:"8px 14px",gap:8}}>
+                  {["Date","Item / DR#","Supplier","Project","Qty","Value","Finance","Print"].map((h,hi)=>(
+                    <div key={h} style={{fontSize:9,fontWeight:700,color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".5px",textAlign:hi>=4&&hi<=5?"right":"left"}}>{h}</div>
+                  ))}
+                </div>
+                {list.map((r,i)=>{
+                  const pr=r.pr;
+                  const uc=Number(pr.actUnitCost||pr.estUnitCost||pr.estimatedCost||0);
+                  const isStk=(pr.dealId||pr.projectId)==="__gmd_stocks__"||pr.projectName==="GMD Stocks"||(!r.deal&&!pr.dealId&&!pr.projectId);
+                  const payStatus=pr.paymentStatus||pr.acctStatus||"";
+                  return(
+                  <div key={r.key} style={{display:"grid",gridTemplateColumns:"100px 1.6fr 1fr 1fr 60px 110px 120px 70px",padding:"9px 14px",gap:8,borderBottom:`1px solid ${C.border}`,background:i%2?"#fafafa":"#fff",alignItems:"center"}}>
+                    <div style={{fontSize:10,color:C.muted,fontFamily:"monospace"}}>{r.date||"—"}</div>
+                    <div style={{minWidth:0}}>
+                      <div style={{fontSize:11,fontWeight:600,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pr.itemName||pr.item||"—"}</div>
+                      <div style={{display:"flex",gap:5,marginTop:2,flexWrap:"wrap"}}>
+                        {r.drNo&&<span style={{fontSize:9,color:C.teal,fontWeight:700}}>DR {r.drNo}</span>}
+                        {pr.poNumber&&<span style={{fontSize:9,color:C.blue,fontWeight:700}}>#{pr.poNumber}</span>}
+                        <span style={{fontSize:9,padding:"1px 6px",borderRadius:10,background:pr.status==="Delivered"?"#dcfce7":"#fef9c3",color:pr.status==="Delivered"?C.green:"#a16207",fontWeight:700}}>{pr.status}</span>
+                      </div>
+                    </div>
+                    <div style={{fontSize:11,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pr.supplier||"—"}</div>
+                    <div style={{overflow:"hidden"}}>
+                      <span style={{display:"inline-flex",alignItems:"center",gap:4,maxWidth:"100%",padding:"2px 8px",borderRadius:10,fontSize:9,fontWeight:700,background:isStk?"#f0fdfa":"#eff6ff",color:isStk?C.teal:C.blue,border:`1px solid ${isStk?"#99f6e4":"#bfdbfe"}`,overflow:"hidden"}}>
+                        <span style={{flexShrink:0}}>{isStk?"🏭":"📁"}</span>
+                        <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{isStk?"GMD Stock":(r.deal?.client||pr.projectName||"Project")}</span>
+                      </span>
+                    </div>
+                    <div style={{fontSize:12,fontWeight:700,color:C.text,textAlign:"right",fontFamily:"monospace"}}>{r.qty}</div>
+                    <div style={{fontSize:11,fontWeight:700,color:uc>0?C.teal:C.muted,textAlign:"right",fontFamily:"monospace"}}>{uc>0?fmtM(uc*r.qty):"—"}</div>
+                    <div style={{fontSize:10}}>{payStatus?<span style={{color:payClr(payStatus),fontWeight:700}}>{payStatus}</span>:<span style={{color:C.muted}}>—</span>}</div>
+                    <div>{printDR&&<button onClick={()=>printDR(pr,r.qty||pr.qty,r.drNo,r.deal)} title="Print delivery receipt / GRN" style={{fontSize:9,padding:"4px 8px",border:`1px solid ${C.blue}`,borderRadius:5,background:"#fff",color:C.blue,cursor:"pointer",fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap"}}>🖨 DR</button>}</div>
+                  </div>
+                  );
+                })}
+                <div style={{display:"grid",gridTemplateColumns:"100px 1.6fr 1fr 1fr 60px 110px 120px 70px",padding:"10px 14px",gap:8,background:"#1e293b",alignItems:"center"}}>
+                  <div style={{gridColumn:"1/5",color:"rgba(255,255,255,.7)",fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:".5px"}}>Total Received Value ({list.length})</div>
+                  <div/>
+                  <div style={{fontSize:13,fontFamily:"monospace",fontWeight:800,color:C.accent,textAlign:"right"}}>{fmtM(totVal)}</div>
+                  <div/><div/>
+                </div>
+              </div></div>
+            </div>
+          )}
+        </div>
+        );
+      })()}
+
+      {/* ── PROJECTS CONSUMPTION TAB (warehouse → finance costing) ────────── */}
+      {tab==="projects"&&(()=>{
+        const totOut=projConsumption.reduce((s,g)=>s+g.outVal,0);
+        const fmtV=v=>v>=1000000?"₱"+(v/1000000).toFixed(1)+"M":v>=1000?"₱"+(v/1000).toFixed(0)+"k":fp(v);
+        return(
+        <div style={{overflowY:"auto",flex:1,paddingBottom:20}}>
+          <div style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:8,padding:"9px 14px",fontSize:".78rem",color:"#1d4ed8",marginBottom:10}}>
+            🏗 <strong>Material consumption by project</strong> — stock issued/dispatched to each job, valued at cost. Mirrors what's expensed to the project in Finance, so warehouse draw-downs and the expense ledger can be reconciled.
+          </div>
+          {projConsumption.length===0?(
+            <div style={{textAlign:"center",padding:"3rem",color:C.muted,fontSize:13}}>No project material movements yet. Dispatch stock to a project to see it here.</div>
+          ):(
+            <div style={{background:C.card,borderRadius:10,border:`1px solid ${C.border}`,overflow:"hidden"}}>
+              <div style={{display:"grid",gridTemplateColumns:"2fr 90px 120px 90px 120px 40px",background:"#1e293b",padding:"8px 14px",gap:8}}>
+                {["Project","Out Qty","Consumed Value","In Qty","Returned/In Value",""].map((h,hi)=>(
+                  <div key={h+hi} style={{fontSize:9,fontWeight:700,color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".5px",textAlign:hi===0?"left":"right"}}>{h}</div>
+                ))}
+              </div>
+              {projConsumption.map((g,gi)=>{
+                const open=expProj===g.pid;
+                return(
+                <div key={g.pid} style={{borderBottom:`1px solid ${C.border}`,background:gi%2?"#fafafa":"#fff"}}>
+                  <div onClick={()=>setExpProj(open?null:g.pid)} style={{display:"grid",gridTemplateColumns:"2fr 90px 120px 90px 120px 40px",padding:"9px 14px",gap:8,alignItems:"center",cursor:"pointer"}}>
+                    <div style={{minWidth:0}}>
+                      <div style={{fontSize:12,fontWeight:700,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{g.client}</div>
+                      <div style={{fontSize:9,color:C.muted}}>{g.items.length} item{g.items.length!==1?"s":""} · {g.moves} move{g.moves!==1?"s":""}</div>
+                    </div>
+                    <div style={{fontSize:12,fontWeight:700,color:C.yellow,textAlign:"right",fontFamily:"monospace"}}>{g.outQty}</div>
+                    <div style={{fontSize:12,fontWeight:800,color:C.teal,textAlign:"right",fontFamily:"monospace"}}>{fmtV(g.outVal)}</div>
+                    <div style={{fontSize:12,color:g.inQty?C.green:C.muted,textAlign:"right",fontFamily:"monospace"}}>{g.inQty||"—"}</div>
+                    <div style={{fontSize:11,color:g.inVal?C.green:C.muted,textAlign:"right",fontFamily:"monospace"}}>{g.inVal?fmtV(g.inVal):"—"}</div>
+                    <div style={{textAlign:"right",color:C.muted,fontSize:12}}>{open?"▾":"▸"}</div>
+                  </div>
+                  {open&&(
+                    <div style={{padding:"2px 14px 10px 26px",background:"#f8fafc"}}>
+                      {g.items.map((it,ii)=>(
+                        <div key={it.name+ii} style={{display:"grid",gridTemplateColumns:"2fr 90px 120px",gap:8,padding:"4px 0",borderBottom:ii<g.items.length-1?`1px solid ${C.border}`:"none"}}>
+                          <div style={{fontSize:11,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{it.name}</div>
+                          <div style={{fontSize:11,color:C.muted,textAlign:"right",fontFamily:"monospace"}}>{it.outQty} {it.unit}</div>
+                          <div style={{fontSize:11,color:C.teal,textAlign:"right",fontFamily:"monospace"}}>{fmtV(it.outVal)}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                );
+              })}
+              <div style={{display:"grid",gridTemplateColumns:"2fr 90px 120px 90px 120px 40px",padding:"10px 14px",gap:8,background:"#1e293b",alignItems:"center"}}>
+                <div style={{color:"rgba(255,255,255,.7)",fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:".5px"}}>Total Consumed Value</div>
+                <div/>
+                <div style={{fontSize:14,fontFamily:"monospace",fontWeight:800,color:C.accent,textAlign:"right"}}>{fmtV(totOut)}</div>
+                <div/><div/><div/>
+              </div>
+            </div>
+          )}
+        </div>
+        );
+      })()}
 
       {/* ── LOG TAB ─────────────────────────────────────────────────────── */}
       {tab==="log"&&(

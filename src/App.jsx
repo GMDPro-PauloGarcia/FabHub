@@ -13627,7 +13627,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ── WAREHOUSE ───────────────────────────────────────────────────────────────
   if(role==="Warehouse"||(["Manager","Finance"].includes(role)&&page==="deliveries")){
     if(role==="Warehouse"&&page==="stockmove") return(<Wrap><StockMovementView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} logStockMove={logStockMove} session={session} role={role}/></Wrap>);
-    if(role==="Warehouse"&&page==="inventory") return(<Wrap><InventoryView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} prs={prs} updatePR={updatePR} addInventoryItem={addInventoryItem} updateInventoryItem={updateInventoryItem} deleteInventoryItem={deleteInventoryItem} clearAllInventory={clearAllInventory} logStockMove={logStockMove} suppliers={suppliers} addSupplier={addSupplier} projs={projs} upProjs={upProjs} deals={wonDeals} session={session} role={role}/></Wrap>);
+    if(role==="Warehouse"&&page==="inventory") return(<Wrap><InventoryView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} prs={prs} updatePR={updatePR} addPR={addPR} addInventoryItem={addInventoryItem} updateInventoryItem={updateInventoryItem} deleteInventoryItem={deleteInventoryItem} clearAllInventory={clearAllInventory} logStockMove={logStockMove} suppliers={suppliers} addSupplier={addSupplier} printDR={printDR} projs={projs} upProjs={upProjs} deals={wonDeals} session={session} role={role}/></Wrap>);
     if(page==="deliveries"||page==="home") return(
       <Wrap>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
@@ -14574,10 +14574,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   if(page==="inventory"||(role==="Warehouse"&&page==="home")) return(
     <Wrap>
       <InventoryView
-        inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} prs={prs} updatePR={updatePR}
+        inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} prs={prs} updatePR={updatePR} addPR={addPR}
         addInventoryItem={addInventoryItem} updateInventoryItem={updateInventoryItem}
         deleteInventoryItem={deleteInventoryItem} clearAllInventory={clearAllInventory} logStockMove={logStockMove}
-        suppliers={suppliers} addSupplier={addSupplier}
+        suppliers={suppliers} addSupplier={addSupplier} printDR={printDR}
         projs={projs} upProjs={upProjs} deals={wonDeals}
         session={session} role={role}/>
     </Wrap>
