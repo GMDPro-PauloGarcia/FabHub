@@ -408,6 +408,324 @@ const Linkify=({text,color="#2563eb"})=>{
   );
 };
 
+// Best-effort thumbnail source for a reference link. Google Drive share links
+// become a Drive thumbnail endpoint; direct image URLs are used as-is; anything
+// else returns null (the tile falls back to an icon).
+const refThumbSrc=(url)=>{
+  const m=/(?:\/d\/|[?&]id=|\/file\/d\/)([A-Za-z0-9_-]{20,})/.exec(url||"");
+  if(m) return `https://drive.google.com/thumbnail?id=${m[1]}&sz=w400`;
+  if(/\.(png|jpe?g|gif|webp|bmp|svg)(\?|#|$)/i.test(url||"")) return url;
+  return null;
+};
+// A reference link rendered as a clickable thumbnail tile. Falls back to an
+// icon tile when the URL can't be previewed or the image fails to load.
+const RefThumb=({url,label,icon="🖼"})=>{
+  const[err,setErr]=React.useState(false);
+  const thumb=refThumbSrc(url);
+  return(
+    <a href={url} target="_blank" rel="noreferrer" title={label} style={{display:"block",width:92,textDecoration:"none",flexShrink:0}}>
+      <div style={{width:92,height:70,borderRadius:8,overflow:"hidden",border:"1px solid #e2e8f0",background:"#f8fafc",display:"flex",alignItems:"center",justifyContent:"center"}}>
+        {thumb&&!err
+          ? <img src={thumb} alt={label} loading="lazy" onError={()=>setErr(true)} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+          : <span style={{fontSize:"1.4rem"}}>{icon}</span>}
+      </div>
+      <div style={{fontSize:".66rem",color:"#6366f1",fontWeight:600,marginTop:3,textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{label}</div>
+    </a>
+  );
+};
+
+// ─── DESIGN DETAILS MODAL ─────────────────────────────────────────────────────
+// The designer's working modal for one project: Sales brief, design output,
+// status, revisions, approvals (internal + client), a handoff-readiness gate,
+// and a comment thread. Extracted to a component so it can hold local UI state.
+function DesignDetailModal({selProj,proj,deal,linkedDrf,drfs,projList,projs,upProj,session,sendTelegramNotification,toastEmit,today,setSelProj,setOpsTab}){
+  const mob=window.innerWidth<768;
+  const d=proj.design||{};
+  const status=d.status||"Briefing";
+  const hasApproval=d.approvedBy&&d.approvedOn;
+  const notify=!!d.notifyStatus;
+  const[commentText,setCommentText]=React.useState("");
+  const[briefOpen,setBriefOpen]=React.useState(status==="Briefing");
+  const setD=(patch)=>upProj(selProj,p=>({...p,design:{...p.design,...patch}}));
+
+  // Designer workload — count each member's still-open projects + DRFs so the
+  // lead can distribute evenly. "Open" excludes finished states.
+  const workload={};
+  DESIGN_MEMBERS.forEach(m=>{workload[m]=0;});
+  (projList||[]).forEach(x=>{const dz=projs[x.id]?.design?.designer;if(dz&&workload[dz]!=null&&projs[x.id]?.design?.status!=="Done")workload[dz]++;});
+  (drfs||[]).forEach(x=>{if(x.designer&&workload[x.designer]!=null&&!["Approved","Production","Done"].includes(x.status))workload[x.designer]++;});
+
+  const changeStatus=async(s)=>{
+    if(s===status) return;
+    if(s==="Done"&&!d.link){toastEmit("⚠ Please add a file / link before marking Done.","warning");return;}
+    if(s==="Done"&&!hasApproval){ if(!(await uiConfirm("Mark Done without an internal approval on file? Ops handoff usually needs a locked, approved revision."))) return; }
+    const next={...d,status:s,statusHistory:[...(d.statusHistory||[]),{status:s,date:today,by:session?.name||"Design"}]};
+    upProj(selProj,x=>({...x,design:next}));
+    if(s==="Done"&&proj.currentStage==="Design"){
+      upProj(selProj,x=>({...x,currentStage:"Fabrication",progress:{...x.progress,Design:100},stageDates:{...x.stageDates,Design:{...x.stageDates?.Design,e:today},Fabrication:{...x.stageDates?.Fabrication,s:x.stageDates?.Fabrication?.s||today}}}));
+      const msg=`🎨 <b>Design Complete — Ready for Fabrication</b>\nProject: <b>${deal?.client||"?"}</b>${deal?.ceNo?`\nCE: ${deal.ceNo}`:""}\nDesigner: ${next.designer||"—"}${next.revisionNo?`\nRevision: ${next.revisionNo}`:""}\n${next.link?`<a href="${next.link}">View Drawings</a>`:"No file link yet"}\nBy: ${session?.name||"Design"}`;
+      sendTelegramNotification("ops",msg);sendTelegramNotification("management",msg);
+    }else if(notify){
+      const msg=`🎨 <b>Design Status → ${s}</b>\nProject: <b>${deal?.client||"?"}</b>${deal?.ceNo?`\nCE: ${deal.ceNo}`:""}\nDesigner: ${next.designer||"—"}\nBy: ${session?.name||"Design"}`;
+      sendTelegramNotification("design",msg);
+      if(s==="For Review"||s==="Production Plans") sendTelegramNotification("management",msg);
+    }
+  };
+
+  const postComment=()=>{
+    const t=commentText.trim(); if(!t) return;
+    setD({comments:[...(d.comments||[]),{text:t,by:session?.name||"Design",at:new Date().toISOString()}]});
+    setCommentText("");
+  };
+
+  const copyBrief=async()=>{
+    const L=linkedDrf||{};
+    const lines=[
+      `PROJECT: ${d.projectTitle||deal?.product||deal?.client||""}`,
+      `CLIENT: ${deal?.client||L.client||""}`,
+      `CATEGORY: ${L.category||"—"}`,
+      `LOCATION: ${deal?.location||L.location||"—"}`,
+      `SIZE: ${deal?.drfSize||L.size||"—"}`,
+      L.maxHeight?`MAX HEIGHT: ${L.maxHeight}`:"",
+      L.platform?`PLATFORM: ${L.platform}`:"",
+      L.finishes?`FINISHES: ${L.finishes}`:"",
+      L.budget?`BUDGET: ${L.budget}`:"",
+      (deal?.drfDescription||L.description)?`\nBRIEF:\n${deal?.drfDescription||L.description}`:"",
+      L.brandGuideLink?`\nBrand guideline: ${L.brandGuideLink}`:"",
+    ].filter(Boolean).join("\n");
+    try{ await navigator.clipboard.writeText(lines); toastEmit("📋 Brief copied to clipboard","success"); }
+    catch{ toastEmit("Couldn't copy automatically — select the brief text manually.","warning"); }
+  };
+
+  // Handoff-readiness checklist.
+  const checks=[
+    {label:"File / drawings link",ok:!!d.link},
+    {label:"Revision no. locked",ok:!!d.revisionNo},
+    {label:"Internal approval",ok:!!hasApproval},
+    {label:"Client approval",ok:d.clientStatus==="Client Approved"},
+  ];
+  const readyCount=checks.filter(c=>c.ok).length;
+  const allReady=readyCount===checks.length;
+
+  // Days in current status (from the last status-history entry).
+  const lastHist=(d.statusHistory||[]).slice(-1)[0];
+  const daysInStatus=lastHist?.date?Math.max(0,Math.floor((new Date(today)-new Date(lastHist.date))/86400000)):null;
+  const dueOverdue=d.dueDate&&!hasApproval&&new Date(d.dueDate)<new Date(today);
+
+  const refs=(linkedDrf?.refLinks||[]).filter(Boolean);
+  const CS_CLR={"Not Sent":"#94a3b8","Sent for Review":"#3b82f6","Client Approved":"#059669","Client Revisions":"#ef4444"};
+  const cs=d.clientStatus||"Not Sent";
+
+  return(
+    <Modal open title={`Design Details — ${deal?.client}`} onClose={()=>setSelProj(null)} wide>
+      {/* ── Handoff readiness gate ─────────────────────── */}
+      <div style={{background:allReady?"#f0fdf4":"#fff7ed",border:`1.5px solid ${allReady?"#bbf7d0":"#fed7aa"}`,borderRadius:12,padding:"10px 14px",marginBottom:14}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,flexWrap:"wrap",marginBottom:7}}>
+          <span style={{fontSize:".72rem",fontWeight:800,color:allReady?"#15803d":"#9a3412"}}>{allReady?"✅ Ready for handoff":`🚧 Handoff readiness — ${readyCount}/${checks.length}`}</span>
+          {daysInStatus!=null&&<span style={{fontSize:".68rem",fontWeight:600,color:daysInStatus>=7?"#dc2626":"#94a3b8"}}>⏱ {daysInStatus}d in “{status}”</span>}
+        </div>
+        <div style={{display:"flex",gap:"6px 14px",flexWrap:"wrap"}}>
+          {checks.map(c=>(
+            <span key={c.label} style={{fontSize:".72rem",fontWeight:600,color:c.ok?"#15803d":"#b45309"}}>{c.ok?"✅":"⬜"} {c.label}</span>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Brief from Sales (collapsible) ─────────────── */}
+      <div style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"14px 16px",marginBottom:16}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+          <div style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px",cursor:"pointer",flex:1}} onClick={()=>setBriefOpen(o=>!o)}>📋 Brief from Sales <span style={{color:"#cbd5e1"}}>{briefOpen?"▲":"▼"}</span></div>
+          <button onClick={copyBrief} style={{background:"#eef2ff",border:"1.5px solid #c7d2fe",borderRadius:8,padding:"4px 10px",fontFamily:"inherit",fontSize:".7rem",color:"#4338ca",cursor:"pointer",fontWeight:700}}>📋 Copy brief</button>
+        </div>
+        {briefOpen&&(<div style={{marginTop:10}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"6px 16px",fontSize:".8rem",color:"#1e293b",marginBottom:8}}>
+            <div><span style={{color:"#94a3b8",fontSize:".72rem"}}>Product / Item</span><div style={{fontWeight:600}}>{deal?.product||"—"}</div></div>
+            <div><span style={{color:"#94a3b8",fontSize:".72rem"}}>Location</span><div style={{fontWeight:600}}>{deal?.location||"—"}</div></div>
+            {deal?.drfSize&&<div><span style={{color:"#94a3b8",fontSize:".72rem"}}>Size / Dimensions</span><div style={{fontWeight:600}}>{deal.drfSize}</div></div>}
+            {deal?.contact&&<div><span style={{color:"#94a3b8",fontSize:".72rem"}}>Contact Person</span><div style={{fontWeight:600}}>{deal.contact}</div></div>}
+          </div>
+          {(deal?.drfDescription||deal?.notes)&&(
+            <div style={{fontSize:".78rem",color:"#475569",marginBottom:6,whiteSpace:"pre-wrap",borderTop:"1px solid #e2e8f0",paddingTop:8}}><Linkify text={deal?.drfDescription||deal?.notes}/></div>
+          )}
+          {deal?.drfAccessories?.filter(a=>a).length>0&&(
+            <div style={{marginTop:6}}>
+              <div style={{fontSize:".68rem",color:"#94a3b8",fontWeight:700,marginBottom:4}}>ACCESSORIES / COMPONENTS</div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                {deal.drfAccessories.filter(a=>a).map((a,i)=>(<span key={i} style={{background:"#e0e7ff",color:"#4338ca",fontSize:".72rem",padding:"2px 9px",borderRadius:20,fontWeight:600}}>{a}</span>))}
+              </div>
+            </div>
+          )}
+          {linkedDrf&&(
+            <div style={{marginTop:8,paddingTop:8,borderTop:"1px solid #e2e8f0"}}>
+              <div style={{fontSize:".75rem",color:"#6366f1",fontWeight:700}}>📄 DRF on file: {linkedDrf.drfNo||"DRF"} · {linkedDrf.type||""} · {linkedDrf.designDeadline||"no deadline"}</div>
+              {(linkedDrf.category||linkedDrf.platform||linkedDrf.finishes||linkedDrf.maxHeight||linkedDrf.budget||linkedDrf.size)&&(
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"5px 16px",fontSize:".78rem",color:"#1e293b",marginTop:8}}>
+                  {linkedDrf.category&&<div><span style={{color:"#94a3b8",fontSize:".7rem"}}>Project Type</span><div style={{fontWeight:600}}>{linkedDrf.category}</div></div>}
+                  {linkedDrf.size&&<div><span style={{color:"#94a3b8",fontSize:".7rem"}}>Size / Dimensions</span><div style={{fontWeight:600}}>{linkedDrf.size}</div></div>}
+                  {linkedDrf.maxHeight&&<div><span style={{color:"#94a3b8",fontSize:".7rem"}}>Maximum Height</span><div style={{fontWeight:600}}>{linkedDrf.maxHeight}</div></div>}
+                  {linkedDrf.platform&&<div><span style={{color:"#94a3b8",fontSize:".7rem"}}>Platform</span><div style={{fontWeight:600}}>{linkedDrf.platform}</div></div>}
+                  {linkedDrf.finishes&&<div><span style={{color:"#94a3b8",fontSize:".7rem"}}>Ideal Finishes</span><div style={{fontWeight:600}}>{linkedDrf.finishes}</div></div>}
+                  {linkedDrf.budget&&<div><span style={{color:"#94a3b8",fontSize:".7rem"}}>Budget</span><div style={{fontWeight:600}}>{linkedDrf.budget}</div></div>}
+                </div>
+              )}
+              {linkedDrf.description&&<div style={{color:"#475569",fontSize:".78rem",marginTop:8,whiteSpace:"pre-wrap"}}><Linkify text={linkedDrf.description}/></div>}
+              {/* Reference images + brand guideline as thumbnails */}
+              {(linkedDrf.brandGuideLink||refs.length>0)&&(
+                <div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:10}}>
+                  {linkedDrf.brandGuideLink&&<RefThumb url={linkedDrf.brandGuideLink} label="Brand guide" icon="📘"/>}
+                  {refs.map((r,i)=><RefThumb key={i} url={r} label={`Ref ${i+1}`}/>)}
+                </div>
+              )}
+            </div>
+          )}
+        </div>)}
+      </div>
+
+      {/* ── Design Output ──────────────────────────────── */}
+      <div style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px",marginBottom:10}}>🎨 Design Output</div>
+      <Fld label="Project Status">
+        <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
+          {DESIGN_STATUSES.map(s=>(
+            <button key={s} onClick={()=>changeStatus(s)} style={{padding:"5px 12px",border:`1.5px solid ${status===s?DS_CLR[s]:"#e2e8f0"}`,borderRadius:16,background:status===s?DS_CLR[s]+"18":"#fff",color:status===s?DS_CLR[s]:"#94a3b8",fontWeight:status===s?700:400,cursor:"pointer",fontSize:".74rem",fontFamily:"inherit"}}>{s}</button>
+          ))}
+        </div>
+        <label style={{display:"inline-flex",alignItems:"center",gap:6,marginTop:8,fontSize:".72rem",color:"#64748b",cursor:"pointer"}}>
+          <input type="checkbox" checked={notify} onChange={e=>setD({notifyStatus:e.target.checked})} style={{cursor:"pointer",accentColor:"#7c3aed"}}/>
+          🔔 Notify team on status change
+        </label>
+      </Fld>
+      {(d.statusHistory||[]).length>0&&(
+        <div style={{background:"#f8fafc",border:"1px solid #eef2f7",borderRadius:10,padding:"8px 12px",marginBottom:12}}>
+          <div style={{fontSize:".64rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:6}}>Status History</div>
+          <div style={{display:"flex",flexDirection:"column",gap:3}}>
+            {[...d.statusHistory].slice(-6).reverse().map((h,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:8,fontSize:".74rem"}}>
+                <span style={{width:8,height:8,borderRadius:99,background:DS_CLR[h.status]||"#94a3b8",flexShrink:0}}/>
+                <span style={{fontWeight:600,color:"#334155"}}>{h.status}</span>
+                <span style={{color:"#94a3b8",marginLeft:"auto"}}>{h.date}{h.by?` · ${h.by}`:""}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      <Fld label="Designer">
+        <Sel value={d.designer||""} onChange={e=>setD({designer:e.target.value})}><option value="">— Select —</option>{DESIGN_MEMBERS.map(m=><option key={m}>{m}{workload[m]!=null?`  (${workload[m]} open)`:""}</option>)}</Sel>
+        {d.designer&&workload[d.designer]!=null&&<div style={{fontSize:".7rem",color:"#94a3b8",marginTop:4}}>{d.designer} currently has {workload[d.designer]} open item{workload[d.designer]!==1?"s":""}.</div>}
+      </Fld>
+      <Fld label="Due Date">
+        <Inp type="date" value={d.dueDate||""} onChange={e=>setD({dueDate:e.target.value})}/>
+        {d.dueDate&&!hasApproval&&(()=>{
+          const diff=Math.ceil((new Date(d.dueDate)-new Date(today))/86400000);
+          const over=diff<0,soon=diff>=0&&diff<=2;const c=over?"#dc2626":soon?"#f59e0b":"#059669";
+          return <div style={{marginTop:5,fontSize:".72rem",fontWeight:700,color:c}}>{over?`⚠ Overdue by ${Math.abs(diff)} day${Math.abs(diff)!==1?"s":""}`:diff===0?"⏰ Due today":`⏳ ${diff} day${diff!==1?"s":""} left`}</div>;
+        })()}
+      </Fld>
+      <Fld label="Revision No." hint="e.g. Rev 3 — lock this before handoff to Ops"><Inp value={d.revisionNo||""} onChange={e=>setD({revisionNo:e.target.value})} placeholder="e.g. Rev 3"/></Fld>
+      <Fld label="File / Link (Google Drive, Figma, etc.)"><Inp type="url" value={d.link||""} onChange={e=>setD({link:e.target.value})} placeholder="https://drive.google.com/…"/></Fld>
+      {/* ── Revision Log ─────────────────────────────── */}
+      <div style={{gridColumn:"1/-1"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+          <div style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px"}}>📑 Revision Log</div>
+          <button onClick={()=>{
+            if(!d.revisionNo&&!d.link){toastEmit("⚠ Set a Revision No. and file link before logging a revision.","warning");return;}
+            const rev={no:d.revisionNo||`Rev ${(d.revisions||[]).length+1}`,link:d.link||"",date:today,by:session?.name||"Design",status:d.status||""};
+            setD({revisions:[...(d.revisions||[]),rev]});
+            toastEmit(`📑 Logged ${rev.no}`,"success");
+          }} style={{background:"#f5f3ff",border:"1.5px solid #ddd6fe",borderRadius:8,padding:"5px 12px",fontFamily:"inherit",fontSize:".73rem",color:"#6d28d9",cursor:"pointer",fontWeight:700}}>+ Log current revision</button>
+        </div>
+        {(d.revisions||[]).length===0
+          ? <div style={{fontSize:".74rem",color:"#94a3b8",fontStyle:"italic",padding:"4px 0"}}>No revisions logged yet — set the Revision No. + file link above, then log it to keep an iteration history.</div>
+          : <div style={{border:"1px solid #eef2f7",borderRadius:10,overflow:"hidden"}}>
+              {[...d.revisions].reverse().map((r,i,arr)=>(
+                <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderBottom:i<arr.length-1?"1px solid #f8fafc":"none",background:i===0?"#faf5ff":"#fff"}}>
+                  <span style={{fontWeight:700,color:"#6d28d9",fontSize:".78rem",minWidth:60}}>{r.no}</span>
+                  <span style={{fontSize:".72rem",color:"#94a3b8"}}>{r.date}{r.by?` · ${r.by}`:""}{r.status?` · ${r.status}`:""}</span>
+                  {r.link&&<a href={r.link} target="_blank" rel="noreferrer" style={{marginLeft:"auto",fontSize:".73rem",color:"#3b82f6",fontWeight:600,textDecoration:"none"}}>📂 View</a>}
+                  <button onClick={async()=>{if(await uiConfirm(`Remove ${r.no} from the log?`)){const idx=d.revisions.length-1-i;setD({revisions:d.revisions.filter((_,j)=>j!==idx)});}}} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".75rem",marginLeft:r.link?8:"auto"}} title="Remove">✕</button>
+                </div>
+              ))}
+            </div>
+        }
+      </div>
+      <Fld label="Notes"><Inp rows={2} value={d.notes||""} onChange={e=>setD({notes:e.target.value})}/></Fld>
+      {/* ── Approval Stamp ───────────────────────────── */}
+      <div style={{marginTop:16,background:hasApproval?"#f0fdf4":"#fffbeb",border:`1.5px solid ${hasApproval?"#bbf7d0":"#fde68a"}`,borderRadius:12,padding:"14px 16px"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,flexWrap:"wrap",marginBottom:10}}>
+          <div style={{fontSize:".68rem",fontWeight:700,color:hasApproval?"#15803d":"#92400e",textTransform:"uppercase",letterSpacing:".8px"}}>{hasApproval?"✅ Approved — Locked for Handoff":"⏳ Pending Approval"}</div>
+          {dueOverdue&&<span style={{fontSize:".68rem",fontWeight:700,color:"#dc2626"}}>⚠ Past due — not yet approved</span>}
+        </div>
+        {hasApproval&&(
+          <div style={{display:"flex",gap:16,alignItems:"center",marginBottom:10,flexWrap:"wrap"}}>
+            <div style={{background:"#dcfce7",border:"1.5px solid #86efac",borderRadius:10,padding:"8px 14px",display:"inline-flex",gap:10,alignItems:"center"}}>
+              <span style={{fontSize:"1.2rem"}}>🔏</span>
+              <div><div style={{fontWeight:800,color:"#15803d",fontSize:".85rem"}}>{d.revisionNo||"Rev —"}</div><div style={{fontSize:".72rem",color:"#166534"}}>Approved by {d.approvedBy} · {d.approvedOn}</div></div>
+            </div>
+            {d.link&&<a href={d.link} target="_blank" rel="noreferrer" style={{fontSize:".78rem",color:"#15803d",fontWeight:600}}>📂 View Drawings</a>}
+          </div>
+        )}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <Fld label="Approved by"><Sel value={d.approvedBy||""} onChange={e=>setD({approvedBy:e.target.value})}><option value="">— Select approver —</option>{[...DESIGN_MEMBERS,...SALES_TEAM,...OPS_TEAM].filter((v,i,a)=>a.indexOf(v)===i).map(m=><option key={m}>{m}</option>)}</Sel></Fld>
+          <Fld label="Approved on"><Inp type="date" value={d.approvedOn||""} onChange={e=>setD({approvedOn:e.target.value})}/></Fld>
+        </div>
+        {!hasApproval&&<div style={{fontSize:".72rem",color:"#92400e",marginTop:6}}>Fill in both fields above to lock this revision for handoff to Operations.</div>}
+      </div>
+      {/* ── Client-facing Approval ───────────────────── */}
+      <div style={{marginTop:16,background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"14px 16px"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap",marginBottom:10}}>
+          <div style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px"}}>🤝 Client Approval</div>
+          <span style={{fontSize:".7rem",fontWeight:700,color:CS_CLR[cs],background:CS_CLR[cs]+"18",border:`1px solid ${CS_CLR[cs]}44`,borderRadius:20,padding:"2px 10px"}}>{cs}</span>
+        </div>
+        <Fld label="Client Review Link" hint="Shareable drawings / presentation link to send the client for sign-off">
+          <div style={{display:"flex",gap:8}}>
+            <Inp type="url" value={d.clientReviewLink||""} onChange={e=>setD({clientReviewLink:e.target.value})} placeholder="https://drive.google.com/…"/>
+            {d.clientReviewLink&&<a href={d.clientReviewLink} target="_blank" rel="noreferrer" style={{flexShrink:0,background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"8px 12px",fontSize:".75rem",color:"#1d4ed8",fontWeight:700,textDecoration:"none",alignSelf:"center"}}>Open ↗</a>}
+          </div>
+        </Fld>
+        <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:10}}>
+          <Fld label="Review Status"><Sel value={cs} onChange={e=>{const v=e.target.value;const patch={clientStatus:v};if(v==="Client Approved"&&!d.clientSignoffDate)patch.clientSignoffDate=today;setD(patch);}}>{["Not Sent","Sent for Review","Client Approved","Client Revisions"].map(s=><option key={s}>{s}</option>)}</Sel></Fld>
+          <Fld label="Client Sign-off (name)"><Inp value={d.clientSignoffName||""} onChange={e=>setD({clientSignoffName:e.target.value})} placeholder="Client contact who approved"/></Fld>
+          <Fld label="Sign-off Date"><Inp type="date" value={d.clientSignoffDate||""} onChange={e=>setD({clientSignoffDate:e.target.value})}/></Fld>
+          <Fld label="Client Feedback"><Inp value={d.clientFeedback||""} onChange={e=>setD({clientFeedback:e.target.value})} placeholder="Revisions requested, comments…"/></Fld>
+        </div>
+        {cs==="Client Approved"&&d.clientSignoffName&&(
+          <div style={{marginTop:10,background:"#dcfce7",border:"1.5px solid #86efac",borderRadius:10,padding:"8px 14px",display:"inline-flex",gap:10,alignItems:"center"}}>
+            <span style={{fontSize:"1.1rem"}}>✅</span>
+            <div style={{fontSize:".76rem",color:"#166534",fontWeight:600}}>Client approved by {d.clientSignoffName}{d.clientSignoffDate?` · ${d.clientSignoffDate}`:""}</div>
+          </div>
+        )}
+      </div>
+      {/* ── Activity / Comments ──────────────────────── */}
+      <div style={{marginTop:16}}>
+        <div style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>💬 Activity</div>
+        <div style={{display:"flex",gap:8,marginBottom:10}}>
+          <Inp value={commentText} onChange={e=>setCommentText(e.target.value)} placeholder="Add a note or update for the team…" onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();postComment();}}}/>
+          <button onClick={postComment} disabled={!commentText.trim()} style={{flexShrink:0,background:commentText.trim()?"#7c3aed":"#e2e8f0",border:"none",borderRadius:8,padding:"0 16px",color:commentText.trim()?"#fff":"#94a3b8",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:commentText.trim()?"pointer":"not-allowed"}}>Post</button>
+        </div>
+        {(d.comments||[]).length===0
+          ? <div style={{fontSize:".74rem",color:"#94a3b8",fontStyle:"italic"}}>No activity yet — post the first note.</div>
+          : <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {[...d.comments].reverse().map((cm,i,arr)=>{
+                const idx=d.comments.length-1-i;
+                return(
+                  <div key={idx} style={{background:"#f8fafc",border:"1px solid #eef2f7",borderRadius:10,padding:"8px 12px"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
+                      <span style={{fontWeight:700,color:"#334155",fontSize:".76rem"}}>{cm.by}</span>
+                      <span style={{fontSize:".68rem",color:"#94a3b8"}}>{cm.at?new Date(cm.at).toLocaleString():""}</span>
+                      {cm.by===session?.name&&<button onClick={()=>setD({comments:d.comments.filter((_,j)=>j!==idx)})} style={{marginLeft:"auto",background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".72rem"}} title="Remove">✕</button>}
+                    </div>
+                    <div style={{fontSize:".8rem",color:"#475569",whiteSpace:"pre-wrap"}}><Linkify text={cm.text}/></div>
+                  </div>
+                );
+              })}
+            </div>
+        }
+      </div>
+      <div style={{fontSize:".72rem",color:"#94a3b8",textAlign:"center",marginTop:14,marginBottom:4}}>Changes are saved automatically as you type.</div>
+      <Btn full onClick={()=>setSelProj(null)}>Close</Btn>
+    </Modal>
+  );
+}
+
 function SetPriceModal({deal,today,onClose,onSave}){
   const[val,setVal]=React.useState(deal?.value||"");
   const[note,setNote]=React.useState("");
@@ -13835,199 +14153,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           );
         })}
         {projList.length===0&&<EmptyState icon="🎨" msg="No active projects assigned yet."/>}
-        {selProj&&proj&&(()=>{
-          const linkedDrf=drfs.find(r=>r.dealId===selProj);
-          const deal=projDeal;
-          const hasApproval=proj.design?.approvedBy&&proj.design?.approvedOn;
-          return(
-          <Modal open title={`Design Details — ${deal?.client}`} onClose={()=>setSelProj(null)} wide>
-            {/* ── Brief from Sales ─────────────────────────── */}
-            <div style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"14px 16px",marginBottom:16}}>
-              <div style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px",marginBottom:10}}>📋 Brief from Sales</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"6px 16px",fontSize:".8rem",color:"#1e293b",marginBottom:8}}>
-                <div><span style={{color:"#94a3b8",fontSize:".72rem"}}>Product / Item</span><div style={{fontWeight:600}}>{deal?.product||"—"}</div></div>
-                <div><span style={{color:"#94a3b8",fontSize:".72rem"}}>Location</span><div style={{fontWeight:600}}>{deal?.location||"—"}</div></div>
-                {deal?.drfSize&&<div><span style={{color:"#94a3b8",fontSize:".72rem"}}>Size / Dimensions</span><div style={{fontWeight:600}}>{deal.drfSize}</div></div>}
-                {deal?.contact&&<div><span style={{color:"#94a3b8",fontSize:".72rem"}}>Contact Person</span><div style={{fontWeight:600}}>{deal.contact}</div></div>}
-              </div>
-              {(deal?.drfDescription||deal?.notes)&&(
-                <div style={{fontSize:".78rem",color:"#475569",marginBottom:6,whiteSpace:"pre-wrap",borderTop:"1px solid #e2e8f0",paddingTop:8}}>
-                  {deal?.drfDescription||deal?.notes}
-                </div>
-              )}
-              {deal?.drfAccessories?.filter(a=>a).length>0&&(
-                <div style={{marginTop:6}}>
-                  <div style={{fontSize:".68rem",color:"#94a3b8",fontWeight:700,marginBottom:4}}>ACCESSORIES / COMPONENTS</div>
-                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                    {deal.drfAccessories.filter(a=>a).map((a,i)=>(
-                      <span key={i} style={{background:"#e0e7ff",color:"#4338ca",fontSize:".72rem",padding:"2px 9px",borderRadius:20,fontWeight:600}}>{a}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {linkedDrf&&(
-                <div style={{marginTop:8,paddingTop:8,borderTop:"1px solid #e2e8f0"}}>
-                  <div style={{fontSize:".75rem",color:"#6366f1",fontWeight:700}}>
-                    📄 DRF on file: {linkedDrf.drfNo||"DRF"} · {linkedDrf.type||""} · {linkedDrf.designDeadline||"no deadline"}
-                  </div>
-                  {/* Sales-brief template fields carried on the DRF. */}
-                  {(linkedDrf.category||linkedDrf.platform||linkedDrf.finishes||linkedDrf.maxHeight||linkedDrf.budget||linkedDrf.size)&&(
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"5px 16px",fontSize:".78rem",color:"#1e293b",marginTop:8}}>
-                      {linkedDrf.category&&<div><span style={{color:"#94a3b8",fontSize:".7rem"}}>Project Type</span><div style={{fontWeight:600}}>{linkedDrf.category}</div></div>}
-                      {linkedDrf.size&&<div><span style={{color:"#94a3b8",fontSize:".7rem"}}>Size / Dimensions</span><div style={{fontWeight:600}}>{linkedDrf.size}</div></div>}
-                      {linkedDrf.maxHeight&&<div><span style={{color:"#94a3b8",fontSize:".7rem"}}>Maximum Height</span><div style={{fontWeight:600}}>{linkedDrf.maxHeight}</div></div>}
-                      {linkedDrf.platform&&<div><span style={{color:"#94a3b8",fontSize:".7rem"}}>Platform</span><div style={{fontWeight:600}}>{linkedDrf.platform}</div></div>}
-                      {linkedDrf.finishes&&<div><span style={{color:"#94a3b8",fontSize:".7rem"}}>Ideal Finishes</span><div style={{fontWeight:600}}>{linkedDrf.finishes}</div></div>}
-                      {linkedDrf.budget&&<div><span style={{color:"#94a3b8",fontSize:".7rem"}}>Budget</span><div style={{fontWeight:600}}>{linkedDrf.budget}</div></div>}
-                    </div>
-                  )}
-                  {linkedDrf.description&&<div style={{color:"#475569",fontSize:".78rem",marginTop:8,whiteSpace:"pre-wrap"}}>{linkedDrf.description}</div>}
-                  <div style={{display:"flex",gap:12,flexWrap:"wrap",marginTop:8}}>
-                    {linkedDrf.brandGuideLink&&<a href={linkedDrf.brandGuideLink} target="_blank" rel="noreferrer" style={{fontSize:".74rem",color:"#6366f1",fontWeight:600,textDecoration:"none"}}>📘 Brand Guideline →</a>}
-                    {(linkedDrf.refLinks||[]).filter(Boolean).map((r,i)=>(
-                      <a key={i} href={r} target="_blank" rel="noreferrer" style={{fontSize:".74rem",color:"#6366f1",fontWeight:600,textDecoration:"none"}}>🖼 Ref {i+1}</a>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-            {/* ── Design Work ──────────────────────────────── */}
-            <div style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px",marginBottom:10}}>🎨 Design Output</div>
-            {/* Project Status — same progression as the card pills, editable here.
-                Marking Done requires a file/link and advances the project to
-                Fabrication (mirrors the card behaviour). */}
-            {(()=>{const ds=proj.design?.status||"Briefing";return(
-              <Fld label="Project Status">
-                <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
-                  {DESIGN_STATUSES.map(s=>(
-                    <button key={s} onClick={()=>{
-                      if(s===ds) return;
-                      if(s==="Done"&&!proj.design?.link){toastEmit("⚠ Please add a file / link before marking Done.","warning");return;}
-                      const next={...proj.design,status:s,statusHistory:[...(proj.design?.statusHistory||[]),{status:s,date:today,by:session?.name||"Design"}]};
-                      upProj(selProj,x=>({...x,design:next}));
-                      if(s==="Done"&&proj.currentStage==="Design"){
-                        upProj(selProj,x=>({...x,currentStage:"Fabrication",progress:{...x.progress,Design:100},stageDates:{...x.stageDates,Design:{...x.stageDates?.Design,e:today},Fabrication:{...x.stageDates?.Fabrication,s:x.stageDates?.Fabrication?.s||today}}}));
-                        const msg=`🎨 <b>Design Complete — Ready for Fabrication</b>\nProject: <b>${deal?.client||"?"}</b>${deal?.ceNo?`\nCE: ${deal.ceNo}`:""}\nDesigner: ${next.designer||"—"}${next.revisionNo?`\nRevision: ${next.revisionNo}`:""}\n${next.link?`<a href="${next.link}">View Drawings</a>`:"No file link yet"}\nBy: ${session?.name||"Design"}`;
-                        sendTelegramNotification("ops",msg);sendTelegramNotification("management",msg);
-                      }
-                    }} style={{padding:"5px 12px",border:`1.5px solid ${ds===s?DS_CLR[s]:"#e2e8f0"}`,borderRadius:16,background:ds===s?DS_CLR[s]+"18":"#fff",color:ds===s?DS_CLR[s]:"#94a3b8",fontWeight:ds===s?700:400,cursor:"pointer",fontSize:".74rem",fontFamily:"inherit"}}>{s}</button>
-                  ))}
-                </div>
-              </Fld>
-            );})()}
-            {/* Status history timeline */}
-            {(proj.design?.statusHistory||[]).length>0&&(
-              <div style={{background:"#f8fafc",border:"1px solid #eef2f7",borderRadius:10,padding:"8px 12px",marginBottom:12}}>
-                <div style={{fontSize:".64rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:6}}>Status History</div>
-                <div style={{display:"flex",flexDirection:"column",gap:3}}>
-                  {[...proj.design.statusHistory].slice(-6).reverse().map((h,i)=>(
-                    <div key={i} style={{display:"flex",alignItems:"center",gap:8,fontSize:".74rem"}}>
-                      <span style={{width:8,height:8,borderRadius:99,background:DS_CLR[h.status]||"#94a3b8",flexShrink:0}}/>
-                      <span style={{fontWeight:600,color:"#334155"}}>{h.status}</span>
-                      <span style={{color:"#94a3b8",marginLeft:"auto"}}>{h.date}{h.by?` · ${h.by}`:""}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            <Fld label="Designer"><Sel value={proj.design?.designer||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,designer:e.target.value}}))}><option value="">— Select —</option>{DESIGN_MEMBERS.map(m=><option key={m}>{m}</option>)}</Sel></Fld>
-            <Fld label="Due Date">
-              <Inp type="date" value={proj.design?.dueDate||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,dueDate:e.target.value}}))}/>
-              {proj.design?.dueDate&&!hasApproval&&(()=>{
-                const d=Math.ceil((new Date(proj.design.dueDate)-new Date(today))/86400000);
-                const over=d<0,soon=d>=0&&d<=2;
-                const c=over?"#dc2626":soon?"#f59e0b":"#059669";
-                return <div style={{marginTop:5,fontSize:".72rem",fontWeight:700,color:c}}>{over?`⚠ Overdue by ${Math.abs(d)} day${Math.abs(d)!==1?"s":""}`:d===0?"⏰ Due today":`⏳ ${d} day${d!==1?"s":""} left`}</div>;
-              })()}
-            </Fld>
-            <Fld label="Revision No." hint="e.g. Rev 3 — lock this before handoff to Ops"><Inp value={proj.design?.revisionNo||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,revisionNo:e.target.value}}))} placeholder="e.g. Rev 3"/></Fld>
-            <Fld label="File / Link (Google Drive, Figma, etc.)"><Inp type="url" value={proj.design?.link||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,link:e.target.value}}))} placeholder="https://drive.google.com/…"/></Fld>
-            {/* ── Revision Log ─────────────────────────────── */}
-            <div style={{gridColumn:"1/-1"}}>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
-                <div style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px"}}>📑 Revision Log</div>
-                <button onClick={()=>{
-                  if(!proj.design?.revisionNo&&!proj.design?.link){toastEmit("⚠ Set a Revision No. and file link before logging a revision.","warning");return;}
-                  const rev={no:proj.design?.revisionNo||`Rev ${(proj.design?.revisions||[]).length+1}`,link:proj.design?.link||"",date:today,by:session?.name||"Design",status:proj.design?.status||""};
-                  upProj(selProj,p=>({...p,design:{...p.design,revisions:[...(p.design?.revisions||[]),rev]}}));
-                  toastEmit(`📑 Logged ${rev.no}`,"success");
-                }} style={{background:"#f5f3ff",border:"1.5px solid #ddd6fe",borderRadius:8,padding:"5px 12px",fontFamily:"inherit",fontSize:".73rem",color:"#6d28d9",cursor:"pointer",fontWeight:700}}>+ Log current revision</button>
-              </div>
-              {(proj.design?.revisions||[]).length===0
-                ? <div style={{fontSize:".74rem",color:"#94a3b8",fontStyle:"italic",padding:"4px 0"}}>No revisions logged yet — set the Revision No. + file link above, then log it to keep an iteration history.</div>
-                : <div style={{border:"1px solid #eef2f7",borderRadius:10,overflow:"hidden"}}>
-                    {[...proj.design.revisions].reverse().map((r,i,arr)=>(
-                      <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderBottom:i<arr.length-1?"1px solid #f8fafc":"none",background:i===0?"#faf5ff":"#fff"}}>
-                        <span style={{fontWeight:700,color:"#6d28d9",fontSize:".78rem",minWidth:60}}>{r.no}</span>
-                        <span style={{fontSize:".72rem",color:"#94a3b8"}}>{r.date}{r.by?` · ${r.by}`:""}{r.status?` · ${r.status}`:""}</span>
-                        {r.link&&<a href={r.link} target="_blank" rel="noreferrer" style={{marginLeft:"auto",fontSize:".73rem",color:"#3b82f6",fontWeight:600,textDecoration:"none"}}>📂 View</a>}
-                        <button onClick={async()=>{if(await uiConfirm(`Remove ${r.no} from the log?`)){const idx=proj.design.revisions.length-1-i;upProj(selProj,p=>({...p,design:{...p.design,revisions:p.design.revisions.filter((_,j)=>j!==idx)}}));}}} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".75rem",marginLeft:r.link?8:"auto"}} title="Remove">✕</button>
-                      </div>
-                    ))}
-                  </div>
-              }
-            </div>
-            <Fld label="Notes"><Inp rows={2} value={proj.design?.notes||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,notes:e.target.value}}))}/></Fld>
-            {/* ── Approval Stamp ───────────────────────────── */}
-            <div style={{marginTop:16,background:hasApproval?"#f0fdf4":"#fffbeb",border:`1.5px solid ${hasApproval?"#bbf7d0":"#fde68a"}`,borderRadius:12,padding:"14px 16px"}}>
-              <div style={{fontSize:".68rem",fontWeight:700,color:hasApproval?"#15803d":"#92400e",textTransform:"uppercase",letterSpacing:".8px",marginBottom:10}}>
-                {hasApproval?"✅ Approved — Locked for Handoff":"⏳ Pending Approval"}
-              </div>
-              {hasApproval&&(
-                <div style={{display:"flex",gap:16,alignItems:"center",marginBottom:10,flexWrap:"wrap"}}>
-                  <div style={{background:"#dcfce7",border:"1.5px solid #86efac",borderRadius:10,padding:"8px 14px",display:"inline-flex",gap:10,alignItems:"center"}}>
-                    <span style={{fontSize:"1.2rem"}}>🔏</span>
-                    <div>
-                      <div style={{fontWeight:800,color:"#15803d",fontSize:".85rem"}}>{proj.design.revisionNo||"Rev —"}</div>
-                      <div style={{fontSize:".72rem",color:"#166534"}}>Approved by {proj.design.approvedBy} · {proj.design.approvedOn}</div>
-                    </div>
-                  </div>
-                  {proj.design.link&&<a href={proj.design.link} target="_blank" rel="noreferrer" style={{fontSize:".78rem",color:"#15803d",fontWeight:600}}>📂 View Drawings</a>}
-                </div>
-              )}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                <Fld label="Approved by"><Sel value={proj.design?.approvedBy||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,approvedBy:e.target.value}}))}><option value="">— Select approver —</option>{[...DESIGN_MEMBERS,...SALES_TEAM,...OPS_TEAM].filter((v,i,a)=>a.indexOf(v)===i).map(m=><option key={m}>{m}</option>)}</Sel></Fld>
-                <Fld label="Approved on"><Inp type="date" value={proj.design?.approvedOn||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,approvedOn:e.target.value}}))}/></Fld>
-              </div>
-              {!hasApproval&&<div style={{fontSize:".72rem",color:"#92400e",marginTop:6}}>Fill in both fields above to lock this revision for handoff to Operations.</div>}
-            </div>
-            {/* ── Client-facing Approval ───────────────────── */}
-            {(()=>{
-              const cs=proj.design?.clientStatus||"Not Sent";
-              const CS_CLR={"Not Sent":"#94a3b8","Sent for Review":"#3b82f6","Client Approved":"#059669","Client Revisions":"#ef4444"};
-              const clr=CS_CLR[cs];
-              return(
-              <div style={{marginTop:16,background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"14px 16px"}}>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap",marginBottom:10}}>
-                  <div style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px"}}>🤝 Client Approval</div>
-                  <span style={{fontSize:".7rem",fontWeight:700,color:clr,background:clr+"18",border:`1px solid ${clr}44`,borderRadius:20,padding:"2px 10px"}}>{cs}</span>
-                </div>
-                <Fld label="Client Review Link" hint="Shareable drawings / presentation link to send the client for sign-off">
-                  <div style={{display:"flex",gap:8}}>
-                    <Inp type="url" value={proj.design?.clientReviewLink||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,clientReviewLink:e.target.value}}))} placeholder="https://drive.google.com/…"/>
-                    {proj.design?.clientReviewLink&&<a href={proj.design.clientReviewLink} target="_blank" rel="noreferrer" style={{flexShrink:0,background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"8px 12px",fontSize:".75rem",color:"#1d4ed8",fontWeight:700,textDecoration:"none",alignSelf:"center"}}>Open ↗</a>}
-                  </div>
-                </Fld>
-                <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:10}}>
-                  <Fld label="Review Status"><Sel value={cs} onChange={e=>{const v=e.target.value;upProj(selProj,p=>({...p,design:{...p.design,clientStatus:v}}));if(v==="Client Approved"&&!proj.design?.clientSignoffDate)upProj(selProj,p=>({...p,design:{...p.design,clientSignoffDate:today}}));}}>{["Not Sent","Sent for Review","Client Approved","Client Revisions"].map(s=><option key={s}>{s}</option>)}</Sel></Fld>
-                  <Fld label="Client Sign-off (name)"><Inp value={proj.design?.clientSignoffName||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,clientSignoffName:e.target.value}}))} placeholder="Client contact who approved"/></Fld>
-                  <Fld label="Sign-off Date"><Inp type="date" value={proj.design?.clientSignoffDate||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,clientSignoffDate:e.target.value}}))}/></Fld>
-                  <Fld label="Client Feedback"><Inp value={proj.design?.clientFeedback||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,clientFeedback:e.target.value}}))} placeholder="Revisions requested, comments…"/></Fld>
-                </div>
-                {cs==="Client Approved"&&proj.design?.clientSignoffName&&(
-                  <div style={{marginTop:10,background:"#dcfce7",border:"1.5px solid #86efac",borderRadius:10,padding:"8px 14px",display:"inline-flex",gap:10,alignItems:"center"}}>
-                    <span style={{fontSize:"1.1rem"}}>✅</span>
-                    <div style={{fontSize:".76rem",color:"#166534",fontWeight:600}}>Client approved by {proj.design.clientSignoffName}{proj.design.clientSignoffDate?` · ${proj.design.clientSignoffDate}`:""}</div>
-                  </div>
-                )}
-              </div>
-              );
-            })()}
-            <div style={{fontSize:".72rem",color:"#94a3b8",textAlign:"center",marginTop:10,marginBottom:4}}>Changes are saved automatically as you type.</div>
-            <Btn full onClick={()=>setSelProj(null)}>Close</Btn>
-          </Modal>
-          );
-        })()}
+        {selProj&&proj&&(
+          <DesignDetailModal selProj={selProj} proj={proj} deal={projDeal} linkedDrf={drfs.find(r=>r.dealId===selProj)} drfs={drfs} projList={projList} projs={projs} upProj={upProj} session={session} sendTelegramNotification={sendTelegramNotification} toastEmit={toastEmit} today={today} setSelProj={setSelProj} setOpsTab={setOpsTab}/>
+        )}
       </Wrap>
     );
     if(page==="procurement") return <ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Design",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap} addMR={addMR} wonDeals={wonDeals} session={session}/>;
