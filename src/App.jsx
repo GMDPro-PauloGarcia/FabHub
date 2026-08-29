@@ -2978,6 +2978,11 @@ function DailySiteLogView({dailyLogs,wonDeals,addDailyLog,delDailyLog,session,ro
 export default function App(){
   const[users,      setUsers]     = useState(DEFAULT_USERS);
   const[cashPositions,setCashPos]  = useState({});
+  // True when the last Supabase refresh of cash_positions FAILED (network/timeout),
+  // so what's on screen is the stale local cache — not the server's source of truth.
+  // Drives the stale banner and, crucially, blocks the Daily Cash Position sheet's
+  // silent auto-save so a stale Manager session can't overwrite good server rows.
+  const[cashStale,  setCashStale]  = useState(false);
   const[vvipClients, setVvip]      = useState(new Set());
   const[actLog,      setActLog]    = useState([]);
   const[pcards,      setPcards]    = useState({});
@@ -3174,7 +3179,17 @@ export default function App(){
             const _swatches=data.swatches?.length?data.swatches.map(s=>({...s,dealId:s.deal_id,refLink:s.ref_link})):null;
             if(_swatches){setSwatches(prev=>mergeLocalOnly(_swatches,prev));idbE.push([KEYS.swatches,_swatches]);}
             if(data.actLog?.length) setActLog(prev=>mergeLocalOnly(data.actLog.map(a=>({...a,dealId:a.deal_id})),prev));
-            if(Object.keys(data.cashPositions||{}).length) setCashPos(prev=>mergeLocalOnlyObj(convertSbCashPos(data.cashPositions),prev));
+            // Cash positions are the source of truth for the whole finance report,
+            // so treat the SERVER as authoritative whenever the read actually
+            // succeeded — even if it came back empty (that genuinely means no rows).
+            // Only when the read FAILED (recorded in data._failed) do we keep the
+            // local cache; in that case flag it stale so the UI can warn and the
+            // Daily Cash Position sheet won't silently save over the server.
+            {
+              const cashReadFailed=Array.isArray(data._failed)&&data._failed.includes("cash_positions");
+              setCashStale(cashReadFailed);
+              if(!cashReadFailed) setCashPos(prev=>{const merged=mergeLocalOnlyObj(convertSbCashPos(data.cashPositions),prev);idbSetMany([[KEYS.cashPos,merged]]).catch(()=>{});return merged;});
+            }
             const _budgets=Object.keys(data.budgets||{}).length?Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}])):null;
             if(_budgets){setBudgets(prev=>mergeLocalOnlyObj(_budgets,prev));idbE.push([KEYS.budgets,_budgets]);}
             if(data.inflows!=null){setInfs(data.inflows);idbE.push([KEYS.inflows,data.inflows]);}
@@ -3460,7 +3475,14 @@ export default function App(){
     if(data.checklist?.length){const cs=data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,sortOrder:c.sort_order}));setChecklist(prev=>mergeLocalOnly(cs,prev));idbE.push([KEYS.checklist,cs]);}
     if(data.swatches?.length){const ss=data.swatches.map(s=>({...s,dealId:s.deal_id,refLink:s.ref_link}));setSwatches(prev=>mergeLocalOnly(ss,prev));idbE.push([KEYS.swatches,ss]);}
     if(data.actLog?.length)      setActLog(prev=>mergeLocalOnly(data.actLog.map(a=>({...a,dealId:a.deal_id})),prev));
-    if(Object.keys(data.cashPositions||{}).length) setCashPos(prev=>mergeLocalOnlyObj(convertSbCashPos(data.cashPositions),prev));
+    // Server is authoritative for cash positions on a successful read (even an
+    // empty one); only a FAILED read keeps the stale local cache — flag it so the
+    // UI warns and the Daily Cash Position sheet won't save over the server.
+    {
+      const cashReadFailed=Array.isArray(data._failed)&&data._failed.includes("cash_positions");
+      setCashStale(cashReadFailed);
+      if(!cashReadFailed) setCashPos(prev=>{const merged=mergeLocalOnlyObj(convertSbCashPos(data.cashPositions),prev);idbE.push([KEYS.cashPos,merged]);return merged;});
+    }
     if(Object.keys(data.budgets||{}).length){const bg=Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}]));setBudgets(prev=>mergeLocalOnlyObj(bg,prev));idbE.push([KEYS.budgets,bg]);}
     if(data.users?.length){const us=data.users.map(u=>{const fallbackHash=DEFAULT_USERS.find(d=>d.username===(u.username||""))?.passwordHash||"";return{id:u.id,username:u.username||"",name:u.name||u.full_name||"",role:u.role||"Sales",title:u.title||u.role||"",status:u.status||"active",passwordHash:u.password_hash||fallbackHash,createdAt:u.created_at||""};});setUsers(prev=>mergeLocalOnly(us,prev));idbE.push([KEYS.users,us]);}
     if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0,accountCode:p.account_code||"",verified:p.verified!==false,verifiedBy:p.verified_by||"",verifiedAt:p.verified_at||"",verificationPct:p.verification_pct!=null?Number(p.verification_pct):100,payBank:p.pay_bank||"",payMethod:p.pay_method||"",payRef:p.pay_ref||"",vatable:!!p.vatable,inputVat:Number(p.input_vat)||0,netAmount:Number(p.net_amount)||0,ewtRate:Number(p.ewt_rate)||0,ewtAmount:Number(p.ewt_amount)||0,tin:p.tin||""}));setPayables(prev=>mergeLocalOnly(ps,prev));idbE.push(["gmdv5:payables",ps]);}
@@ -12594,7 +12616,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               ))}
             </div>
             {cashSub==="daily"&&(
-              <DailyCashPosition cashPositions={cashPositions} saveDayPos={saveDayPos} wonDeals={wonDeals} billings={billings} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps} updateMilestone={updateMilestone} upExps={upExps} toSbExpense={toSbExpense} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} vouchers={vouchers} payables={payables} loans={loans} inventory={inventory} userName={session?.name||""}/>
+              <DailyCashPosition cashPositions={cashPositions} saveDayPos={saveDayPos} wonDeals={wonDeals} billings={billings} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps} updateMilestone={updateMilestone} upExps={upExps} toSbExpense={toSbExpense} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} vouchers={vouchers} payables={payables} loans={loans} inventory={inventory} userName={session?.name||""} cashStale={cashStale}/>
             )}
             {cashSub==="weekly"&&(
               <WeeklyCashFlow mode="weekly" cashPositions={cashPositions} billings={billings} exps={exps} chartOfAccounts={chartOfAccounts} setPage={setPage}/>
@@ -13575,6 +13597,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           loans={loans}
           inventory={inventory}
           userName={session?.name||""}
+          cashStale={cashStale}
         />
       </Wrap>
     );
