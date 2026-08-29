@@ -2983,6 +2983,7 @@ export default function App(){
   const[pcards,      setPcards]    = useState({});
   const[inventory,   setInventory] = useState([]);  // Inventory items
   const[stocklog,    setStocklog]  = useState([]);  // Stock movement log // Set of client names marked VVIP
+  const[tools,       setTools]     = useState([]);  // Tools / equipment borrow-return register
   const[receivingPr, setReceivingPr]=useState(null);  // PR being received (partial receiving modal)
   const[rxQty,       setRxQty]     =useState("");
   const[rxDrNo,      setRxDrNo]    =useState("");
@@ -3077,7 +3078,7 @@ export default function App(){
           KEYS.botsettings,KEYS.customclients,KEYS.addenda,KEYS.budgets,
           KEYS.billings,KEYS.vvip,KEYS.actlog,KEYS.pcards,KEYS.inventory,
           KEYS.stocklog,KEYS.swos,"gmdv5:payables","gmdv5:loans","gmdv5:clientprofiles",
-          "gmdv5:aeUpdates","gmdv5:auditFindings",KEYS.vouchers,"gmdv5:standaloneBoqs","gmdv5:chartOfAccounts",KEYS.dailylogs,KEYS.ceReqs,KEYS.payouts
+          "gmdv5:aeUpdates","gmdv5:auditFindings",KEYS.vouchers,"gmdv5:standaloneBoqs","gmdv5:chartOfAccounts",KEYS.dailylogs,KEYS.ceReqs,KEYS.payouts,KEYS.tools
         ]);
         if(idb[KEYS.deals]){setDeals(idb[KEYS.deals].map(x=>({...x,stage:normalizeStage(x.stage)})));}
         if(idb[KEYS.projects])    setProjs(idb[KEYS.projects]);
@@ -3108,6 +3109,7 @@ export default function App(){
         if(idb[KEYS.pcards])      setPcards(idb[KEYS.pcards]);
         if(idb[KEYS.inventory])   setInventory(idb[KEYS.inventory]);
         if(idb[KEYS.stocklog])    setStocklog(idb[KEYS.stocklog]);
+        if(idb[KEYS.tools])       setTools(idb[KEYS.tools]);
         if(idb["gmdv5:payables"]) setPayables(idb["gmdv5:payables"]);
         if(idb["gmdv5:loans"])    setLoans(idb["gmdv5:loans"]);
         if(idb["gmdv5:aeUpdates"]) setAeUpdates(idb["gmdv5:aeUpdates"]);
@@ -3936,6 +3938,7 @@ export default function App(){
   },[hasValidUUIDs,deals,jos,exps,prs,mreqs,breqs,addenda,swatches,checklist,actLog,billings,budgets,cashPositions,infs]);
   const upInventory =useCallback(fn=>setInventory(p=>{const n=fn(p);persist(KEYS.inventory,n);return n;}),[persist]);
   const upStocklog  =useCallback(fn=>setStocklog(p=>{const n=fn(p);persist(KEYS.stocklog,n);return n;}),[persist]);
+  const upTools     =useCallback(fn=>setTools(p=>{const n=fn(p);persist(KEYS.tools,n);return n;}),[persist]);
   const upSuppliers =useCallback(fn=>setSuppliers(p=>{const n=fn(p);persist(KEYS.suppliers,n);return n;}),[persist]);
   const upSubcons   =useCallback(fn=>setSubcons(p=>{const n=fn(p);persist(KEYS.subcons,n);return n;}),[persist]);
   const upSwos      =useCallback(fn=>setSwos(p=>{const n=fn(p);persist(KEYS.swos,n);return n;}),[persist]);
@@ -13627,7 +13630,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ── WAREHOUSE ───────────────────────────────────────────────────────────────
   if(role==="Warehouse"||(["Manager","Finance"].includes(role)&&page==="deliveries")){
     if(role==="Warehouse"&&page==="stockmove") return(<Wrap><StockMovementView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} logStockMove={logStockMove} session={session} role={role}/></Wrap>);
-    if(role==="Warehouse"&&page==="inventory") return(<Wrap><InventoryView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} prs={prs} updatePR={updatePR} addPR={addPR} addInventoryItem={addInventoryItem} updateInventoryItem={updateInventoryItem} deleteInventoryItem={deleteInventoryItem} clearAllInventory={clearAllInventory} logStockMove={logStockMove} suppliers={suppliers} addSupplier={addSupplier} printDR={printDR} projs={projs} upProjs={upProjs} deals={wonDeals} session={session} role={role}/></Wrap>);
+    if(role==="Warehouse"&&page==="inventory") return(<Wrap><InventoryView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} prs={prs} updatePR={updatePR} addPR={addPR} addInventoryItem={addInventoryItem} updateInventoryItem={updateInventoryItem} deleteInventoryItem={deleteInventoryItem} clearAllInventory={clearAllInventory} logStockMove={logStockMove} suppliers={suppliers} addSupplier={addSupplier} printDR={printDR} tools={tools} upTools={upTools} projs={projs} upProjs={upProjs} deals={wonDeals} session={session} role={role}/></Wrap>);
     if(page==="deliveries"||page==="home") return(
       <Wrap>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
@@ -14577,7 +14580,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} prs={prs} updatePR={updatePR} addPR={addPR}
         addInventoryItem={addInventoryItem} updateInventoryItem={updateInventoryItem}
         deleteInventoryItem={deleteInventoryItem} clearAllInventory={clearAllInventory} logStockMove={logStockMove}
-        suppliers={suppliers} addSupplier={addSupplier} printDR={printDR}
+        suppliers={suppliers} addSupplier={addSupplier} printDR={printDR} tools={tools} upTools={upTools}
         projs={projs} upProjs={upProjs} deals={wonDeals}
         session={session} role={role}/>
     </Wrap>
