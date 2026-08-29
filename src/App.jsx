@@ -2740,11 +2740,83 @@ const WIPView=React.memo(function WIPView({wonDeals,projs,billings,exps,prs,over
   );
 });
 
+// ─── DUE-DATE BACKFILL DIALOG ────────────────────────────────────────────────
+// The Cash-Flow Forecast buckets each outstanding billing / payable by its due
+// date. Anything with no due date has nowhere to land and gets treated as
+// "now / overdue", quietly distorting the projection. This dialog lists every
+// unpaid billing and payable that is MISSING a due date so Finance can fill them
+// in one place. Openable from the forecast banner, Billing and Payables.
+function DueDateBackfillModal({open,onClose,billings,payables,deals,updateMilestone,setPayableDueDate,toastEmit}){
+  const peso=v=>"₱"+Math.round(Number(v)||0).toLocaleString("en-PH");
+  const missBill=useMemo(()=>(billings||[]).filter(b=>{
+    if(b.status==="Cancelled"||b.status==="Fully Paid") return false;
+    const paid=(b.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
+    return (Number(b.amount||0)-paid)>0.5 && !b.dueDate;
+  }),[billings]);
+  const missPay=useMemo(()=>(payables||[]).filter(p=>p.status!=="Paid"&&p.status!=="Cancelled"&&Number(p.amount)>0&&!p.dueDate),[payables]);
+  const[edits,setEdits]=useState({});
+  useEffect(()=>{ if(open) setEdits({}); },[open]);
+  const dealName=id=>{const d=(deals||[]).find(x=>x.id===id);return d?(d.client||d.contact||""):"";};
+  const setE=(k,v)=>setEdits(e=>({...e,[k]:v}));
+  const filled=Object.values(edits).filter(Boolean).length;
+  const save=()=>{
+    let n=0;
+    missBill.forEach(b=>{const v=edits["b:"+b.id];if(v){updateMilestone(b.id,{dueDate:v});n++;}});
+    missPay.forEach(p=>{const v=edits["p:"+p.id];if(v){setPayableDueDate(p.id,v);n++;}});
+    toastEmit&&toastEmit(n?`✅ Set due dates on ${n} item${n>1?"s":""} — forecast updated.`:"No due dates entered yet.",n?"success":"info");
+    if(n) onClose();
+  };
+  const rowStyle={display:"grid",gridTemplateColumns:"1fr auto 150px",gap:10,alignItems:"center",padding:"8px 0",borderBottom:"1px solid #f1f5f9"};
+  const sect=(title,color,rows,render)=>(
+    <div style={{marginBottom:18}}>
+      <div style={{fontWeight:800,fontSize:".78rem",color,textTransform:"uppercase",letterSpacing:".6px",marginBottom:6}}>{title} ({rows.length})</div>
+      {rows.length===0
+        ?<div style={{fontSize:".8rem",color:"#94a3b8",fontStyle:"italic",padding:"4px 0"}}>All caught up — none missing a due date.</div>
+        :rows.map(render)}
+    </div>
+  );
+  return(
+    <Modal open={open} onClose={onClose} title="📅 Set Missing Due Dates" wide>
+      <div style={{fontSize:".82rem",color:"#64748b",marginBottom:16,lineHeight:1.5}}>
+        These unpaid items have <b>no due date</b>, so the Cash-Flow Forecast can't place them in the right week and treats them as due now. Set a date to fix the projection.
+      </div>
+      {sect("Expected Collections — Billings","#047857",missBill,b=>{
+        const paid=(b.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
+        const out=Number(b.amount||0)-paid;
+        return(
+          <div key={b.id} style={rowStyle}>
+            <div style={{minWidth:0}}>
+              <div style={{fontWeight:700,fontSize:".84rem",color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{dealName(b.dealId)||b.name||"Billing"}</div>
+              <div style={{fontSize:".7rem",color:"#94a3b8"}}>{b.name||b.invoiceNo||""}{b.invoiceNo&&b.name?` · ${b.invoiceNo}`:""}</div>
+            </div>
+            <div style={{fontWeight:800,fontSize:".84rem",color:"#047857",fontVariantNumeric:"tabular-nums"}}>{peso(out)}</div>
+            <Inp type="date" value={edits["b:"+b.id]||""} onChange={e=>setE("b:"+b.id,e.target.value)}/>
+          </div>
+        );
+      })}
+      {sect("Expected Payments — Payables","#b45309",missPay,p=>(
+        <div key={p.id} style={rowStyle}>
+          <div style={{minWidth:0}}>
+            <div style={{fontWeight:700,fontSize:".84rem",color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.vendor||"Payable"}</div>
+            <div style={{fontSize:".7rem",color:"#94a3b8"}}>{p.apNumber||p.poNumber||p.invoiceNumber||p.category||""}</div>
+          </div>
+          <div style={{fontWeight:800,fontSize:".84rem",color:"#b45309",fontVariantNumeric:"tabular-nums"}}>{peso(p.amount)}</div>
+          <Inp type="date" value={edits["p:"+p.id]||""} onChange={e=>setE("p:"+p.id,e.target.value)}/>
+        </div>
+      ))}
+      <div style={{display:"flex",justifyContent:"flex-end",gap:10,marginTop:8}}>
+        <button onClick={onClose} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"9px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:"#475569",cursor:"pointer"}}>Close</button>
+        <button onClick={save} disabled={!filled} style={{background:filled?"#1f3864":"#cbd5e1",border:"none",borderRadius:8,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:"#fff",cursor:filled?"pointer":"not-allowed"}}>Save {filled||""} due date{filled===1?"":"s"}</button>
+      </div>
+    </Modal>
+  );
+}
+
 // ─── CASH-FLOW FORECAST ──────────────────────────────────────────────────────
 // Forward view of working cash: projects expected collections (outstanding
 // billings) against expected payments (payables, uncleared checks, loan
 // amortizations) week by week, flagging when the projected balance runs short.
-function CashFlowView({billings,payables,vouchers,loans,cashPositions,setPage,Wrap,isMobile}){
+function CashFlowView({billings,payables,vouchers,loans,cashPositions,setPage,Wrap,isMobile,onFixDueDates}){
   const money=v=>(v<0?"−₱":"₱")+Math.round(Math.abs(Number(v)||0)).toLocaleString("en-PH");
   const DAY=86400000, WEEKS=8;
   const start=new Date(); start.setHours(0,0,0,0);
@@ -2787,6 +2859,12 @@ function CashFlowView({billings,payables,vouchers,loans,cashPositions,setPage,Wr
     }
   });
 
+  // Flows with no due date can't be placed in a week — they fall into bucket 0
+  // ("now/overdue") and skew the projection. Surface them so Finance can fix.
+  const noDateIn =flows.filter(f=>f.dir==="in" &&f.date==null).reduce((s,f)=>s+f.amt,0);
+  const noDateOut=flows.filter(f=>f.dir==="out"&&f.date==null).reduce((s,f)=>s+f.amt,0);
+  const noDateCount=flows.filter(f=>f.date==null&&f.amt>0.5).length;
+
   const bucketOf=ms=>{ if(ms==null||ms<today) return 0; const w=Math.floor((ms-today)/(7*DAY))+1; return w>WEEKS?WEEKS+1:w; };
   const buckets=Array.from({length:WEEKS+2},(_,i)=>({i,in:0,out:0}));
   flows.forEach(f=>{ const b=buckets[bucketOf(f.date)]; if(f.dir==="in") b.in+=f.amt; else b.out+=f.amt; });
@@ -2824,6 +2902,19 @@ function CashFlowView({billings,payables,vouchers,loans,cashPositions,setPage,Wr
       {crunchWk!=null&&(
         <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:12,padding:"12px 16px",marginBottom:16,fontSize:".86rem",color:"#b91c1c",fontWeight:600}}>
           ⚠️ Projected cash goes negative around <strong>{bLabel(crunchWk)}</strong> (low point {money(lowest)}). Pull collections forward or defer payments.
+        </div>
+      )}
+
+      {noDateCount>0&&(
+        <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:12,padding:"12px 16px",marginBottom:16,display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
+          <div style={{flex:1,minWidth:220,fontSize:".84rem",color:"#92400e",lineHeight:1.5}}>
+            ⚠️ <strong>{noDateCount} item{noDateCount===1?"":"s"}</strong> ha{noDateCount===1?"s":"ve"} no due date
+            {noDateIn>0.5&&<> — {money(noDateIn)} in collections</>}
+            {noDateIn>0.5&&noDateOut>0.5?" and":""}
+            {noDateOut>0.5&&<> {money(noDateOut)} in payments</>}
+            {" "}counted as due now. Set due dates to sharpen the projection.
+          </div>
+          {onFixDueDates&&<button onClick={onFixDueDates} style={{background:"#b45309",border:"none",borderRadius:9,padding:"9px 16px",color:"#fff",fontFamily:"inherit",fontWeight:800,fontSize:".8rem",cursor:"pointer",whiteSpace:"nowrap"}}>📅 Set due dates</button>}
         </div>
       )}
 
@@ -5939,6 +6030,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[awardModal, setAwardModal]=useState(null);
   const[awardReqModal, setAwardReqModal]=useState(null);
   const[payTermsModal,setPayTermsModal]=useState(null); // dealId — shown after award to capture payment terms
+  const[dueDateFixOpen,setDueDateFixOpen]=useState(false); // backfill dialog for missing billing/payable due dates
   const[clientSugg, setClientSugg]=useState([]); // autocomplete suggestions
   const[dealForm,  setDealForm] =useState(emptyDeal);
   const[editDeal,  setEditDeal] =useState(null);
@@ -6851,6 +6943,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   };
 
   const upPayables=fn=>{const next=fn(payables);setPayables(next);persist(KEYS.payables,next);};
+  // Set just the due date on a payable (used by the due-date backfill dialog) and sync it.
+  const setPayableDueDate=(id,dueDate)=>{
+    let updated=null;
+    upPayables(ps=>ps.map(p=>{if(p.id!==id)return p;updated={...p,dueDate};return updated;}));
+    if(updated&&isSupabaseReady()) sbUpsert("payables",payableToSb(updated),"id").catch(()=>{});
+  };
 
   // ── Commission payouts (what Finance has disbursed to each rep) ─────────────
   const upPayouts=fn=>{const next=fn(payouts);setPayouts(next);persist(KEYS.payouts,next);};
@@ -7109,9 +7207,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(isSupabaseReady()) sbUpsert("payables",payableToSb(rec),"id").catch(()=>{});
     return rec;
   };
-  const savePayable=(data)=>{
+  const savePayable=async(data)=>{
     if(!data.vendor||!data.amount) return;
     if(!String(data.accountCode||"").trim()){toastEmit("Select a Chart-of-Accounts code before saving — it drives the financial statements.","error");return;}
+    // Due date drives the cash-flow forecast — nudge (don't hard-block) if missing.
+    if(!String(data.dueDate||"").trim()){
+      const ok=await uiConfirm({title:"No due date set",tone:"warning",confirmLabel:"Save without due date",cancelLabel:"Go back & set it",
+        message:"This payable has no due date, so the Cash-Flow Forecast will treat it as due now instead of scheduling it. Set a due date for an accurate projection.\n\nSave anyway?"});
+      if(!ok) return;
+    }
     const amount=Number(data.amount);
     const paidAmount=Number(data.paidAmount)||0;
     // Derive status from what's actually been paid so a manually entered payable
@@ -7860,6 +7964,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         <MobileHeader/>
         <Toaster/>
         <DialogHost/>
+        <DueDateBackfillModal open={dueDateFixOpen} onClose={()=>setDueDateFixOpen(false)} billings={billings} payables={payables} deals={deals} updateMilestone={updateMilestone} setPayableDueDate={setPayableDueDate} toastEmit={toastEmit}/>
         {!isOnline&&<div style={{position:"fixed",top:0,left:0,right:0,zIndex:2000,background:"#1e293b",color:"#fcd34d",padding:"8px 16px",textAlign:"center",fontSize:".78rem",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>⚠️ You're offline — changes are saved locally and will sync when you reconnect.</div>}
         {pendingSync>0&&(
           <div onClick={async()=>{
@@ -12745,8 +12850,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   <div style={{fontWeight:700,color:ERP.navy,fontSize:16}}>Accounts Payable</div>
                   <div style={{fontSize:12.5,color:ERP.muted,marginTop:2}}>Track what GMD owes to suppliers, subcontractors, and vendors.</div>
                 </div>
-                <button onClick={()=>{setPayForm(emptyPayForm());setEditPayId(null);setPayModal(true);}}
-                  style={{background:ERP.gold,border:"none",borderRadius:7,padding:"9px 16px",fontFamily:"inherit",fontSize:13,color:ERP.navy,cursor:"pointer",fontWeight:600}}>+ Other Payable</button>
+                <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                  {(()=>{const miss=payables.filter(p=>p.status!=="Paid"&&p.status!=="Cancelled"&&Number(p.amount)>0&&!p.dueDate).length;
+                    return miss>0?<button onClick={()=>setDueDateFixOpen(true)} style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:7,padding:"9px 14px",fontFamily:"inherit",fontSize:13,color:"#b45309",cursor:"pointer",fontWeight:700}}>📅 Set due dates ({miss})</button>:null;})()}
+                  <button onClick={()=>{setPayForm(emptyPayForm());setEditPayId(null);setPayModal(true);}}
+                    style={{background:ERP.gold,border:"none",borderRadius:7,padding:"9px 16px",fontFamily:"inherit",fontSize:13,color:ERP.navy,cursor:"pointer",fontWeight:600}}>+ Other Payable</button>
+                </div>
               </div>
               {/* Summary */}
               <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(auto-fit,minmax(190px,1fr))",gap:12,marginBottom:20}}>
@@ -12891,9 +13000,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   <Fld label="Amount (₱)" required><Inp type="number" value={payForm.amount} onChange={e=>setPayForm(p=>({...p,amount:e.target.value}))} placeholder="0"/></Fld>
                   <Fld label="Already Paid (₱)"><Inp type="number" value={payForm.paidAmount} onChange={e=>setPayForm(p=>({...p,paidAmount:e.target.value}))} placeholder="0"/></Fld>
                 </div>
-                <Fld label="Due Date">
+                <Fld label="Due Date" required>
                   <Inp type="date" value={payForm.dueDate||""} onChange={e=>setPayForm(p=>({...p,dueDate:e.target.value}))}/>
                   {payForm.dueDate&&payForm.dueDate<today&&<div style={{fontSize:".72rem",color:"#ef4444",marginTop:3,fontWeight:600}}>⚠ Due date is in the past — this payable is already overdue.</div>}
+                  {!payForm.dueDate&&<div style={{fontSize:".72rem",color:"#b45309",marginTop:3,fontWeight:600}}>Recommended — drives the cash-flow forecast.</div>}
                 </Fld>
                 <Fld label="Category"><Sel value={payForm.category} onChange={e=>setPayForm(p=>({...p,category:e.target.value}))}>{["Supplier","Subcontractor","Utility","Rent","Labor","Government","Other"].map(c=><option key={c}>{c}</option>)}</Sel></Fld>
                 <Fld label="Account (Chart of Accounts)" required>
@@ -14733,6 +14843,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   if(page==="billing") return(
     <>
     <Wrap>
+      {/* Missing due-date nudge — keeps the cash-flow forecast accurate */}
+      {(()=>{const miss=billings.filter(b=>{if(b.status==="Cancelled"||b.status==="Fully Paid")return false;const paid=(b.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);return (Number(b.amount||0)-paid)>0.5&&!b.dueDate;}).length;
+        return miss>0?(
+          <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"10px 14px",marginBottom:14,display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+            <span style={{flex:1,minWidth:200,fontSize:".82rem",color:"#92400e",fontWeight:600}}>⚠️ {miss} unpaid billing{miss===1?"":"s"} missing a due date — the cash-flow forecast can't schedule {miss===1?"it":"them"}.</span>
+            <button onClick={()=>setDueDateFixOpen(true)} style={{background:"#b45309",border:"none",borderRadius:8,padding:"8px 14px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",cursor:"pointer",whiteSpace:"nowrap"}}>📅 Set due dates</button>
+          </div>
+        ):null;})()}
       {/* Aging Summary */}
       {(()=>{
         const now=new Date();
@@ -15214,7 +15332,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     <WIPView wonDeals={wonDeals} projs={projs} billings={billings} exps={exps} prs={prs} overallProg={overallProg} setPage={setPage} Wrap={Wrap} isMobile={isMobile}/>
   );
   if(page==="cashflow"&&(role==="Finance"||role==="Manager"||role==="Accounting"||role==="FinanceAssistant")) return(
-    <CashFlowView billings={billings} payables={payables} vouchers={vouchers} loans={loans} cashPositions={cashPositions} setPage={setPage} Wrap={Wrap} isMobile={isMobile}/>
+    <CashFlowView billings={billings} payables={payables} vouchers={vouchers} loans={loans} cashPositions={cashPositions} setPage={setPage} Wrap={Wrap} isMobile={isMobile} onFixDueDates={()=>setDueDateFixOpen(true)}/>
   );
   if(page==="weeklycashflow"&&(role==="Finance"||role==="Manager"||role==="Accounting")) return(
     <Wrap><WeeklyCashFlow cashPositions={cashPositions} billings={billings} exps={exps} chartOfAccounts={chartOfAccounts} setPage={setPage}/></Wrap>
@@ -22780,6 +22898,11 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const submitMS=async()=>{
     if(!msForm.name||!msForm.amount) return;
     if(!(Number(msForm.amount)>0)){toastEmit&&toastEmit("Amount must be a positive number.","error");return;}
+    if(!String(msForm.dueDate||"").trim()){
+      const ok=await uiConfirm({title:"No due date set",tone:"warning",confirmLabel:"Save without due date",cancelLabel:"Go back & set it",
+        message:"This billing milestone has no due date, so the Cash-Flow Forecast will treat its expected collection as due now instead of scheduling it. Set a due date for an accurate projection.\n\nSave anyway?"});
+      if(!ok) return;
+    }
     addMilestone({...msForm,dealId:selDeal,invoiceNo:msForm.invoiceNo||await claimInv(),createdBy:session?.name||role});
     setMsForm({name:"",description:"",amount:"",invoiceNo:"",invoiceDate:today,dueDate:"",status:"Draft",receiptType:null,withholding:null});
     setShowForm(false);
@@ -22850,8 +22973,13 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     setPayForm({amount:"",date:today,refNo:"",note:"",valueDate:"",bank:"",method:"Bank Transfer"});
     setShowPay(null);
   };
-  const saveEditMs=()=>{
+  const saveEditMs=async()=>{
     if(!editMs) return;
+    if(!String(editMsForm.dueDate||"").trim()){
+      const ok=await uiConfirm({title:"No due date set",tone:"warning",confirmLabel:"Save without due date",cancelLabel:"Go back & set it",
+        message:"This billing milestone has no due date, so the Cash-Flow Forecast will treat its expected collection as due now instead of scheduling it. Set a due date for an accurate projection.\n\nSave anyway?"});
+      if(!ok) return;
+    }
     updateMilestone(editMs,{
       name:editMsForm.name,description:editMsForm.description,
       amount:Number(editMsForm.amount)||0,
@@ -23757,7 +23885,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                     </Fld>
                     <Fld label="Invoice No." hint="Auto-generated if blank"><Inp value={msForm.invoiceNo} onChange={e=>fm("invoiceNo",e.target.value)} placeholder={nextInvoiceNo()}/></Fld>
                     <Fld label="Invoice Date"><Inp type="date" value={msForm.invoiceDate} onChange={e=>fm("invoiceDate",e.target.value)}/></Fld>
-                    <Fld label="Due Date"><Inp type="date" value={msForm.dueDate} onChange={e=>fm("dueDate",e.target.value)}/></Fld>
+                    <Fld label="Due Date" required hint={!msForm.dueDate?"Recommended — drives the cash-flow forecast.":undefined}><Inp type="date" value={msForm.dueDate} onChange={e=>fm("dueDate",e.target.value)}/></Fld>
                     <Fld label="Status"><Sel value={msForm.status} onChange={e=>fm("status",e.target.value)}>{BILLING_STATUSES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
                     <Fld label="Receipt Type" hint={`Defaults to deal setting (${deal?.receiptType||"OR"})`}>
                       <Sel value={msForm.receiptType||""} onChange={e=>fm("receiptType",e.target.value||null)}>
@@ -23927,7 +24055,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                             <Fld label="Amount (₱)"><Inp type="number" value={editMsForm.amount||""} onChange={e=>fme("amount",e.target.value)} placeholder="0.00"/></Fld>
                             <Fld label="Invoice No"><Inp value={editMsForm.invoiceNo||""} onChange={e=>fme("invoiceNo",e.target.value)} placeholder="INV-0001"/></Fld>
                             <Fld label="Invoice Date"><Inp type="date" value={editMsForm.invoiceDate||""} onChange={e=>fme("invoiceDate",e.target.value)}/></Fld>
-                            <Fld label="Due Date"><Inp type="date" value={editMsForm.dueDate||""} onChange={e=>fme("dueDate",e.target.value)}/></Fld>
+                            <Fld label="Due Date" required hint={!editMsForm.dueDate?"Recommended — drives the cash-flow forecast.":undefined}><Inp type="date" value={editMsForm.dueDate||""} onChange={e=>fme("dueDate",e.target.value)}/></Fld>
                             <Fld label="Description"><Inp value={editMsForm.description||""} onChange={e=>fme("description",e.target.value)} placeholder="Optional details…"/></Fld>
                             <Fld label="Receipt Type" hint={`Deal default: ${deal?.receiptType||"OR"}`}>
                               <Sel value={editMsForm.receiptType||""} onChange={e=>fme("receiptType",e.target.value||null)}>
