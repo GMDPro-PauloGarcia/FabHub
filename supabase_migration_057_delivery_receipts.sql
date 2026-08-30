@@ -2,7 +2,8 @@
 -- Receipts (goods received notes) not necessarily tied to a purchase order.
 -- The Warehouse "Receipts" ledger merges these with PO-derived receipts.
 -- App-written rows use a client-generated uuid PK.
--- RLS mirrors the live permissive gate (see migration 027's note).
+-- RLS uses the project's role-aware helpers (has_role, migration 037).
+-- Applied to the live DB via MCP.
 
 create table if not exists public.delivery_receipts (
   id            uuid        primary key,
@@ -25,6 +26,23 @@ create index if not exists delivery_receipts_dr_date_idx on public.delivery_rece
 
 alter table public.delivery_receipts enable row level security;
 
-drop policy if exists fabhub_app_access on public.delivery_receipts;
-create policy fabhub_app_access on public.delivery_receipts
-  for all to authenticated, anon using (true) with check (true);
+drop policy if exists delivery_receipts_sel on public.delivery_receipts;
+create policy delivery_receipts_sel on public.delivery_receipts
+  for select to authenticated
+  using (has_role('Manager','Finance','FinanceAssistant','Procurement','Warehouse'));
+
+drop policy if exists delivery_receipts_ins on public.delivery_receipts;
+create policy delivery_receipts_ins on public.delivery_receipts
+  for insert to authenticated
+  with check (has_role('Manager','Warehouse','Procurement'));
+
+drop policy if exists delivery_receipts_upd on public.delivery_receipts;
+create policy delivery_receipts_upd on public.delivery_receipts
+  for update to authenticated
+  using (has_role('Manager','Warehouse','Procurement'))
+  with check (has_role('Manager','Warehouse','Procurement'));
+
+drop policy if exists delivery_receipts_del on public.delivery_receipts;
+create policy delivery_receipts_del on public.delivery_receipts
+  for delete to authenticated
+  using (has_role('Manager','Warehouse','Procurement'));
