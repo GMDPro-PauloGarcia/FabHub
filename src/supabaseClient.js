@@ -415,7 +415,7 @@ export const sbLoadAll = async () => {
       suppliers, subcontractors,
       payables, loans, loanPayments,
       swos, boqLibrary, standaloneBoqRows, checkVouchers, blockers, dailyLogs, ceReqs,
-      commissionPayouts
+      commissionPayouts, tools, deliveryReceipts
     ] = await _mapLimit([
       () => sbList('deals',                    { order: 'created_at', limit: 1000 }),
       () => sbList('job_orders',               { order: 'created_at', limit: 500 }),
@@ -465,6 +465,8 @@ export const sbLoadAll = async () => {
       () => sbList('daily_logs',         { order: 'log_date', limit: 1000 }),
       () => sbList('ce_requests',        { order: 'created_at', limit: 1000 }),
       () => sbList('commission_payouts', { order: 'created_at', limit: 2000 }),
+      () => sbList('tools',              { order: 'created_at', limit: 2000 }),
+      () => sbList('delivery_receipts',  { order: 'dr_date', limit: 2000 }),
     ], 6)
 
     // Build pcards object with departments embedded
@@ -548,7 +550,7 @@ export const sbLoadAll = async () => {
              checklist: checklists, swatches, actLog, users, settings: settingsObj,
              drfs, inventory, stocklog, projs: projsObj, suppliers, subcontractors,
              payables, loans: loansArr, swos, boqLibrary, standaloneBoqs, checkVouchers, blockers, dailyLogs, ceReqs,
-             commissionPayouts,
+             commissionPayouts, tools, drs: deliveryReceipts,
              _failed: consumeReadFailures() }
   } catch (err) {
     console.error('sbLoadAll failed:', err)

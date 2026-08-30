@@ -109,7 +109,7 @@ function InlineCell({value,onSave,isNum,color,mono,canEdit,C,tdS,badge}){
   );
 }
 // ─── TAT SETTER COMPONENT ─────────────────────────────────────────────────────
-function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addPR,addInventoryItem,updateInventoryItem,deleteInventoryItem,clearAllInventory,logStockMove,suppliers=[],addSupplier,printDR,tools=[],upTools,projs={},upProjs,deals=[],session,role}){
+function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addPR,addInventoryItem,updateInventoryItem,deleteInventoryItem,clearAllInventory,logStockMove,mergeInventoryItems,suppliers=[],addSupplier,printDR,tools=[],upTools,saveTool,deleteTool,drs=[],saveDr,deleteDr,projs={},upProjs,deals=[],session,role}){
   // ── theme colours matching the warehouse standalone app ─────────────────
   const C={bg:"#f0f2f5",card:"#ffffff",border:"#e4e8ef",text:"#1a2035",muted:"#7b8499",accent:"#f97316",green:"#22c55e",teal:"#14b8a6",blue:"#3b82f6",red:"#ef4444",yellow:"#eab308"};
 
@@ -208,6 +208,44 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addPR,addInv
   const[expProj,setExpProj]=useState(null); // expanded project row in the Projects consumption report
   const[rxSearch,setRxSearch]=useState(""); // Delivery Receipts ledger search
   const[toolForm,setToolForm]=useState({name:"",borrower:"",borrowedDate:today,expectedReturn:"",notes:""}); // Tools register add form
+  const[showDupes,setShowDupes]=useState(false); // merge-duplicates modal
+  const[dupSurvivors,setDupSurvivors]=useState({}); // group key -> chosen survivor id
+  // Standalone Delivery Receipt entry (+ AI OCR)
+  const[showDr,setShowDr]=useState(false);
+  const[drForm,setDrForm]=useState(null);
+  const[drOcrBusy,setDrOcrBusy]=useState(false);
+  const blankDr=()=>({id:"",drNo:"",drDate:today,supplier:"",projectId:"",projectName:"",poNumber:"",remarks:"",receivedBy:session?.name||role||"",items:[{name:"",qty:"",unitCost:""}]});
+  const openDr=(dr)=>{setDrForm(dr?{...blankDr(),...dr,items:(dr.items&&dr.items.length?dr.items.map(it=>({name:it.name||it.desc||"",qty:it.qty??"",unitCost:it.unitCost??""})):[{name:"",qty:"",unitCost:""}])}:blankDr());setShowDr(true);};
+  const drTotal=(items)=>(items||[]).reduce((s,it)=>s+(Number(it.qty)||0)*(Number(it.unitCost)||0),0);
+  const commitDr=()=>{
+    if(!saveDr){toastEmit&&toastEmit("Delivery receipts unavailable in this view.","error");return;}
+    const items=(drForm.items||[]).filter(it=>(it.name||"").trim()).map(it=>({name:it.name.trim(),qty:Number(it.qty)||0,unitCost:Number(it.unitCost)||0}));
+    if(!items.length){toastEmit&&toastEmit("Add at least one line item.","error");return;}
+    const deal=drForm.projectId&&drForm.projectId!=="__gmd_stocks__"?wonDeals.find(d=>d.id===drForm.projectId):null;
+    saveDr({...drForm,items,total:drTotal(items),projectName:drForm.projectId==="__gmd_stocks__"?"GMD Stocks":(deal?.client||drForm.projectName||"")});
+    toastEmit&&toastEmit(`✓ Delivery receipt ${drForm.drNo||""} saved`,"success");
+    setShowDr(false);setDrForm(null);
+  };
+  const runDrOcr=async(file)=>{
+    if(!file)return;
+    setDrOcrBusy(true);
+    try{
+      const buf=await file.arrayBuffer();
+      const b64=btoa(new Uint8Array(buf).reduce((d,b)=>d+String.fromCharCode(b),""));
+      const res=await fetch("/api/parse-dr",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({fileData:b64,mimeType:file.type})});
+      const data=await res.json();
+      if(!res.ok)throw new Error(data.error||"OCR failed");
+      setDrForm(f=>({...f,
+        drNo:data.drNo||f.drNo,
+        drDate:data.date||f.drDate,
+        supplier:data.supplier||f.supplier,
+        poNumber:data.poNumber||f.poNumber,
+        items:(Array.isArray(data.items)&&data.items.length?data.items.map(it=>({name:it.name||it.desc||"",qty:it.qty??"",unitCost:it.unitCost??it.price??""})):f.items),
+      }));
+      toastEmit&&toastEmit(`🤖 Read ${Array.isArray(data.items)?data.items.length:0} line item(s) from the receipt`,"success");
+    }catch(err){toastEmit&&toastEmit("DR scan failed: "+err.message,"error");}
+    setDrOcrBusy(false);
+  };
   // Bulk stock-movement import (CSV: item, type, qty, unitCost, date, project, notes)
   const[showMoveImport,setShowMoveImport]=useState(false);
   const[moveImpText,setMoveImpText]=useState("");
@@ -414,8 +452,24 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addPR,addInv
         list.push({key:pr.id+"-s",pr,deal,date:pr.deliveryDate||pr.createdDate||"",drNo:pr.drNo||"",qty:Number(pr.qtyDelivered)||Number(pr.qty)||0,recordedBy:""});
       }
     });
+    // Standalone / manually-entered delivery receipts (own store).
+    (drs||[]).forEach(dr=>{
+      const deal=wonDeals.find(d=>d.id===dr.projectId);
+      const items=Array.isArray(dr.items)?dr.items:[];
+      const totQty=items.reduce((s,it)=>s+(Number(it.qty)||0),0);
+      const label=items.length===1?(items[0].name||items[0].desc||"Item"):(items.length?`${items.length} items`:"(no items)");
+      list.push({key:"dr-"+dr.id,standalone:true,dr,deal,date:dr.drDate||dr.createdAt||"",drNo:dr.drNo||"",qty:totQty,value:Number(dr.total)||0,recordedBy:dr.receivedBy||"",
+        pr:{itemName:label,supplier:dr.supplier,poNumber:dr.poNumber,projectId:dr.projectId,projectName:dr.projectName,status:"Delivered",actUnitCost:0,paymentStatus:""}});
+    });
     return list.sort((a,b)=>(b.date>a.date?1:b.date<a.date?-1:0));
-  },[prs,wonDeals]);
+  },[prs,wonDeals,drs]);
+
+  // Duplicate SKUs — same name + unit (case-insensitive). Fed to the merge tool.
+  const dupGroups=useMemo(()=>{
+    const m={};
+    (inventory||[]).forEach(i=>{const nm=(i.name||"").trim().toLowerCase();if(!nm)return;const k=nm+"|"+(i.unit||"").trim().toLowerCase();(m[k]||(m[k]=[])).push(i);});
+    return Object.values(m).filter(g=>g.length>1).map(g=>({key:(g[0].name||"")+"|"+(g[0].unit||""),name:g[0].name,unit:g[0].unit,items:g}));
+  },[inventory]);
 
   // ── KPIs ──────────────────────────────────────────────────────────────
   const totalVal=rows.reduce((s,i)=>s+i._rem*i._price,0);
@@ -786,6 +840,7 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addPR,addInv
         <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
           <button onClick={exportInvXLSX} style={{background:C.green,border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#fff",cursor:"pointer"}}>⬇ Excel</button>
           {canEdit&&<button onClick={()=>{setShowImport(true);setImportText("");setImportPreview([]);setImportErr("");}} style={{background:"#7c3aed",border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#fff",cursor:"pointer"}}>⬆ Import CSV</button>}
+          {canEdit&&mergeInventoryItems&&dupGroups.length>0&&<button onClick={()=>{setShowDupes(true);setDupSurvivors({});}} title="Combine duplicate SKUs" style={{background:"#fff",border:`1px solid ${C.red}`,borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:C.red,cursor:"pointer"}}>⧉ Merge Dupes ({dupGroups.length})</button>}
           {canEdit&&<button onClick={openAddModal} style={{background:C.accent,border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#fff",cursor:"pointer"}}>＋ Add / Restock</button>}
           {role==="Manager"&&clearAllInventory&&(inventory.length>0||stocklog.length>0)&&<button onClick={async()=>{
             if(!(await uiConfirm(`Start fresh? This permanently deletes ALL ${inventory.length} inventory item(s) and ${stocklog.length} stock movement(s) — for everyone, on every device. This cannot be undone.`))) return;
@@ -1403,15 +1458,19 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addPR,addInv
         const fmtM=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
         const q=rxSearch.trim().toLowerCase();
         const list=q?receipts.filter(r=>[r.drNo,r.pr.poNumber,r.pr.itemName||r.pr.item,r.pr.supplier,r.deal?.client].some(v=>String(v||"").toLowerCase().includes(q))):receipts;
-        const totVal=list.reduce((s,r)=>{const uc=Number(r.pr.actUnitCost||r.pr.estUnitCost||r.pr.estimatedCost||0);return s+uc*r.qty;},0);
+        const rxVal=r=>r.standalone?(Number(r.value)||0):(Number(r.pr.actUnitCost||r.pr.estUnitCost||r.pr.estimatedCost||0)*r.qty);
+        const totVal=list.reduce((s,r)=>s+rxVal(r),0);
         const payClr=st=>/logged|paid|expense/i.test(st||"")?C.green:/pending/i.test(st||"")?C.accent:C.muted;
         return(
         <div style={{overflowY:"auto",flex:1,paddingBottom:20}}>
           <div style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:8,padding:"9px 14px",fontSize:".78rem",color:"#1d4ed8",marginBottom:10}}>
-            🧾 <strong>Delivery Receipts</strong> — every received PO as a receipt document, linked to its purchase order and finance status. Print a branded GRN/DR for any line.
+            🧾 <strong>Delivery Receipts</strong> — every received PO as a receipt document, linked to its purchase order and finance status. Print a branded GRN/DR for any line, or log a standalone DR.
           </div>
-          <input value={rxSearch} onChange={e=>setRxSearch(e.target.value)} placeholder="Search DR#, PO#, item, supplier, project…"
-            style={{width:"100%",border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:12,color:C.text,background:"#fff",boxSizing:"border-box",marginBottom:10}}/>
+          <div style={{display:"flex",gap:8,marginBottom:10}}>
+            <input value={rxSearch} onChange={e=>setRxSearch(e.target.value)} placeholder="Search DR#, PO#, item, supplier, project…"
+              style={{flex:1,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:12,color:C.text,background:"#fff",boxSizing:"border-box"}}/>
+            {canEdit&&saveDr&&<button onClick={()=>openDr(null)} style={{background:C.accent,border:"none",borderRadius:8,padding:"8px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#fff",cursor:"pointer",whiteSpace:"nowrap"}}>＋ New DR</button>}
+          </div>
           {list.length===0?(
             <div style={{textAlign:"center",padding:"3rem",color:C.muted,fontSize:13}}>{receipts.length===0?"No delivery receipts yet — receive a PO in the Deliveries tab.":"No receipts match your search."}</div>
           ):(
@@ -1446,9 +1505,13 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addPR,addInv
                       </span>
                     </div>
                     <div style={{fontSize:12,fontWeight:700,color:C.text,textAlign:"right",fontFamily:"monospace"}}>{r.qty}</div>
-                    <div style={{fontSize:11,fontWeight:700,color:uc>0?C.teal:C.muted,textAlign:"right",fontFamily:"monospace"}}>{uc>0?fmtM(uc*r.qty):"—"}</div>
-                    <div style={{fontSize:10}}>{payStatus?<span style={{color:payClr(payStatus),fontWeight:700}}>{payStatus}</span>:<span style={{color:C.muted}}>—</span>}</div>
-                    <div>{printDR&&<button onClick={()=>printDR(pr,r.qty||pr.qty,r.drNo,r.deal)} title="Print delivery receipt / GRN" style={{fontSize:9,padding:"4px 8px",border:`1px solid ${C.blue}`,borderRadius:5,background:"#fff",color:C.blue,cursor:"pointer",fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap"}}>🖨 DR</button>}</div>
+                    <div style={{fontSize:11,fontWeight:700,color:rxVal(r)>0?C.teal:C.muted,textAlign:"right",fontFamily:"monospace"}}>{rxVal(r)>0?fmtM(rxVal(r)):"—"}</div>
+                    <div style={{fontSize:10}}>{r.standalone?<span style={{color:C.teal,fontWeight:700}}>Manual DR</span>:payStatus?<span style={{color:payClr(payStatus),fontWeight:700}}>{payStatus}</span>:<span style={{color:C.muted}}>—</span>}</div>
+                    <div style={{display:"flex",gap:3}}>
+                      {printDR&&<button onClick={()=>printDR(pr,r.qty||pr.qty,r.drNo,r.deal)} title="Print delivery receipt / GRN" style={{fontSize:9,padding:"4px 7px",border:`1px solid ${C.blue}`,borderRadius:5,background:"#fff",color:C.blue,cursor:"pointer",fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap"}}>🖨</button>}
+                      {r.standalone&&canEdit&&saveDr&&<button onClick={()=>openDr(r.dr)} title="Edit DR" style={{fontSize:9,padding:"4px 7px",border:`1px solid ${C.border}`,borderRadius:5,background:"#fff",color:C.muted,cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>✏</button>}
+                      {r.standalone&&canDelete&&deleteDr&&<button onClick={()=>{if(window.confirm("Delete this delivery receipt?"))deleteDr(r.dr.id);}} title="Delete DR" style={{fontSize:9,padding:"4px 7px",border:`1px solid ${C.red}`,borderRadius:5,background:"#fff",color:C.red,cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>✕</button>}
+                    </div>
                   </div>
                   );
                 })}
@@ -1528,16 +1591,18 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addPR,addInv
       {tab==="tools"&&(()=>{
         const sorted=[...(tools||[])].sort((a,b)=>{const o={Overdue:0,Borrowed:1,Returned:2};const sa=o[toolStatus(a)],sb=o[toolStatus(b)];return sa!==sb?sa-sb:String(b.borrowedDate||"").localeCompare(String(a.borrowedDate||""));});
         const badge=st=>st==="Overdue"?{bg:C.red+"15",c:C.red}:st==="Borrowed"?{bg:C.accent+"15",c:C.accent}:{bg:C.green+"15",c:C.green};
+        const putTool=saveTool||(upTools&&(rec=>upTools(ts=>ts.some(x=>x.id===rec.id)?ts.map(x=>x.id===rec.id?rec:x):[rec,...ts])));
+        const rmTool=deleteTool||(upTools&&(id=>upTools(ts=>ts.filter(x=>x.id!==id))));
         const addTool=()=>{
           if(!toolForm.name.trim()||!toolForm.borrower.trim()){toastEmit&&toastEmit("Tool name and borrower are required.","error");return;}
-          if(!upTools){toastEmit&&toastEmit("Tools register unavailable in this view.","error");return;}
-          upTools(ts=>[{id:uid(),...toolForm,name:toolForm.name.trim(),borrower:toolForm.borrower.trim(),actualReturn:"",createdBy:session?.name||role||""},...ts]);
+          if(!putTool){toastEmit&&toastEmit("Tools register unavailable in this view.","error");return;}
+          putTool({id:uid(),...toolForm,name:toolForm.name.trim(),borrower:toolForm.borrower.trim(),actualReturn:"",createdBy:session?.name||role||""});
           setToolForm({name:"",borrower:"",borrowedDate:today,expectedReturn:"",notes:""});
           toastEmit&&toastEmit(`🔧 ${toolForm.name.trim()} checked out to ${toolForm.borrower.trim()}`,"success");
         };
-        const markReturned=(t)=>upTools&&upTools(ts=>ts.map(x=>x.id===t.id?{...x,actualReturn:today}:x));
-        const reBorrow=(t)=>upTools&&upTools(ts=>ts.map(x=>x.id===t.id?{...x,actualReturn:""}:x));
-        const delTool=(t)=>upTools&&upTools(ts=>ts.filter(x=>x.id!==t.id));
+        const markReturned=(t)=>putTool&&putTool({...t,actualReturn:today});
+        const reBorrow=(t)=>putTool&&putTool({...t,actualReturn:""});
+        const delTool=(t)=>rmTool&&rmTool(t.id);
         return(
         <div style={{overflowY:"auto",flex:1,paddingBottom:20}}>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:8,marginBottom:10}}>
@@ -1657,6 +1722,92 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addPR,addInv
         </div>
         );
       })()}
+
+      {/* ── MERGE DUPLICATES MODAL ───────────────────────────────────── */}
+      {showDupes&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.5)",zIndex:1200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={e=>{if(e.target===e.currentTarget)setShowDupes(false);}}>
+          <div style={{background:"#fff",borderRadius:14,padding:24,width:640,maxWidth:"96vw",boxShadow:"0 20px 60px rgba(0,0,0,.2)",maxHeight:"90vh",overflowY:"auto"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+              <div style={{fontWeight:800,fontSize:"1rem",color:C.text}}>⧉ Merge Duplicate Items</div>
+              <button onClick={()=>setShowDupes(false)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"4px 10px",cursor:"pointer",color:C.muted,fontWeight:700}}>✕</button>
+            </div>
+            <div style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"9px 12px",marginBottom:14,fontSize:".78rem",color:"#92400e"}}>
+              Same-name / same-unit SKUs. Pick which record to <strong>keep</strong>; the others' stock movements are re-tagged to it and their on-hand qty is folded in (weighted avg cost). This can't be undone.
+            </div>
+            {dupGroups.length===0?(
+              <div style={{textAlign:"center",padding:"2rem",color:C.green,fontSize:13}}>✅ No duplicates remaining.</div>
+            ):dupGroups.map(g=>{
+              const survivor=dupSurvivors[g.key]||g.items[0].id;
+              return(
+              <div key={g.key} style={{border:`1px solid ${C.border}`,borderRadius:9,padding:"10px 12px",marginBottom:10}}>
+                <div style={{fontSize:12,fontWeight:700,color:C.text,marginBottom:6}}>{g.name} <span style={{color:C.muted,fontWeight:500}}>· {g.unit||"—"} · {g.items.length} copies</span></div>
+                {g.items.map(it=>(
+                  <label key={it.id} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 0",cursor:"pointer",fontSize:11,color:C.text}}>
+                    <input type="radio" name={"dup-"+g.key} checked={survivor===it.id} onChange={()=>setDupSurvivors(p=>({...p,[g.key]:it.id}))}/>
+                    <span style={{flex:1}}>{it.code?`[${it.code}] `:""}on hand {n(it.qtyOnHand)} {it.unit} · avg {fp(it.avgCost)}{it.supplier?` · ${it.supplier}`:""}</span>
+                    <span style={{fontSize:9,color:survivor===it.id?C.green:C.muted,fontWeight:700}}>{survivor===it.id?"KEEP":"merge in"}</span>
+                  </label>
+                ))}
+                <div style={{textAlign:"right",marginTop:6}}>
+                  <button onClick={()=>{const dupeIds=g.items.filter(i=>i.id!==survivor).map(i=>i.id);const nm=mergeInventoryItems(survivor,dupeIds);toastEmit&&toastEmit(`Merged ${nm} duplicate${nm!==1?"s":""} into "${g.items.find(i=>i.id===survivor)?.name}"`,"success");}} style={{background:C.accent,border:"none",borderRadius:7,padding:"6px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".76rem",color:"#fff",cursor:"pointer"}}>⧉ Merge this group</button>
+                </div>
+              </div>
+              );
+            })}
+            <div style={{textAlign:"right",marginTop:6}}>
+              <button onClick={()=>setShowDupes(false)} style={{background:"#f1f5f9",border:"none",borderRadius:9,padding:"9px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:C.muted,cursor:"pointer"}}>Done</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── DELIVERY RECEIPT ENTRY MODAL (+ AI OCR) ──────────────────── */}
+      {showDr&&drForm&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.5)",zIndex:1200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={e=>{if(e.target===e.currentTarget){setShowDr(false);setDrForm(null);}}}>
+          <div style={{background:"#fff",borderRadius:14,padding:24,width:680,maxWidth:"96vw",boxShadow:"0 20px 60px rgba(0,0,0,.2)",maxHeight:"92vh",overflowY:"auto"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+              <div style={{fontWeight:800,fontSize:"1rem",color:C.text}}>🧾 {drForm.id?"Edit":"New"} Delivery Receipt</div>
+              <button onClick={()=>{setShowDr(false);setDrForm(null);}} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"4px 10px",cursor:"pointer",color:C.muted,fontWeight:700}}>✕</button>
+            </div>
+            <label style={{display:"flex",alignItems:"center",gap:8,background:"#f5f3ff",border:"1px solid #ddd6fe",borderRadius:8,padding:"9px 12px",marginBottom:14,cursor:drOcrBusy?"wait":"pointer",fontSize:".8rem",color:"#6d28d9",fontWeight:700}}>
+              <span>{drOcrBusy?"⏳ Reading…":"🤖 Scan a DR photo / PDF (AI auto-fill)"}</span>
+              <input type="file" accept="image/*,application/pdf" disabled={drOcrBusy} style={{display:"none"}} onChange={e=>{const f=e.target.files[0];runDrOcr(f);e.target.value="";}}/>
+            </label>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}>
+              <div><div style={{fontSize:9,fontWeight:700,color:C.muted,textTransform:"uppercase",marginBottom:4}}>DR / GRN No.</div><input value={drForm.drNo} onChange={e=>setDrForm(f=>({...f,drNo:e.target.value}))} style={{width:"100%",border:`1px solid ${C.border}`,borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:12,boxSizing:"border-box"}}/></div>
+              <div><div style={{fontSize:9,fontWeight:700,color:C.muted,textTransform:"uppercase",marginBottom:4}}>Date</div><input type="date" value={drForm.drDate} onChange={e=>setDrForm(f=>({...f,drDate:e.target.value}))} style={{width:"100%",border:`1px solid ${C.border}`,borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:12,boxSizing:"border-box"}}/></div>
+              <div><div style={{fontSize:9,fontWeight:700,color:C.muted,textTransform:"uppercase",marginBottom:4}}>PO No. (optional)</div><input value={drForm.poNumber} onChange={e=>setDrForm(f=>({...f,poNumber:e.target.value}))} style={{width:"100%",border:`1px solid ${C.border}`,borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:12,boxSizing:"border-box"}}/></div>
+              <div><div style={{fontSize:9,fontWeight:700,color:C.muted,textTransform:"uppercase",marginBottom:4}}>Supplier</div><input value={drForm.supplier} onChange={e=>setDrForm(f=>({...f,supplier:e.target.value}))} list="supp-opts" style={{width:"100%",border:`1px solid ${C.border}`,borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:12,boxSizing:"border-box"}}/></div>
+              <div style={{gridColumn:"span 2"}}><div style={{fontSize:9,fontWeight:700,color:C.muted,textTransform:"uppercase",marginBottom:4}}>Project</div>
+                <select value={drForm.projectId} onChange={e=>setDrForm(f=>({...f,projectId:e.target.value}))} style={{width:"100%",border:`1px solid ${C.border}`,borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:12,background:"#fff",boxSizing:"border-box"}}>
+                  <option value="">— Unassigned —</option>
+                  <option value="__gmd_stocks__">GMD Stocks</option>
+                  {wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" — "+d.contact:""}</option>)}
+                </select>
+              </div>
+            </div>
+            <div style={{fontSize:9,fontWeight:700,color:C.muted,textTransform:"uppercase",marginBottom:6}}>Line Items</div>
+            {drForm.items.map((it,idx)=>(
+              <div key={idx} style={{display:"grid",gridTemplateColumns:"2.4fr 70px 90px 90px 28px",gap:6,marginBottom:6,alignItems:"center"}}>
+                <input value={it.name} onChange={e=>setDrForm(f=>({...f,items:f.items.map((x,i)=>i===idx?{...x,name:e.target.value}:x)}))} placeholder="Item" style={{border:`1px solid ${C.border}`,borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:12,boxSizing:"border-box"}}/>
+                <input type="number" value={it.qty} onChange={e=>setDrForm(f=>({...f,items:f.items.map((x,i)=>i===idx?{...x,qty:e.target.value}:x)}))} placeholder="Qty" style={{border:`1px solid ${C.border}`,borderRadius:7,padding:"6px 8px",fontFamily:"inherit",fontSize:12,textAlign:"right",boxSizing:"border-box"}}/>
+                <input type="number" value={it.unitCost} onChange={e=>setDrForm(f=>({...f,items:f.items.map((x,i)=>i===idx?{...x,unitCost:e.target.value}:x)}))} placeholder="Unit ₱" style={{border:`1px solid ${C.border}`,borderRadius:7,padding:"6px 8px",fontFamily:"inherit",fontSize:12,textAlign:"right",boxSizing:"border-box"}}/>
+                <div style={{fontSize:11,fontFamily:"monospace",color:C.muted,textAlign:"right"}}>{fp((Number(it.qty)||0)*(Number(it.unitCost)||0))}</div>
+                <button onClick={()=>setDrForm(f=>({...f,items:f.items.filter((_,i)=>i!==idx)}))} style={{border:"none",background:"transparent",color:C.red,cursor:"pointer",fontWeight:700}}>✕</button>
+              </div>
+            ))}
+            <button onClick={()=>setDrForm(f=>({...f,items:[...f.items,{name:"",qty:"",unitCost:""}]}))} style={{background:"#fff",border:`1px dashed ${C.border}`,borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontSize:".76rem",color:C.muted,cursor:"pointer",marginBottom:10}}>+ Add line</button>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+              <div style={{flex:1,marginRight:10}}><div style={{fontSize:9,fontWeight:700,color:C.muted,textTransform:"uppercase",marginBottom:4}}>Remarks</div><input value={drForm.remarks} onChange={e=>setDrForm(f=>({...f,remarks:e.target.value}))} style={{width:"100%",border:`1px solid ${C.border}`,borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:12,boxSizing:"border-box"}}/></div>
+              <div style={{textAlign:"right"}}><div style={{fontSize:9,color:C.muted,textTransform:"uppercase"}}>Total</div><div style={{fontSize:16,fontWeight:800,color:C.teal,fontFamily:"monospace"}}>{fp(drTotal(drForm.items))}</div></div>
+            </div>
+            <div style={{display:"flex",gap:10}}>
+              <button onClick={commitDr} style={{flex:1,background:C.accent,border:"none",borderRadius:9,padding:"10px 0",fontFamily:"inherit",fontWeight:800,fontSize:".86rem",color:"#fff",cursor:"pointer"}}>💾 Save Delivery Receipt</button>
+              <button onClick={()=>{setShowDr(false);setDrForm(null);}} style={{background:"#f1f5f9",border:"none",borderRadius:9,padding:"10px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".86rem",color:C.muted,cursor:"pointer"}}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── IMPORT CSV MODAL ─────────────────────────────────────────── */}
       {showImport&&(
