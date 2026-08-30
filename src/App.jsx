@@ -5,7 +5,7 @@ import{idbGetMany,idbSetMany}from'./idb.js';
 import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable} from './shared';
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
-import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb} from './data/mappers';
+import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
 import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
@@ -3075,6 +3075,7 @@ export default function App(){
   const[inventory,   setInventory] = useState([]);  // Inventory items
   const[stocklog,    setStocklog]  = useState([]);  // Stock movement log // Set of client names marked VVIP
   const[tools,       setTools]     = useState([]);  // Tools / equipment borrow-return register
+  const[drs,         setDrs]       = useState([]);  // Standalone delivery receipts (goods received notes)
   const[receivingPr, setReceivingPr]=useState(null);  // PR being received (partial receiving modal)
   const[rxQty,       setRxQty]     =useState("");
   const[rxDrNo,      setRxDrNo]    =useState("");
@@ -3169,7 +3170,7 @@ export default function App(){
           KEYS.botsettings,KEYS.customclients,KEYS.addenda,KEYS.budgets,
           KEYS.billings,KEYS.vvip,KEYS.actlog,KEYS.pcards,KEYS.inventory,
           KEYS.stocklog,KEYS.swos,"gmdv5:payables","gmdv5:loans","gmdv5:clientprofiles",
-          "gmdv5:aeUpdates","gmdv5:auditFindings",KEYS.vouchers,"gmdv5:standaloneBoqs","gmdv5:chartOfAccounts",KEYS.dailylogs,KEYS.ceReqs,KEYS.payouts,KEYS.tools
+          "gmdv5:aeUpdates","gmdv5:auditFindings",KEYS.vouchers,"gmdv5:standaloneBoqs","gmdv5:chartOfAccounts",KEYS.dailylogs,KEYS.ceReqs,KEYS.payouts,KEYS.tools,KEYS.drs
         ]);
         if(idb[KEYS.deals]){setDeals(idb[KEYS.deals].map(x=>({...x,stage:normalizeStage(x.stage)})));}
         if(idb[KEYS.projects])    setProjs(idb[KEYS.projects]);
@@ -3201,6 +3202,7 @@ export default function App(){
         if(idb[KEYS.inventory])   setInventory(idb[KEYS.inventory]);
         if(idb[KEYS.stocklog])    setStocklog(idb[KEYS.stocklog]);
         if(idb[KEYS.tools])       setTools(idb[KEYS.tools]);
+        if(idb[KEYS.drs])         setDrs(idb[KEYS.drs]);
         if(idb["gmdv5:payables"]) setPayables(idb["gmdv5:payables"]);
         if(idb["gmdv5:loans"])    setLoans(idb["gmdv5:loans"]);
         if(idb["gmdv5:aeUpdates"]) setAeUpdates(idb["gmdv5:aeUpdates"]);
@@ -3289,6 +3291,10 @@ export default function App(){
             if(_inv){setInventory(prev=>{const sbIds=new Set(_inv.map(i=>i.id));const localOnly=prev.filter(i=>!sbIds.has(i.id));return localOnly.length?[..._inv,...localOnly]:_inv;});idbE.push([KEYS.inventory,_inv]);}
             const _stock=data.stocklog?.length?data.stocklog.map(moveFromSb):null;
             if(_stock){setStocklog(_stock);idbE.push([KEYS.stocklog,_stock]);}
+            const _tools=data.tools?.length?data.tools.map(toolFromSb):null;
+            if(_tools){setTools(prev=>mergeLocalOnly(_tools,prev));idbE.push([KEYS.tools,_tools]);}
+            const _drs=data.drs?.length?data.drs.map(drFromSb):null;
+            if(_drs){setDrs(prev=>mergeLocalOnly(_drs,prev));idbE.push([KEYS.drs,_drs]);}
             const _suppliers=data.suppliers?.length?data.suppliers.map(s=>({...s,companyName:s.company_name,contactNos:s.contact_nos,contactPerson:s.contact_person,paymentTerms:s.payment_terms,tinNo:s.tin_no,createdBy:s.created_by})):null;
             if(_suppliers){setSuppliers(prev=>mergeLocalOnly(_suppliers,prev));idbE.push([KEYS.suppliers,_suppliers]);}
             const _subcons=data.subcontractors?.length?data.subcontractors.map(s=>({...s,companyName:s.company_name,strengthsWeaknesses:s.strengths_weaknesses,contactNo:s.contact_no,paymentTerms:s.payment_terms,rateStructure:s.rate_structure,paymentStructure:s.payment_structure,locationNote:s.location_note,createdBy:s.created_by})):null;
@@ -3571,6 +3577,8 @@ export default function App(){
     if(data.projs&&Object.keys(data.projs).length){setProjs(prev=>mergeLocalOnlyObj(data.projs,prev));idbE.push([KEYS.projects,data.projs]);}
     if(data.inventory?.length){const _inv=data.inventory.map(invFromSb);setInventory(prev=>{const sbIds=new Set(_inv.map(i=>i.id));const localOnly=prev.filter(i=>!sbIds.has(i.id));return localOnly.length?[..._inv,...localOnly]:_inv;});idbE.push([KEYS.inventory,_inv]);}
     if(data.stocklog?.length){const _stock=data.stocklog.map(moveFromSb);setStocklog(_stock);idbE.push([KEYS.stocklog,_stock]);}
+    if(data.tools?.length){const _tools=data.tools.map(toolFromSb);setTools(prev=>mergeLocalOnly(_tools,prev));idbE.push([KEYS.tools,_tools]);}
+    if(data.drs?.length){const _drs=data.drs.map(drFromSb);setDrs(prev=>mergeLocalOnly(_drs,prev));idbE.push([KEYS.drs,_drs]);}
     if(data.suppliers?.length){const _sup=data.suppliers.map(s=>({...s,companyName:s.company_name,contactNos:s.contact_nos,contactPerson:s.contact_person,paymentTerms:s.payment_terms,tinNo:s.tin_no,createdBy:s.created_by}));setSuppliers(prev=>mergeLocalOnly(_sup,prev));idbE.push([KEYS.suppliers,_sup]);}
     if(data.subcontractors?.length){const _sc=data.subcontractors.map(s=>({...s,companyName:s.company_name,strengthsWeaknesses:s.strengths_weaknesses,contactNo:s.contact_no,paymentTerms:s.payment_terms,rateStructure:s.rate_structure,paymentStructure:s.payment_structure,locationNote:s.location_note,createdBy:s.created_by}));setSubcons(prev=>mergeLocalOnly(_sc,prev));idbE.push([KEYS.subcons,_sc]);}
     if(data.boqLibrary?.length){const _bl=data.boqLibrary.map(it=>({id:it.id,name:it.name,description:it.description||"",section:it.category||"",unit:it.unit||"lot",unitCost:Number(it.unit_cost)||0,tags:it.tags||[],createdBy:it.created_by||"",createdAt:it.created_at||"",updatedAt:it.updated_at||""}));setBoqLibrary(prev=>mergeLocalOnly(_bl,prev));idbE.push([KEYS.boqLibrary,_bl]);}
@@ -4030,6 +4038,7 @@ export default function App(){
   const upInventory =useCallback(fn=>setInventory(p=>{const n=fn(p);persist(KEYS.inventory,n);return n;}),[persist]);
   const upStocklog  =useCallback(fn=>setStocklog(p=>{const n=fn(p);persist(KEYS.stocklog,n);return n;}),[persist]);
   const upTools     =useCallback(fn=>setTools(p=>{const n=fn(p);persist(KEYS.tools,n);return n;}),[persist]);
+  const upDrs       =useCallback(fn=>setDrs(p=>{const n=fn(p);persist(KEYS.drs,n);return n;}),[persist]);
   const upSuppliers =useCallback(fn=>setSuppliers(p=>{const n=fn(p);persist(KEYS.suppliers,n);return n;}),[persist]);
   const upSubcons   =useCallback(fn=>setSubcons(p=>{const n=fn(p);persist(KEYS.subcons,n);return n;}),[persist]);
   const upSwos      =useCallback(fn=>setSwos(p=>{const n=fn(p);persist(KEYS.swos,n);return n;}),[persist]);
@@ -4056,6 +4065,59 @@ export default function App(){
       catch(e){ toastEmit&&toastEmit("Cleared locally but server wipe failed: "+(e?.message||e),"error"); return false; }
     }
     return true;
+  };
+
+  // Merge duplicate inventory items into one survivor: reassign every stock
+  // movement from the duplicates to the survivor, fold their on-hand qty and
+  // value into the survivor (weighted avg cost), then delete the duplicates.
+  // Local + Supabase. Returns the number of duplicates merged.
+  const mergeInventoryItems=(survivorId,dupeIds=[])=>{
+    const ids=dupeIds.filter(d=>d&&d!==survivorId);
+    if(!survivorId||!ids.length) return 0;
+    const idSet=new Set(ids);
+    // 1) reassign movements
+    upStocklog(sl=>sl.map(m=>{
+      if(!idSet.has(m.itemId)) return m;
+      if(isSupabaseReady()&&isUUID(m.id)) sbUpdate('stock_movements',m.id,{item_id:survivorId}).catch(()=>{});
+      return {...m,itemId:survivorId};
+    }));
+    // 2) fold qty + value into survivor, 3) drop duplicates
+    upInventory(iv=>{
+      const survivor=iv.find(i=>i.id===survivorId); if(!survivor) return iv;
+      const dupes=iv.filter(i=>idSet.has(i.id));
+      let totQty=Number(survivor.qtyOnHand)||0, totVal=(Number(survivor.qtyOnHand)||0)*(Number(survivor.avgCost)||0);
+      dupes.forEach(d=>{const q=Number(d.qtyOnHand)||0;totQty+=q;totVal+=q*(Number(d.avgCost)||Number(d.lastPurchasePrice)||0);});
+      const merged={...survivor,qtyOnHand:Math.round(totQty*100)/100,avgCost:totQty>0?Math.round((totVal/totQty)*100)/100:survivor.avgCost,lastUpdated:today};
+      if(isSupabaseReady()){
+        sbUpdate('inventory_items',survivorId,invToSb(merged)).catch(()=>{});
+        ids.forEach(id=>sbDelete('inventory_items',id).catch(()=>{}));
+      }
+      return iv.filter(i=>!idSet.has(i.id)).map(i=>i.id===survivorId?merged:i);
+    });
+    return ids.length;
+  };
+
+  // Tools / equipment register CRUD (local + Supabase)
+  const saveTool=(rec)=>{
+    const r={...rec,id:rec.id||uid()};
+    upTools(ts=>ts.some(t=>t.id===r.id)?ts.map(t=>t.id===r.id?r:t):[r,...ts]);
+    if(isSupabaseReady()) sbUpsert('tools',toolToSb(r),'id').catch(()=>{});
+    return r;
+  };
+  const deleteTool=(id)=>{
+    upTools(ts=>ts.filter(t=>t.id!==id));
+    if(isSupabaseReady()) sbDelete('tools',id).catch(()=>{});
+  };
+  // Standalone delivery-receipt CRUD (local + Supabase)
+  const saveDr=(rec)=>{
+    const r={...rec,id:rec.id||uid(),createdBy:rec.createdBy||session?.name||role,createdAt:rec.createdAt||today};
+    upDrs(ds=>ds.some(d=>d.id===r.id)?ds.map(d=>d.id===r.id?r:d):[r,...ds]);
+    if(isSupabaseReady()) sbUpsert('delivery_receipts',drToSb(r),'id').catch(()=>{});
+    return r;
+  };
+  const deleteDr=(id)=>{
+    upDrs(ds=>ds.filter(d=>d.id!==id));
+    if(isSupabaseReady()) sbDelete('delivery_receipts',id).catch(()=>{});
   };
 
   // Supplier CRUD
@@ -13740,7 +13802,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ── WAREHOUSE ───────────────────────────────────────────────────────────────
   if(role==="Warehouse"||(["Manager","Finance"].includes(role)&&page==="deliveries")){
     if(role==="Warehouse"&&page==="stockmove") return(<Wrap><StockMovementView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} logStockMove={logStockMove} session={session} role={role}/></Wrap>);
-    if(role==="Warehouse"&&page==="inventory") return(<Wrap><InventoryView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} prs={prs} updatePR={updatePR} addPR={addPR} addInventoryItem={addInventoryItem} updateInventoryItem={updateInventoryItem} deleteInventoryItem={deleteInventoryItem} clearAllInventory={clearAllInventory} logStockMove={logStockMove} suppliers={suppliers} addSupplier={addSupplier} printDR={printDR} tools={tools} upTools={upTools} projs={projs} upProjs={upProjs} deals={wonDeals} session={session} role={role}/></Wrap>);
+    if(role==="Warehouse"&&page==="inventory") return(<Wrap><InventoryView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} prs={prs} updatePR={updatePR} addPR={addPR} addInventoryItem={addInventoryItem} updateInventoryItem={updateInventoryItem} deleteInventoryItem={deleteInventoryItem} clearAllInventory={clearAllInventory} logStockMove={logStockMove} mergeInventoryItems={mergeInventoryItems} suppliers={suppliers} addSupplier={addSupplier} printDR={printDR} tools={tools} upTools={upTools} saveTool={saveTool} deleteTool={deleteTool} drs={drs} saveDr={saveDr} deleteDr={deleteDr} projs={projs} upProjs={upProjs} deals={wonDeals} session={session} role={role}/></Wrap>);
     if(page==="deliveries"||page==="home") return(
       <Wrap>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
@@ -14689,8 +14751,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       <InventoryView
         inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} prs={prs} updatePR={updatePR} addPR={addPR}
         addInventoryItem={addInventoryItem} updateInventoryItem={updateInventoryItem}
-        deleteInventoryItem={deleteInventoryItem} clearAllInventory={clearAllInventory} logStockMove={logStockMove}
-        suppliers={suppliers} addSupplier={addSupplier} printDR={printDR} tools={tools} upTools={upTools}
+        deleteInventoryItem={deleteInventoryItem} clearAllInventory={clearAllInventory} logStockMove={logStockMove} mergeInventoryItems={mergeInventoryItems}
+        suppliers={suppliers} addSupplier={addSupplier} printDR={printDR} tools={tools} upTools={upTools} saveTool={saveTool} deleteTool={deleteTool} drs={drs} saveDr={saveDr} deleteDr={deleteDr}
         projs={projs} upProjs={upProjs} deals={wonDeals}
         session={session} role={role}/>
     </Wrap>
