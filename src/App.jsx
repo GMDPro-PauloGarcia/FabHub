@@ -4472,7 +4472,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       // failing an FK check that sync retry then permanently drops (a
       // constraint violation is a "data" error, never retried, only dropped —
       // this silently lost individual checklist tasks in production).
-      const cardSynced=await sbUpsert('project_cards',{id:card.id,deal_id:dealId,client:dealData?.client||"",ce_no:dealData?.ceNo||"",value:Number(dealData?.value)||0,award_date:dealData?.awardDate||dealData?.dateAcquired||today,created_at:card.createdAt,ae_assigned:card.aeAssigned||"",pm1:card.pm1||"",pm2:card.pm2||"",pm3:card.pm3||"",designer:card.designer||"",coordinator:card.coordinator||""},'deal_id');
+      const cardSynced=await sbUpsert('project_cards',{id:card.id,deal_id:dealId,client:dealData?.client||"",ce_no:dealData?.ceNo||"",value:Number(dealData?.value)||0,award_date:dealData?.awardDate||dealData?.dateAcquired||today,created_at:card.createdAt,ae_assigned:card.aeAssigned||"",pm1:card.pm1||"",pm2:card.pm2||"",pm3:card.pm3||"",designer:card.designer||"",coordinator:card.coordinator||"",...(card.targetEndDate?{target_end_date:card.targetEndDate}:{}),...(card.targetDays!=null?{target_days:card.targetDays}:{})},'deal_id');
       if(cardSynced){
         DEPT_ORDER.forEach(dept=>{
           (card.departments?.[dept]?.tasks||[]).forEach((t,i)=>{
@@ -6799,6 +6799,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     }
     // Create project card with PM/AE pre-populated — awaited so Ops/Sales
     // don't see "awarded" without the department task checklists existing yet.
+    // Carry the "Target Turnover Date" entered on the award notice into the
+    // project card so Ops sees the turnover date without re-entering it. The
+    // award-notice field is stored on the JO as startDate; targetDays is the
+    // day count from award → turnover (mirrors setProjectTAT's derivation).
+    const awardDateForCard=form.triggerDate||today;
+    const turnoverDate=form.startDate||"";
+    const turnoverDays=turnoverDate?Math.max(1,Math.ceil((new Date(turnoverDate)-new Date(awardDateForCard))/86400000)):null;
     const cardOk=await createProjectCard(id,{...awardModal,
       aeAssigned:jo.aeAssigned,
       pm1:jo.pm1||"",
@@ -6806,7 +6813,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       pm3:jo.pm3||"",
       designer:jo.designer||"",
       coordinator:jo.coordinator||"",
-      awardDate:form.triggerDate||today,
+      awardDate:awardDateForCard,
+      ...(turnoverDate?{targetEndDate:turnoverDate,targetDays:turnoverDays}:{}),
     });
     stepResults.push({label:"Project Card & Checklists",ok:cardOk});
     // Auto-set QS budget at 30% margin target (70% cost of contract value)
