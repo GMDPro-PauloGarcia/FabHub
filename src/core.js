@@ -104,7 +104,7 @@ export const STAGE_DURATION = {
 
 export const PROD_STAGES     = ["Design","Fabrication","QC","Delivery"];
 
-export const DESIGN_STATUSES = ["Briefing","On-going","First Pass","Revision","Production Plans","Done"];
+export const DESIGN_STATUSES = ["Briefing","On-going","First Pass","Revision","Production Plans","Done","Cancelled"];
 
 export const PRODUCT_TYPES   = ["Custom Shelving","Display Fixtures","Signage","Countertops","Retail Cabinetry","Kiosks","Wall Panels","Millwork","Other"];
 
@@ -199,7 +199,7 @@ export const PAY_CLR   = { Unpaid:"#ef4444",Partial:"#f59e0b","Partially Paid":"
 
 export const PRI_CLR   = { Normal:"#3b82f6",High:"#f59e0b",Urgent:"#ef4444" };
 
-export const DS_CLR    = { Briefing:"#94a3b8","On-going":"#3b82f6","First Pass":"#8b5cf6",Revision:"#f97316","Production Plans":"#eab308",Done:"#10b981" };
+export const DS_CLR    = { Briefing:"#94a3b8","On-going":"#3b82f6","First Pass":"#8b5cf6",Revision:"#f97316","Production Plans":"#eab308",Done:"#10b981",Cancelled:"#dc2626" };
 
 export const SW_CLR    = { "To Buy":"#ef4444",Ordered:"#f59e0b",Received:"#10b981","Client Approved":"#059669" };
 
@@ -208,9 +208,9 @@ export const DRF_TYPES = ["Module / Display Fixture","Signage","Retail Fit-Out",
 // Project category as supplied by the Sales brief template (Event / Kiosk / Store / Others).
 export const DRF_CATEGORIES = ["Event","Kiosk","Store","Others"];
 
-export const DRF_STATUSES = ["New","Acknowledged","In Progress","For Review","Revision","Approved","Production","Done"];
+export const DRF_STATUSES = ["New","Acknowledged","In Progress","For Review","Revision","Approved","Production","Done","Cancelled"];
 
-export const DRF_CLR   = {New:"#94a3b8",Acknowledged:"#3b82f6","In Progress":"#f97316","For Review":"#8b5cf6",Revision:"#ef4444",Approved:"#10b981",Production:"#0ea5e9",Done:"#059669"};
+export const DRF_CLR   = {New:"#94a3b8",Acknowledged:"#3b82f6","In Progress":"#f97316","For Review":"#8b5cf6",Revision:"#ef4444",Approved:"#10b981",Production:"#0ea5e9",Done:"#059669",Cancelled:"#dc2626"};
 
 export const emptyDRF  = ()=>({dealId:"",client:"",location:"",designer:"",designDeadline:"",projectTitle:"",type:DRF_TYPES[0],category:"",size:"",platform:"",finishes:"",maxHeight:"",brandGuideLink:"",budget:"",description:"",accessories:[],refLinks:["","",""],notes:"",approvedLink:"",status:"New",createdBy:""});
 

@@ -14743,7 +14743,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // The Head Designer sees every designer's folder; others see only their own.
     if(page==="myfolder") return(
       <Wrap>
-        <MyFolderView session={session} projList={projList} projs={projs} drfs={drfs} updateDRF={updateDRF} upProj={upProj} setSelProj={setSelProj} setOpsTab={setOpsTab}/>
+        <MyFolderView session={session} projList={projList} projs={projs} drfs={drfs} updateDRF={updateDRF} deleteDRF={deleteDRF} upProj={upProj} setSelProj={setSelProj} setOpsTab={setOpsTab}/>
       </Wrap>
     );
     if(page==="home") return(
@@ -17400,9 +17400,19 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
 // year sub-folders (2026, 2027, …) and sortable by client or due date. Clicking a
 // project/DRF opens an inline editable dropdown (status · details · timeline)
 // instead of redirecting to the Design Request tab.
-function MyFolderView({session,projList,projs,drfs,updateDRF,upProj,setSelProj,setOpsTab}){
+function MyFolderView({session,projList,projs,drfs,updateDRF,deleteDRF,upProj,setSelProj,setOpsTab}){
   const me=session?.name||"";
   const head=isHeadDesigner(me);
+  // Delete an item from the board. DRFs are removed outright; a project's
+  // design card is cleared (its design entry reset) so it drops off every
+  // designer's folder — the underlying deal/project itself is untouched.
+  const deleteItem=async(it)=>{
+    if(it.kind==="drf"){
+      if(await uiConfirm(`Delete the design request for “${it.title||it.client}”? This can't be undone.`)) deleteDRF(it.id);
+    }else{
+      if(await uiConfirm(`Remove the design card for “${it.title||it.client}”? The project stays, but its design tracking is cleared.`)) upProj(it.id,p=>({...p,design:{}}));
+    }
+  };
   const[sortBy,setSortBy]=useState("client");
   const[openItem,setOpenItem]=useState(null); // `${kind}:${id}`
   const mob=window.innerWidth<768;
@@ -17554,6 +17564,8 @@ function MyFolderView({session,projList,projs,drfs,updateDRF,upProj,setSelProj,s
                                 <button onClick={e=>{e.stopPropagation();setSelProj(it.id);setOpsTab("design");}}
                                   style={{background:"#7c3aed",border:"none",borderRadius:8,padding:"7px 14px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".76rem",cursor:"pointer"}}>Open full design →</button>
                               )}
+                              <button onClick={e=>{e.stopPropagation();deleteItem(it);}}
+                                style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,padding:"7px 14px",color:"#dc2626",fontFamily:"inherit",fontWeight:700,fontSize:".76rem",cursor:"pointer"}}>✕ Delete</button>
                               <span style={{fontSize:".7rem",color:"#94a3b8"}}>Changes save automatically.</span>
                             </div>
                           </div>
