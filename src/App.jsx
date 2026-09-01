@@ -3118,6 +3118,11 @@ export default function App(){
   // role; the server-side RLS in migration 033 mirrors this exact allow-list.
   const DEAL_DELETE_USERS=["jena","wyn","paolo"];
   const canDeleteDeal=role==="Manager"||DEAL_DELETE_USERS.includes(session?.username);
+  // Converting a linked child deal into a Change Order is a Sales action, not an
+  // Ops/PM one: allow anyone who can delete deals, plus the Sales / SalesOpsAdmin
+  // AE who owns the child deal, to convert (and approve) their own addendum so it
+  // is recognized as sales without waiting on another team.
+  const canConvertChild=(d)=>canDeleteDeal||((role==="Sales"||role==="SalesOpsAdmin")&&!!d?.salesOwner&&d.salesOwner===session?.name);
   const[deals,    setDeals]   = useState([]);
   const[projs,    setProjs]   = useState({});
   const[exps,     setExps]    = useState([]);
@@ -6505,6 +6510,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             `\nAwarded by: ${session?.name||"Manager"}`
           );
           logActivity(rec.id,"Project Awarded",`${rec.client} moved to awarded stage by ${session?.name}`,session?.name);
+          // A linked child deal (addendum) awarded via the edit modal is auto-
+          // converted into an approved Change Order on its parent — same behavior
+          // as the pipeline quick-stage control — so it never lingers as a deal.
+          if(rec.parentDealId) convertChildToCO(rec,{silent:true,approve:true,system:true});
         }
         // Fire notification when stage moves back out of awarded (e.g. cancelled)
         if(!WON_STAGES.includes(rec.stage)&&WON_STAGES.includes(prevStage)&&rec.stage==="Cancelled"){
@@ -6604,9 +6613,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // enters as "Discovered" (the normal entry point) for Ops to approve on the
   // Scope Changes page, at which point it rolls into the parent contract.
   const convertChildToCO=(child,opts={})=>{
-    const {silent=false}=opts;
+    // approve — immediately push the new CO to "Approved" so it rolls into the
+    //   parent contract and is credited as sales (award date stamped to today).
+    // system — internal/automated call (e.g. auto-convert on award); skips the
+    //   interactive permission gate since the triggering action was itself gated.
+    const {silent=false,approve=false,system=false}=opts;
     if(!child?.parentDealId){if(!silent)toastEmit("This deal has no parent to attach a change order to.","error");return false;}
-    if(!canDeleteDeal){if(!silent)toastEmit("You don't have permission to convert this deal.","error");return false;}
+    if(!system&&!canConvertChild(child)){if(!silent)toastEmit("You don't have permission to convert this deal.","error");return false;}
     const parent=deals.find(d=>d.id===child.parentDealId);
     if(!parent){if(!silent)toastEmit("Parent project not found.","error");return false;}
     const title=(child.contact||child.product||child.client||"Scope Change").trim();
@@ -6635,10 +6648,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     };
     upAddenda(as=>[...as,rec]);
     if(isSupabaseReady()) sbSyncOne("addenda",rec,toSbAddendum);
-    logActivity(parent.id,"Change Order Created",`${session?.name||role} converted linked deal "${title}" (₱${Number(rec.value).toLocaleString("en-PH")}) into an additive change order — pending approval.`);
+    // Optionally approve right away — updateAddendum stamps the award date, rolls
+    // the value into the parent contract and flows the scope into the BOQ, so the
+    // CO is recognized as sales immediately instead of sitting as "Discovered".
+    if(approve) updateAddendum(rec.id,{status:"Approved"});
+    logActivity(parent.id,"Change Order Created",`${session?.name||role} converted linked deal "${title}" (₱${Number(rec.value).toLocaleString("en-PH")}) into an additive change order${approve?" and approved it — now credited as sales.":" — pending approval."}`);
     // Retire the now-redundant child deal (cascade handled by delDeal).
     delDeal(child.id);
-    if(!silent)toastEmit("Converted to Change Order — review & approve on Scope Changes.","success");
+    if(!silent)toastEmit(approve?"Converted & approved — now recognized as sales.":"Converted to Change Order — review & approve on Scope Changes.","success");
     return true;
   };
   // Bulk: convert every linked child deal of a parent into a change order in one
@@ -6657,6 +6674,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const updatePayment=(id,key,val)=>upDeals(ds=>ds.map(d=>d.id===id?{...d,[key]:val}:d));
 
   const stageQ=(id,st)=>{
+    // A linked child deal (addendum) that reaches an awarded stage should not sit
+    // in the pipeline: auto-convert it into an approved Change Order on its parent
+    // so it is recognized as sales in the month it was awarded, then retire it.
+    const staging=deals.find(x=>x.id===id);
+    if(staging?.parentDealId&&WON_STAGES.includes(st)){
+      if(convertChildToCO(staging,{silent:true,approve:true,system:true})){
+        toastEmit(`"${staging.contact||staging.client}" awarded — auto-converted into an approved Change Order on its parent project.`,"success");
+        return;
+      }
+      // Conversion failed (e.g. missing parent) — fall through to a normal stage move.
+    }
     if(WON_STAGES.includes(st)) upProjs(ps=>ps[id]?ps:{...ps,[id]:emptyProject()});
     if(st==="14 · Completed"){
       const d=deals.find(x=>x.id===id);
@@ -12038,7 +12066,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                         <button onClick={e=>{e.stopPropagation();openEditDeal(d);}} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
                         {(role==="Manager"||role==="QS"||role==="Sales"||role==="SalesOpsAdmin")&&<button onClick={e=>{e.stopPropagation();setBoqCoId(null);setBoqStandaloneId(null);setBoqDealId(d.id);setPage("boq");}} title={isChild?"Open BOQ Builder for this addendum":"Open BOQ Builder for this project"} style={{background:"#0ea5e9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>🧮</button>}
                         <button onClick={e=>{e.stopPropagation();setJumpDeal(d.id);setPage("projects");}} title="Open Project Card" style={{background:"#eff6ff",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#2563eb",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>📋</button>
-                        {isChild&&canDeleteDeal&&<button onClick={async e=>{e.stopPropagation();if((await uiConfirm(`Convert "${d.contact||d.client}" into an additive Change Order on the parent project and retire this linked deal?`)))convertChildToCO(d);}} title="Convert this linked deal into a Change Order and retire it" style={{background:"#fef3c7",border:"1px solid #f59e0b",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#92400e",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>⇄ CO</button>}
+                        {isChild&&canConvertChild(d)&&<button onClick={async e=>{e.stopPropagation();if((await uiConfirm(`Convert "${d.contact||d.client}" into an approved additive Change Order on the parent project and retire this linked deal? It will be credited as sales for this month.`)))convertChildToCO(d,{approve:true});}} title="Convert this linked deal into an approved Change Order (credited as sales) and retire it" style={{background:"#fef3c7",border:"1px solid #f59e0b",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#92400e",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>⇄ CO</button>}
                         {!isChild&&canDeleteDeal&&(()=>{const kids=deals.filter(x=>x.parentDealId===d.id);if(!kids.length)return null;return<button onClick={async e=>{e.stopPropagation();if((await uiConfirm(`Convert all ${kids.length} linked deal${kids.length===1?"":"s"} on "${d.client||d.contact}" into additive Change Orders and retire them?`)))convertAllChildrenToCO(d);}} title={`Convert all ${kids.length} linked deal(s) into Change Orders`} style={{background:"#fef3c7",border:"1px solid #f59e0b",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#92400e",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>⇄ All→CO ({kids.length})</button>;})()}
                       </td>
                     </tr>
