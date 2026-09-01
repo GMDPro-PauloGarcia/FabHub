@@ -454,9 +454,9 @@ export const emptyProjectCard=(dealId,dealData)=>({
   value:dealData?.value||0,
   createdAt:new Date().toISOString(),
   awardDate:dealData?.awardDate||dealData?.dateAcquired||today,
-  targetDays:null,           // Set by QS or Operations Director
-  targetEndDate:null,        // Calculated: awardDate + targetDays
-  tatCategory:"",            // Project type used for reference
+  targetDays:dealData?.targetDays??null,           // Set by QS or Operations Director (or carried from the award notice)
+  targetEndDate:dealData?.targetEndDate||null,     // Calculated: awardDate + targetDays
+  tatCategory:dealData?.tatCategory||"",           // Project type used for reference
   tatSetBy:null,             // Who set the turnaround time
   tatSetAt:null,
   aeAssigned:dealData?.aeAssigned||dealData?.salesOwner||"",
