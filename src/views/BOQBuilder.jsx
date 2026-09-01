@@ -31,6 +31,29 @@ const BOQ_SECTIONS=[
 const BOQ_SEC_CLR=Object.fromEntries(BOQ_SECTIONS.map(s=>[s.id,s.color]));
 const FINISH_LEVELS=["Budget","Mid-range","High-end","Premium/Luxury"];
 
+// General Notes shown on the builder and printed on the quotation. The VAT line
+// tracks the VAT-treatment toggle: VATable (VAT 12%) prints "Inclusive of Value
+// Added Taxes"; VAT-exempt / VATEX prints an exclusive-of-VAT note instead. Until
+// a treatment is chosen (vatEnabled==null) we keep the inclusive wording as the
+// long-standing default so an un-decided draft reads the same as before.
+const boqGeneralNotes=vatEnabled=>{
+  const vatNote=vatEnabled===false
+    ? "VAT Exclusive (VATEX) — quotation is exclusive of Value Added Tax"
+    : "Inclusive of Value Added Taxes";
+  return [
+    "Inclusive of Labor Fees (Inclusive of Night Differential)",
+    "Inclusive of Contingency Fee",
+    "Inclusive of Indirect Cost Fee",
+    vatNote,
+    "Price Validity: 30 Days after Receiving",
+    "If the quotation is approved, Quotation Number must be indicated at Purchase Orders (PO)",
+    "Any alteration of the design and additional items not included in the contract will be billed accordingly.",
+    "GMD reserves the right to hold, pullout, suspend delivery if payments and other conditions are not met.",
+    "GMD Productions has a NO DP & NO Signed Contract = NO Production Policy.",
+    "Cost is based on specified requirements; additional requirements other than stated above shall be billed separately.",
+  ];
+};
+
 const GMD_DEFAULT_LIBRARY=[
   // A. General Requirements
   {name:"Mobilization / Demobilization",section:"1",unit:"lot",unitCost:0,tags:["mobilization","general"]},
@@ -108,7 +131,7 @@ const GMD_DEFAULT_LIBRARY=[
 
 // ─── CHART OF ACCOUNTS ──────────────────────────────────────────────────────
 
-function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],setBoqLibrary,initialDealId,clearBoqDeal,onBack,standaloneBoqs=[],saveStandaloneBoq,initialStandaloneId,clearBoqStandalone,onLinkToDeal,onUnlinkToStandalone,onBoqValue,onBoqData,initialCoId,coRecord,saveCoBoq,readOnly=false}){
+function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],setBoqLibrary,initialDealId,clearBoqDeal,onBack,standaloneBoqs=[],saveStandaloneBoq,initialStandaloneId,clearBoqStandalone,onLinkToDeal,onUnlinkToStandalone,onBoqValue,onBoqData,onBoqVat,initialCoId,coRecord,saveCoBoq,readOnly=false}){
   // Read-only mode: the BOQ can be viewed and printed/exported (e.g. Sales sending
   // a change-order BOQ to a client) but never edited. Every mutator no-ops and the
   // editing chrome is hidden, so the printed PDF always matches the saved figures.
@@ -153,7 +176,10 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   const[quotationNo,setQuotationNo]=useState("");
   const[boqDate,setBoqDate]=useState(today);
   const[items,setItems]=useState(BLANK_ITEMS);
-  const[vatEnabled,setVatEnabled]=useState(true);
+  // null = VAT treatment not yet chosen (required, no silent default). true = VAT
+  // 12% applies (→ deal OR), false = VAT-exempt (→ deal AR). A decided value
+  // pre-fills the linked deal's receipt type via onBoqVat.
+  const[vatEnabled,setVatEnabled]=useState(null);
   const[discount,setDiscount]=useState("");   // peso amount subtracted from subtotal before VAT
   const[suggest,setSuggest]=useState({id:null,matches:[]});
   const[draftSaved,setDraftSaved]=useState(false);
@@ -580,6 +606,9 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       // that read deal.boqData (BOQ list "has BOQ", print, contract breakdown)
       // update without waiting for the realtime echo / a manual refresh.
       if(selDeal&&onBoqData) onBoqData(selDeal,boqData);
+      // Pre-fill the deal's receipt type from the BOQ VAT choice (fill-when-empty;
+      // an explicit deal-side choice is preserved). Only a decided boolean syncs.
+      if(selDeal&&onBoqVat&&typeof vatEnabled==="boolean") onBoqVat(selDeal,vatEnabled);
       // Seed the deal's contract value from the BOQ (net of VAT) ONLY when the deal has
       // no value yet. A pegged, non-zero value is never silently overwritten — a mismatch
       // is surfaced via the reconcile prompt when the deal is opened instead.
@@ -746,15 +775,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
 <div class="notes-section">
   <h3>General Notes</h3>
   <ul>
-    <li>Inclusive of Labor Fees (Inclusive of Night Differential)</li>
-    <li>Inclusive of Contingency Fee &amp; Indirect Cost Fee</li>
-    <li>Inclusive of Value Added Taxes</li>
-    <li>Price Validity: 30 Days after Receiving</li>
-    <li>If the quotation is approved, Quotation Number must be indicated at Purchase Orders (PO)</li>
-    <li>Any alteration of the design and additional items not included in the contract will be billed accordingly.</li>
-    <li>GMD reserves the right to hold, pull-out, or suspend delivery if payments and other conditions are not met.</li>
-    <li>GMD Productions has a NO DP &amp; NO Signed Contract = NO Production Policy.</li>
-    <li>Cost is based on specified requirements; additional requirements other than stated above shall be billed separately.</li>
+    ${boqGeneralNotes(vatEnabled).map(n=>`<li>${esc(n)}</li>`).join("")}
   </ul>
   <div class="two-col">
     <div>
@@ -878,7 +899,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
           </button>}
           {items.length>0&&<button onClick={printBOQ} style={{background:"#f0fdf4",border:"1.5px solid #86efac",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#166534",cursor:"pointer"}}>🖨 Preview / Print</button>}
           {items.length>0&&<button onClick={exportCSV} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>}
-          {!ro&&(selDeal||items.length>0||sections.length>0)&&<button onClick={()=>{deleteDraft(selDeal||BOQ_SCRATCH_KEY);if(selDeal&&isSupabaseReady())sbUpdate('deals',selDeal,{boq_data:null}).catch(()=>{});setItems(BLANK_ITEMS());setSections([]);setBoqTitle("");setLocation(deal?.location||"");setQuotationNo(deal?.ceNo||"");setBoqDate(today);setVatEnabled(true);setDiscount("");setMarkupPct("");setDraftSaved(false);}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#c2410c",cursor:"pointer"}} title="Clear saved draft and reset">✕ Clear Draft</button>}
+          {!ro&&(selDeal||items.length>0||sections.length>0)&&<button onClick={()=>{deleteDraft(selDeal||BOQ_SCRATCH_KEY);if(selDeal&&isSupabaseReady())sbUpdate('deals',selDeal,{boq_data:null}).catch(()=>{});setItems(BLANK_ITEMS());setSections([]);setBoqTitle("");setLocation(deal?.location||"");setQuotationNo(deal?.ceNo||"");setBoqDate(today);setVatEnabled(null);setDiscount("");setMarkupPct("");setDraftSaved(false);}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#c2410c",cursor:"pointer"}} title="Clear saved draft and reset">✕ Clear Draft</button>}
           {!ro&&draftSaved&&(items.length>0||sections.length>0)&&<span style={{fontSize:".72rem",color:"#16a34a",fontWeight:600,display:"flex",alignItems:"center",gap:4}}>✓ {selDeal?"Draft saved":"Saved (no project yet)"}</span>}
         </div>
       </div>
@@ -1321,13 +1342,18 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                   <div/><div/>
                 </div>
               )}
-              {/* VAT */}
-              <div style={{display:"grid",gridTemplateColumns:GRID,padding:"7px 12px",background:"#f8fafc",borderTop:"1px solid #e2e8f0",alignItems:"center"}}>
-                <div style={{gridColumn:"1/7",display:"flex",alignItems:"center",gap:8}}>
-                  <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontSize:".78rem",color:"#64748b",fontWeight:600}}>
-                    <input type="checkbox" checked={vatEnabled} onChange={e=>setVatEnabled(e.target.checked)} style={{cursor:"pointer"}}/>
-                    VAT 12%{discountVal>0?" (on net)":""}
-                  </label>
+              {/* VAT — required, explicit choice (no silent default). Drives the
+                  linked deal's receipt type: VAT 12% → OR, No VAT → AR. */}
+              <div style={{display:"grid",gridTemplateColumns:GRID,padding:"7px 12px",background:vatEnabled==null?"#fef2f2":"#f8fafc",borderTop:"1px solid #e2e8f0",alignItems:"center"}}>
+                <div style={{gridColumn:"1/7",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                  <span style={{fontSize:".78rem",color:"#64748b",fontWeight:600}}>VAT treatment{discountVal>0?" (on net)":""} <span style={{color:"#dc2626"}}>*</span></span>
+                  {!ro&&[["VAT 12%",true],["No VAT (exempt)",false]].map(([label,val])=>(
+                    <button key={String(val)} type="button" onClick={()=>setVatEnabled(val)}
+                      style={{padding:"4px 12px",border:`2px solid ${vatEnabled===val?"#d97706":(vatEnabled==null?"#fca5a5":"#e2e8f0")}`,borderRadius:8,background:vatEnabled===val?"#fef3c7":"#fff",color:vatEnabled===val?"#92400e":"#64748b",fontWeight:vatEnabled===val?700:400,cursor:"pointer",fontFamily:"inherit",fontSize:".74rem"}}>
+                      {label}
+                    </button>
+                  ))}
+                  {vatEnabled==null&&<span style={{fontSize:".7rem",color:"#dc2626",fontWeight:700}}>⚠ Choose VAT treatment</span>}
                 </div>
                 <div style={{textAlign:"right",fontWeight:700,color:vatEnabled?"#475569":"#cbd5e1",fontSize:".85rem"}}>{vatEnabled?`₱${vatAmount.toLocaleString("en-PH",{minimumFractionDigits:2})}`:"-"}</div>
                 <div/><div/>
@@ -1346,7 +1372,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
           <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:20,marginBottom:16,fontSize:".78rem",color:"#334155",lineHeight:1.75}}>
             <div style={{fontWeight:700,color:"#0f172a",marginBottom:8,fontSize:".85rem"}}>General Notes</div>
             <ul style={{margin:"0 0 18px 0",paddingLeft:18,color:"#475569"}}>
-              {["Inclusive of Labor Fees (Inclusive of Night Differential)","Inclusive of Contingency Fee","Inclusive of Indirect Cost Fee","Inclusive of Value Added Taxes","Price Validity: 30 Days after Receiving","If the quotation is approved, Quotation Number must be indicated at Purchase Orders (PO)","Any alteration of the design and additional items not included in the contract will be billed accordingly.","GMD reserves the right to hold, pullout, suspend delivery if payments and other conditions are not met.","GMD Productions has a NO DP & NO Signed Contract = NO Production Policy.","Cost is based on specified requirements; additional requirements other than stated above shall be billed separately."].map((n,i)=><li key={i}>{n}</li>)}
+              {boqGeneralNotes(vatEnabled).map((n,i)=><li key={i}>{n}</li>)}
             </ul>
             <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:20,marginBottom:24}}>
               <div>

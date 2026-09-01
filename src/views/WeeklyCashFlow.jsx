@@ -4,14 +4,14 @@ import {paymentClearDate} from "../core";
 
 // ─── WEEKLY CASH FLOW SUMMARY — Owners' Review (weekly roll-up of the daily data) ───
 // Aggregates a week of collections (billing payments that clear + manual collections)
-// and expenses (paid expenses, grouped by Chart of Account) into the same summary
+// and expenses (disbursements from the Daily Cash Position sheet) into the same summary
 // Aerwin prepares by hand: Cash Flow Overview, Daily Trend, Expenses by Category, and
 // two charts (daily collections-vs-expenses bars + expenses-by-category pie).
 const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const PIE=["#2f5aa8","#c0504d","#9bbb59","#8064a2","#4bacc6","#f79646","#5b9bd5","#d99694","#c3d69b","#b2a2c7","#92cddc","#fac08f","#c0c0c0","#8db4e2","#e6b9b8","#7f7f7f"];
 const iso=(x)=>`${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,"0")}-${String(x.getDate()).padStart(2,"0")}`;
 
-function WeeklyCashFlow({cashPositions={},billings=[],exps=[],chartOfAccounts=[],setPage,mode="weekly"}){
+function WeeklyCashFlow({cashPositions={},billings=[],setPage,mode="weekly"}){
   const monthly=mode==="monthly";
   const label=monthly?"Monthly":"Weekly";
   const per=monthly?"Month":"Week";       // period noun (capitalised)
@@ -45,12 +45,14 @@ function WeeklyCashFlow({cashPositions={},billings=[],exps=[],chartOfAccounts=[]
     return out;
   },[from,to]);
 
-  // Chart-of-account label for an expense (falls back to its simple category)
-  const acctName=(e)=>{
-    if(e.accountCode){const a=(chartOfAccounts||[]).find(x=>String(x.code)===String(e.accountCode));if(a)return a.name;}
-    return e.category||"Uncategorized";
-  };
-  const paidExpsFor=(date)=>(exps||[]).filter(e=>e.acctStatus==="Paid"&&e.expDate===date);
+  // Cash expenses come from the Daily Cash Position sheet's Disbursements — the
+  // same manual entries owners record each day. This mirrors how manual
+  // collections feed Collections below; previously Expenses read only the
+  // separate Expenses module (rows marked "Paid"), which owners don't use, so
+  // the whole Expenses column showed 0 even though disbursements were recorded.
+  // Each row: {bank, particulars/payee, amount}.
+  const disbFor=(date)=>(cashPositions[date]?.disbursements?.manual||[]);
+  const disbLabel=(r)=>{const t=String(r.particulars??r.payee??"").trim();return t||"Uncategorized";};
   const collectionsFor=(date)=>{
     let s=0;
     (billings||[]).forEach(b=>{if(b.status==="Cancelled")return;(b.payments||[]).forEach(p=>{if(!p.bounced&&paymentClearDate(p)===date)s+=Number(p.amount||0);});});
@@ -61,10 +63,10 @@ function WeeklyCashFlow({cashPositions={},billings=[],exps=[],chartOfAccounts=[]
   // ── Daily trend ──
   const daily=useMemo(()=>dates.map(d=>{
     const coll=collectionsFor(d);
-    const exp=paidExpsFor(d).reduce((s,e)=>s+Number(e.amount||0),0);
+    const exp=disbFor(d).reduce((s,r)=>s+n(r.amount),0);
     return{date:d,coll,exp,net:coll-exp};
     // eslint-disable-next-line
-  }),[dates,billings,exps,cashPositions]);
+  }),[dates,billings,cashPositions]);
   const totColl=daily.reduce((s,r)=>s+r.coll,0);
   const totExp=daily.reduce((s,r)=>s+r.exp,0);
   const netChange=totColl-totExp;
@@ -87,21 +89,21 @@ function WeeklyCashFlow({cashPositions={},billings=[],exps=[],chartOfAccounts=[]
     // eslint-disable-next-line
   },[dates,cashPositions]);
   const loanRepayment=useMemo(()=>{let s=0;
-    dates.forEach(d=>paidExpsFor(d).forEach(e=>{const nm=acctName(e);if(/repay/i.test(nm)||/loan/i.test(nm))s+=Number(e.amount||0);}));
+    dates.forEach(d=>disbFor(d).forEach(r=>{if(/loan|repay/i.test(disbLabel(r)))s+=n(r.amount);}));
     return s;
     // eslint-disable-next-line
-  },[dates,exps,chartOfAccounts]);
+  },[dates,cashPositions]);
   const netOperating=netChange-loanProceeds+loanRepayment;
 
   // ── Expenses by category (Chart of Account) ──
   const byCat=useMemo(()=>{
     const map={};
-    dates.forEach(d=>paidExpsFor(d).forEach(e=>{const nm=acctName(e);map[nm]=(map[nm]||0)+Number(e.amount||0);}));
+    dates.forEach(d=>disbFor(d).forEach(r=>{const nm=disbLabel(r);map[nm]=(map[nm]||0)+n(r.amount);}));
     const arr=Object.entries(map).map(([name,amount])=>({name,amount})).filter(r=>r.amount>0).sort((a,b)=>b.amount-a.amount);
     const total=arr.reduce((s,r)=>s+r.amount,0);
     return{arr,total};
     // eslint-disable-next-line
-  },[dates,exps,chartOfAccounts]);
+  },[dates,cashPositions]);
 
   const fmtDate=(d)=>{const[,m,dd]=d.split("-");return`${Number(m)}/${Number(dd)}`;};
   const fmtRange=()=>{const[fy,fm,fd]=from.split("-").map(Number);const[ty,tm,td]=to.split("-").map(Number);
@@ -132,7 +134,7 @@ function WeeklyCashFlow({cashPositions={},billings=[],exps=[],chartOfAccounts=[]
       ["DAILY CASH FLOW TREND"],["Date","Collections","Expenses","Net"]];
     daily.forEach(r=>rows.push([r.date,r.coll.toFixed(2),r.exp.toFixed(2),r.net.toFixed(2)]));
     rows.push(["TOTAL",totColl.toFixed(2),totExp.toFixed(2),netChange.toFixed(2)],[],
-      ["EXPENSES BY CATEGORY (CHART OF ACCOUNT)"],["Category","Amount","% of Total"]);
+      ["EXPENSES BY PAYEE (FROM DAILY DISBURSEMENTS)"],["Payee / Particulars","Amount","% of Total"]);
     byCat.arr.forEach(r=>rows.push([r.name,r.amount.toFixed(2),byCat.total>0?(r.amount/byCat.total*100).toFixed(1)+"%":"0%"]));
     rows.push(["TOTAL",byCat.total.toFixed(2),"100.0%"]);
     const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
@@ -292,12 +294,12 @@ function WeeklyCashFlow({cashPositions={},billings=[],exps=[],chartOfAccounts=[]
         {/* Two-column: category table + pie */}
         <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1.35fr 1fr",gap:0,marginTop:6}}>
           <div>
-            {sectionHdr("Expenses by Category (Chart of Account)")}
+            {sectionHdr("Expenses by Payee (from Daily Disbursements)")}
             <div style={{padding:"10px 12px 12px",overflowX:"auto"}}>
               <table style={{borderCollapse:"collapse",width:"100%"}}>
-                <thead><tr><th style={{...th,textAlign:"left"}}>Category</th><th style={th}>Amount (PHP)</th><th style={{...th,width:90}}>% of Total</th></tr></thead>
+                <thead><tr><th style={{...th,textAlign:"left"}}>Payee / Particulars</th><th style={th}>Amount (PHP)</th><th style={{...th,width:90}}>% of Total</th></tr></thead>
                 <tbody>
-                  {byCat.arr.length===0&&<tr><td colSpan={3} style={{...td,color:"#94a3b8",fontStyle:"italic"}}>No paid expenses in range.</td></tr>}
+                  {byCat.arr.length===0&&<tr><td colSpan={3} style={{...td,color:"#94a3b8",fontStyle:"italic"}}>No disbursements in range.</td></tr>}
                   {byCat.arr.map((r,i)=>(
                     <tr key={r.name} style={{background:i%2?C.zebra:"#fff"}}>
                       <td style={{...td,display:"flex",alignItems:"center",gap:6}}><span style={{width:9,height:9,borderRadius:2,background:PIE[i%PIE.length],flexShrink:0}}/>{r.name}</td>
@@ -321,7 +323,7 @@ function WeeklyCashFlow({cashPositions={},billings=[],exps=[],chartOfAccounts=[]
         </div>
 
         <div style={{padding:"8px 14px 12px",fontSize:".66rem",color:"#94a3b8",fontStyle:"italic",lineHeight:1.5,borderTop:`1px solid ${C.grid}`}}>
-          Collections = billing payments that clear in the {perLc} + manual collections. Expenses = paid expenses, grouped by Chart of Account. Loan proceeds &amp; repayments are included in the totals and called out separately as memo items; Net Operating Cash Flow removes them.
+          Collections = billing payments that clear in the {perLc} + manual collections. Expenses = disbursements recorded in the Daily Cash Position sheet, grouped by payee/particulars. Loan proceeds &amp; repayments are included in the totals and called out separately as memo items; Net Operating Cash Flow removes them.
         </div>
       </div>
     </div>

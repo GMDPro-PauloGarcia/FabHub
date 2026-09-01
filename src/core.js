@@ -156,6 +156,22 @@ export const commissionRate     = (deal)=>COMMISSION_RATE[leadOriginOf(deal)];
 export const commissionEarned   = (deal)=>Math.round((Number(deal&&deal.amountPaid)||0)*commissionRate(deal));
 export const commissionProjected= (deal)=>Math.round((Number(deal&&deal.value)||0)*commissionRate(deal));
 
+// ── Commission payouts (what's actually been disbursed to the rep) ───────────
+// Earned (above) is what a rep has accrued on cash collected. A PAYOUT is money
+// Finance has actually handed over, recorded per rep per period and approved by
+// a Manager. Only APPROVED payouts count as "paid"; a "Recorded" one is pending.
+//   Paid    = Σ approved payouts for the rep
+//   Pending = Σ recorded-but-not-yet-approved payouts
+//   Payable = Earned − Paid   (what the company still owes the rep)
+export const PAYOUT_STATUS = ["Recorded","Approved","Void"];
+export const isPayoutApproved = (p)=>p&&p.status==="Approved";
+export const isPayoutPending  = (p)=>p&&p.status==="Recorded";
+// Sum helpers over a list of payout rows (optionally pre-filtered to one payee).
+export const payoutsPaid    = (list)=>(list||[]).filter(isPayoutApproved).reduce((s,p)=>s+(Number(p.amount)||0),0);
+export const payoutsPending = (list)=>(list||[]).filter(isPayoutPending ).reduce((s,p)=>s+(Number(p.amount)||0),0);
+// Payable never goes negative — an over-payment reads as fully settled, not owed-back.
+export const commissionPayable = (earned,paid)=>Math.max(0,Math.round((Number(earned)||0)-(Number(paid)||0)));
+
 export const MONTHS          = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 export const PRIORITIES      = ["Normal","High","Urgent"];
@@ -189,11 +205,14 @@ export const SW_CLR    = { "To Buy":"#ef4444",Ordered:"#f59e0b",Received:"#10b98
 
 export const DRF_TYPES = ["Module / Display Fixture","Signage","Retail Fit-Out","Counter / Reception","Kiosk","Wall Panel / Decor","Custom Furniture","Other"];
 
+// Project category as supplied by the Sales brief template (Event / Kiosk / Store / Others).
+export const DRF_CATEGORIES = ["Event","Kiosk","Store","Others"];
+
 export const DRF_STATUSES = ["New","Acknowledged","In Progress","For Review","Revision","Approved","Production","Done"];
 
 export const DRF_CLR   = {New:"#94a3b8",Acknowledged:"#3b82f6","In Progress":"#f97316","For Review":"#8b5cf6",Revision:"#ef4444",Approved:"#10b981",Production:"#0ea5e9",Done:"#059669"};
 
-export const emptyDRF  = ()=>({dealId:"",client:"",location:"",designer:"",designDeadline:"",projectTitle:"",type:DRF_TYPES[0],size:"",description:"",accessories:[],refLinks:["","",""],notes:"",approvedLink:"",status:"New",createdBy:""});
+export const emptyDRF  = ()=>({dealId:"",client:"",location:"",designer:"",designDeadline:"",projectTitle:"",type:DRF_TYPES[0],category:"",size:"",platform:"",finishes:"",maxHeight:"",brandGuideLink:"",budget:"",description:"",accessories:[],refLinks:["","",""],notes:"",approvedLink:"",status:"New",createdBy:""});
 
 export const ROLE_CLR  = { Manager:"#f59e0b",Sales:"#10b981",Finance:"#3b82f6",Accounting:"#6366f1",Procurement:"#06b6d4",QS:"#8b5cf6",Operations:"#f97316",Design:"#ec4899",ProjectMover:"#0ea5e9",Warehouse:"#64748b",SalesOpsAdmin:"#14b8a6",FinanceAssistant:"#1d4ed8",Audit:"#dc2626",HRAdmin:"#7c3aed" };
 
@@ -249,6 +268,7 @@ export const PERMISSIONS = {
   boq_library:         { label:"BOQ Library",              group:"QS / Cost",   select:["Manager","Finance","FinanceAssistant","QS","ProjectMover"], insert:["Manager","QS"], update:["Manager","QS"], delete:["Manager"] },
   project_budgets:     { label:"Project Budgets",          group:"QS / Cost",   select:["Manager","Finance","FinanceAssistant","QS","ProjectMover"], insert:["Manager","QS"], update:["Manager","Finance","FinanceAssistant","QS"], delete:["Manager"] },
   audit_findings:      { label:"Audit Findings",           group:"Audit",       select:["Manager","Finance","Audit","HRAdmin"], insert:["Manager","Audit","HRAdmin"], update:["Manager","Audit","HRAdmin"], delete:["Manager","Audit","HRAdmin"] },
+  commission_payouts:  { label:"Commission Payouts",       group:"Sales",       select:["Manager","Sales","Finance","FinanceAssistant","Accounting","SalesOpsAdmin"], insert:["Manager","Finance","FinanceAssistant"], update:["Manager","Finance","FinanceAssistant"], delete:["Manager"] },
 };
 
 // Human-readable caveats for rules a plain role list can't express.
@@ -308,11 +328,12 @@ export function bizDaysRemaining(startDateStr, sla=BUSINESS_DAYS_SLA){
 }
 
 export const calcTax = (base, receiptType="OR", withholding=false) => {
-  const b   = Number(base)||0;
-  const vat = receiptType==="OR" ? b*0.12 : 0;        // 12% VAT on base (OR only)
-  const gross = b + vat;                                // total amount billed to client
-  const ewt = (receiptType==="OR" && withholding) ? b*0.02 : 0; // EWT only on OR, not AR
-  const netReceivable = gross - ewt;                    // what GMD actually receives
+  const c   = x => Math.round(x*100)/100;               // round to centavos — currency has 2 decimals
+  const b   = c(Number(base)||0);
+  const vat = receiptType==="OR" ? c(b*0.12) : 0;       // 12% VAT on base (OR only)
+  const gross = c(b + vat);                              // total amount billed to client
+  const ewt = (receiptType==="OR" && withholding) ? c(b*0.02) : 0; // EWT only on OR, not AR
+  const netReceivable = c(gross - ewt);                 // what GMD actually receives
   return { base:b, vat, gross, ewt, netReceivable };
 };
 
@@ -433,9 +454,9 @@ export const emptyProjectCard=(dealId,dealData)=>({
   value:dealData?.value||0,
   createdAt:new Date().toISOString(),
   awardDate:dealData?.awardDate||dealData?.dateAcquired||today,
-  targetDays:null,           // Set by QS or Operations Director
-  targetEndDate:null,        // Calculated: awardDate + targetDays
-  tatCategory:"",            // Project type used for reference
+  targetDays:dealData?.targetDays??null,           // Set by QS or Operations Director (or carried from the award notice)
+  targetEndDate:dealData?.targetEndDate||null,     // Calculated: awardDate + targetDays
+  tatCategory:dealData?.tatCategory||"",           // Project type used for reference
   tatSetBy:null,             // Who set the turnaround time
   tatSetAt:null,
   aeAssigned:dealData?.aeAssigned||dealData?.salesOwner||"",

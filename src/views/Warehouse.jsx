@@ -1,6 +1,6 @@
 import React,{useState,useMemo,useEffect,useRef} from "react";
 import {fmt,today,uid,toastEmit,Fld,Inp,Sel,KPI,uiConfirm,uiAlert} from "../shared";
-import {moveNeedsWitness,SCRAP_MOVE_TYPE} from "../core";
+import {moveNeedsWitness,SCRAP_MOVE_TYPE,emptyPR} from "../core";
 
 const INV_CATEGORIES = [
   {main:"Sheet Materials",  subs:["Board / Panel","Acrylic / Glass","Foam / Upholstery"]},
@@ -109,7 +109,7 @@ function InlineCell({value,onSave,isNum,color,mono,canEdit,C,tdS,badge}){
   );
 }
 // ─── TAT SETTER COMPONENT ─────────────────────────────────────────────────────
-function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventoryItem,updateInventoryItem,deleteInventoryItem,clearAllInventory,logStockMove,suppliers=[],addSupplier,projs={},upProjs,deals=[],session,role}){
+function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addPR,addInventoryItem,updateInventoryItem,deleteInventoryItem,clearAllInventory,logStockMove,mergeInventoryItems,suppliers=[],addSupplier,printDR,tools=[],upTools,saveTool,deleteTool,drs=[],saveDr,deleteDr,projs={},upProjs,deals=[],session,role}){
   // ── theme colours matching the warehouse standalone app ─────────────────
   const C={bg:"#f0f2f5",card:"#ffffff",border:"#e4e8ef",text:"#1a2035",muted:"#7b8499",accent:"#f97316",green:"#22c55e",teal:"#14b8a6",blue:"#3b82f6",red:"#ef4444",yellow:"#eab308"};
 
@@ -178,6 +178,114 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
     updatePR&&updatePR(pr.id,{status:isPartial?"Partially Delivered":"Delivered",qtyDelivered:rq,deliveryDate:today,deliveryNote:poNote});
     toastEmit&&toastEmit(`✓ Received ${rq} ${pr.unit||""}${isPartial?" (partial)":""} · ${isStock?"added to GMD Stock (asset — expensed on release)":"stock updated"}`,"success");
     setReceiveModal(null);
+  };
+  // ── Reorder → draft Purchase Request (warehouse → purchasing link) ──────────
+  // Turns a low/out-of-stock alert into a Draft PR for procurement to issue.
+  // Suggests a top-up to 2× the reorder point (min the reorder point, min 1),
+  // tagged to GMD Stocks since it's a warehouse restock, not a project buy.
+  const createReorderPR=(item)=>{
+    if(!addPR){toastEmit&&toastEmit("Purchasing link unavailable in this view.","error");return;}
+    const rem=Number(item._rem)||0;
+    const rop=Number(item.reorderPoint)||0;
+    const suggested=Math.max(rop>0?rop*2-rem:0, rop, 1);
+    const uc=Number(item.lastPurchasePrice)||Number(item.avgCost)||0;
+    addPR({
+      ...emptyPR(),
+      itemName:item.name,
+      category:item.category||"Materials",
+      unit:item.unit||"pcs",
+      qty:suggested,
+      estUnitCost:uc,
+      supplier:item.supplier||"",
+      projectId:"__gmd_stocks__",
+      projectName:"GMD Stocks",
+      status:"Draft",
+      requestedBy:session?.name||role||"Warehouse",
+      notes:`Auto-drafted from low-stock alert (${rem} ${item.unit||""} on hand${rop?`, reorder at ${rop}`:""})`,
+    });
+    toastEmit&&toastEmit(`🛒 Draft PR created for ${suggested} ${item.unit||""} of ${item.name} — issue it in Procurement.`,"success");
+  };
+  const[expProj,setExpProj]=useState(null); // expanded project row in the Projects consumption report
+  const[rxSearch,setRxSearch]=useState(""); // Delivery Receipts ledger search
+  const[toolForm,setToolForm]=useState({name:"",borrower:"",borrowedDate:today,expectedReturn:"",notes:""}); // Tools register add form
+  const[showDupes,setShowDupes]=useState(false); // merge-duplicates modal
+  const[dupSurvivors,setDupSurvivors]=useState({}); // group key -> chosen survivor id
+  // Standalone Delivery Receipt entry (+ AI OCR)
+  const[showDr,setShowDr]=useState(false);
+  const[drForm,setDrForm]=useState(null);
+  const[drOcrBusy,setDrOcrBusy]=useState(false);
+  const blankDr=()=>({id:"",drNo:"",drDate:today,supplier:"",projectId:"",projectName:"",poNumber:"",remarks:"",receivedBy:session?.name||role||"",items:[{name:"",qty:"",unitCost:""}]});
+  const openDr=(dr)=>{setDrForm(dr?{...blankDr(),...dr,items:(dr.items&&dr.items.length?dr.items.map(it=>({name:it.name||it.desc||"",qty:it.qty??"",unitCost:it.unitCost??""})):[{name:"",qty:"",unitCost:""}])}:blankDr());setShowDr(true);};
+  const drTotal=(items)=>(items||[]).reduce((s,it)=>s+(Number(it.qty)||0)*(Number(it.unitCost)||0),0);
+  const commitDr=()=>{
+    if(!saveDr){toastEmit&&toastEmit("Delivery receipts unavailable in this view.","error");return;}
+    const items=(drForm.items||[]).filter(it=>(it.name||"").trim()).map(it=>({name:it.name.trim(),qty:Number(it.qty)||0,unitCost:Number(it.unitCost)||0}));
+    if(!items.length){toastEmit&&toastEmit("Add at least one line item.","error");return;}
+    const deal=drForm.projectId&&drForm.projectId!=="__gmd_stocks__"?wonDeals.find(d=>d.id===drForm.projectId):null;
+    saveDr({...drForm,items,total:drTotal(items),projectName:drForm.projectId==="__gmd_stocks__"?"GMD Stocks":(deal?.client||drForm.projectName||"")});
+    toastEmit&&toastEmit(`✓ Delivery receipt ${drForm.drNo||""} saved`,"success");
+    setShowDr(false);setDrForm(null);
+  };
+  const runDrOcr=async(file)=>{
+    if(!file)return;
+    setDrOcrBusy(true);
+    try{
+      const buf=await file.arrayBuffer();
+      const b64=btoa(new Uint8Array(buf).reduce((d,b)=>d+String.fromCharCode(b),""));
+      const res=await fetch("/api/parse-dr",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({fileData:b64,mimeType:file.type})});
+      const data=await res.json();
+      if(!res.ok)throw new Error(data.error||"OCR failed");
+      setDrForm(f=>({...f,
+        drNo:data.drNo||f.drNo,
+        drDate:data.date||f.drDate,
+        supplier:data.supplier||f.supplier,
+        poNumber:data.poNumber||f.poNumber,
+        items:(Array.isArray(data.items)&&data.items.length?data.items.map(it=>({name:it.name||it.desc||"",qty:it.qty??"",unitCost:it.unitCost??it.price??""})):f.items),
+      }));
+      toastEmit&&toastEmit(`🤖 Read ${Array.isArray(data.items)?data.items.length:0} line item(s) from the receipt`,"success");
+    }catch(err){toastEmit&&toastEmit("DR scan failed: "+err.message,"error");}
+    setDrOcrBusy(false);
+  };
+  // Bulk stock-movement import (CSV: item, type, qty, unitCost, date, project, notes)
+  const[showMoveImport,setShowMoveImport]=useState(false);
+  const[moveImpText,setMoveImpText]=useState("");
+  const[moveImpRows,setMoveImpRows]=useState([]);
+  const parseMoveImport=(txt)=>{
+    setMoveImpText(txt);
+    const lines=String(txt).split(/\r?\n/).map(l=>l.trim()).filter(l=>l&&!/^item\s*,\s*type/i.test(l));
+    setMoveImpRows(lines.map(line=>{
+      const c=line.split(",").map(s=>s.trim());
+      const name=c[0]||"", typeRaw=c[1]||"", qty=Number(c[2])||0, unitCost=Number(c[3])||0, date=c[4]||today, projRaw=c[5]||"", notes=c.slice(6).join(", ");
+      const t=typeRaw.toUpperCase();
+      let moveType="";
+      if(t.startsWith("IN"))moveType="IN — Delivery";
+      else if(t.startsWith("OUT"))moveType="OUT — Used in Project";
+      else if(t.startsWith("ADJ"))moveType="ADJUST — Stock Count";
+      else if(t.startsWith("RET"))moveType="RETURN — Returned to Supplier";
+      const deal=projRaw?wonDeals.find(d=>(d.client||"").toLowerCase()===projRaw.toLowerCase()):null;
+      const exists=name?inventory.find(i=>i.name?.toLowerCase()===name.toLowerCase()):null;
+      let err="";
+      if(!name)err="missing item";
+      else if(!moveType)err="type must be IN / OUT / ADJUST / RETURN";
+      else if(qty<=0)err="qty must be > 0";
+      else if(!exists&&!moveType.startsWith("IN"))err="unknown item — only IN can auto-create";
+      return{name,moveType,qty,unitCost,date,projectId:deal?.id||"",projectName:deal?.client||projRaw||"",notes,exists:!!exists,err};
+    }));
+  };
+  const applyMoveImport=()=>{
+    let ok=0,skip=0;
+    for(const r of moveImpRows){
+      if(r.err){skip++;continue;}
+      let item=inventory.find(i=>i.name?.toLowerCase()===r.name.toLowerCase());
+      let itemId;
+      if(item)itemId=item.id;
+      else if(r.moveType.startsWith("IN")){itemId=uid();addInventoryItem({...emptyItem(),id:itemId,name:r.name,unit:"pcs",avgCost:r.unitCost,lastPurchasePrice:r.unitCost,notes:"Bulk import"});}
+      else{skip++;continue;}
+      const res=logStockMove({itemId,moveType:r.moveType,qty:r.qty,unitCost:r.unitCost,projectId:r.projectId||null,dealId:r.projectId||null,notes:r.notes||"Bulk import",date:r.date||today,recordedBy:session?.name||role});
+      if(res===false)skip++;else ok++;
+    }
+    toastEmit&&toastEmit(`Imported ${ok} movement${ok!==1?"s":""}${skip?` · skipped ${skip}`:""}`,ok?"success":"error");
+    setShowMoveImport(false);setMoveImpText("");setMoveImpRows([]);
   };
   const[delivFilterSupplier,setDelivFilterSupplier]=useState("");
   const[delivFilterProject,setDelivFilterProject]=useState("");
@@ -287,13 +395,81 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
   const usageByItem=useMemo(()=>{
     const m={};
     (stocklog||[]).forEach(s=>{
-      if(!s.itemId||!String(s.moveType||"").startsWith("OUT")||!s.projectId) return;
-      const nm=wonDeals.find(d=>d.id===s.projectId)?.client;
+      const pid=s.dealId||s.projectId;
+      if(!s.itemId||!String(s.moveType||"").startsWith("OUT")||!pid||pid==="__gmd_stocks__") return;
+      const nm=wonDeals.find(d=>d.id===pid)?.client;
       if(!nm) return;
       (m[s.itemId]||(m[s.itemId]=new Set())).add(nm);
     });
     return m;
   },[stocklog,wonDeals]);
+
+  // ── Per-project material consumption (warehouse → finance costing) ──────────
+  // Rolls stock movements up by project so each job's material draw-down and its
+  // peso value are visible alongside the finance expense ledger. OUT = consumed
+  // by the project (valued at the move's unit cost, or the SKU's avg cost).
+  const projConsumption=useMemo(()=>{
+    const invById={}; inventory.forEach(i=>{invById[i.id]=i;});
+    const m={};
+    (stocklog||[]).forEach(s=>{
+      const pid=s.dealId||s.projectId;
+      if(!pid||pid==="__gmd_stocks__") return;
+      const type=String(s.moveType||"");
+      const isOut=type.startsWith("OUT"), isIn=type.startsWith("IN");
+      if(!isOut&&!isIn) return;
+      const item=invById[s.itemId];
+      const qty=Number(s.qty)||0;
+      const uc=Number(s.unitCost)||Number(item?.avgCost)||0;
+      const val=qty*uc;
+      const g=m[pid]||(m[pid]={pid,outQty:0,outVal:0,inQty:0,inVal:0,moves:0,items:{}});
+      g.moves++;
+      if(isOut){g.outQty+=qty;g.outVal+=val;}
+      if(isIn){g.inQty+=qty;g.inVal+=val;}
+      const nm=item?.name||s.itemDesc||"(unknown item)";
+      const it=g.items[nm]||(g.items[nm]={name:nm,unit:item?.unit||s.unit||"",outQty:0,outVal:0});
+      if(isOut){it.outQty+=qty;it.outVal+=val;}
+    });
+    return Object.values(m).map(g=>({
+      ...g,
+      client:wonDeals.find(d=>d.id===g.pid)?.client||g.pid,
+      items:Object.values(g.items).filter(it=>it.outQty>0).sort((a,b)=>b.outVal-a.outVal),
+    })).sort((a,b)=>b.outVal-a.outVal);
+  },[stocklog,inventory,wonDeals]);
+
+  // ── Delivery Receipts ledger (purchasing → warehouse → finance trail) ───────
+  // Every PO delivery event surfaced as a receipt document: one row per shipment
+  // in a PO's deliveryHistory, or a single summary row for delivered POs that
+  // predate history tracking. Derived from `prs` so it stays in sync with
+  // purchasing status and the finance payment state — no separate DR store.
+  const receipts=useMemo(()=>{
+    const list=[];
+    (prs||[]).forEach(pr=>{
+      const deal=wonDeals.find(d=>d.id===(pr.dealId||pr.projectId));
+      const hist=Array.isArray(pr.deliveryHistory)?pr.deliveryHistory:[];
+      if(hist.length){
+        hist.forEach((h,idx)=>list.push({key:pr.id+"-"+idx,pr,deal,date:h.date||pr.deliveryDate||pr.createdDate||"",drNo:h.drNo||pr.drNo||"",qty:Number(h.qty)||0,recordedBy:h.recordedBy||""}));
+      } else if(["Delivered","Partially Delivered"].includes(pr.status)){
+        list.push({key:pr.id+"-s",pr,deal,date:pr.deliveryDate||pr.createdDate||"",drNo:pr.drNo||"",qty:Number(pr.qtyDelivered)||Number(pr.qty)||0,recordedBy:""});
+      }
+    });
+    // Standalone / manually-entered delivery receipts (own store).
+    (drs||[]).forEach(dr=>{
+      const deal=wonDeals.find(d=>d.id===dr.projectId);
+      const items=Array.isArray(dr.items)?dr.items:[];
+      const totQty=items.reduce((s,it)=>s+(Number(it.qty)||0),0);
+      const label=items.length===1?(items[0].name||items[0].desc||"Item"):(items.length?`${items.length} items`:"(no items)");
+      list.push({key:"dr-"+dr.id,standalone:true,dr,deal,date:dr.drDate||dr.createdAt||"",drNo:dr.drNo||"",qty:totQty,value:Number(dr.total)||0,recordedBy:dr.receivedBy||"",
+        pr:{itemName:label,supplier:dr.supplier,poNumber:dr.poNumber,projectId:dr.projectId,projectName:dr.projectName,status:"Delivered",actUnitCost:0,paymentStatus:""}});
+    });
+    return list.sort((a,b)=>(b.date>a.date?1:b.date<a.date?-1:0));
+  },[prs,wonDeals,drs]);
+
+  // Duplicate SKUs — same name + unit (case-insensitive). Fed to the merge tool.
+  const dupGroups=useMemo(()=>{
+    const m={};
+    (inventory||[]).forEach(i=>{const nm=(i.name||"").trim().toLowerCase();if(!nm)return;const k=nm+"|"+(i.unit||"").trim().toLowerCase();(m[k]||(m[k]=[])).push(i);});
+    return Object.values(m).filter(g=>g.length>1).map(g=>({key:(g[0].name||"")+"|"+(g[0].unit||""),name:g[0].name,unit:g[0].unit,items:g}));
+  },[inventory]);
 
   // ── KPIs ──────────────────────────────────────────────────────────────
   const totalVal=rows.reduce((s,i)=>s+i._rem*i._price,0);
@@ -489,6 +665,16 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
     const upcomingD=pendingPOs.filter(p=>p.deliveryDate>today);
     const recentMv=[...stocklog].sort((a,b)=>b.date>a.date?1:-1).slice(0,10);
     const fmtV=v=>v>=1000000?"₱"+(v/1000000).toFixed(1)+"M":v>=1000?"₱"+(v/1000).toFixed(0)+"k":fp(v);
+    // 6-month IN vs OUT value trend (dependency-free bar chart)
+    const trend=(()=>{
+      const base=new Date(today), months=[];
+      for(let k=5;k>=0;k--){const d=new Date(base.getFullYear(),base.getMonth()-k,1);months.push({y:d.getFullYear(),m:d.getMonth(),label:d.toLocaleString("en-US",{month:"short"}),inV:0,outV:0});}
+      const idx={}; months.forEach((mo,i)=>{idx[mo.y+"-"+mo.m]=i;});
+      (stocklog||[]).forEach(s=>{const d=new Date(s.date||today);const i=idx[d.getFullYear()+"-"+d.getMonth()];if(i==null)return;const item=rows.find(r=>r.id===s.itemId);const uc=Number(s.unitCost)||Number(item?._price)||0;const val=(Number(s.qty)||0)*uc;const t=String(s.moveType||"");if(t.startsWith("IN"))months[i].inV+=val;else if(t.startsWith("OUT"))months[i].outV+=val;});
+      return months;
+    })();
+    const trendMax=Math.max(1,...trend.map(m=>Math.max(m.inV,m.outV)));
+    const hasTrend=trend.some(m=>m.inV>0||m.outV>0);
     return(
       <div style={{overflowY:"auto",flex:1,paddingBottom:20}}>
         {negStock.length>0&&(
@@ -516,6 +702,29 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
             </div>
           ))}
         </div>
+        {/* 6-month IN vs OUT value trend */}
+        {hasTrend&&(
+          <div style={{...cardS,marginBottom:10}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+              <div style={{fontSize:11,fontWeight:700,color:C.text}}>Stock Value Trend — last 6 months</div>
+              <div style={{display:"flex",gap:12,fontSize:9,color:C.muted,fontWeight:700}}>
+                <span style={{display:"inline-flex",alignItems:"center",gap:4}}><span style={{width:9,height:9,borderRadius:2,background:C.green,display:"inline-block"}}/>Received</span>
+                <span style={{display:"inline-flex",alignItems:"center",gap:4}}><span style={{width:9,height:9,borderRadius:2,background:C.yellow,display:"inline-block"}}/>Issued</span>
+              </div>
+            </div>
+            <div style={{display:"flex",alignItems:"flex-end",gap:10,height:120,padding:"0 4px"}}>
+              {trend.map((mo,i)=>(
+                <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                  <div style={{display:"flex",alignItems:"flex-end",gap:3,height:96,width:"100%",justifyContent:"center"}}>
+                    <div title={`Received: ${fmtV(mo.inV)}`} style={{width:"42%",maxWidth:22,height:`${Math.max(mo.inV>0?4:0,(mo.inV/trendMax)*96)}px`,background:C.green,borderRadius:"3px 3px 0 0"}}/>
+                    <div title={`Issued: ${fmtV(mo.outV)}`} style={{width:"42%",maxWidth:22,height:`${Math.max(mo.outV>0?4:0,(mo.outV/trendMax)*96)}px`,background:C.yellow,borderRadius:"3px 3px 0 0"}}/>
+                  </div>
+                  <div style={{fontSize:9,color:C.muted,fontWeight:700}}>{mo.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         {/* Value Flow */}
         <div style={{...cardS,marginBottom:10}}>
           <div style={{fontSize:11,fontWeight:700,color:C.text,marginBottom:12}}>Value Flow Pipeline</div>
@@ -614,7 +823,11 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
 
   // ── tab bar ───────────────────────────────────────────────────────────
   const demandGaps=allDemand.filter(d=>d.gap>0).length;
-  const TABS=[["dashboard","📊 Dashboard"],["deliveries",`📦 Deliveries${prs.filter(p=>!["Delivered","Cancelled"].includes(p.status)).length>0?" ("+prs.filter(p=>!["Delivered","Cancelled"].includes(p.status)).length+")":""}`],["inventory",`≡ Inventory (${rows.length})`],["demand",`🔮 Demand${demandGaps>0?" ⚠"+demandGaps:""}`],["alerts",`⚠ Alerts${(lowStock.length+outOfStk.length)>0?" ("+(lowStock.length+outOfStk.length)+")":""}`],["log",`⟳ Log (${stocklog.length})`]];
+  // Tools / equipment register status helpers
+  const toolStatus=t=>t.actualReturn?"Returned":(t.expectedReturn&&t.expectedReturn<today?"Overdue":"Borrowed");
+  const toolsOut=(tools||[]).filter(t=>!t.actualReturn).length;
+  const toolsOverdue=(tools||[]).filter(t=>toolStatus(t)==="Overdue").length;
+  const TABS=[["dashboard","📊 Dashboard"],["deliveries",`📦 Deliveries${prs.filter(p=>!["Delivered","Cancelled"].includes(p.status)).length>0?" ("+prs.filter(p=>!["Delivered","Cancelled"].includes(p.status)).length+")":""}`],["receipts",`🧾 Receipts${receipts.length?" ("+receipts.length+")":""}`],["inventory",`≡ Inventory (${rows.length})`],["demand",`🔮 Demand${demandGaps>0?" ⚠"+demandGaps:""}`],["alerts",`⚠ Alerts${(lowStock.length+outOfStk.length)>0?" ("+(lowStock.length+outOfStk.length)+")":""}`],["projects",`🏗 Projects${projConsumption.length?" ("+projConsumption.length+")":""}`],["tools",`🔧 Tools${toolsOut>0?" ("+toolsOut+")":""}`],["log",`⟳ Log (${stocklog.length})`]];
 
   return(
     <div style={{display:"flex",flexDirection:"column",gap:0,height:"100%"}}>
@@ -627,6 +840,7 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
         <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
           <button onClick={exportInvXLSX} style={{background:C.green,border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#fff",cursor:"pointer"}}>⬇ Excel</button>
           {canEdit&&<button onClick={()=>{setShowImport(true);setImportText("");setImportPreview([]);setImportErr("");}} style={{background:"#7c3aed",border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#fff",cursor:"pointer"}}>⬆ Import CSV</button>}
+          {canEdit&&mergeInventoryItems&&dupGroups.length>0&&<button onClick={()=>{setShowDupes(true);setDupSurvivors({});}} title="Combine duplicate SKUs" style={{background:"#fff",border:`1px solid ${C.red}`,borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:C.red,cursor:"pointer"}}>⧉ Merge Dupes ({dupGroups.length})</button>}
           {canEdit&&<button onClick={openAddModal} style={{background:C.accent,border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#fff",cursor:"pointer"}}>＋ Add / Restock</button>}
           {role==="Manager"&&clearAllInventory&&(inventory.length>0||stocklog.length>0)&&<button onClick={async()=>{
             if(!(await uiConfirm(`Start fresh? This permanently deletes ALL ${inventory.length} inventory item(s) and ${stocklog.length} stock movement(s) — for everyone, on every device. This cannot be undone.`))) return;
@@ -1095,6 +1309,7 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
                 <div key={i.id} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 14px",borderRadius:9,marginBottom:7,background:C.red+"0a",border:`1px solid ${C.red}25`}}>
                   <span>🔴</span>
                   <div style={{flex:1}}><div style={{fontWeight:700,fontSize:12,color:C.text}}>{i.name}</div><div style={{fontSize:10,color:C.red,fontFamily:"monospace"}}>Stock: {i._rem} {i.unit} — RESTOCK IMMEDIATELY</div></div>
+                  {canEdit&&addPR&&<button onClick={()=>createReorderPR(i)} title="Draft a purchase request for procurement" style={{background:"#fff",border:`1px solid ${C.blue}`,borderRadius:7,padding:"5px 10px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:C.blue,cursor:"pointer",whiteSpace:"nowrap"}}>🛒 Create PR</button>}
                   {canEdit&&<button onClick={()=>{setTab("inventory");setShowMove(i.id);setMoveForm({moveType:"IN — Delivery",qty:"",unitCost:String(i._price),projectId:"",notes:"",date:today});}} style={{background:C.green,border:"none",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#fff",cursor:"pointer"}}>↓ Receive</button>}
                 </div>
               ))}</>
@@ -1105,6 +1320,7 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
                 <div key={i.id} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 14px",borderRadius:9,marginBottom:7,background:C.yellow+"0a",border:`1px solid ${C.yellow}25`}}>
                   <span>🟡</span>
                   <div style={{flex:1}}><div style={{fontWeight:700,fontSize:12,color:C.text}}>{i.name}</div><div style={{fontSize:10,color:"#b45309",fontFamily:"monospace"}}>Depleted · Beginning: {i._beg} {i.unit}</div></div>
+                  {canEdit&&addPR&&<button onClick={()=>createReorderPR(i)} title="Draft a purchase request for procurement" style={{background:"#fff",border:`1px solid ${C.blue}`,borderRadius:7,padding:"5px 10px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:C.blue,cursor:"pointer",whiteSpace:"nowrap"}}>🛒 Create PR</button>}
                   {canEdit&&<button onClick={()=>{setTab("inventory");setShowMove(i.id);setMoveForm({moveType:"IN — Delivery",qty:"",unitCost:String(i._price),projectId:"",notes:"",date:today});}} style={{background:C.green,border:"none",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#fff",cursor:"pointer"}}>↓ Receive</button>}
                 </div>
               ))}</>
@@ -1115,6 +1331,7 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
                 <div key={i.id} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 14px",borderRadius:9,marginBottom:7,background:"#fffbeb",border:"1px solid #fde68a"}}>
                   <span>⚠️</span>
                   <div style={{flex:1}}><div style={{fontWeight:700,fontSize:12,color:C.text}}>{i.name}</div><div style={{fontSize:10,color:"#b45309",fontFamily:"monospace"}}>{i._rem} {i.unit} remaining · Reorder at {n(i.reorderPoint)}</div></div>
+                  {canEdit&&addPR&&<button onClick={()=>createReorderPR(i)} title="Draft a purchase request for procurement" style={{background:"#fff",border:`1px solid ${C.blue}`,borderRadius:7,padding:"5px 10px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:C.blue,cursor:"pointer",whiteSpace:"nowrap"}}>🛒 Create PR</button>}
                 </div>
               ))}</>
             )}
@@ -1236,8 +1453,211 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
         </div>
       )}
 
+      {/* ── DELIVERY RECEIPTS LEDGER (purchasing → warehouse → finance) ───── */}
+      {tab==="receipts"&&(()=>{
+        const fmtM=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+        const q=rxSearch.trim().toLowerCase();
+        const list=q?receipts.filter(r=>[r.drNo,r.pr.poNumber,r.pr.itemName||r.pr.item,r.pr.supplier,r.deal?.client].some(v=>String(v||"").toLowerCase().includes(q))):receipts;
+        const rxVal=r=>r.standalone?(Number(r.value)||0):(Number(r.pr.actUnitCost||r.pr.estUnitCost||r.pr.estimatedCost||0)*r.qty);
+        const totVal=list.reduce((s,r)=>s+rxVal(r),0);
+        const payClr=st=>/logged|paid|expense/i.test(st||"")?C.green:/pending/i.test(st||"")?C.accent:C.muted;
+        return(
+        <div style={{overflowY:"auto",flex:1,paddingBottom:20}}>
+          <div style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:8,padding:"9px 14px",fontSize:".78rem",color:"#1d4ed8",marginBottom:10}}>
+            🧾 <strong>Delivery Receipts</strong> — every received PO as a receipt document, linked to its purchase order and finance status. Print a branded GRN/DR for any line, or log a standalone DR.
+          </div>
+          <div style={{display:"flex",gap:8,marginBottom:10}}>
+            <input value={rxSearch} onChange={e=>setRxSearch(e.target.value)} placeholder="Search DR#, PO#, item, supplier, project…"
+              style={{flex:1,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:12,color:C.text,background:"#fff",boxSizing:"border-box"}}/>
+            {canEdit&&saveDr&&<button onClick={()=>openDr(null)} style={{background:C.accent,border:"none",borderRadius:8,padding:"8px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#fff",cursor:"pointer",whiteSpace:"nowrap"}}>＋ New DR</button>}
+          </div>
+          {list.length===0?(
+            <div style={{textAlign:"center",padding:"3rem",color:C.muted,fontSize:13}}>{receipts.length===0?"No delivery receipts yet — receive a PO in the Deliveries tab.":"No receipts match your search."}</div>
+          ):(
+            <div style={{background:C.card,borderRadius:10,border:`1px solid ${C.border}`,overflow:"hidden"}}>
+              <div style={{overflowX:"auto"}}><div style={{minWidth:860}}>
+                <div style={{display:"grid",gridTemplateColumns:"100px 1.6fr 1fr 1fr 60px 110px 120px 70px",background:"#1e293b",padding:"8px 14px",gap:8}}>
+                  {["Date","Item / DR#","Supplier","Project","Qty","Value","Finance","Print"].map((h,hi)=>(
+                    <div key={h} style={{fontSize:9,fontWeight:700,color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".5px",textAlign:hi>=4&&hi<=5?"right":"left"}}>{h}</div>
+                  ))}
+                </div>
+                {list.map((r,i)=>{
+                  const pr=r.pr;
+                  const uc=Number(pr.actUnitCost||pr.estUnitCost||pr.estimatedCost||0);
+                  const isStk=(pr.dealId||pr.projectId)==="__gmd_stocks__"||pr.projectName==="GMD Stocks"||(!r.deal&&!pr.dealId&&!pr.projectId);
+                  const payStatus=pr.paymentStatus||pr.acctStatus||"";
+                  return(
+                  <div key={r.key} style={{display:"grid",gridTemplateColumns:"100px 1.6fr 1fr 1fr 60px 110px 120px 70px",padding:"9px 14px",gap:8,borderBottom:`1px solid ${C.border}`,background:i%2?"#fafafa":"#fff",alignItems:"center"}}>
+                    <div style={{fontSize:10,color:C.muted,fontFamily:"monospace"}}>{r.date||"—"}</div>
+                    <div style={{minWidth:0}}>
+                      <div style={{fontSize:11,fontWeight:600,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pr.itemName||pr.item||"—"}</div>
+                      <div style={{display:"flex",gap:5,marginTop:2,flexWrap:"wrap"}}>
+                        {r.drNo&&<span style={{fontSize:9,color:C.teal,fontWeight:700}}>DR {r.drNo}</span>}
+                        {pr.poNumber&&<span style={{fontSize:9,color:C.blue,fontWeight:700}}>#{pr.poNumber}</span>}
+                        <span style={{fontSize:9,padding:"1px 6px",borderRadius:10,background:pr.status==="Delivered"?"#dcfce7":"#fef9c3",color:pr.status==="Delivered"?C.green:"#a16207",fontWeight:700}}>{pr.status}</span>
+                      </div>
+                    </div>
+                    <div style={{fontSize:11,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pr.supplier||"—"}</div>
+                    <div style={{overflow:"hidden"}}>
+                      <span style={{display:"inline-flex",alignItems:"center",gap:4,maxWidth:"100%",padding:"2px 8px",borderRadius:10,fontSize:9,fontWeight:700,background:isStk?"#f0fdfa":"#eff6ff",color:isStk?C.teal:C.blue,border:`1px solid ${isStk?"#99f6e4":"#bfdbfe"}`,overflow:"hidden"}}>
+                        <span style={{flexShrink:0}}>{isStk?"🏭":"📁"}</span>
+                        <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{isStk?"GMD Stock":(r.deal?.client||pr.projectName||"Project")}</span>
+                      </span>
+                    </div>
+                    <div style={{fontSize:12,fontWeight:700,color:C.text,textAlign:"right",fontFamily:"monospace"}}>{r.qty}</div>
+                    <div style={{fontSize:11,fontWeight:700,color:rxVal(r)>0?C.teal:C.muted,textAlign:"right",fontFamily:"monospace"}}>{rxVal(r)>0?fmtM(rxVal(r)):"—"}</div>
+                    <div style={{fontSize:10}}>{r.standalone?<span style={{color:C.teal,fontWeight:700}}>Manual DR</span>:payStatus?<span style={{color:payClr(payStatus),fontWeight:700}}>{payStatus}</span>:<span style={{color:C.muted}}>—</span>}</div>
+                    <div style={{display:"flex",gap:3}}>
+                      {printDR&&<button onClick={()=>printDR(pr,r.qty||pr.qty,r.drNo,r.deal)} title="Print delivery receipt / GRN" style={{fontSize:9,padding:"4px 7px",border:`1px solid ${C.blue}`,borderRadius:5,background:"#fff",color:C.blue,cursor:"pointer",fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap"}}>🖨</button>}
+                      {r.standalone&&canEdit&&saveDr&&<button onClick={()=>openDr(r.dr)} title="Edit DR" style={{fontSize:9,padding:"4px 7px",border:`1px solid ${C.border}`,borderRadius:5,background:"#fff",color:C.muted,cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>✏</button>}
+                      {r.standalone&&canDelete&&deleteDr&&<button onClick={()=>{if(window.confirm("Delete this delivery receipt?"))deleteDr(r.dr.id);}} title="Delete DR" style={{fontSize:9,padding:"4px 7px",border:`1px solid ${C.red}`,borderRadius:5,background:"#fff",color:C.red,cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>✕</button>}
+                    </div>
+                  </div>
+                  );
+                })}
+                <div style={{display:"grid",gridTemplateColumns:"100px 1.6fr 1fr 1fr 60px 110px 120px 70px",padding:"10px 14px",gap:8,background:"#1e293b",alignItems:"center"}}>
+                  <div style={{gridColumn:"1/5",color:"rgba(255,255,255,.7)",fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:".5px"}}>Total Received Value ({list.length})</div>
+                  <div/>
+                  <div style={{fontSize:13,fontFamily:"monospace",fontWeight:800,color:C.accent,textAlign:"right"}}>{fmtM(totVal)}</div>
+                  <div/><div/>
+                </div>
+              </div></div>
+            </div>
+          )}
+        </div>
+        );
+      })()}
+
+      {/* ── PROJECTS CONSUMPTION TAB (warehouse → finance costing) ────────── */}
+      {tab==="projects"&&(()=>{
+        const totOut=projConsumption.reduce((s,g)=>s+g.outVal,0);
+        const fmtV=v=>v>=1000000?"₱"+(v/1000000).toFixed(1)+"M":v>=1000?"₱"+(v/1000).toFixed(0)+"k":fp(v);
+        return(
+        <div style={{overflowY:"auto",flex:1,paddingBottom:20}}>
+          <div style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:8,padding:"9px 14px",fontSize:".78rem",color:"#1d4ed8",marginBottom:10}}>
+            🏗 <strong>Material consumption by project</strong> — stock issued/dispatched to each job, valued at cost. Mirrors what's expensed to the project in Finance, so warehouse draw-downs and the expense ledger can be reconciled.
+          </div>
+          {projConsumption.length===0?(
+            <div style={{textAlign:"center",padding:"3rem",color:C.muted,fontSize:13}}>No project material movements yet. Dispatch stock to a project to see it here.</div>
+          ):(
+            <div style={{background:C.card,borderRadius:10,border:`1px solid ${C.border}`,overflow:"hidden"}}>
+              <div style={{display:"grid",gridTemplateColumns:"2fr 90px 120px 90px 120px 40px",background:"#1e293b",padding:"8px 14px",gap:8}}>
+                {["Project","Out Qty","Consumed Value","In Qty","Returned/In Value",""].map((h,hi)=>(
+                  <div key={h+hi} style={{fontSize:9,fontWeight:700,color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".5px",textAlign:hi===0?"left":"right"}}>{h}</div>
+                ))}
+              </div>
+              {projConsumption.map((g,gi)=>{
+                const open=expProj===g.pid;
+                return(
+                <div key={g.pid} style={{borderBottom:`1px solid ${C.border}`,background:gi%2?"#fafafa":"#fff"}}>
+                  <div onClick={()=>setExpProj(open?null:g.pid)} style={{display:"grid",gridTemplateColumns:"2fr 90px 120px 90px 120px 40px",padding:"9px 14px",gap:8,alignItems:"center",cursor:"pointer"}}>
+                    <div style={{minWidth:0}}>
+                      <div style={{fontSize:12,fontWeight:700,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{g.client}</div>
+                      <div style={{fontSize:9,color:C.muted}}>{g.items.length} item{g.items.length!==1?"s":""} · {g.moves} move{g.moves!==1?"s":""}</div>
+                    </div>
+                    <div style={{fontSize:12,fontWeight:700,color:C.yellow,textAlign:"right",fontFamily:"monospace"}}>{g.outQty}</div>
+                    <div style={{fontSize:12,fontWeight:800,color:C.teal,textAlign:"right",fontFamily:"monospace"}}>{fmtV(g.outVal)}</div>
+                    <div style={{fontSize:12,color:g.inQty?C.green:C.muted,textAlign:"right",fontFamily:"monospace"}}>{g.inQty||"—"}</div>
+                    <div style={{fontSize:11,color:g.inVal?C.green:C.muted,textAlign:"right",fontFamily:"monospace"}}>{g.inVal?fmtV(g.inVal):"—"}</div>
+                    <div style={{textAlign:"right",color:C.muted,fontSize:12}}>{open?"▾":"▸"}</div>
+                  </div>
+                  {open&&(
+                    <div style={{padding:"2px 14px 10px 26px",background:"#f8fafc"}}>
+                      {g.items.map((it,ii)=>(
+                        <div key={it.name+ii} style={{display:"grid",gridTemplateColumns:"2fr 90px 120px",gap:8,padding:"4px 0",borderBottom:ii<g.items.length-1?`1px solid ${C.border}`:"none"}}>
+                          <div style={{fontSize:11,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{it.name}</div>
+                          <div style={{fontSize:11,color:C.muted,textAlign:"right",fontFamily:"monospace"}}>{it.outQty} {it.unit}</div>
+                          <div style={{fontSize:11,color:C.teal,textAlign:"right",fontFamily:"monospace"}}>{fmtV(it.outVal)}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                );
+              })}
+              <div style={{display:"grid",gridTemplateColumns:"2fr 90px 120px 90px 120px 40px",padding:"10px 14px",gap:8,background:"#1e293b",alignItems:"center"}}>
+                <div style={{color:"rgba(255,255,255,.7)",fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:".5px"}}>Total Consumed Value</div>
+                <div/>
+                <div style={{fontSize:14,fontFamily:"monospace",fontWeight:800,color:C.accent,textAlign:"right"}}>{fmtV(totOut)}</div>
+                <div/><div/><div/>
+              </div>
+            </div>
+          )}
+        </div>
+        );
+      })()}
+
+      {/* ── TOOLS / EQUIPMENT TAB ────────────────────────────────────────── */}
+      {tab==="tools"&&(()=>{
+        const sorted=[...(tools||[])].sort((a,b)=>{const o={Overdue:0,Borrowed:1,Returned:2};const sa=o[toolStatus(a)],sb=o[toolStatus(b)];return sa!==sb?sa-sb:String(b.borrowedDate||"").localeCompare(String(a.borrowedDate||""));});
+        const badge=st=>st==="Overdue"?{bg:C.red+"15",c:C.red}:st==="Borrowed"?{bg:C.accent+"15",c:C.accent}:{bg:C.green+"15",c:C.green};
+        const putTool=saveTool||(upTools&&(rec=>upTools(ts=>ts.some(x=>x.id===rec.id)?ts.map(x=>x.id===rec.id?rec:x):[rec,...ts])));
+        const rmTool=deleteTool||(upTools&&(id=>upTools(ts=>ts.filter(x=>x.id!==id))));
+        const addTool=()=>{
+          if(!toolForm.name.trim()||!toolForm.borrower.trim()){toastEmit&&toastEmit("Tool name and borrower are required.","error");return;}
+          if(!putTool){toastEmit&&toastEmit("Tools register unavailable in this view.","error");return;}
+          putTool({id:uid(),...toolForm,name:toolForm.name.trim(),borrower:toolForm.borrower.trim(),actualReturn:"",createdBy:session?.name||role||""});
+          setToolForm({name:"",borrower:"",borrowedDate:today,expectedReturn:"",notes:""});
+          toastEmit&&toastEmit(`🔧 ${toolForm.name.trim()} checked out to ${toolForm.borrower.trim()}`,"success");
+        };
+        const markReturned=(t)=>putTool&&putTool({...t,actualReturn:today});
+        const reBorrow=(t)=>putTool&&putTool({...t,actualReturn:""});
+        const delTool=(t)=>rmTool&&rmTool(t.id);
+        return(
+        <div style={{overflowY:"auto",flex:1,paddingBottom:20}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:8,marginBottom:10}}>
+            {[{l:"Tools Tracked",v:(tools||[]).length,c:C.blue},{l:"Checked Out",v:toolsOut,c:toolsOut?C.accent:C.muted},{l:"Overdue",v:toolsOverdue,c:toolsOverdue?C.red:C.muted}].map(k=>(
+              <div key={k.l} style={{background:C.card,borderRadius:8,padding:"10px 14px",border:`1px solid ${C.border}`}}>
+                <div style={{fontSize:16,fontWeight:800,color:k.c,fontFamily:"monospace"}}>{k.v}</div>
+                <div style={{fontSize:9,color:C.muted,textTransform:"uppercase",letterSpacing:".6px",marginTop:3}}>{k.l}</div>
+              </div>
+            ))}
+          </div>
+          {canEdit&&(
+            <div style={{background:C.card,borderRadius:10,border:`1px solid ${C.border}`,padding:"12px 14px",marginBottom:10,display:"flex",gap:8,flexWrap:"wrap",alignItems:"flex-end"}}>
+              <div style={{flex:"2 1 160px",minWidth:140}}><div style={{fontSize:9,fontWeight:700,color:C.muted,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>Tool / Equipment *</div><input value={toolForm.name} onChange={e=>setToolForm(p=>({...p,name:e.target.value}))} placeholder="e.g. Bosch drill" style={{width:"100%",border:`1px solid ${C.border}`,borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:12,color:C.text,background:"#fff",boxSizing:"border-box"}}/></div>
+              <div style={{flex:"1 1 140px",minWidth:120}}><div style={{fontSize:9,fontWeight:700,color:C.muted,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>Borrower *</div><input value={toolForm.borrower} onChange={e=>setToolForm(p=>({...p,borrower:e.target.value}))} placeholder="Name" style={{width:"100%",border:`1px solid ${C.border}`,borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:12,color:C.text,background:"#fff",boxSizing:"border-box"}}/></div>
+              <div style={{flex:"1 1 120px",minWidth:110}}><div style={{fontSize:9,fontWeight:700,color:C.muted,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>Borrowed</div><input type="date" value={toolForm.borrowedDate} onChange={e=>setToolForm(p=>({...p,borrowedDate:e.target.value}))} style={{width:"100%",border:`1px solid ${C.border}`,borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:12,color:C.text,background:"#fff",boxSizing:"border-box"}}/></div>
+              <div style={{flex:"1 1 120px",minWidth:110}}><div style={{fontSize:9,fontWeight:700,color:C.muted,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>Due Back</div><input type="date" value={toolForm.expectedReturn} onChange={e=>setToolForm(p=>({...p,expectedReturn:e.target.value}))} style={{width:"100%",border:`1px solid ${C.border}`,borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:12,color:C.text,background:"#fff",boxSizing:"border-box"}}/></div>
+              <button onClick={addTool} style={{padding:"7px 16px",border:"none",borderRadius:7,background:C.accent,color:"#fff",fontFamily:"inherit",fontSize:12,fontWeight:700,cursor:"pointer",alignSelf:"flex-end",whiteSpace:"nowrap"}}>+ Check Out</button>
+            </div>
+          )}
+          {sorted.length===0?(
+            <div style={{textAlign:"center",padding:"3rem",color:C.muted,fontSize:13}}>No tools tracked yet. Check out a tool to start the register.</div>
+          ):(
+            <div style={{background:C.card,borderRadius:10,border:`1px solid ${C.border}`,overflow:"hidden"}}>
+              <div style={{overflowX:"auto"}}><div style={{minWidth:720}}>
+                <div style={{display:"grid",gridTemplateColumns:"1.6fr 1.2fr 100px 100px 90px 110px",background:"#1e293b",padding:"8px 14px",gap:8}}>
+                  {["Tool","Borrower","Borrowed","Due Back","Status","Action"].map(h=><div key={h} style={{fontSize:9,fontWeight:700,color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".5px"}}>{h}</div>)}
+                </div>
+                {sorted.map((t,i)=>{const st=toolStatus(t);const b=badge(st);return(
+                  <div key={t.id} style={{display:"grid",gridTemplateColumns:"1.6fr 1.2fr 100px 100px 90px 110px",padding:"9px 14px",gap:8,borderBottom:`1px solid ${C.border}`,background:i%2?"#fafafa":"#fff",alignItems:"center"}}>
+                    <div style={{minWidth:0}}><div style={{fontSize:12,fontWeight:600,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.name}</div>{t.notes&&<div style={{fontSize:9,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.notes}</div>}</div>
+                    <div style={{fontSize:11,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.borrower}</div>
+                    <div style={{fontSize:10,color:C.muted,fontFamily:"monospace"}}>{t.borrowedDate||"—"}</div>
+                    <div style={{fontSize:10,color:st==="Overdue"?C.red:C.muted,fontFamily:"monospace",fontWeight:st==="Overdue"?700:400}}>{t.expectedReturn||"—"}</div>
+                    <div><span style={{fontSize:9,fontWeight:700,padding:"2px 8px",borderRadius:20,background:b.bg,color:b.c}}>{st}{st==="Returned"&&t.actualReturn?` ${t.actualReturn}`:""}</span></div>
+                    <div style={{display:"flex",gap:4}}>
+                      {canEdit&&(t.actualReturn?<button onClick={()=>reBorrow(t)} style={{fontSize:9,padding:"3px 8px",border:`1px solid ${C.accent}`,borderRadius:5,background:"#fff",color:C.accent,cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>Re-issue</button>:<button onClick={()=>markReturned(t)} style={{fontSize:9,padding:"3px 8px",border:"none",borderRadius:5,background:C.green,color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>↩ Return</button>)}
+                      {canEdit&&<button onClick={()=>delTool(t)} title="Remove" style={{fontSize:9,padding:"3px 7px",border:`1px solid ${C.border}`,borderRadius:5,background:"#fff",color:C.muted,cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>✕</button>}
+                    </div>
+                  </div>
+                );})}
+              </div></div>
+            </div>
+          )}
+        </div>
+        );
+      })()}
+
       {/* ── LOG TAB ─────────────────────────────────────────────────────── */}
       {tab==="log"&&(
+       <div style={{flex:1,display:"flex",flexDirection:"column",minHeight:0}}>
+        {canEdit&&(
+          <div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
+            <button onClick={()=>{setShowMoveImport(true);setMoveImpText("");setMoveImpRows([]);}} style={{background:"#fff",border:`1px solid ${C.accent}`,borderRadius:8,padding:"6px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:C.accent,cursor:"pointer"}}>⬆ Bulk Import Movements</button>
+          </div>
+        )}
         <div style={{flex:1,overflowY:"auto",background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"4px 0"}}>
           {stocklog.length===0?(
             <div style={{textAlign:"center",padding:"3rem",color:C.muted}}>No stock movements yet</div>
@@ -1256,6 +1676,136 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
               </div>
             );
           })}
+        </div>
+       </div>
+      )}
+
+      {/* ── BULK MOVEMENT IMPORT MODAL ───────────────────────────────── */}
+      {showMoveImport&&(()=>{
+        const good=moveImpRows.filter(r=>!r.err).length;
+        return(
+        <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.5)",zIndex:1200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={e=>{if(e.target===e.currentTarget)setShowMoveImport(false);}}>
+          <div style={{background:"#fff",borderRadius:14,padding:24,width:640,maxWidth:"96vw",boxShadow:"0 20px 60px rgba(0,0,0,.2)",maxHeight:"90vh",overflowY:"auto"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+              <div style={{fontWeight:800,fontSize:"1rem",color:C.text}}>⬆ Bulk Import Stock Movements</div>
+              <button onClick={()=>setShowMoveImport(false)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"4px 10px",cursor:"pointer",color:C.muted,fontWeight:700}}>✕</button>
+            </div>
+            <div style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:".78rem",color:"#1d4ed8"}}>
+              <strong>Format (one movement per line):</strong><br/>
+              <code style={{fontSize:".73rem",color:"#475569"}}>Item, Type, Qty, UnitCost, Date, Project, Notes</code><br/>
+              <span style={{color:"#64748b",fontSize:".72rem"}}>Type = IN / OUT / ADJUST / RETURN. Date optional (defaults today). Project matches a client name (else blank). Unknown items are auto-created only for IN. Movements update qty-on-hand &amp; avg cost through the same engine as manual moves.</span>
+            </div>
+            <textarea value={moveImpText} onChange={e=>parseMoveImport(e.target.value)} rows={7} placeholder={"CUTTING DISC, IN, 50, 120, 2026-08-01, , Restock\nPLYWOOD 3/4, OUT, 12, 0, 2026-08-05, Acme Corp, Site delivery\nGRINDING DISC, ADJUST, 30, 13, , , Stock count"} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"9px 12px",fontFamily:"monospace",fontSize:".78rem",color:"#0f172a",resize:"vertical",boxSizing:"border-box"}}/>
+            {moveImpRows.length>0&&(
+              <div style={{marginTop:12,border:`1px solid ${C.border}`,borderRadius:8,overflow:"hidden"}}>
+                <div style={{fontSize:".72rem",textTransform:"uppercase",letterSpacing:"1px",color:"#64748b",fontWeight:700,padding:"6px 10px",background:"#f8fafc"}}>{good} of {moveImpRows.length} ready</div>
+                <div style={{maxHeight:220,overflowY:"auto"}}>
+                  <table style={{width:"100%",borderCollapse:"collapse",fontSize:".74rem"}}>
+                    <tbody>{moveImpRows.slice(0,50).map((r,i)=>(
+                      <tr key={i} style={{background:r.err?"#fef2f2":i%2?"#fafbfc":"#fff"}}>
+                        <td style={{padding:"4px 8px",maxWidth:150,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.name||"—"}</td>
+                        <td style={{padding:"4px 8px",color:C.muted}}>{r.moveType||"?"}</td>
+                        <td style={{padding:"4px 8px",fontFamily:"monospace",textAlign:"right"}}>{r.qty}</td>
+                        <td style={{padding:"4px 8px",color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:90}}>{r.projectName||"—"}</td>
+                        <td style={{padding:"4px 8px"}}>{r.err?<span style={{color:C.red,fontWeight:700}}>⚠ {r.err}</span>:<span style={{color:r.exists?"#d97706":"#059669",fontWeight:700}}>{r.exists?"MATCH":"NEW"}</span>}</td>
+                      </tr>
+                    ))}{moveImpRows.length>50&&<tr><td colSpan={5} style={{padding:"4px 8px",color:C.muted,textAlign:"center"}}>… and {moveImpRows.length-50} more</td></tr>}</tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+            <div style={{display:"flex",gap:10,marginTop:16}}>
+              <button onClick={applyMoveImport} disabled={good===0} style={{flex:1,background:good>0?C.accent:"#e2e8f0",border:"none",borderRadius:9,padding:"10px 0",fontFamily:"inherit",fontWeight:800,fontSize:".86rem",color:good>0?"#fff":"#94a3b8",cursor:good>0?"pointer":"not-allowed"}}>⬆ Import {good>0?good+" movements":""}</button>
+              <button onClick={()=>setShowMoveImport(false)} style={{background:"#f1f5f9",border:"none",borderRadius:9,padding:"10px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".86rem",color:C.muted,cursor:"pointer"}}>Cancel</button>
+            </div>
+          </div>
+        </div>
+        );
+      })()}
+
+      {/* ── MERGE DUPLICATES MODAL ───────────────────────────────────── */}
+      {showDupes&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.5)",zIndex:1200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={e=>{if(e.target===e.currentTarget)setShowDupes(false);}}>
+          <div style={{background:"#fff",borderRadius:14,padding:24,width:640,maxWidth:"96vw",boxShadow:"0 20px 60px rgba(0,0,0,.2)",maxHeight:"90vh",overflowY:"auto"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+              <div style={{fontWeight:800,fontSize:"1rem",color:C.text}}>⧉ Merge Duplicate Items</div>
+              <button onClick={()=>setShowDupes(false)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"4px 10px",cursor:"pointer",color:C.muted,fontWeight:700}}>✕</button>
+            </div>
+            <div style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"9px 12px",marginBottom:14,fontSize:".78rem",color:"#92400e"}}>
+              Same-name / same-unit SKUs. Pick which record to <strong>keep</strong>; the others' stock movements are re-tagged to it and their on-hand qty is folded in (weighted avg cost). This can't be undone.
+            </div>
+            {dupGroups.length===0?(
+              <div style={{textAlign:"center",padding:"2rem",color:C.green,fontSize:13}}>✅ No duplicates remaining.</div>
+            ):dupGroups.map(g=>{
+              const survivor=dupSurvivors[g.key]||g.items[0].id;
+              return(
+              <div key={g.key} style={{border:`1px solid ${C.border}`,borderRadius:9,padding:"10px 12px",marginBottom:10}}>
+                <div style={{fontSize:12,fontWeight:700,color:C.text,marginBottom:6}}>{g.name} <span style={{color:C.muted,fontWeight:500}}>· {g.unit||"—"} · {g.items.length} copies</span></div>
+                {g.items.map(it=>(
+                  <label key={it.id} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 0",cursor:"pointer",fontSize:11,color:C.text}}>
+                    <input type="radio" name={"dup-"+g.key} checked={survivor===it.id} onChange={()=>setDupSurvivors(p=>({...p,[g.key]:it.id}))}/>
+                    <span style={{flex:1}}>{it.code?`[${it.code}] `:""}on hand {n(it.qtyOnHand)} {it.unit} · avg {fp(it.avgCost)}{it.supplier?` · ${it.supplier}`:""}</span>
+                    <span style={{fontSize:9,color:survivor===it.id?C.green:C.muted,fontWeight:700}}>{survivor===it.id?"KEEP":"merge in"}</span>
+                  </label>
+                ))}
+                <div style={{textAlign:"right",marginTop:6}}>
+                  <button onClick={()=>{const dupeIds=g.items.filter(i=>i.id!==survivor).map(i=>i.id);const nm=mergeInventoryItems(survivor,dupeIds);toastEmit&&toastEmit(`Merged ${nm} duplicate${nm!==1?"s":""} into "${g.items.find(i=>i.id===survivor)?.name}"`,"success");}} style={{background:C.accent,border:"none",borderRadius:7,padding:"6px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".76rem",color:"#fff",cursor:"pointer"}}>⧉ Merge this group</button>
+                </div>
+              </div>
+              );
+            })}
+            <div style={{textAlign:"right",marginTop:6}}>
+              <button onClick={()=>setShowDupes(false)} style={{background:"#f1f5f9",border:"none",borderRadius:9,padding:"9px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:C.muted,cursor:"pointer"}}>Done</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── DELIVERY RECEIPT ENTRY MODAL (+ AI OCR) ──────────────────── */}
+      {showDr&&drForm&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.5)",zIndex:1200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={e=>{if(e.target===e.currentTarget){setShowDr(false);setDrForm(null);}}}>
+          <div style={{background:"#fff",borderRadius:14,padding:24,width:680,maxWidth:"96vw",boxShadow:"0 20px 60px rgba(0,0,0,.2)",maxHeight:"92vh",overflowY:"auto"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+              <div style={{fontWeight:800,fontSize:"1rem",color:C.text}}>🧾 {drForm.id?"Edit":"New"} Delivery Receipt</div>
+              <button onClick={()=>{setShowDr(false);setDrForm(null);}} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"4px 10px",cursor:"pointer",color:C.muted,fontWeight:700}}>✕</button>
+            </div>
+            <label style={{display:"flex",alignItems:"center",gap:8,background:"#f5f3ff",border:"1px solid #ddd6fe",borderRadius:8,padding:"9px 12px",marginBottom:14,cursor:drOcrBusy?"wait":"pointer",fontSize:".8rem",color:"#6d28d9",fontWeight:700}}>
+              <span>{drOcrBusy?"⏳ Reading…":"🤖 Scan a DR photo / PDF (AI auto-fill)"}</span>
+              <input type="file" accept="image/*,application/pdf" disabled={drOcrBusy} style={{display:"none"}} onChange={e=>{const f=e.target.files[0];runDrOcr(f);e.target.value="";}}/>
+            </label>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}>
+              <div><div style={{fontSize:9,fontWeight:700,color:C.muted,textTransform:"uppercase",marginBottom:4}}>DR / GRN No.</div><input value={drForm.drNo} onChange={e=>setDrForm(f=>({...f,drNo:e.target.value}))} style={{width:"100%",border:`1px solid ${C.border}`,borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:12,boxSizing:"border-box"}}/></div>
+              <div><div style={{fontSize:9,fontWeight:700,color:C.muted,textTransform:"uppercase",marginBottom:4}}>Date</div><input type="date" value={drForm.drDate} onChange={e=>setDrForm(f=>({...f,drDate:e.target.value}))} style={{width:"100%",border:`1px solid ${C.border}`,borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:12,boxSizing:"border-box"}}/></div>
+              <div><div style={{fontSize:9,fontWeight:700,color:C.muted,textTransform:"uppercase",marginBottom:4}}>PO No. (optional)</div><input value={drForm.poNumber} onChange={e=>setDrForm(f=>({...f,poNumber:e.target.value}))} style={{width:"100%",border:`1px solid ${C.border}`,borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:12,boxSizing:"border-box"}}/></div>
+              <div><div style={{fontSize:9,fontWeight:700,color:C.muted,textTransform:"uppercase",marginBottom:4}}>Supplier</div><input value={drForm.supplier} onChange={e=>setDrForm(f=>({...f,supplier:e.target.value}))} list="supp-opts" style={{width:"100%",border:`1px solid ${C.border}`,borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:12,boxSizing:"border-box"}}/></div>
+              <div style={{gridColumn:"span 2"}}><div style={{fontSize:9,fontWeight:700,color:C.muted,textTransform:"uppercase",marginBottom:4}}>Project</div>
+                <select value={drForm.projectId} onChange={e=>setDrForm(f=>({...f,projectId:e.target.value}))} style={{width:"100%",border:`1px solid ${C.border}`,borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:12,background:"#fff",boxSizing:"border-box"}}>
+                  <option value="">— Unassigned —</option>
+                  <option value="__gmd_stocks__">GMD Stocks</option>
+                  {wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" — "+d.contact:""}</option>)}
+                </select>
+              </div>
+            </div>
+            <div style={{fontSize:9,fontWeight:700,color:C.muted,textTransform:"uppercase",marginBottom:6}}>Line Items</div>
+            {drForm.items.map((it,idx)=>(
+              <div key={idx} style={{display:"grid",gridTemplateColumns:"2.4fr 70px 90px 90px 28px",gap:6,marginBottom:6,alignItems:"center"}}>
+                <input value={it.name} onChange={e=>setDrForm(f=>({...f,items:f.items.map((x,i)=>i===idx?{...x,name:e.target.value}:x)}))} placeholder="Item" style={{border:`1px solid ${C.border}`,borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:12,boxSizing:"border-box"}}/>
+                <input type="number" value={it.qty} onChange={e=>setDrForm(f=>({...f,items:f.items.map((x,i)=>i===idx?{...x,qty:e.target.value}:x)}))} placeholder="Qty" style={{border:`1px solid ${C.border}`,borderRadius:7,padding:"6px 8px",fontFamily:"inherit",fontSize:12,textAlign:"right",boxSizing:"border-box"}}/>
+                <input type="number" value={it.unitCost} onChange={e=>setDrForm(f=>({...f,items:f.items.map((x,i)=>i===idx?{...x,unitCost:e.target.value}:x)}))} placeholder="Unit ₱" style={{border:`1px solid ${C.border}`,borderRadius:7,padding:"6px 8px",fontFamily:"inherit",fontSize:12,textAlign:"right",boxSizing:"border-box"}}/>
+                <div style={{fontSize:11,fontFamily:"monospace",color:C.muted,textAlign:"right"}}>{fp((Number(it.qty)||0)*(Number(it.unitCost)||0))}</div>
+                <button onClick={()=>setDrForm(f=>({...f,items:f.items.filter((_,i)=>i!==idx)}))} style={{border:"none",background:"transparent",color:C.red,cursor:"pointer",fontWeight:700}}>✕</button>
+              </div>
+            ))}
+            <button onClick={()=>setDrForm(f=>({...f,items:[...f.items,{name:"",qty:"",unitCost:""}]}))} style={{background:"#fff",border:`1px dashed ${C.border}`,borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontSize:".76rem",color:C.muted,cursor:"pointer",marginBottom:10}}>+ Add line</button>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+              <div style={{flex:1,marginRight:10}}><div style={{fontSize:9,fontWeight:700,color:C.muted,textTransform:"uppercase",marginBottom:4}}>Remarks</div><input value={drForm.remarks} onChange={e=>setDrForm(f=>({...f,remarks:e.target.value}))} style={{width:"100%",border:`1px solid ${C.border}`,borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:12,boxSizing:"border-box"}}/></div>
+              <div style={{textAlign:"right"}}><div style={{fontSize:9,color:C.muted,textTransform:"uppercase"}}>Total</div><div style={{fontSize:16,fontWeight:800,color:C.teal,fontFamily:"monospace"}}>{fp(drTotal(drForm.items))}</div></div>
+            </div>
+            <div style={{display:"flex",gap:10}}>
+              <button onClick={commitDr} style={{flex:1,background:C.accent,border:"none",borderRadius:9,padding:"10px 0",fontFamily:"inherit",fontWeight:800,fontSize:".86rem",color:"#fff",cursor:"pointer"}}>💾 Save Delivery Receipt</button>
+              <button onClick={()=>{setShowDr(false);setDrForm(null);}} style={{background:"#f1f5f9",border:"none",borderRadius:9,padding:"10px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".86rem",color:C.muted,cursor:"pointer"}}>Cancel</button>
+            </div>
+          </div>
         </div>
       )}
 

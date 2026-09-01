@@ -35,7 +35,8 @@ const CurrInp=({value,onChange,placeholder="—",style:sx={}})=>{
 // are computed from three manual entry tables below the report. Floating checks
 // carry from day to day until they are marked cleared.
 function DailyCashPosition({
-  cashPositions={},saveDayPos=()=>{},billings=[],payables=[],loans=[],userName=""
+  cashPositions={},saveDayPos=()=>{},billings=[],payables=[],loans=[],userName="",
+  cashStale=false
 }){
   const[selDate,setSelDate]=useState(today);
   const[saved,setSaved]    =useState(false);
@@ -43,9 +44,18 @@ function DailyCashPosition({
   const[histOpen,setHistOpen]=useState(false);
   const[hideAcct,setHideAcct]=useState(true);    // account no./branch/type hidden by default (screen-share friendly)
   const dirtyRef=useRef(false);                 // mirror of `dirty` readable inside the load effect
-  const saveRef =useRef(()=>{});                // always points at the latest handleSave (for unmount auto-save)
+  const saveRef =useRef(()=>{});                // always points at the latest persistDay (for unmount auto-save)
+  const loadedSavedAtRef=useRef(null);          // savedAt of the version currently open — to detect a newer save landing elsewhere
   const markDirty =()=>{dirtyRef.current=true; setDirty(true);};
   const clearDirty=()=>{dirtyRef.current=false;setDirty(false);};
+
+  // Mirror of the `cashStale` prop that's readable inside effects/callbacks with
+  // empty dep arrays (the unmount auto-save closes over the first render's props).
+  // When the store is stale (a failed Supabase refresh left the local cache on
+  // screen), the silent auto-save is suppressed so we never overwrite the server's
+  // good rows with a copy that was never confirmed against it.
+  const cashStaleRef=useRef(cashStale);
+  cashStaleRef.current=cashStale;
 
   const normPos=(p,date)=>p?.banks?p:{...emptyDayPosition(date||today),...(p||{})};
   const[pos,setPos]=useState(()=>normPos(cashPositions[today],today));
@@ -70,8 +80,8 @@ function DailyCashPosition({
   };
 
   const loadDay=(d)=>{
-    if(cashPositions[d]){setPos(normPos(cashPositions[d],d));setSaved(true);}
-    else{setPos(carryFrom(d));setSaved(false);}
+    if(cashPositions[d]){setPos(normPos(cashPositions[d],d));setSaved(true);loadedSavedAtRef.current=cashPositions[d].savedAt||null;}
+    else{setPos(carryFrom(d));setSaved(false);loadedSavedAtRef.current=null;}
     clearDirty();
   };
 
@@ -93,7 +103,7 @@ function DailyCashPosition({
   // not when the user clicks another view (this component just unmounts and its
   // in-memory day would be lost). So on unmount, if the current day still has unsaved
   // edits, auto-save them — same save-by-default policy used when switching dates.
-  useEffect(()=>()=>{ if(dirtyRef.current){ try{ saveRef.current(); }catch(_){} } },[]);
+  useEffect(()=>()=>{ if(dirtyRef.current&&!cashStaleRef.current){ try{ saveRef.current(); }catch(_){} } },[]);
 
   const switchDate=async (d)=>{
     if(d===selDate) return;
@@ -103,13 +113,29 @@ function DailyCashPosition({
     // disbursements and floating-check changes could vanish just by clicking
     // another date. The user can still explicitly discard.
     if(dirtyRef.current){
+      // While the store is stale (failed server refresh), never offer save-by-default —
+      // that would push unconfirmed figures over the server. Only let the user keep
+      // editing or discard.
+      if(cashStale){
+        const keep=await uiConfirm({
+          title:"Cash data isn't synced — changes can't be saved",
+          tone:"warning",
+          confirmLabel:`Discard and open ${fmtDate(d)}`,
+          message:
+            `You have unsaved changes for ${fmtDate(selDate)}, but the latest cash positions couldn't be loaded from the server, so saving is disabled to avoid overwriting newer data.\n\n`+
+            `• OK = Discard these changes and open ${fmtDate(d)}\n`+
+            `• Cancel = Stay here (reconnect and tap 🔄 sync first)`
+        });
+        if(!keep) return;
+        setSelDate(d);loadDay(d);return;
+      }
       const save=(await uiConfirm(
         `You have unsaved changes for ${fmtDate(selDate)}.\n\n`+
         `• OK = Save them, then open ${fmtDate(d)}\n`+
         `• Cancel = Discard the changes and open ${fmtDate(d)}`
       ));
       if(save){
-        handleSave();           // persists selDate + appends an audit entry
+        persistDay();           // persists selDate + appends an audit entry (switch already confirmed)
       }else if(!(await uiConfirm(`Discard all unsaved changes for ${fmtDate(selDate)}? This cannot be undone.`))){
         return;                 // second Cancel = stay put, keep editing
       }
@@ -232,7 +258,9 @@ function DailyCashPosition({
   };
   const AUDIT_FIELDS=[["beg","Beginning"],["coll","Collections"],["disb","Disbursements"],["end","Ending"],["book","Book"],["flt","Float Check"]];
 
-  const handleSave=()=>{
+  // Actually persist the current day (no prompts). Used by the button after
+  // confirmation, and directly by the silent auto-save paths (unmount, date-switch).
+  const persistDay=()=>{
     const at=new Date().toISOString();
     // Materialize the computed Ending & Book into the saved banks so the next day carries
     // the right beginning balance and CSV/history export the reconciled figures.
@@ -252,10 +280,54 @@ function DailyCashPosition({
     const audit=(!prior||changes.length>0)?[...priorAudit,entry]:priorAudit;
     saveDayPos(selDate,{...pos,banks:banksOut,collections:{...pos.collections,total:collTotal},audit,savedAt:at});
     setSaved(true);clearDirty();
+    loadedSavedAtRef.current=at;   // this save is now the baseline for the open day
   };
-  // Keep the unmount auto-save pointed at the current render's handleSave (it closes
+
+  // Save-button handler: confirm before writing so the person saving is asked to
+  // verify the figures are current — and, if this day was saved somewhere else
+  // (another user/device) AFTER it was opened here, warn loudly that saving now
+  // overwrites that newer version. The in-progress edits are deliberately never
+  // auto-refreshed from a background sync (see the load effect), so without this
+  // check a stale tab could silently clobber fresher data.
+  const handleSave=async ()=>{
+    // Guard: if the store is stale (the last Supabase refresh failed, so we're
+    // looking at the local cache), saving now would upsert unconfirmed figures on
+    // top of whatever is really on the server. Warn and require an explicit override.
+    if(cashStale){
+      const proceed=await uiConfirm({
+        title:"Cash data isn't synced with the server",
+        tone:"warning",
+        confirmLabel:"Save anyway (may overwrite newer data)",
+        message:
+          `The latest cash positions couldn't be loaded from the server, so this screen is showing a locally-cached copy.\n\n`+
+          `Saving now could overwrite more recent figures (e.g. Aerwin's) that just didn't reach this device.\n\n`+
+          `Reconnect and tap the 🔄 sync button first, then reopen ${fmtDate(selDate)} to confirm you have the latest before saving.`
+      });
+      if(!proceed) return;
+    }
+    const stored=cashPositions[selDate];
+    const remoteSavedAt=stored?.savedAt||null;
+    const conflict=remoteSavedAt&&remoteSavedAt!==loadedSavedAtRef.current;
+    const when=(iso)=>{try{return new Date(iso).toLocaleString("en-PH");}catch(_){return iso;}};
+    const ok=await uiConfirm(conflict?{
+      title:"This day was updated elsewhere",
+      tone:"warning",
+      confirmLabel:"Overwrite with my version",
+      message:
+        `${fmtDate(selDate)} was saved again ${when(remoteSavedAt)} — after you opened it here.\n\n`+
+        `Saving now will OVERWRITE that newer version with the figures on this screen, and their changes will be lost.\n\n`+
+        `If you're not sure yours is the most up-to-date, cancel and reopen ${fmtDate(selDate)} first to pull the latest.`
+    }:{
+      title:`Save cash position — ${fmtDate(selDate)}`,
+      confirmLabel:"Save position",
+      message:`Please confirm the figures for ${fmtDate(selDate)} are the most up-to-date before saving.`
+    });
+    if(!ok) return;
+    persistDay();
+  };
+  // Keep the unmount auto-save pointed at the current render's persistDay (it closes
   // over the latest pos/computed figures), so leaving the page never loses the day.
-  saveRef.current=handleSave;
+  saveRef.current=persistDay;
 
   const histDates=Object.keys(cashPositions).sort().reverse().slice(0,30);
 
@@ -356,6 +428,7 @@ function DailyCashPosition({
           <span>Daily Cash Position — Owners' Review report</span>
         </div>
         <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+          {cashStale&&<span title="The latest cash positions couldn't be loaded from the server — you're viewing a locally-cached copy. Reconnect and tap the 🔄 sync button." style={{fontSize:".72rem",fontWeight:800,color:"#b91c1c",background:"#fef2f2",border:"1px solid #fecaca",borderRadius:6,padding:"3px 9px",display:"inline-flex",alignItems:"center",gap:4}}>⚠ Offline copy — not synced</span>}
           {dirty&&<span style={{fontSize:".72rem",fontWeight:700,color:"#b45309",display:"inline-flex",alignItems:"center",gap:4}}>● Unsaved</span>}
           <button onClick={exportCSV} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>
           <input type="date" value={selDate} onChange={e=>switchDate(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".84rem",color:"#0f172a",cursor:"pointer"}}/>

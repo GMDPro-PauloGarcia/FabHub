@@ -5,8 +5,8 @@ import{idbGetMany,idbSetMany}from'./idb.js';
 import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable} from './shared';
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
-import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
+import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -400,6 +400,337 @@ const FileAttachments=({folder,label="Attachments"})=>{
   );
 };
 
+// Render free-text that may contain http(s) URLs, turning each URL into a
+// clickable link while leaving the rest as plain text. Used for DRF
+// notes/descriptions where the team pastes a Google Drive / reference link
+// inline. whiteSpace:"pre-wrap" on the parent preserves line breaks.
+const Linkify=({text,color="#2563eb"})=>{
+  if(text==null||text==="") return null;
+  const parts=String(text).split(/(https?:\/\/[^\s]+)/g);
+  return parts.map((p,i)=>/^https?:\/\//.test(p)
+    ? <a key={i} href={p} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()} style={{color,fontWeight:600,wordBreak:"break-all",textDecoration:"underline"}}>{p}</a>
+    : <React.Fragment key={i}>{p}</React.Fragment>
+  );
+};
+
+// Best-effort thumbnail source for a reference link. Google Drive share links
+// become a Drive thumbnail endpoint; direct image URLs are used as-is; anything
+// else returns null (the tile falls back to an icon).
+const refThumbSrc=(url)=>{
+  const m=/(?:\/d\/|[?&]id=|\/file\/d\/)([A-Za-z0-9_-]{20,})/.exec(url||"");
+  if(m) return `https://drive.google.com/thumbnail?id=${m[1]}&sz=w400`;
+  if(/\.(png|jpe?g|gif|webp|bmp|svg)(\?|#|$)/i.test(url||"")) return url;
+  return null;
+};
+// A reference link rendered as a clickable thumbnail tile. Falls back to an
+// icon tile when the URL can't be previewed or the image fails to load.
+const RefThumb=({url,label,icon="🖼"})=>{
+  const[err,setErr]=React.useState(false);
+  const thumb=refThumbSrc(url);
+  return(
+    <a href={url} target="_blank" rel="noreferrer" title={label} style={{display:"block",width:92,textDecoration:"none",flexShrink:0}}>
+      <div style={{width:92,height:70,borderRadius:8,overflow:"hidden",border:"1px solid #e2e8f0",background:"#f8fafc",display:"flex",alignItems:"center",justifyContent:"center"}}>
+        {thumb&&!err
+          ? <img src={thumb} alt={label} loading="lazy" onError={()=>setErr(true)} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+          : <span style={{fontSize:"1.4rem"}}>{icon}</span>}
+      </div>
+      <div style={{fontSize:".66rem",color:"#6366f1",fontWeight:600,marginTop:3,textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{label}</div>
+    </a>
+  );
+};
+
+// ─── DESIGN DETAILS MODAL ─────────────────────────────────────────────────────
+// The designer's working modal for one project: Sales brief, design output,
+// status, revisions, approvals (internal + client), a handoff-readiness gate,
+// and a comment thread. Extracted to a component so it can hold local UI state.
+function DesignDetailModal({selProj,proj,deal,linkedDrf,drfs,projList,projs,upProj,session,sendTelegramNotification,toastEmit,today,setSelProj,setOpsTab}){
+  const mob=window.innerWidth<768;
+  const d=proj.design||{};
+  const status=d.status||"Briefing";
+  const hasApproval=d.approvedBy&&d.approvedOn;
+  const notify=!!d.notifyStatus;
+  const[commentText,setCommentText]=React.useState("");
+  const[briefOpen,setBriefOpen]=React.useState(status==="Briefing");
+  const setD=(patch)=>upProj(selProj,p=>({...p,design:{...p.design,...patch}}));
+
+  // Designer workload — count each member's still-open projects + DRFs so the
+  // lead can distribute evenly. "Open" excludes finished states.
+  const workload={};
+  DESIGN_MEMBERS.forEach(m=>{workload[m]=0;});
+  (projList||[]).forEach(x=>{const dz=projs[x.id]?.design?.designer;if(dz&&workload[dz]!=null&&projs[x.id]?.design?.status!=="Done")workload[dz]++;});
+  (drfs||[]).forEach(x=>{if(x.designer&&workload[x.designer]!=null&&!["Approved","Production","Done"].includes(x.status))workload[x.designer]++;});
+
+  const changeStatus=async(s)=>{
+    if(s===status) return;
+    if(s==="Done"&&!d.link){toastEmit("⚠ Please add a file / link before marking Done.","warning");return;}
+    if(s==="Done"&&!hasApproval){ if(!(await uiConfirm("Mark Done without an internal approval on file? Ops handoff usually needs a locked, approved revision."))) return; }
+    const next={...d,status:s,statusHistory:[...(d.statusHistory||[]),{status:s,date:today,by:session?.name||"Design"}]};
+    upProj(selProj,x=>({...x,design:next}));
+    if(s==="Done"&&proj.currentStage==="Design"){
+      upProj(selProj,x=>({...x,currentStage:"Fabrication",progress:{...x.progress,Design:100},stageDates:{...x.stageDates,Design:{...x.stageDates?.Design,e:today},Fabrication:{...x.stageDates?.Fabrication,s:x.stageDates?.Fabrication?.s||today}}}));
+      const msg=`🎨 <b>Design Complete — Ready for Fabrication</b>\nProject: <b>${deal?.client||"?"}</b>${deal?.ceNo?`\nCE: ${deal.ceNo}`:""}\nDesigner: ${next.designer||"—"}${next.revisionNo?`\nRevision: ${next.revisionNo}`:""}\n${next.link?`<a href="${next.link}">View Drawings</a>`:"No file link yet"}\nBy: ${session?.name||"Design"}`;
+      sendTelegramNotification("ops",msg);sendTelegramNotification("management",msg);
+    }else if(notify){
+      const msg=`🎨 <b>Design Status → ${s}</b>\nProject: <b>${deal?.client||"?"}</b>${deal?.ceNo?`\nCE: ${deal.ceNo}`:""}\nDesigner: ${next.designer||"—"}\nBy: ${session?.name||"Design"}`;
+      sendTelegramNotification("design",msg);
+      if(s==="For Review"||s==="Production Plans") sendTelegramNotification("management",msg);
+    }
+  };
+
+  const postComment=()=>{
+    const t=commentText.trim(); if(!t) return;
+    setD({comments:[...(d.comments||[]),{text:t,by:session?.name||"Design",at:new Date().toISOString()}]});
+    setCommentText("");
+  };
+
+  const copyBrief=async()=>{
+    const L=linkedDrf||{};
+    const lines=[
+      `PROJECT: ${d.projectTitle||deal?.product||deal?.client||""}`,
+      `CLIENT: ${deal?.client||L.client||""}`,
+      `CATEGORY: ${L.category||"—"}`,
+      `LOCATION: ${deal?.location||L.location||"—"}`,
+      `SIZE: ${deal?.drfSize||L.size||"—"}`,
+      L.maxHeight?`MAX HEIGHT: ${L.maxHeight}`:"",
+      L.platform?`PLATFORM: ${L.platform}`:"",
+      L.finishes?`FINISHES: ${L.finishes}`:"",
+      L.budget?`BUDGET: ${L.budget}`:"",
+      (deal?.drfDescription||L.description)?`\nBRIEF:\n${deal?.drfDescription||L.description}`:"",
+      L.brandGuideLink?`\nBrand guideline: ${L.brandGuideLink}`:"",
+    ].filter(Boolean).join("\n");
+    try{ await navigator.clipboard.writeText(lines); toastEmit("📋 Brief copied to clipboard","success"); }
+    catch{ toastEmit("Couldn't copy automatically — select the brief text manually.","warning"); }
+  };
+
+  // Handoff-readiness checklist.
+  const checks=[
+    {label:"File / drawings link",ok:!!d.link},
+    {label:"Revision no. locked",ok:!!d.revisionNo},
+    {label:"Internal approval",ok:!!hasApproval},
+    {label:"Client approval",ok:d.clientStatus==="Client Approved"},
+  ];
+  const readyCount=checks.filter(c=>c.ok).length;
+  const allReady=readyCount===checks.length;
+
+  // Days in current status (from the last status-history entry).
+  const lastHist=(d.statusHistory||[]).slice(-1)[0];
+  const daysInStatus=lastHist?.date?Math.max(0,Math.floor((new Date(today)-new Date(lastHist.date))/86400000)):null;
+  const dueOverdue=d.dueDate&&!hasApproval&&new Date(d.dueDate)<new Date(today);
+
+  const refs=(linkedDrf?.refLinks||[]).filter(Boolean);
+  const CS_CLR={"Not Sent":"#94a3b8","Sent for Review":"#3b82f6","Client Approved":"#059669","Client Revisions":"#ef4444"};
+  const cs=d.clientStatus||"Not Sent";
+
+  return(
+    <Modal open title={`Design Details — ${deal?.client}`} onClose={()=>setSelProj(null)} wide>
+      {/* ── Handoff readiness gate ─────────────────────── */}
+      <div style={{background:allReady?"#f0fdf4":"#fff7ed",border:`1.5px solid ${allReady?"#bbf7d0":"#fed7aa"}`,borderRadius:12,padding:"10px 14px",marginBottom:14}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,flexWrap:"wrap",marginBottom:7}}>
+          <span style={{fontSize:".72rem",fontWeight:800,color:allReady?"#15803d":"#9a3412"}}>{allReady?"✅ Ready for handoff":`🚧 Handoff readiness — ${readyCount}/${checks.length}`}</span>
+          {daysInStatus!=null&&<span style={{fontSize:".68rem",fontWeight:600,color:daysInStatus>=7?"#dc2626":"#94a3b8"}}>⏱ {daysInStatus}d in “{status}”</span>}
+        </div>
+        <div style={{display:"flex",gap:"6px 14px",flexWrap:"wrap"}}>
+          {checks.map(c=>(
+            <span key={c.label} style={{fontSize:".72rem",fontWeight:600,color:c.ok?"#15803d":"#b45309"}}>{c.ok?"✅":"⬜"} {c.label}</span>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Brief from Sales (collapsible) ─────────────── */}
+      <div style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"14px 16px",marginBottom:16}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+          <div style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px",cursor:"pointer",flex:1}} onClick={()=>setBriefOpen(o=>!o)}>📋 Brief from Sales <span style={{color:"#cbd5e1"}}>{briefOpen?"▲":"▼"}</span></div>
+          <button onClick={copyBrief} style={{background:"#eef2ff",border:"1.5px solid #c7d2fe",borderRadius:8,padding:"4px 10px",fontFamily:"inherit",fontSize:".7rem",color:"#4338ca",cursor:"pointer",fontWeight:700}}>📋 Copy brief</button>
+        </div>
+        {briefOpen&&(<div style={{marginTop:10}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"6px 16px",fontSize:".8rem",color:"#1e293b",marginBottom:8}}>
+            <div><span style={{color:"#94a3b8",fontSize:".72rem"}}>Product / Item</span><div style={{fontWeight:600}}>{deal?.product||"—"}</div></div>
+            <div><span style={{color:"#94a3b8",fontSize:".72rem"}}>Location</span><div style={{fontWeight:600}}>{deal?.location||"—"}</div></div>
+            {deal?.drfSize&&<div><span style={{color:"#94a3b8",fontSize:".72rem"}}>Size / Dimensions</span><div style={{fontWeight:600}}>{deal.drfSize}</div></div>}
+            {deal?.contact&&<div><span style={{color:"#94a3b8",fontSize:".72rem"}}>Contact Person</span><div style={{fontWeight:600}}>{deal.contact}</div></div>}
+          </div>
+          {(deal?.drfDescription||deal?.notes)&&(
+            <div style={{fontSize:".78rem",color:"#475569",marginBottom:6,whiteSpace:"pre-wrap",borderTop:"1px solid #e2e8f0",paddingTop:8}}><Linkify text={deal?.drfDescription||deal?.notes}/></div>
+          )}
+          {deal?.drfAccessories?.filter(a=>a).length>0&&(
+            <div style={{marginTop:6}}>
+              <div style={{fontSize:".68rem",color:"#94a3b8",fontWeight:700,marginBottom:4}}>ACCESSORIES / COMPONENTS</div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                {deal.drfAccessories.filter(a=>a).map((a,i)=>(<span key={i} style={{background:"#e0e7ff",color:"#4338ca",fontSize:".72rem",padding:"2px 9px",borderRadius:20,fontWeight:600}}>{a}</span>))}
+              </div>
+            </div>
+          )}
+          {linkedDrf&&(
+            <div style={{marginTop:8,paddingTop:8,borderTop:"1px solid #e2e8f0"}}>
+              <div style={{fontSize:".75rem",color:"#6366f1",fontWeight:700}}>📄 DRF on file: {linkedDrf.drfNo||"DRF"} · {linkedDrf.type||""} · {linkedDrf.designDeadline||"no deadline"}</div>
+              {(linkedDrf.category||linkedDrf.platform||linkedDrf.finishes||linkedDrf.maxHeight||linkedDrf.budget||linkedDrf.size)&&(
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"5px 16px",fontSize:".78rem",color:"#1e293b",marginTop:8}}>
+                  {linkedDrf.category&&<div><span style={{color:"#94a3b8",fontSize:".7rem"}}>Project Type</span><div style={{fontWeight:600}}>{linkedDrf.category}</div></div>}
+                  {linkedDrf.size&&<div><span style={{color:"#94a3b8",fontSize:".7rem"}}>Size / Dimensions</span><div style={{fontWeight:600}}>{linkedDrf.size}</div></div>}
+                  {linkedDrf.maxHeight&&<div><span style={{color:"#94a3b8",fontSize:".7rem"}}>Maximum Height</span><div style={{fontWeight:600}}>{linkedDrf.maxHeight}</div></div>}
+                  {linkedDrf.platform&&<div><span style={{color:"#94a3b8",fontSize:".7rem"}}>Platform</span><div style={{fontWeight:600}}>{linkedDrf.platform}</div></div>}
+                  {linkedDrf.finishes&&<div><span style={{color:"#94a3b8",fontSize:".7rem"}}>Ideal Finishes</span><div style={{fontWeight:600}}>{linkedDrf.finishes}</div></div>}
+                  {linkedDrf.budget&&<div><span style={{color:"#94a3b8",fontSize:".7rem"}}>Budget</span><div style={{fontWeight:600}}>{linkedDrf.budget}</div></div>}
+                </div>
+              )}
+              {linkedDrf.description&&<div style={{color:"#475569",fontSize:".78rem",marginTop:8,whiteSpace:"pre-wrap"}}><Linkify text={linkedDrf.description}/></div>}
+              {/* Reference images + brand guideline as thumbnails */}
+              {(linkedDrf.brandGuideLink||refs.length>0)&&(
+                <div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:10}}>
+                  {linkedDrf.brandGuideLink&&<RefThumb url={linkedDrf.brandGuideLink} label="Brand guide" icon="📘"/>}
+                  {refs.map((r,i)=><RefThumb key={i} url={r} label={`Ref ${i+1}`}/>)}
+                </div>
+              )}
+            </div>
+          )}
+        </div>)}
+      </div>
+
+      {/* ── Design Output ──────────────────────────────── */}
+      <div style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px",marginBottom:10}}>🎨 Design Output</div>
+      <Fld label="Project Status">
+        <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
+          {DESIGN_STATUSES.map(s=>(
+            <button key={s} onClick={()=>changeStatus(s)} style={{padding:"5px 12px",border:`1.5px solid ${status===s?DS_CLR[s]:"#e2e8f0"}`,borderRadius:16,background:status===s?DS_CLR[s]+"18":"#fff",color:status===s?DS_CLR[s]:"#94a3b8",fontWeight:status===s?700:400,cursor:"pointer",fontSize:".74rem",fontFamily:"inherit"}}>{s}</button>
+          ))}
+        </div>
+        <label style={{display:"inline-flex",alignItems:"center",gap:6,marginTop:8,fontSize:".72rem",color:"#64748b",cursor:"pointer"}}>
+          <input type="checkbox" checked={notify} onChange={e=>setD({notifyStatus:e.target.checked})} style={{cursor:"pointer",accentColor:"#7c3aed"}}/>
+          🔔 Notify team on status change
+        </label>
+      </Fld>
+      {(d.statusHistory||[]).length>0&&(
+        <div style={{background:"#f8fafc",border:"1px solid #eef2f7",borderRadius:10,padding:"8px 12px",marginBottom:12}}>
+          <div style={{fontSize:".64rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:6}}>Status History</div>
+          <div style={{display:"flex",flexDirection:"column",gap:3}}>
+            {[...d.statusHistory].slice(-6).reverse().map((h,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:8,fontSize:".74rem"}}>
+                <span style={{width:8,height:8,borderRadius:99,background:DS_CLR[h.status]||"#94a3b8",flexShrink:0}}/>
+                <span style={{fontWeight:600,color:"#334155"}}>{h.status}</span>
+                <span style={{color:"#94a3b8",marginLeft:"auto"}}>{h.date}{h.by?` · ${h.by}`:""}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      <Fld label="Designer">
+        <Sel value={d.designer||""} onChange={e=>setD({designer:e.target.value})}><option value="">— Select —</option>{DESIGN_MEMBERS.map(m=><option key={m}>{m}{workload[m]!=null?`  (${workload[m]} open)`:""}</option>)}</Sel>
+        {d.designer&&workload[d.designer]!=null&&<div style={{fontSize:".7rem",color:"#94a3b8",marginTop:4}}>{d.designer} currently has {workload[d.designer]} open item{workload[d.designer]!==1?"s":""}.</div>}
+      </Fld>
+      <Fld label="Due Date">
+        <Inp type="date" value={d.dueDate||""} onChange={e=>setD({dueDate:e.target.value})}/>
+        {d.dueDate&&!hasApproval&&(()=>{
+          const diff=Math.ceil((new Date(d.dueDate)-new Date(today))/86400000);
+          const over=diff<0,soon=diff>=0&&diff<=2;const c=over?"#dc2626":soon?"#f59e0b":"#059669";
+          return <div style={{marginTop:5,fontSize:".72rem",fontWeight:700,color:c}}>{over?`⚠ Overdue by ${Math.abs(diff)} day${Math.abs(diff)!==1?"s":""}`:diff===0?"⏰ Due today":`⏳ ${diff} day${diff!==1?"s":""} left`}</div>;
+        })()}
+      </Fld>
+      <Fld label="Revision No." hint="e.g. Rev 3 — lock this before handoff to Ops"><Inp value={d.revisionNo||""} onChange={e=>setD({revisionNo:e.target.value})} placeholder="e.g. Rev 3"/></Fld>
+      <Fld label="File / Link (Google Drive, Figma, etc.)"><Inp type="url" value={d.link||""} onChange={e=>setD({link:e.target.value})} placeholder="https://drive.google.com/…"/></Fld>
+      {/* ── Revision Log ─────────────────────────────── */}
+      <div style={{gridColumn:"1/-1"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+          <div style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px"}}>📑 Revision Log</div>
+          <button onClick={()=>{
+            if(!d.revisionNo&&!d.link){toastEmit("⚠ Set a Revision No. and file link before logging a revision.","warning");return;}
+            const rev={no:d.revisionNo||`Rev ${(d.revisions||[]).length+1}`,link:d.link||"",date:today,by:session?.name||"Design",status:d.status||""};
+            setD({revisions:[...(d.revisions||[]),rev]});
+            toastEmit(`📑 Logged ${rev.no}`,"success");
+          }} style={{background:"#f5f3ff",border:"1.5px solid #ddd6fe",borderRadius:8,padding:"5px 12px",fontFamily:"inherit",fontSize:".73rem",color:"#6d28d9",cursor:"pointer",fontWeight:700}}>+ Log current revision</button>
+        </div>
+        {(d.revisions||[]).length===0
+          ? <div style={{fontSize:".74rem",color:"#94a3b8",fontStyle:"italic",padding:"4px 0"}}>No revisions logged yet — set the Revision No. + file link above, then log it to keep an iteration history.</div>
+          : <div style={{border:"1px solid #eef2f7",borderRadius:10,overflow:"hidden"}}>
+              {[...d.revisions].reverse().map((r,i,arr)=>(
+                <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderBottom:i<arr.length-1?"1px solid #f8fafc":"none",background:i===0?"#faf5ff":"#fff"}}>
+                  <span style={{fontWeight:700,color:"#6d28d9",fontSize:".78rem",minWidth:60}}>{r.no}</span>
+                  <span style={{fontSize:".72rem",color:"#94a3b8"}}>{r.date}{r.by?` · ${r.by}`:""}{r.status?` · ${r.status}`:""}</span>
+                  {r.link&&<a href={r.link} target="_blank" rel="noreferrer" style={{marginLeft:"auto",fontSize:".73rem",color:"#3b82f6",fontWeight:600,textDecoration:"none"}}>📂 View</a>}
+                  <button onClick={async()=>{if(await uiConfirm(`Remove ${r.no} from the log?`)){const idx=d.revisions.length-1-i;setD({revisions:d.revisions.filter((_,j)=>j!==idx)});}}} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".75rem",marginLeft:r.link?8:"auto"}} title="Remove">✕</button>
+                </div>
+              ))}
+            </div>
+        }
+      </div>
+      <Fld label="Notes"><Inp rows={2} value={d.notes||""} onChange={e=>setD({notes:e.target.value})}/></Fld>
+      {/* ── Approval Stamp ───────────────────────────── */}
+      <div style={{marginTop:16,background:hasApproval?"#f0fdf4":"#fffbeb",border:`1.5px solid ${hasApproval?"#bbf7d0":"#fde68a"}`,borderRadius:12,padding:"14px 16px"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,flexWrap:"wrap",marginBottom:10}}>
+          <div style={{fontSize:".68rem",fontWeight:700,color:hasApproval?"#15803d":"#92400e",textTransform:"uppercase",letterSpacing:".8px"}}>{hasApproval?"✅ Approved — Locked for Handoff":"⏳ Pending Approval"}</div>
+          {dueOverdue&&<span style={{fontSize:".68rem",fontWeight:700,color:"#dc2626"}}>⚠ Past due — not yet approved</span>}
+        </div>
+        {hasApproval&&(
+          <div style={{display:"flex",gap:16,alignItems:"center",marginBottom:10,flexWrap:"wrap"}}>
+            <div style={{background:"#dcfce7",border:"1.5px solid #86efac",borderRadius:10,padding:"8px 14px",display:"inline-flex",gap:10,alignItems:"center"}}>
+              <span style={{fontSize:"1.2rem"}}>🔏</span>
+              <div><div style={{fontWeight:800,color:"#15803d",fontSize:".85rem"}}>{d.revisionNo||"Rev —"}</div><div style={{fontSize:".72rem",color:"#166534"}}>Approved by {d.approvedBy} · {d.approvedOn}</div></div>
+            </div>
+            {d.link&&<a href={d.link} target="_blank" rel="noreferrer" style={{fontSize:".78rem",color:"#15803d",fontWeight:600}}>📂 View Drawings</a>}
+          </div>
+        )}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <Fld label="Approved by"><Sel value={d.approvedBy||""} onChange={e=>setD({approvedBy:e.target.value})}><option value="">— Select approver —</option>{[...DESIGN_MEMBERS,...SALES_TEAM,...OPS_TEAM].filter((v,i,a)=>a.indexOf(v)===i).map(m=><option key={m}>{m}</option>)}</Sel></Fld>
+          <Fld label="Approved on"><Inp type="date" value={d.approvedOn||""} onChange={e=>setD({approvedOn:e.target.value})}/></Fld>
+        </div>
+        {!hasApproval&&<div style={{fontSize:".72rem",color:"#92400e",marginTop:6}}>Fill in both fields above to lock this revision for handoff to Operations.</div>}
+      </div>
+      {/* ── Client-facing Approval ───────────────────── */}
+      <div style={{marginTop:16,background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"14px 16px"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap",marginBottom:10}}>
+          <div style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px"}}>🤝 Client Approval</div>
+          <span style={{fontSize:".7rem",fontWeight:700,color:CS_CLR[cs],background:CS_CLR[cs]+"18",border:`1px solid ${CS_CLR[cs]}44`,borderRadius:20,padding:"2px 10px"}}>{cs}</span>
+        </div>
+        <Fld label="Client Review Link" hint="Shareable drawings / presentation link to send the client for sign-off">
+          <div style={{display:"flex",gap:8}}>
+            <Inp type="url" value={d.clientReviewLink||""} onChange={e=>setD({clientReviewLink:e.target.value})} placeholder="https://drive.google.com/…"/>
+            {d.clientReviewLink&&<a href={d.clientReviewLink} target="_blank" rel="noreferrer" style={{flexShrink:0,background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"8px 12px",fontSize:".75rem",color:"#1d4ed8",fontWeight:700,textDecoration:"none",alignSelf:"center"}}>Open ↗</a>}
+          </div>
+        </Fld>
+        <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:10}}>
+          <Fld label="Review Status"><Sel value={cs} onChange={e=>{const v=e.target.value;const patch={clientStatus:v};if(v==="Client Approved"&&!d.clientSignoffDate)patch.clientSignoffDate=today;setD(patch);}}>{["Not Sent","Sent for Review","Client Approved","Client Revisions"].map(s=><option key={s}>{s}</option>)}</Sel></Fld>
+          <Fld label="Client Sign-off (name)"><Inp value={d.clientSignoffName||""} onChange={e=>setD({clientSignoffName:e.target.value})} placeholder="Client contact who approved"/></Fld>
+          <Fld label="Sign-off Date"><Inp type="date" value={d.clientSignoffDate||""} onChange={e=>setD({clientSignoffDate:e.target.value})}/></Fld>
+          <Fld label="Client Feedback"><Inp value={d.clientFeedback||""} onChange={e=>setD({clientFeedback:e.target.value})} placeholder="Revisions requested, comments…"/></Fld>
+        </div>
+        {cs==="Client Approved"&&d.clientSignoffName&&(
+          <div style={{marginTop:10,background:"#dcfce7",border:"1.5px solid #86efac",borderRadius:10,padding:"8px 14px",display:"inline-flex",gap:10,alignItems:"center"}}>
+            <span style={{fontSize:"1.1rem"}}>✅</span>
+            <div style={{fontSize:".76rem",color:"#166534",fontWeight:600}}>Client approved by {d.clientSignoffName}{d.clientSignoffDate?` · ${d.clientSignoffDate}`:""}</div>
+          </div>
+        )}
+      </div>
+      {/* ── Activity / Comments ──────────────────────── */}
+      <div style={{marginTop:16}}>
+        <div style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>💬 Activity</div>
+        <div style={{display:"flex",gap:8,marginBottom:10}}>
+          <Inp value={commentText} onChange={e=>setCommentText(e.target.value)} placeholder="Add a note or update for the team…" onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();postComment();}}}/>
+          <button onClick={postComment} disabled={!commentText.trim()} style={{flexShrink:0,background:commentText.trim()?"#7c3aed":"#e2e8f0",border:"none",borderRadius:8,padding:"0 16px",color:commentText.trim()?"#fff":"#94a3b8",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:commentText.trim()?"pointer":"not-allowed"}}>Post</button>
+        </div>
+        {(d.comments||[]).length===0
+          ? <div style={{fontSize:".74rem",color:"#94a3b8",fontStyle:"italic"}}>No activity yet — post the first note.</div>
+          : <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {[...d.comments].reverse().map((cm,i,arr)=>{
+                const idx=d.comments.length-1-i;
+                return(
+                  <div key={idx} style={{background:"#f8fafc",border:"1px solid #eef2f7",borderRadius:10,padding:"8px 12px"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
+                      <span style={{fontWeight:700,color:"#334155",fontSize:".76rem"}}>{cm.by}</span>
+                      <span style={{fontSize:".68rem",color:"#94a3b8"}}>{cm.at?new Date(cm.at).toLocaleString():""}</span>
+                      {cm.by===session?.name&&<button onClick={()=>setD({comments:d.comments.filter((_,j)=>j!==idx)})} style={{marginLeft:"auto",background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".72rem"}} title="Remove">✕</button>}
+                    </div>
+                    <div style={{fontSize:".8rem",color:"#475569",whiteSpace:"pre-wrap"}}><Linkify text={cm.text}/></div>
+                  </div>
+                );
+              })}
+            </div>
+        }
+      </div>
+      <div style={{fontSize:".72rem",color:"#94a3b8",textAlign:"center",marginTop:14,marginBottom:4}}>Changes are saved automatically as you type.</div>
+      <Btn full onClick={()=>setSelProj(null)}>Close</Btn>
+    </Modal>
+  );
+}
+
 function SetPriceModal({deal,today,onClose,onSave}){
   const[val,setVal]=React.useState(deal?.value||"");
   const[note,setNote]=React.useState("");
@@ -597,9 +928,9 @@ function AwardModal({deal,session,today,onClose,onConfirm,drfs}){
     specialInstructions:req.specialInstructions||"",
     designer:req.designer||drf.designer||"",
     location:deal?.location||"",
-    // Payment terms (Step 3)
-    ptDp:30,ptProgress:40,ptFinal:20,ptRetention:10,
-    ptNetDays:30,ptRetentionRelease:"Project Completion",ptNotes:"",
+    // Payment terms are no longer captured here — they are set in Billing via
+    // "Set Payment Terms" (PaymentTermsModal) and turned into a schedule with
+    // "Set Up Billing Milestones". Awarding always defers terms to Finance.
   });
   const[step,setStep]=React.useState(1);
   const[submitting,setSubmitting]=React.useState(false);
@@ -609,16 +940,12 @@ function AwardModal({deal,session,today,onClose,onConfirm,drfs}){
   const confirmOnce=(payload)=>{ if(submitting) return; setSubmitting(true); onConfirm(payload); };
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
   const mob=window.innerWidth<768;
-  const ptTotal=(Number(form.ptDp)||0)+(Number(form.ptProgress)||0)+(Number(form.ptFinal)||0)+(Number(form.ptRetention)||0);
-  const ptOk=ptTotal===100;
-  const val=Number(deal?.value||0);
-  const pctAmt=p=>val>0?` ≈ ₱${Math.round(val*p/100).toLocaleString("en-PH")}`:"";
   if(!deal) return null;
   return(
     <Modal open title={`🏆 Award — ${deal.client}`} onClose={onClose} wide>
       <div style={{display:"flex",gap:0,marginBottom:22,borderRadius:10,overflow:"hidden",border:"1.5px solid #e2e8f0"}}>
-        {[["1","Confirm Award","#10b981",step>=1],["2","Job Order","#3b82f6",step>=2],["3","Payment Terms","#f97316",step>=3]].map(([num,label,clr,active],i)=>(
-          <div key={num} onClick={()=>step>i+1&&setStep(i+1)} style={{flex:1,padding:"12px 8px",textAlign:"center",background:step===i+1?clr:active?"#f8fafc":"#fff",cursor:step>i+1?"pointer":"default",borderRight:i<2?"1px solid #e2e8f0":"none"}}>
+        {[["1","Confirm Award","#10b981",step>=1],["2","Job Order","#3b82f6",step>=2]].map(([num,label,clr,active],i)=>(
+          <div key={num} onClick={()=>step>i+1&&setStep(i+1)} style={{flex:1,padding:"12px 8px",textAlign:"center",background:step===i+1?clr:active?"#f8fafc":"#fff",cursor:step>i+1?"pointer":"default",borderRight:i<1?"1px solid #e2e8f0":"none"}}>
             <div style={{fontSize:".82rem",fontWeight:700,color:step===i+1?"#fff":active?"#374151":"#cbd5e1"}}>{num}. {label}</div>
             <div style={{fontSize:".68rem",color:step===i+1?"rgba(255,255,255,.75)":step>i+1?"#10b981":"#e2e8f0",marginTop:2}}>{step>i+1?"✓ Done":step===i+1?"In progress":"—"}</div>
           </div>
@@ -737,56 +1064,14 @@ function AwardModal({deal,session,today,onClose,onConfirm,drfs}){
         )}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:18}}>
           <button onClick={()=>setStep(1)} style={{background:"#f1f5f9",border:"none",borderRadius:10,padding:"10px 20px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#475569",cursor:"pointer"}}>← Back</button>
-          <button onClick={()=>setStep(3)} disabled={!form.scopeNotes}
-            style={{background:form.scopeNotes?"#1e293b":"#e2e8f0",border:"none",borderRadius:10,padding:"11px 28px",fontFamily:"inherit",fontWeight:700,fontSize:".88rem",color:form.scopeNotes?"#fff":"#94a3b8",cursor:form.scopeNotes?"pointer":"not-allowed"}}>
-            Next: Payment Terms →
+          <button onClick={()=>confirmOnce({...form,paymentTerms:null})}
+            disabled={submitting||!form.scopeNotes}
+            title={!form.scopeNotes?"Scope of Work is required before awarding":"Payment terms are set later in Billing"}
+            style={{background:(submitting||!form.scopeNotes)?"#94a3b8":"#059669",border:"none",borderRadius:10,padding:"12px 28px",fontFamily:"inherit",fontWeight:800,fontSize:".9rem",color:"#fff",cursor:(submitting||!form.scopeNotes)?"not-allowed":"pointer",letterSpacing:".3px"}}>
+            {submitting?"⏳ Awarding…":"🏆 Confirm Award Deal"}
           </button>
         </div>
-      </div>)}
-      {step===3&&(<div>
-        <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:12,padding:"12px 16px",marginBottom:18,fontSize:".82rem",color:"#c2410c",fontWeight:600}}>
-          💰 Set the billing schedule terms. Finance will use this to auto-generate milestones — total must equal 100%.{val>0&&<span style={{color:"#64748b",fontWeight:400}}> Contract value: ₱{val.toLocaleString("en-PH")}</span>}
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(4,1fr)",gap:12,marginBottom:4}}>
-          {[["ptDp","Down Payment"],["ptProgress","Progress"],["ptFinal","Final"],["ptRetention","Retention"]].map(([k,lbl])=>(
-            <div key={k}>
-              <div style={{fontSize:".67rem",fontWeight:700,color:"#475569",textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>{lbl} %</div>
-              <input type="number" min={0} max={100} value={form[k]} onChange={e=>f(k,Number(e.target.value))}
-                style={{width:"100%",border:`2px solid ${!ptOk&&ptTotal>0?"#fca5a5":"#e2e8f0"}`,borderRadius:8,padding:"10px 8px",fontFamily:"inherit",fontSize:"1rem",fontWeight:700,outline:"none",boxSizing:"border-box",textAlign:"center"}}/>
-              {val>0&&<div style={{fontSize:".65rem",color:"#94a3b8",marginTop:3,textAlign:"center"}}>{pctAmt(Number(form[k]))}</div>}
-            </div>
-          ))}
-        </div>
-        <div style={{textAlign:"right",fontSize:".8rem",fontWeight:700,color:ptOk?"#059669":"#dc2626",marginBottom:16}}>
-          Total: {ptTotal}% {ptOk?"✓ Balanced":"← must equal 100%"}
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:12,marginBottom:18}}>
-          <Fld label="Net Payment Days" hint="How many days after invoice is payment due?">
-            <Inp type="number" value={form.ptNetDays} onChange={e=>f("ptNetDays",Number(e.target.value))} placeholder="e.g. 30"/>
-          </Fld>
-          <Fld label="Retention Release Condition">
-            <Sel value={form.ptRetentionRelease} onChange={e=>f("ptRetentionRelease",e.target.value)}>
-              {["Project Completion","COC Issued","1 Year Warranty Period","6 Months After Completion","Client Approval"].map(o=><option key={o}>{o}</option>)}
-            </Sel>
-          </Fld>
-          <div style={{gridColumn:"1/-1"}}>
-            <Fld label="Notes / Special Conditions" hint="PDC arrangements, penalty clauses, client-specific terms">
-              <Inp rows={2} value={form.ptNotes} onChange={e=>f("ptNotes",e.target.value)} placeholder="e.g. Retention waived per client request, PDC cheque on DP…"/>
-            </Fld>
-          </div>
-        </div>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:4}}>
-          <button onClick={()=>setStep(2)} style={{background:"#f1f5f9",border:"none",borderRadius:10,padding:"10px 20px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#475569",cursor:"pointer"}}>← Back</button>
-          <div style={{display:"flex",gap:10}}>
-            <button onClick={()=>confirmOnce({...form,paymentTerms:null})} disabled={submitting} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".82rem",color:"#64748b",cursor:submitting?"not-allowed":"pointer",opacity:submitting?.6:1}}>Skip Terms & Award</button>
-            <button onClick={()=>confirmOnce({...form,paymentTerms:{dp:form.ptDp,progress:form.ptProgress,final:form.ptFinal,retention:form.ptRetention,netDays:form.ptNetDays,retentionRelease:form.ptRetentionRelease,notes:form.ptNotes}})}
-              disabled={submitting||!ptOk}
-              title={!ptOk?"Payment terms must total 100% — or use “Skip Terms & Award” to award without a billing schedule":""}
-              style={{background:(submitting||!ptOk)?"#94a3b8":"#059669",border:"none",borderRadius:10,padding:"12px 28px",fontFamily:"inherit",fontWeight:800,fontSize:".9rem",color:"#fff",cursor:(submitting||!ptOk)?"not-allowed":"pointer",letterSpacing:".3px"}}>
-              {submitting?"⏳ Awarding…":"🏆 Confirm Award Deal"}
-            </button>
-          </div>
-        </div>
+        <div style={{textAlign:"right",fontSize:".72rem",color:"#94a3b8",marginTop:8}}>💡 Payment terms &amp; billing milestones are set in <strong>Billing</strong> after award.</div>
       </div>)}
     </Modal>
   );
@@ -1009,11 +1294,12 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
   const setDrfRef=(i,v)=>f("drfRefLinks",(form.drfRefLinks||["","",""]).map((r,ri)=>ri===i?v:r));
   const mob=window.innerWidth<768;
   const[saving,setSaving]=useState(false);
+  const[vatErr,setVatErr]=useState(false);
 
   // Sync when modal opens or editId changes
   const formKey=`${open}-${editId||"new"}`;
   useEffect(()=>{
-    if(open){setForm(initialForm||emptyDeal);setSaving(false);}
+    if(open){setForm(initialForm||emptyDeal);setSaving(false);setVatErr(false);}
   },[open,editId]);
 
   const handleSave=async()=>{
@@ -1021,6 +1307,15 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
     // fast double-click before it resolves could re-run the whole save and
     // risk a second deal record. Guard with a local submitting lock.
     if(saving) return;
+    // Receipt type is a required, no-default choice once the deal carries a
+    // value: VAT (OR) vs VAT-exempt (AR) drives billing, milestones and the
+    // sales report, so a silent default is how a non-VAT project ends up
+    // showing 12% VAT. Force an explicit pick instead of assuming OR.
+    if(Number(form.value)>0 && !["OR","AR"].includes(form.receiptType)){
+      setVatErr(true);
+      return;
+    }
+    setVatErr(false);
     setSaving(true);
     // Pass local form data directly to saveDeal — bypasses async state sync
     _setForm(()=>form);
@@ -1137,8 +1432,14 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
         </div>
         {form.drfReqCreate&&(
         <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:12,marginTop:12}}>
-          <Fld label="Size / Dimensions"><Inp value={form.drfSize||""} onChange={e=>f("drfSize",e.target.value)} placeholder="e.g. W1200 x H1800 x D600mm"/></Fld>
+          <Fld label="Project Type" hint="Kiosk / In-line / Event / Other"><Sel value={form.drfCategory||""} onChange={e=>f("drfCategory",e.target.value)}><option value="">— Select —</option>{DRF_CATEGORIES.map(t=><option key={t}>{t}</option>)}</Sel></Fld>
           <Fld label="Design Deadline"><Inp type="date" value={form.drfDeadline||""} onChange={e=>f("drfDeadline",e.target.value)}/></Fld>
+          <Fld label="Size / Dimensions"><Inp value={form.drfSize||""} onChange={e=>f("drfSize",e.target.value)} placeholder="e.g. W1200 x H1800 x D600mm"/></Fld>
+          <Fld label="Maximum Height"><Inp value={form.drfMaxHeight||""} onChange={e=>f("drfMaxHeight",e.target.value)} placeholder="e.g. 2400mm"/></Fld>
+          <Fld label="Platform"><Sel value={form.drfPlatform||""} onChange={e=>f("drfPlatform",e.target.value)}><option value="">— Select —</option><option>With Platform</option><option>Without Platform</option></Sel></Fld>
+          <Fld label="Ideal Finishes"><Inp value={form.drfFinishes||""} onChange={e=>f("drfFinishes",e.target.value)} placeholder="e.g. Matte laminate, powder-coated steel"/></Fld>
+          <Fld label="Brand Guideline Link"><Inp type="url" value={form.drfBrandGuideLink||""} onChange={e=>f("drfBrandGuideLink",e.target.value)} placeholder="https://…"/></Fld>
+          <Fld label="Budget (optional)"><Inp value={form.drfBudget||""} onChange={e=>f("drfBudget",e.target.value)} placeholder="e.g. ₱150,000"/></Fld>
           <div style={{gridColumn:"1/-1"}}><Fld label="Description / Details" hint="What needs to be designed? Include dimensions, function, and key specs."><Inp rows={4} value={form.drfDescription||""} onChange={e=>f("drfDescription",e.target.value)} placeholder={"RE-CREATE: Golf bag organizer rack\nSIZE: Must fit two large golf bags\nFUNCTION: Store bags + shoe shelf"}/></Fld></div>
           <div style={{gridColumn:"1/-1"}}>
             <div style={{fontSize:".8rem",fontWeight:700,color:"#64748b",marginBottom:6}}>Accessories / Components</div>
@@ -1220,17 +1521,17 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
           <div style={{fontWeight:700,color:"#92400e",fontSize:".88rem",marginBottom:12}}>🧾 Tax Settings</div>
           <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:14,marginBottom:14}}>
             <div>
-              <label style={{display:"block",fontSize:".68rem",fontWeight:700,color:"#92400e",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>Receipt Type</label>
+              <label style={{display:"block",fontSize:".68rem",fontWeight:700,color:"#92400e",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>Receipt Type <span style={{color:"#dc2626"}}>*</span></label>
               <div style={{display:"flex",gap:8}}>
                 {["OR","AR"].map(rt=>(
-                  <button key={rt} type="button" onClick={()=>setForm(p=>({...p,receiptType:rt,withholding:rt==="AR"?false:p.withholding}))}
-                    style={{flex:1,padding:"8px",border:`2px solid ${form.receiptType===rt?"#d97706":"#e2e8f0"}`,borderRadius:8,background:form.receiptType===rt?"#fef3c7":"#fff",color:form.receiptType===rt?"#92400e":"#64748b",fontWeight:form.receiptType===rt?700:400,cursor:"pointer",fontFamily:"inherit",fontSize:".82rem"}}>
+                  <button key={rt} type="button" onClick={()=>{setForm(p=>({...p,receiptType:rt,withholding:rt==="AR"?false:p.withholding}));setVatErr(false);}}
+                    style={{flex:1,padding:"8px",border:`2px solid ${form.receiptType===rt?"#d97706":(vatErr?"#fca5a5":"#e2e8f0")}`,borderRadius:8,background:form.receiptType===rt?"#fef3c7":"#fff",color:form.receiptType===rt?"#92400e":"#64748b",fontWeight:form.receiptType===rt?700:400,cursor:"pointer",fontFamily:"inherit",fontSize:".82rem"}}>
                     {rt==="OR"?"🧾 OR (with VAT)":"📄 AR (no VAT)"}
                   </button>
                 ))}
               </div>
-              <div style={{fontSize:".7rem",color:"#92400e",marginTop:5,opacity:.8}}>
-                {form.receiptType==="OR"?"Official Receipt — VAT 12% applies":"Acknowledgement Receipt — VAT exempted"}
+              <div style={{fontSize:".7rem",color:vatErr?"#dc2626":"#92400e",marginTop:5,opacity:vatErr?1:.8,fontWeight:vatErr?700:400}}>
+                {form.receiptType==="OR"?"Official Receipt — VAT 12% applies":form.receiptType==="AR"?"Acknowledgement Receipt — VAT exempted":vatErr?"⚠ Required — choose OR (with VAT) or AR (no VAT) before saving.":"Choose OR (with VAT) or AR (no VAT)."}
               </div>
             </div>
             {form.receiptType==="OR"?(
@@ -1248,13 +1549,13 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
             ):(
               <div style={{display:"flex",alignItems:"center"}}>
                 <div style={{background:"#f1f5f9",borderRadius:8,padding:"12px 16px",fontSize:".78rem",color:"#94a3b8",width:"100%",textAlign:"center"}}>
-                  📄 AR — No EWT applicable
+                  {form.receiptType==="AR"?"📄 AR — No EWT applicable":"Set receipt type to see EWT options"}
                 </div>
               </div>
             )}
           </div>
-          {(()=>{
-            const tx=calcTax(form.value,form.receiptType||"OR",form.withholding||false);
+          {["OR","AR"].includes(form.receiptType)&&(()=>{
+            const tx=calcTax(form.value,form.receiptType,form.withholding||false);
             return(
               <div style={{background:"rgba(255,255,255,.8)",borderRadius:8,padding:"12px 14px",display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(4,1fr)",gap:10,borderTop:"1px solid #fde68a"}}>
                 {[
@@ -2444,11 +2745,83 @@ const WIPView=React.memo(function WIPView({wonDeals,projs,billings,exps,prs,over
   );
 });
 
+// ─── DUE-DATE BACKFILL DIALOG ────────────────────────────────────────────────
+// The Cash-Flow Forecast buckets each outstanding billing / payable by its due
+// date. Anything with no due date has nowhere to land and gets treated as
+// "now / overdue", quietly distorting the projection. This dialog lists every
+// unpaid billing and payable that is MISSING a due date so Finance can fill them
+// in one place. Openable from the forecast banner, Billing and Payables.
+function DueDateBackfillModal({open,onClose,billings,payables,deals,updateMilestone,setPayableDueDate,toastEmit}){
+  const peso=v=>"₱"+Math.round(Number(v)||0).toLocaleString("en-PH");
+  const missBill=useMemo(()=>(billings||[]).filter(b=>{
+    if(b.status==="Cancelled"||b.status==="Fully Paid") return false;
+    const paid=(b.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
+    return (Number(b.amount||0)-paid)>0.5 && !b.dueDate;
+  }),[billings]);
+  const missPay=useMemo(()=>(payables||[]).filter(p=>p.status!=="Paid"&&p.status!=="Cancelled"&&Number(p.amount)>0&&!p.dueDate),[payables]);
+  const[edits,setEdits]=useState({});
+  useEffect(()=>{ if(open) setEdits({}); },[open]);
+  const dealName=id=>{const d=(deals||[]).find(x=>x.id===id);return d?(d.client||d.contact||""):"";};
+  const setE=(k,v)=>setEdits(e=>({...e,[k]:v}));
+  const filled=Object.values(edits).filter(Boolean).length;
+  const save=()=>{
+    let n=0;
+    missBill.forEach(b=>{const v=edits["b:"+b.id];if(v){updateMilestone(b.id,{dueDate:v});n++;}});
+    missPay.forEach(p=>{const v=edits["p:"+p.id];if(v){setPayableDueDate(p.id,v);n++;}});
+    toastEmit&&toastEmit(n?`✅ Set due dates on ${n} item${n>1?"s":""} — forecast updated.`:"No due dates entered yet.",n?"success":"info");
+    if(n) onClose();
+  };
+  const rowStyle={display:"grid",gridTemplateColumns:"1fr auto 150px",gap:10,alignItems:"center",padding:"8px 0",borderBottom:"1px solid #f1f5f9"};
+  const sect=(title,color,rows,render)=>(
+    <div style={{marginBottom:18}}>
+      <div style={{fontWeight:800,fontSize:".78rem",color,textTransform:"uppercase",letterSpacing:".6px",marginBottom:6}}>{title} ({rows.length})</div>
+      {rows.length===0
+        ?<div style={{fontSize:".8rem",color:"#94a3b8",fontStyle:"italic",padding:"4px 0"}}>All caught up — none missing a due date.</div>
+        :rows.map(render)}
+    </div>
+  );
+  return(
+    <Modal open={open} onClose={onClose} title="📅 Set Missing Due Dates" wide>
+      <div style={{fontSize:".82rem",color:"#64748b",marginBottom:16,lineHeight:1.5}}>
+        These unpaid items have <b>no due date</b>, so the Cash-Flow Forecast can't place them in the right week and treats them as due now. Set a date to fix the projection.
+      </div>
+      {sect("Expected Collections — Billings","#047857",missBill,b=>{
+        const paid=(b.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
+        const out=Number(b.amount||0)-paid;
+        return(
+          <div key={b.id} style={rowStyle}>
+            <div style={{minWidth:0}}>
+              <div style={{fontWeight:700,fontSize:".84rem",color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{dealName(b.dealId)||b.name||"Billing"}</div>
+              <div style={{fontSize:".7rem",color:"#94a3b8"}}>{b.name||b.invoiceNo||""}{b.invoiceNo&&b.name?` · ${b.invoiceNo}`:""}</div>
+            </div>
+            <div style={{fontWeight:800,fontSize:".84rem",color:"#047857",fontVariantNumeric:"tabular-nums"}}>{peso(out)}</div>
+            <Inp type="date" value={edits["b:"+b.id]||""} onChange={e=>setE("b:"+b.id,e.target.value)}/>
+          </div>
+        );
+      })}
+      {sect("Expected Payments — Payables","#b45309",missPay,p=>(
+        <div key={p.id} style={rowStyle}>
+          <div style={{minWidth:0}}>
+            <div style={{fontWeight:700,fontSize:".84rem",color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.vendor||"Payable"}</div>
+            <div style={{fontSize:".7rem",color:"#94a3b8"}}>{p.apNumber||p.poNumber||p.invoiceNumber||p.category||""}</div>
+          </div>
+          <div style={{fontWeight:800,fontSize:".84rem",color:"#b45309",fontVariantNumeric:"tabular-nums"}}>{peso(p.amount)}</div>
+          <Inp type="date" value={edits["p:"+p.id]||""} onChange={e=>setE("p:"+p.id,e.target.value)}/>
+        </div>
+      ))}
+      <div style={{display:"flex",justifyContent:"flex-end",gap:10,marginTop:8}}>
+        <button onClick={onClose} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"9px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:"#475569",cursor:"pointer"}}>Close</button>
+        <button onClick={save} disabled={!filled} style={{background:filled?"#1f3864":"#cbd5e1",border:"none",borderRadius:8,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:"#fff",cursor:filled?"pointer":"not-allowed"}}>Save {filled||""} due date{filled===1?"":"s"}</button>
+      </div>
+    </Modal>
+  );
+}
+
 // ─── CASH-FLOW FORECAST ──────────────────────────────────────────────────────
 // Forward view of working cash: projects expected collections (outstanding
 // billings) against expected payments (payables, uncleared checks, loan
 // amortizations) week by week, flagging when the projected balance runs short.
-function CashFlowView({billings,payables,vouchers,loans,cashPositions,setPage,Wrap,isMobile}){
+function CashFlowView({billings,payables,vouchers,loans,cashPositions,setPage,Wrap,isMobile,onFixDueDates}){
   const money=v=>(v<0?"−₱":"₱")+Math.round(Math.abs(Number(v)||0)).toLocaleString("en-PH");
   const DAY=86400000, WEEKS=8;
   const start=new Date(); start.setHours(0,0,0,0);
@@ -2491,6 +2864,12 @@ function CashFlowView({billings,payables,vouchers,loans,cashPositions,setPage,Wr
     }
   });
 
+  // Flows with no due date can't be placed in a week — they fall into bucket 0
+  // ("now/overdue") and skew the projection. Surface them so Finance can fix.
+  const noDateIn =flows.filter(f=>f.dir==="in" &&f.date==null).reduce((s,f)=>s+f.amt,0);
+  const noDateOut=flows.filter(f=>f.dir==="out"&&f.date==null).reduce((s,f)=>s+f.amt,0);
+  const noDateCount=flows.filter(f=>f.date==null&&f.amt>0.5).length;
+
   const bucketOf=ms=>{ if(ms==null||ms<today) return 0; const w=Math.floor((ms-today)/(7*DAY))+1; return w>WEEKS?WEEKS+1:w; };
   const buckets=Array.from({length:WEEKS+2},(_,i)=>({i,in:0,out:0}));
   flows.forEach(f=>{ const b=buckets[bucketOf(f.date)]; if(f.dir==="in") b.in+=f.amt; else b.out+=f.amt; });
@@ -2528,6 +2907,19 @@ function CashFlowView({billings,payables,vouchers,loans,cashPositions,setPage,Wr
       {crunchWk!=null&&(
         <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:12,padding:"12px 16px",marginBottom:16,fontSize:".86rem",color:"#b91c1c",fontWeight:600}}>
           ⚠️ Projected cash goes negative around <strong>{bLabel(crunchWk)}</strong> (low point {money(lowest)}). Pull collections forward or defer payments.
+        </div>
+      )}
+
+      {noDateCount>0&&(
+        <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:12,padding:"12px 16px",marginBottom:16,display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
+          <div style={{flex:1,minWidth:220,fontSize:".84rem",color:"#92400e",lineHeight:1.5}}>
+            ⚠️ <strong>{noDateCount} item{noDateCount===1?"":"s"}</strong> ha{noDateCount===1?"s":"ve"} no due date
+            {noDateIn>0.5&&<> — {money(noDateIn)} in collections</>}
+            {noDateIn>0.5&&noDateOut>0.5?" and":""}
+            {noDateOut>0.5&&<> {money(noDateOut)} in payments</>}
+            {" "}counted as due now. Set due dates to sharpen the projection.
+          </div>
+          {onFixDueDates&&<button onClick={onFixDueDates} style={{background:"#b45309",border:"none",borderRadius:9,padding:"9px 16px",color:"#fff",fontFamily:"inherit",fontWeight:800,fontSize:".8rem",cursor:"pointer",whiteSpace:"nowrap"}}>📅 Set due dates</button>}
         </div>
       )}
 
@@ -2691,7 +3083,7 @@ const TV_EVENT_ICONS={Installation:"🏗",Repair:"🔧",Punchlist:"📋",Constru
 const TV_OPS_TYPES=Object.keys(TV_EVENT_COLORS);
 const TV_PRI_CLR={High:"#ef4444",Urgent:"#dc2626",Normal:"#0ea5e9",Low:"#64748b",Info:"#0ea5e9"};
 const tvPeso=n=>{const v=Number(n||0);try{return "₱"+v.toLocaleString("en-PH",{maximumFractionDigits:0});}catch{return "₱"+Math.round(v);}};
-const tvDayLabel=iso=>{if(!iso)return "";try{const d=new Date(iso+"T00:00:00");return d.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});}catch{return iso;}};
+const tvDayLabel=dateStr=>{if(!dateStr)return "";try{const d=new Date(dateStr+"T00:00:00");return d.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});}catch{return dateStr;}};
 
 const TV_JOB_TYPES=[{label:"Installation",code:"I"},{label:"Repair",code:"R"},{label:"Punchlist",code:"P"},{label:"Construction",code:"C"},{label:"Site Visit",code:"P"},{label:"Inspection",code:"P"},{label:"Site Meeting",code:"P"},{label:"Backjob",code:"R"},{label:"Others",code:"O"}];
 // Weekly Field Board — mirrors ConstructionCalendar's field board. Every field
@@ -3075,11 +3467,18 @@ function TVBoardAdmin({announcements=[],upAnnouncements,session,today}){
 export default function App(){
   const[users,      setUsers]     = useState(DEFAULT_USERS);
   const[cashPositions,setCashPos]  = useState({});
+  // True when the last Supabase refresh of cash_positions FAILED (network/timeout),
+  // so what's on screen is the stale local cache — not the server's source of truth.
+  // Drives the stale banner and, crucially, blocks the Daily Cash Position sheet's
+  // silent auto-save so a stale Manager session can't overwrite good server rows.
+  const[cashStale,  setCashStale]  = useState(false);
   const[vvipClients, setVvip]      = useState(new Set());
   const[actLog,      setActLog]    = useState([]);
   const[pcards,      setPcards]    = useState({});
   const[inventory,   setInventory] = useState([]);  // Inventory items
   const[stocklog,    setStocklog]  = useState([]);  // Stock movement log // Set of client names marked VVIP
+  const[tools,       setTools]     = useState([]);  // Tools / equipment borrow-return register
+  const[drs,         setDrs]       = useState([]);  // Standalone delivery receipts (goods received notes)
   const[receivingPr, setReceivingPr]=useState(null);  // PR being received (partial receiving modal)
   const[rxQty,       setRxQty]     =useState("");
   const[rxDrNo,      setRxDrNo]    =useState("");
@@ -3175,7 +3574,7 @@ export default function App(){
           KEYS.botsettings,KEYS.customclients,KEYS.addenda,KEYS.budgets,
           KEYS.billings,KEYS.vvip,KEYS.actlog,KEYS.pcards,KEYS.inventory,
           KEYS.stocklog,KEYS.swos,"gmdv5:payables","gmdv5:loans","gmdv5:clientprofiles",
-          "gmdv5:aeUpdates","gmdv5:auditFindings",KEYS.vouchers,"gmdv5:standaloneBoqs","gmdv5:chartOfAccounts",KEYS.dailylogs,KEYS.ceReqs
+          "gmdv5:aeUpdates","gmdv5:auditFindings",KEYS.vouchers,"gmdv5:standaloneBoqs","gmdv5:chartOfAccounts",KEYS.dailylogs,KEYS.ceReqs,KEYS.payouts,KEYS.tools,KEYS.drs
         ]);
         if(idb[KEYS.deals]){setDeals(idb[KEYS.deals].map(x=>({...x,stage:normalizeStage(x.stage)})));}
         if(idb[KEYS.projects])    setProjs(idb[KEYS.projects]);
@@ -3206,6 +3605,8 @@ export default function App(){
         if(idb[KEYS.pcards])      setPcards(idb[KEYS.pcards]);
         if(idb[KEYS.inventory])   setInventory(idb[KEYS.inventory]);
         if(idb[KEYS.stocklog])    setStocklog(idb[KEYS.stocklog]);
+        if(idb[KEYS.tools])       setTools(idb[KEYS.tools]);
+        if(idb[KEYS.drs])         setDrs(idb[KEYS.drs]);
         if(idb["gmdv5:payables"]) setPayables(idb["gmdv5:payables"]);
         if(idb["gmdv5:loans"])    setLoans(idb["gmdv5:loans"]);
         if(idb["gmdv5:aeUpdates"]) setAeUpdates(idb["gmdv5:aeUpdates"]);
@@ -3215,6 +3616,7 @@ export default function App(){
         if(idb[KEYS.announcements]) setAnnouncements(idb[KEYS.announcements]);
         if(idb[KEYS.dailylogs])   setDailyLogs(idb[KEYS.dailylogs]);
         if(idb[KEYS.ceReqs])      setCeReqs(idb[KEYS.ceReqs]);
+        if(idb[KEYS.payouts])     setPayouts(idb[KEYS.payouts]);
       } catch(err){ console.error("IDB load error:", err); }
       _log("IndexedDB cache read → app interactive",_t0);
       setReady(true);
@@ -3272,7 +3674,17 @@ export default function App(){
             const _swatches=data.swatches?.length?data.swatches.map(s=>({...s,dealId:s.deal_id,refLink:s.ref_link})):null;
             if(_swatches){setSwatches(prev=>mergeLocalOnly(_swatches,prev));idbE.push([KEYS.swatches,_swatches]);}
             if(data.actLog?.length) setActLog(prev=>mergeLocalOnly(data.actLog.map(a=>({...a,dealId:a.deal_id})),prev));
-            if(Object.keys(data.cashPositions||{}).length) setCashPos(prev=>mergeLocalOnlyObj(convertSbCashPos(data.cashPositions),prev));
+            // Cash positions are the source of truth for the whole finance report,
+            // so treat the SERVER as authoritative whenever the read actually
+            // succeeded — even if it came back empty (that genuinely means no rows).
+            // Only when the read FAILED (recorded in data._failed) do we keep the
+            // local cache; in that case flag it stale so the UI can warn and the
+            // Daily Cash Position sheet won't silently save over the server.
+            {
+              const cashReadFailed=Array.isArray(data._failed)&&data._failed.includes("cash_positions");
+              setCashStale(cashReadFailed);
+              if(!cashReadFailed) setCashPos(prev=>{const merged=mergeLocalOnlyObj(convertSbCashPos(data.cashPositions),prev);idbSetMany([[KEYS.cashPos,merged]]).catch(()=>{});return merged;});
+            }
             const _budgets=Object.keys(data.budgets||{}).length?Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}])):null;
             if(_budgets){setBudgets(prev=>mergeLocalOnlyObj(_budgets,prev));idbE.push([KEYS.budgets,_budgets]);}
             if(data.inflows!=null){setInfs(data.inflows);idbE.push([KEYS.inflows,data.inflows]);}
@@ -3294,6 +3706,10 @@ export default function App(){
             if(_inv){setInventory(prev=>{const sbIds=new Set(_inv.map(i=>i.id));const localOnly=prev.filter(i=>!sbIds.has(i.id));return localOnly.length?[..._inv,...localOnly]:_inv;});idbE.push([KEYS.inventory,_inv]);}
             const _stock=data.stocklog?.length?data.stocklog.map(moveFromSb):null;
             if(_stock){setStocklog(_stock);idbE.push([KEYS.stocklog,_stock]);}
+            const _tools=data.tools?.length?data.tools.map(toolFromSb):null;
+            if(_tools){setTools(prev=>mergeLocalOnly(_tools,prev));idbE.push([KEYS.tools,_tools]);}
+            const _drs=data.drs?.length?data.drs.map(drFromSb):null;
+            if(_drs){setDrs(prev=>mergeLocalOnly(_drs,prev));idbE.push([KEYS.drs,_drs]);}
             const _suppliers=data.suppliers?.length?data.suppliers.map(s=>({...s,companyName:s.company_name,contactNos:s.contact_nos,contactPerson:s.contact_person,paymentTerms:s.payment_terms,tinNo:s.tin_no,createdBy:s.created_by})):null;
             if(_suppliers){setSuppliers(prev=>mergeLocalOnly(_suppliers,prev));idbE.push([KEYS.suppliers,_suppliers]);}
             const _subcons=data.subcontractors?.length?data.subcontractors.map(s=>({...s,companyName:s.company_name,strengthsWeaknesses:s.strengths_weaknesses,contactNo:s.contact_no,paymentTerms:s.payment_terms,rateStructure:s.rate_structure,paymentStructure:s.payment_structure,locationNote:s.location_note,createdBy:s.created_by})):null;
@@ -3428,7 +3844,7 @@ export default function App(){
       if(n-last>30000){
         last=n;
         const text=kind==="auth"
-          ?"⚠️ Your session can't reach the server — try logging out and back in. Changes aren't being saved."
+          ?"⚠️ The server rejected a change — your account may not have permission to save this, or your session expired. Nothing is being saved to the server. If logging out and back in doesn't fix it, contact your administrator about your access."
           :kind==="data"
           ?"⚠️ The server rejected a change (bad data) — it won't be retried automatically. Please redo it or contact support."
           :"⚠️ Some changes aren't reaching the server — you may be offline. Working locally; they'll sync when the connection returns.";
@@ -3559,13 +3975,21 @@ export default function App(){
     if(data.checklist?.length){const cs=data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,sortOrder:c.sort_order}));setChecklist(prev=>mergeLocalOnly(cs,prev));idbE.push([KEYS.checklist,cs]);}
     if(data.swatches?.length){const ss=data.swatches.map(s=>({...s,dealId:s.deal_id,refLink:s.ref_link}));setSwatches(prev=>mergeLocalOnly(ss,prev));idbE.push([KEYS.swatches,ss]);}
     if(data.actLog?.length)      setActLog(prev=>mergeLocalOnly(data.actLog.map(a=>({...a,dealId:a.deal_id})),prev));
-    if(Object.keys(data.cashPositions||{}).length) setCashPos(prev=>mergeLocalOnlyObj(convertSbCashPos(data.cashPositions),prev));
+    // Server is authoritative for cash positions on a successful read (even an
+    // empty one); only a FAILED read keeps the stale local cache — flag it so the
+    // UI warns and the Daily Cash Position sheet won't save over the server.
+    {
+      const cashReadFailed=Array.isArray(data._failed)&&data._failed.includes("cash_positions");
+      setCashStale(cashReadFailed);
+      if(!cashReadFailed) setCashPos(prev=>{const merged=mergeLocalOnlyObj(convertSbCashPos(data.cashPositions),prev);idbE.push([KEYS.cashPos,merged]);return merged;});
+    }
     if(Object.keys(data.budgets||{}).length){const bg=Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}]));setBudgets(prev=>mergeLocalOnlyObj(bg,prev));idbE.push([KEYS.budgets,bg]);}
     if(data.users?.length){const us=data.users.map(u=>{const fallbackHash=DEFAULT_USERS.find(d=>d.username===(u.username||""))?.passwordHash||"";return{id:u.id,username:u.username||"",name:u.name||u.full_name||"",role:u.role||"Sales",title:u.title||u.role||"",status:u.status||"active",passwordHash:u.password_hash||fallbackHash,createdAt:u.created_at||""};});setUsers(prev=>mergeLocalOnly(us,prev));idbE.push([KEYS.users,us]);}
     if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0,accountCode:p.account_code||"",verified:p.verified!==false,verifiedBy:p.verified_by||"",verifiedAt:p.verified_at||"",verificationPct:p.verification_pct!=null?Number(p.verification_pct):100,payBank:p.pay_bank||"",payMethod:p.pay_method||"",payRef:p.pay_ref||"",vatable:!!p.vatable,inputVat:Number(p.input_vat)||0,netAmount:Number(p.net_amount)||0,ewtRate:Number(p.ewt_rate)||0,ewtAmount:Number(p.ewt_amount)||0,tin:p.tin||""}));setPayables(prev=>mergeLocalOnly(ps,prev));idbE.push(["gmdv5:payables",ps]);}
     if(data.loans?.length){const ls=data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]}));setLoans(prev=>mergeLocalOnly(ls,prev));idbE.push(["gmdv5:loans",ls]);}
     if(data.dailyLogs?.length){const dl=data.dailyLogs.map(l=>({...l,dealId:l.deal_id,date:l.log_date,workDone:l.work_done,progressNote:l.progress_note,loggedBy:l.logged_by,createdAt:l.created_at}));setDailyLogs(prev=>mergeLocalOnly(dl,prev));idbE.push([KEYS.dailylogs,dl]);}
     if(data.ceReqs?.length){const cr=data.ceReqs.map(ceReqFromSb);setCeReqs(prev=>mergeLocalOnly(cr,prev));idbE.push([KEYS.ceReqs,cr]);}
+    if(data.commissionPayouts?.length){const po=data.commissionPayouts.map(commissionPayoutFromSb);setPayouts(prev=>mergeLocalOnly(po,prev));idbE.push([KEYS.payouts,po]);}
     // These tables were previously set only by the boot-time load, never here.
     // Because this function is the LOGIN / Retry-Sync / focus-refresh path, a
     // freshly-provisioned account (e.g. a designer who just got a user_profiles
@@ -3576,6 +4000,8 @@ export default function App(){
     if(data.projs&&Object.keys(data.projs).length){setProjs(prev=>mergeLocalOnlyObj(data.projs,prev));idbE.push([KEYS.projects,data.projs]);}
     if(data.inventory?.length){const _inv=data.inventory.map(invFromSb);setInventory(prev=>{const sbIds=new Set(_inv.map(i=>i.id));const localOnly=prev.filter(i=>!sbIds.has(i.id));return localOnly.length?[..._inv,...localOnly]:_inv;});idbE.push([KEYS.inventory,_inv]);}
     if(data.stocklog?.length){const _stock=data.stocklog.map(moveFromSb);setStocklog(_stock);idbE.push([KEYS.stocklog,_stock]);}
+    if(data.tools?.length){const _tools=data.tools.map(toolFromSb);setTools(prev=>mergeLocalOnly(_tools,prev));idbE.push([KEYS.tools,_tools]);}
+    if(data.drs?.length){const _drs=data.drs.map(drFromSb);setDrs(prev=>mergeLocalOnly(_drs,prev));idbE.push([KEYS.drs,_drs]);}
     if(data.suppliers?.length){const _sup=data.suppliers.map(s=>({...s,companyName:s.company_name,contactNos:s.contact_nos,contactPerson:s.contact_person,paymentTerms:s.payment_terms,tinNo:s.tin_no,createdBy:s.created_by}));setSuppliers(prev=>mergeLocalOnly(_sup,prev));idbE.push([KEYS.suppliers,_sup]);}
     if(data.subcontractors?.length){const _sc=data.subcontractors.map(s=>({...s,companyName:s.company_name,strengthsWeaknesses:s.strengths_weaknesses,contactNo:s.contact_no,paymentTerms:s.payment_terms,rateStructure:s.rate_structure,paymentStructure:s.payment_structure,locationNote:s.location_note,createdBy:s.created_by}));setSubcons(prev=>mergeLocalOnly(_sc,prev));idbE.push([KEYS.subcons,_sc]);}
     if(data.boqLibrary?.length){const _bl=data.boqLibrary.map(it=>({id:it.id,name:it.name,description:it.description||"",section:it.category||"",unit:it.unit||"lot",unitCost:Number(it.unit_cost)||0,tags:it.tags||[],createdBy:it.created_by||"",createdAt:it.created_at||"",updatedAt:it.updated_at||""}));setBoqLibrary(prev=>mergeLocalOnly(_bl,prev));idbE.push([KEYS.boqLibrary,_bl]);}
@@ -3632,7 +4058,7 @@ export default function App(){
     due_date:r.dueDate||null, follow_up:r.followUp||null,
     value:Number(r.value)||0,
     invoiced:Number(r.invoiced)||0, amount_paid:Number(r.amountPaid)||0,
-    payment_status:r.paymentStatus||"Unpaid", receipt_type:r.receiptType||"OR",
+    payment_status:r.paymentStatus||"Unpaid", receipt_type:r.receiptType||null,
     withholding:r.withholding||false, comms_group:r.commsGroup||"",
     sales_repo_link:r.salesRepoLink||"", proposal_folder_link:r.proposalFolderLink||"",
     notes:r.notes||"", probability:Number(r.probability)||0,
@@ -3862,6 +4288,7 @@ export default function App(){
     expenses:["Manager","Finance","Accounting","FinanceAssistant"],
     billing_milestones:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"],
     billing_payments:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"],
+    commission_payouts:["Manager","Finance","FinanceAssistant"],
     project_budgets:["Manager","QS"],
     // activity_log is INSERT=AUTH server-side — any logged-in user may write it.
   };
@@ -4037,6 +4464,8 @@ export default function App(){
   },[hasValidUUIDs,deals,jos,exps,prs,mreqs,breqs,addenda,swatches,checklist,actLog,billings,budgets,cashPositions,infs]);
   const upInventory =useCallback(fn=>setInventory(p=>{const n=fn(p);persist(KEYS.inventory,n);return n;}),[persist]);
   const upStocklog  =useCallback(fn=>setStocklog(p=>{const n=fn(p);persist(KEYS.stocklog,n);return n;}),[persist]);
+  const upTools     =useCallback(fn=>setTools(p=>{const n=fn(p);persist(KEYS.tools,n);return n;}),[persist]);
+  const upDrs       =useCallback(fn=>setDrs(p=>{const n=fn(p);persist(KEYS.drs,n);return n;}),[persist]);
   const upSuppliers =useCallback(fn=>setSuppliers(p=>{const n=fn(p);persist(KEYS.suppliers,n);return n;}),[persist]);
   const upSubcons   =useCallback(fn=>setSubcons(p=>{const n=fn(p);persist(KEYS.subcons,n);return n;}),[persist]);
   const upSwos      =useCallback(fn=>setSwos(p=>{const n=fn(p);persist(KEYS.swos,n);return n;}),[persist]);
@@ -4063,6 +4492,59 @@ export default function App(){
       catch(e){ toastEmit&&toastEmit("Cleared locally but server wipe failed: "+(e?.message||e),"error"); return false; }
     }
     return true;
+  };
+
+  // Merge duplicate inventory items into one survivor: reassign every stock
+  // movement from the duplicates to the survivor, fold their on-hand qty and
+  // value into the survivor (weighted avg cost), then delete the duplicates.
+  // Local + Supabase. Returns the number of duplicates merged.
+  const mergeInventoryItems=(survivorId,dupeIds=[])=>{
+    const ids=dupeIds.filter(d=>d&&d!==survivorId);
+    if(!survivorId||!ids.length) return 0;
+    const idSet=new Set(ids);
+    // 1) reassign movements
+    upStocklog(sl=>sl.map(m=>{
+      if(!idSet.has(m.itemId)) return m;
+      if(isSupabaseReady()&&isUUID(m.id)) sbUpdate('stock_movements',m.id,{item_id:survivorId}).catch(()=>{});
+      return {...m,itemId:survivorId};
+    }));
+    // 2) fold qty + value into survivor, 3) drop duplicates
+    upInventory(iv=>{
+      const survivor=iv.find(i=>i.id===survivorId); if(!survivor) return iv;
+      const dupes=iv.filter(i=>idSet.has(i.id));
+      let totQty=Number(survivor.qtyOnHand)||0, totVal=(Number(survivor.qtyOnHand)||0)*(Number(survivor.avgCost)||0);
+      dupes.forEach(d=>{const q=Number(d.qtyOnHand)||0;totQty+=q;totVal+=q*(Number(d.avgCost)||Number(d.lastPurchasePrice)||0);});
+      const merged={...survivor,qtyOnHand:Math.round(totQty*100)/100,avgCost:totQty>0?Math.round((totVal/totQty)*100)/100:survivor.avgCost,lastUpdated:today};
+      if(isSupabaseReady()){
+        sbUpdate('inventory_items',survivorId,invToSb(merged)).catch(()=>{});
+        ids.forEach(id=>sbDelete('inventory_items',id).catch(()=>{}));
+      }
+      return iv.filter(i=>!idSet.has(i.id)).map(i=>i.id===survivorId?merged:i);
+    });
+    return ids.length;
+  };
+
+  // Tools / equipment register CRUD (local + Supabase)
+  const saveTool=(rec)=>{
+    const r={...rec,id:rec.id||uid()};
+    upTools(ts=>ts.some(t=>t.id===r.id)?ts.map(t=>t.id===r.id?r:t):[r,...ts]);
+    if(isSupabaseReady()) sbUpsert('tools',toolToSb(r),'id').catch(()=>{});
+    return r;
+  };
+  const deleteTool=(id)=>{
+    upTools(ts=>ts.filter(t=>t.id!==id));
+    if(isSupabaseReady()) sbDelete('tools',id).catch(()=>{});
+  };
+  // Standalone delivery-receipt CRUD (local + Supabase)
+  const saveDr=(rec)=>{
+    const r={...rec,id:rec.id||uid(),createdBy:rec.createdBy||session?.name||role,createdAt:rec.createdAt||today};
+    upDrs(ds=>ds.some(d=>d.id===r.id)?ds.map(d=>d.id===r.id?r:d):[r,...ds]);
+    if(isSupabaseReady()) sbUpsert('delivery_receipts',drToSb(r),'id').catch(()=>{});
+    return r;
+  };
+  const deleteDr=(id)=>{
+    upDrs(ds=>ds.filter(d=>d.id!==id));
+    if(isSupabaseReady()) sbDelete('delivery_receipts',id).catch(()=>{});
   };
 
   // Supplier CRUD
@@ -4417,7 +4899,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       // failing an FK check that sync retry then permanently drops (a
       // constraint violation is a "data" error, never retried, only dropped —
       // this silently lost individual checklist tasks in production).
-      const cardSynced=await sbUpsert('project_cards',{id:card.id,deal_id:dealId,client:dealData?.client||"",ce_no:dealData?.ceNo||"",value:Number(dealData?.value)||0,award_date:dealData?.awardDate||dealData?.dateAcquired||today,created_at:card.createdAt,ae_assigned:card.aeAssigned||"",pm1:card.pm1||"",pm2:card.pm2||"",pm3:card.pm3||"",designer:card.designer||"",coordinator:card.coordinator||""},'deal_id');
+      const cardSynced=await sbUpsert('project_cards',{id:card.id,deal_id:dealId,client:dealData?.client||"",ce_no:dealData?.ceNo||"",value:Number(dealData?.value)||0,award_date:dealData?.awardDate||dealData?.dateAcquired||today,created_at:card.createdAt,ae_assigned:card.aeAssigned||"",pm1:card.pm1||"",pm2:card.pm2||"",pm3:card.pm3||"",designer:card.designer||"",coordinator:card.coordinator||"",...(card.targetEndDate?{target_end_date:card.targetEndDate}:{}),...(card.targetDays!=null?{target_days:card.targetDays}:{})},'deal_id');
       if(cardSynced){
         DEPT_ORDER.forEach(dept=>{
           (card.departments?.[dept]?.tasks||[]).forEach((t,i)=>{
@@ -4967,11 +5449,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // before billings hydrates.
     if(deals.find(d=>d.id===dealId)?.billingGenerated) return;
     if(billings.some(b=>b.dealId===dealId)) return; // already has milestones — never duplicate
+    // Split the contract value across milestones by percentage, rounding each
+    // share to centavos (not whole pesos) so the milestone bases sum back to the
+    // exact contract value — whole-peso rounding drifts the total (e.g. a
+    // ₱892,857.14 contract would foot to ₱1,000,000.96 VAT-inc instead of the
+    // intended ₱1,000,000.00).
+    const share=pct=>Math.round(val*pct/100*100)/100;
     const milestones=[
-      terms.dp>0&&{name:`Down Payment (${terms.dp}%)`,amount:Math.round(val*terms.dp/100),description:"Upon signing of contract / Purchase Order"},
-      terms.progress>0&&{name:`Progress Billing (${terms.progress}%)`,amount:Math.round(val*terms.progress/100),description:"Upon completion of fabrication / midpoint delivery"},
-      terms.final>0&&{name:`Final Billing (${terms.final}%)`,amount:Math.round(val*terms.final/100),description:"Upon delivery and installation completion"},
-      terms.retention>0&&{name:`Retention (${terms.retention}%) — Release: ${terms.retentionRelease||"Project Completion"}`,amount:Math.round(val*terms.retention/100),description:`Held as retention. Release condition: ${terms.retentionRelease||"Project Completion"}`},
+      terms.dp>0&&{name:`Down Payment (${terms.dp}%)`,amount:share(terms.dp),description:"Upon signing of contract / Purchase Order"},
+      terms.progress>0&&{name:`Progress Billing (${terms.progress}%)`,amount:share(terms.progress),description:"Upon completion of fabrication / midpoint delivery"},
+      terms.final>0&&{name:`Final Billing (${terms.final}%)`,amount:share(terms.final),description:"Upon delivery and installation completion"},
+      terms.retention>0&&{name:`Retention (${terms.retention}%) — Release: ${terms.retentionRelease||"Project Completion"}`,amount:share(terms.retention),description:`Held as retention. Release condition: ${terms.retentionRelease||"Project Completion"}`},
     ].filter(Boolean);
     if(!milestones.length) return;
     // Add the whole batch in one state update and do ONE deal.invoiced recompute
@@ -6044,6 +6532,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[awardModal, setAwardModal]=useState(null);
   const[awardReqModal, setAwardReqModal]=useState(null);
   const[payTermsModal,setPayTermsModal]=useState(null); // dealId — shown after award to capture payment terms
+  const[dueDateFixOpen,setDueDateFixOpen]=useState(false); // backfill dialog for missing billing/payable due dates
   const[clientSugg, setClientSugg]=useState([]); // autocomplete suggestions
   const[dealForm,  setDealForm] =useState(emptyDeal);
   const[editDeal,  setEditDeal] =useState(null);
@@ -6064,6 +6553,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[finTab,    setFinTab]   =useState("overview");
   const[cashSub,   setCashSub]  =useState("daily");   // Cash Position sub-tab: daily | weekly | monthly
   const[payables,  setPayables] =useState([]);
+  const[payouts,   setPayouts]  =useState([]);
   const[payModal,  setPayModal] =useState(false);
   const emptyPayForm=()=>({vendor:"",amount:"",paidAmount:"",dueDate:"",invoiceNumber:"",invoiceDate:"",projectId:null,category:"Supplier",accountCode:"",notes:"",invoiceRef:""});
   const[payForm,   setPayForm]  =useState(emptyPayForm());
@@ -6144,6 +6634,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[pipeSearch,   setPipeSearch]   = useState("");     // pipeline search query
   const[pipeTab,      setPipeTab]      = useState("pipeline"); // "pipeline" | "awarded" | "updates"
   const[awardScope,   setAwardScope]   = useState("mine");     // Awarded tab: "mine" | "team" (team is manager-only)
+  const[payoutDraft,  setPayoutDraft]  = useState(null);       // Commissions tab: open record-payout form (null = closed)
   const[aeUpdates,    setAeUpdates]    = useState([]);
   const[auditFindings,setAuditFindings]= useState([]);
   const[aeUpdateText, setAeUpdateText] = useState("");
@@ -6383,7 +6874,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           dealId:rec.id, client:rec.client, location:"",
           designer:"", designDeadline:data.drfDeadline||"",
           projectTitle:data.drfProjectTitle||rec.contact||rec.client||"",
-          type:data.ceType||DRF_TYPES[0], size:data.drfSize||"",
+          type:data.ceType||DRF_TYPES[0], category:data.drfCategory||"",
+          size:data.drfSize||"", maxHeight:data.drfMaxHeight||"",
+          platform:data.drfPlatform||"", finishes:data.drfFinishes||"",
+          brandGuideLink:data.drfBrandGuideLink||"", budget:data.drfBudget||"",
           description:data.drfDescription||"",
           accessories:data.drfAccessories||[], refLinks:data.drfRefLinks||["","",""],
           notes:data.drfNotes||"", approvedLink:"", status:"New",
@@ -6742,6 +7236,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     }
     // Create project card with PM/AE pre-populated — awaited so Ops/Sales
     // don't see "awarded" without the department task checklists existing yet.
+    // Carry the "Target Turnover Date" entered on the award notice into the
+    // project card so Ops sees the turnover date without re-entering it. The
+    // award-notice field is stored on the JO as startDate; targetDays is the
+    // day count from award → turnover (mirrors setProjectTAT's derivation).
+    const awardDateForCard=form.triggerDate||today;
+    const turnoverDate=form.startDate||"";
+    const turnoverDays=turnoverDate?Math.max(1,Math.ceil((new Date(turnoverDate)-new Date(awardDateForCard))/86400000)):null;
     const cardOk=await createProjectCard(id,{...awardModal,
       aeAssigned:jo.aeAssigned,
       pm1:jo.pm1||"",
@@ -6749,7 +7250,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       pm3:jo.pm3||"",
       designer:jo.designer||"",
       coordinator:jo.coordinator||"",
-      awardDate:form.triggerDate||today,
+      awardDate:awardDateForCard,
+      ...(turnoverDate?{targetEndDate:turnoverDate,targetDays:turnoverDays}:{}),
     });
     stepResults.push({label:"Project Card & Checklists",ok:cardOk});
     // Auto-set QS budget at 30% margin target (70% cost of contract value)
@@ -6951,6 +7453,41 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   };
 
   const upPayables=fn=>{const next=fn(payables);setPayables(next);persist(KEYS.payables,next);};
+  // Set just the due date on a payable (used by the due-date backfill dialog) and sync it.
+  const setPayableDueDate=(id,dueDate)=>{
+    let updated=null;
+    upPayables(ps=>ps.map(p=>{if(p.id!==id)return p;updated={...p,dueDate};return updated;}));
+    if(updated&&isSupabaseReady()) sbUpsert("payables",payableToSb(updated),"id").catch(()=>{});
+  };
+
+  // ── Commission payouts (what Finance has disbursed to each rep) ─────────────
+  const upPayouts=fn=>{const next=fn(payouts);setPayouts(next);persist(KEYS.payouts,next);};
+  // Finance records a lump payout for a rep/period. It starts "Recorded" and
+  // only counts as paid once a Manager approves it.
+  const recordPayout=async(rec)=>{
+    if(!await guardWrite("insert","commission_payouts","record a commission payout")) return;
+    const row={id:uid(),payee:rec.payee||"",periodLabel:rec.periodLabel||"",periodStart:rec.periodStart||null,periodEnd:rec.periodEnd||null,
+      amount:Number(rec.amount)||0,status:"Recorded",payBank:rec.payBank||"",payMethod:rec.payMethod||"",payRef:rec.payRef||"",notes:rec.notes||"",
+      recordedBy:session?.name||"",recordedAt:new Date().toISOString(),approvedBy:"",approvedAt:null,createdAt:new Date().toISOString()};
+    upPayouts(ps=>[row,...ps]);
+    if(isSupabaseReady()) sbUpsert("commission_payouts",commissionPayoutToSb(row),"id")
+      .catch(e=>{console.error("commission_payouts sync:",e.message);toastEmit("⚠️ Payout saved locally but NOT synced to server.","warning",8000);});
+    toastEmit("Commission payout recorded — pending Manager approval.","success");
+  };
+  // Manager approves a recorded payout, which makes it count as paid.
+  const approvePayout=async(id)=>{
+    if(role!=="Manager"){toastEmit("Only a Manager can approve payouts.","warning");return;}
+    const patch={status:"Approved",approvedBy:session?.name||"",approvedAt:new Date().toISOString()};
+    upPayouts(ps=>ps.map(p=>p.id===id?{...p,...patch}:p));
+    if(isSupabaseReady()) sbUpsert("commission_payouts",{id,...commissionPayoutToSb({...patch})},"id").catch(()=>{});
+    toastEmit("Payout approved.","success");
+  };
+  const voidPayout=async(id)=>{
+    if(!await guardWrite("update","commission_payouts","void a commission payout")) return;
+    if(!await uiConfirm("Void this commission payout? It will no longer count as paid.")) return;
+    upPayouts(ps=>ps.map(p=>p.id===id?{...p,status:"Void"}:p));
+    if(isSupabaseReady()) sbUpsert("commission_payouts",{id,status:"Void"},"id").catch(()=>{});
+  };
   // Human AP reference in the finance team's format: AP-YYYY-000N. Assigned
   // locally (year-scoped, next after the current max) so PO-derived payables get a
   // number the moment they're created without an extra async round-trip. Two
@@ -7180,9 +7717,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(isSupabaseReady()) sbUpsert("payables",payableToSb(rec),"id").catch(()=>{});
     return rec;
   };
-  const savePayable=(data)=>{
+  const savePayable=async(data)=>{
     if(!data.vendor||!data.amount) return;
     if(!String(data.accountCode||"").trim()){toastEmit("Select a Chart-of-Accounts code before saving — it drives the financial statements.","error");return;}
+    // Due date drives the cash-flow forecast — nudge (don't hard-block) if missing.
+    if(!String(data.dueDate||"").trim()){
+      const ok=await uiConfirm({title:"No due date set",tone:"warning",confirmLabel:"Save without due date",cancelLabel:"Go back & set it",
+        message:"This payable has no due date, so the Cash-Flow Forecast will treat it as due now instead of scheduling it. Set a due date for an accurate projection.\n\nSave anyway?"});
+      if(!ok) return;
+    }
     const amount=Number(data.amount);
     const paidAmount=Number(data.paidAmount)||0;
     // Derive status from what's actually been paid so a manually entered payable
@@ -7511,7 +8054,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Requests",  items:[{id:"costanalysis",l:"Cost Analysis"}]},
     ],
     Design:[
-      {group:"Overview",    items:[{id:"home",l:"Projects"},{id:"myfolder",l:"My Folder"}]},
+      {group:"Overview",    items:[{id:"home",l:"Projects"},{id:"myfolder",l:"My Projects"}]},
       // Sales Pipeline is limited to the Head Designer — the rest of the design
       // team only sees their design work, not the sales funnel.
       ...(isHeadDesigner(session?.name)?[{group:"Sales", items:[{id:"pipeline",l:"Sales Pipeline"}]}]:[]),
@@ -7528,7 +8071,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     SalesOpsAdmin:[
       {group:"Overview",   items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
-      {group:"Sales",      items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"},{id:"ceqs",l:"CE Requests"}]},
+      {group:"Sales",      items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"},{id:"ceqs",l:"CE Requests"},{id:"boq",l:"BOQ"}]},
       {group:"Billing",    items:[{id:"billing",l:"Billing"}]},
       {group:"Finance",    items:[{id:"financecal",l:"Finance Calendar"}]},
       {group:"Operations", items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
@@ -7931,6 +8474,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         <MobileHeader/>
         <Toaster/>
         <DialogHost/>
+        <DueDateBackfillModal open={dueDateFixOpen} onClose={()=>setDueDateFixOpen(false)} billings={billings} payables={payables} deals={deals} updateMilestone={updateMilestone} setPayableDueDate={setPayableDueDate} toastEmit={toastEmit}/>
         {!isOnline&&<div style={{position:"fixed",top:0,left:0,right:0,zIndex:2000,background:"#1e293b",color:"#fcd34d",padding:"8px 16px",textAlign:"center",fontSize:".78rem",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>⚠️ You're offline — changes are saved locally and will sync when you reconnect.</div>}
         {pendingSync>0&&(
           <div onClick={async()=>{
@@ -10222,9 +10766,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const ml=`${MONTHS[CM]} ${CY}`;
         const summData=[["GMD PRODUCTIONS INC."],[`Sales Month-End Report — ${ml}`],[`Prepared by FabHub • Values are ex-VAT base + 12% VAT (OR) • Review Data Flags before circulating`],[],["DEALS WON","DEALS CANCELLED","OPEN PIPELINE (count)"],[monthWon.length,monthCancelled.length,openPipeline.length],[],[`CLOSED REVENUE — ${ml.toUpperCase()} (incl. VAT)`],["Total closed (all WON rows, as recorded)",totalWonGross],["  Memo: ex-VAT base",totalWonBase],["  Memo: total VAT collected",totalWonVat],[],["CLOSED REVENUE BY SALES OWNER"],["AE","AE Code","Deals Won","Closed (incl. VAT)","% of total"],...aeRows.map(r=>[r.name,r.code,r.won,r.gross,aeTotal>0?(r.gross/aeTotal).toFixed(4):0]),["TOTAL","",aeRows.reduce((s,r)=>s+r.won,0),aeTotal,1]];
         window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(summData),"Summary");
-        const closedData=[["Service Type","Project Type","AE","Client","Project Name","Status","Estimate (ex-VAT)","VAT","Total (incl. VAT)","Flag / Note"],...monthWon.map(d=>{const t=dealTax(d);const f=[];if(!Number(d.value))f.push("No value");if(!d.ceNo)f.push("Missing CE#");if(t.vat===0&&Number(d.value)>50000)f.push("VAT=0 — confirm exempt");return[svcType(d.ceType),d.ceType||"—",aeCode(d.salesOwner||""),d.client||"—",d.product||"—","WON",t.base,t.vat,t.gross,f.join("; ")||null];}),[],...monthCancelled.map(d=>{const t=dealTax(d);return[svcType(d.ceType),d.ceType||"—",aeCode(d.salesOwner||""),d.client||"—",d.product||"—","CANCELLED",t.base,t.vat,t.gross,"Cancelled"];}),["","","","","TOTAL — WON only",monthWon.length,totalWonBase,totalWonVat,totalWonGross,""]];
+        const closedData=[["Service Type","Project Type","AE","Client","Project Name","Status","Estimate (ex-VAT)","VAT","Total (incl. VAT)","Flag / Note"],...monthWon.map(d=>{const t=dealTax(d);const f=[];if(!Number(d.value))f.push("No value");if(!d.ceNo)f.push("Missing CE#");if(t.vat===0&&Number(d.value)>50000)f.push("VAT=0 — confirm exempt");return[svcType(d.ceType),d.ceType||"—",aeCode(d.salesOwner||""),d.client||"—",d.contact||d.product||"—","WON",t.base,t.vat,t.gross,f.join("; ")||null];}),[],...monthCancelled.map(d=>{const t=dealTax(d);return[svcType(d.ceType),d.ceType||"—",aeCode(d.salesOwner||""),d.client||"—",d.contact||d.product||"—","CANCELLED",t.base,t.vat,t.gross,"Cancelled"];}),["","","","","TOTAL — WON only",monthWon.length,totalWonBase,totalWonVat,totalWonGross,""]];
         window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(closedData),"Closed Deals");
-        const pipeData=[["Client","Project Name","Service Type","Stage","CE#","Note"],...openPipeline.map(d=>{const f=[];if(!d.client)f.push("Client missing");if(!Number(d.value))f.push("No value");if(!d.ceNo)f.push("No CE#");return[d.client||"(blank)",d.product||"—",svcType(d.ceType),d.stage||"—",d.ceNo||"—",f.join("; ")||null];})];
+        const pipeData=[["Client","Project Name","Service Type","Stage","CE#","Note"],...openPipeline.map(d=>{const f=[];if(!d.client)f.push("Client missing");if(!Number(d.value))f.push("No value");if(!d.ceNo)f.push("No CE#");return[d.client||"(blank)",d.contact||d.product||"—",svcType(d.ceType),d.stage||"—",d.ceNo||"—",f.join("; ")||null];})];
         window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(pipeData),"Open Pipeline");
         const flagData=[[null,"DATA FLAGS — RESOLVE BEFORE THIS REPORT IS FINAL"],["#","Issue","Detail","₱ at Stake"],...dataFlags.map(f=>[f.n,f.issue,f.detail,f.stake]),...(dataFlags.length===0?[[null,"✅ No issues detected","",""]]:[] )];
         window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(flagData),"Data Flags");
@@ -10496,7 +11040,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                           <tr key={d.id} style={{background:i%2===0?"#fff":"#f9fafb"}}>
                             {TD(<span style={{fontSize:".74rem",background:"#e0e7ff",color:"#3730a3",padding:"2px 7px",borderRadius:5,fontWeight:600}}>{svcType(d.ceType)}</span>)}
                             {TD(d.ceType||"—")}{TD(<span style={{fontFamily:"monospace",fontWeight:700,color:"#6366f1",fontSize:".8rem"}}>{aeCode(d.salesOwner||"")}</span>)}
-                            {TD(<strong>{d.client||"—"}</strong>)}{TD(d.product||"—")}
+                            {TD(<strong>{d.client||"—"}</strong>)}{TD(d.contact||d.product||"—")}
                             {TD(t.base>0?fmt(t.base):"—",{right:true})}{TD(t.vat>0?fmt(t.vat):"—",{right:true,color:"#94a3b8"})}{TD(fmt(t.gross),{right:true,bold:true,color:"#059669"})}
                             {TD(flags.length>0?<span style={{fontSize:".72rem",color:"#f59e0b"}}>⚠ {flags.join("; ")}</span>:"")}
                           </tr>
@@ -10523,7 +11067,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       {filteredPipeline.slice(0,30).map((d,i)=>{
                         const flags=[];
                         if(!d.client)flags.push("Client missing");if(!Number(d.value))flags.push("No value");if(!d.ceNo)flags.push("No CE#");
-                        return(<tr key={d.id} style={{background:i%2===0?"#fff":"#f9fafb"}}>{TD(d.client||<span style={{color:"#ef4444",fontStyle:"italic"}}>(blank)</span>)}{TD(d.product||"—")}{TD(<span style={{fontSize:".74rem",background:"#f1f5f9",color:"#475569",padding:"2px 6px",borderRadius:4}}>{svcType(d.ceType)}</span>)}{TD(<span style={{fontSize:".74rem",color:"#6366f1",fontWeight:600}}>{d.stage}</span>)}{TD(d.ceNo||"—")}{TD(flags.length>0?<span style={{fontSize:".72rem",color:"#f59e0b"}}>⚠ {flags.join("; ")}</span>:"")}</tr>);
+                        return(<tr key={d.id} style={{background:i%2===0?"#fff":"#f9fafb"}}>{TD(d.client||<span style={{color:"#ef4444",fontStyle:"italic"}}>(blank)</span>)}{TD(d.contact||d.product||"—")}{TD(<span style={{fontSize:".74rem",background:"#f1f5f9",color:"#475569",padding:"2px 6px",borderRadius:4}}>{svcType(d.ceType)}</span>)}{TD(<span style={{fontSize:".74rem",color:"#6366f1",fontWeight:600}}>{d.stage}</span>)}{TD(d.ceNo||"—")}{TD(flags.length>0?<span style={{fontSize:".72rem",color:"#f59e0b"}}>⚠ {flags.join("; ")}</span>:"")}</tr>);
                       })}
                       {filteredPipeline.length===0&&<tr><td colSpan={6} style={{textAlign:"center",padding:20,color:"#94a3b8",fontSize:".82rem"}}>{repAEFilter?`No pipeline deals for ${repAEFilter}`:"No open pipeline deals"}</td></tr>}
                       {filteredPipeline.length>30&&<tr><td colSpan={6} style={{textAlign:"center",padding:10,color:"#94a3b8",fontSize:".78rem"}}>...and {filteredPipeline.length-30} more — export to Excel for full list</td></tr>}
@@ -11055,11 +11599,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {(()=>{
         const peso   =(v)=>"₱"+Math.round(Number(v)||0).toLocaleString("en-PH");
         const isMgr  =role==="Manager";
+        // Team-wide commission visibility: Manager plus the finance/oversight roles
+        // (Finance, FinanceAssistant, Accounting, SalesOpsAdmin) — the same roles the
+        // DB already grants read access to commission_payouts — can flip to the whole
+        // team. Approving a payout stays Manager-only (see the Approve button below).
+        const canSeeTeam=["Manager","Finance","FinanceAssistant","Accounting","SalesOpsAdmin"].includes(ROLE_ALIASES[role]||role);
         // Awarded = deal in a WON stage (06→14). Exclude standby-PO umbrellas (0 value carriers).
         const awarded=wonDeals.filter(d=>!d.standbyPO);
-        // Visibility: everyone sees their own; managers can flip to the whole team.
+        // Visibility: everyone sees their own; the roles above can flip to the whole team.
         const mine   =d=>[d.salesOwner,d.assignedAE].filter(Boolean).includes(session?.name);
-        const scope  =(isMgr&&awardScope==="team")?"team":"mine";
+        const scope  =(canSeeTeam&&awardScope==="team")?"team":"mine";
         const rows   =(scope==="team"?awarded:awarded.filter(mine))
                         .slice().sort((a,b)=>(commissionEarned(b)-commissionEarned(a)));
         const done   =s=>["12 · Close-Out","14 · Completed"].includes(s);
@@ -11070,6 +11619,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const tEarn  =rows.reduce((s,d)=>s+commissionEarned(d),0);
         const tProj  =rows.reduce((s,d)=>s+commissionProjected(d),0);
         const who    =scope==="team"?"the sales team":(session?.name||"you");
+
+        // ── Payouts: what's actually been disbursed to the rep(s) in view ──────
+        // Scope payouts the same way as the deal rows: "mine" = my own payouts,
+        // "team" = everyone's. Only APPROVED payouts count as paid.
+        const scopedPayouts=(payouts||[]).filter(p=>p.status!=="Void").filter(p=>scope==="team"?true:p.payee===session?.name);
+        const paidByRep=(()=>{const m={};(payouts||[]).filter(isPayoutApproved).forEach(p=>{m[p.payee]=(m[p.payee]||0)+(Number(p.amount)||0);});return m;})();
+        const tPaid    =payoutsPaid(scopedPayouts);
+        const tPending =payoutsPending(scopedPayouts);
+        const tPayable =commissionPayable(tEarn,tPaid);
+        const canRecord=roleCanInsert("commission_payouts");
+        const payeeOptions=[...new Set(awarded.map(d=>d.salesOwner).filter(Boolean))].sort();
 
         const kpi=(lbl,val,sub,accent)=>(
           <div style={{flex:"1 1 180px",background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"13px 15px",...(accent?{background:"linear-gradient(180deg,#ecfdf5,#fff)",borderColor:"#a7f3d0"}:{})}}>
@@ -11134,20 +11694,26 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>💰 Commissions</h2>
                 <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{rows.length} awarded project{rows.length!==1?"s":""} · {scope==="team"?"whole team":"your projects"} · {todayL}</div>
               </div>
-              {isMgr&&(
-                <div style={{display:"flex",background:"#f1f5f9",borderRadius:9,padding:3}}>
-                  {[["mine","My projects"],["team","Whole team"]].map(([v,l])=>(
-                    <button key={v} onClick={()=>setAwardScope(v)} style={{border:"none",background:awardScope===v?"#3b82f6":"transparent",color:awardScope===v?"#fff":"#475569",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",padding:"6px 14px",borderRadius:6,cursor:"pointer"}}>{l}</button>
-                  ))}
-                </div>
-              )}
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                {canRecord&&(
+                  <button onClick={()=>setPayoutDraft({payee:scope==="team"?"":(session?.name||""),periodLabel:`${MONTHS[new Date().getMonth()]} ${new Date().getFullYear()}`,amount:"",payBank:"",payMethod:"",payRef:"",notes:""})}
+                    style={{border:"none",background:"#059669",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",padding:"8px 14px",borderRadius:8,cursor:"pointer"}}>+ Record payout</button>
+                )}
+                {canSeeTeam&&(
+                  <div style={{display:"flex",background:"#f1f5f9",borderRadius:9,padding:3}}>
+                    {[["mine","My projects"],["team","Whole team"]].map(([v,l])=>(
+                      <button key={v} onClick={()=>setAwardScope(v)} style={{border:"none",background:awardScope===v?"#3b82f6":"transparent",color:awardScope===v?"#fff":"#475569",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",padding:"6px 14px",borderRadius:6,cursor:"pointer"}}>{l}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:12}}>
-              {kpi("Awarded value",peso(tVal),`${rows.length} projects · ${who}`)}
-              {kpi("Collected",peso(tColl),tVal>0?`${Math.round(tColl/tVal*100)}% of contract value in`:"—")}
-              {kpi("Outstanding",peso(tOut),"still to be collected")}
               {kpi("Commission · earned",peso(tEarn),`${peso(tProj)} projected at full collection`,true)}
+              {kpi("Paid out",peso(tPaid),tEarn>0?`${Math.round(tPaid/tEarn*100)}% of earned disbursed`:"—")}
+              {kpi("Payable",peso(tPayable),"earned but not yet paid")}
+              {kpi("Pending approval",peso(tPending),tPending>0?"recorded, awaiting Manager":"none awaiting")}
             </div>
 
             <div style={{display:"flex",gap:10,alignItems:"flex-start",background:"#ecfdf5",border:"1.5px solid #a7f3d0",borderRadius:12,padding:"11px 15px",marginBottom:16,fontSize:".78rem",color:"#334155",lineHeight:1.55}}>
@@ -11156,6 +11722,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 <b style={{color:"#065f46"}}>Commission accrues on cash collected, not on award.</b> Each awarded deal earns
                 its sales owner <b>{(COMMISSION_RATE["Self-sourced"]*100)}%</b> (self-sourced client) or <b>{(COMMISSION_RATE["Given"]*100)}%</b> (client given to the team) of every peso collected.
                 <b style={{color:"#059669"}}> Earned</b> moves each time a payment is logged; <b>Projected</b> is the full commission once the contract is paid off.
+                <b style={{color:"#059669"}}> Paid</b> is what Finance has disbursed (Manager-approved); <b>Payable</b> is earned minus paid — what you're still owed.
                 <span style={{color:"#94a3b8"}}> Lead origin is set per deal — deals default to the {DEFAULT_LEAD_ORIGIN.toLowerCase()} rate until flagged.</span>
               </div>
             </div>
@@ -11208,9 +11775,88 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 </table>
               </div>
             </div>
+
+            {/* ── Payout ledger: what's been disbursed to the rep(s) ─────────── */}
+            <div style={{marginTop:22,background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,overflow:"hidden"}}>
+              <div style={{padding:"12px 15px",borderBottom:"1.5px solid #f1f5f9",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+                <div>
+                  <div style={{fontWeight:800,color:"#0f172a"}}>💸 Payout history</div>
+                  <div style={{fontSize:".72rem",color:"#64748b",marginTop:2}}>{scopedPayouts.length} payout{scopedPayouts.length!==1?"s":""} · {scope==="team"?"whole team":(session?.name||"you")}</div>
+                </div>
+                {canRecord&&(
+                  <button onClick={()=>setPayoutDraft({payee:scope==="team"?"":(session?.name||""),periodLabel:`${MONTHS[new Date().getMonth()]} ${new Date().getFullYear()}`,amount:"",payBank:"",payMethod:"",payRef:"",notes:""})}
+                    style={{border:"none",background:"#059669",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".76rem",padding:"7px 13px",borderRadius:8,cursor:"pointer"}}>+ Record payout</button>
+                )}
+              </div>
+              <div style={{overflowX:"auto"}}>
+                <table style={{borderCollapse:"collapse",width:"100%",minWidth:720,fontSize:".82rem"}}>
+                  <thead>
+                    <tr style={{background:"#f8fafc",textAlign:"left"}}>
+                      {["Rep","Period","Amount","Status","Recorded by","Ref","",""].map((h,i)=>(
+                        <th key={i} style={{padding:"9px 13px",fontSize:".65rem",fontWeight:700,letterSpacing:".5px",textTransform:"uppercase",color:"#94a3b8",borderBottom:"1.5px solid #e2e8f0",whiteSpace:"nowrap",textAlign:i===2?"right":"left"}}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {scopedPayouts.slice().sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||""))).map(p=>{
+                      const sc=p.status==="Approved"?"#059669":p.status==="Void"?"#94a3b8":"#d97706";
+                      return(
+                        <tr key={p.id} style={{borderBottom:"1px solid #f1f5f9"}}>
+                          <td style={{padding:"10px 13px",fontWeight:700,color:"#0f172a"}}>{p.payee||"—"}</td>
+                          <td style={{padding:"10px 13px",color:"#475569"}}>{p.periodLabel||"—"}</td>
+                          <td style={{padding:"10px 13px",textAlign:"right",fontVariantNumeric:"tabular-nums",fontWeight:700,color:p.status==="Void"?"#94a3b8":"#0f172a"}}>{peso(p.amount)}</td>
+                          <td style={{padding:"10px 13px"}}><span style={{fontSize:".68rem",fontWeight:700,padding:"3px 9px",borderRadius:20,color:sc,background:sc+"1a",whiteSpace:"nowrap"}}>{p.status}</span></td>
+                          <td style={{padding:"10px 13px",color:"#64748b",fontSize:".76rem"}}>{p.recordedBy||"—"}{p.approvedBy?<div style={{color:"#94a3b8"}}>✓ {p.approvedBy}</div>:null}</td>
+                          <td style={{padding:"10px 13px",color:"#64748b",fontSize:".76rem"}}>{[p.payMethod,p.payRef].filter(Boolean).join(" · ")||"—"}</td>
+                          <td style={{padding:"10px 13px",textAlign:"right"}}>{isMgr&&p.status==="Recorded"&&<button onClick={()=>approvePayout(p.id)} style={{border:"none",background:"#059669",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",padding:"5px 11px",borderRadius:7,cursor:"pointer"}}>Approve</button>}</td>
+                          <td style={{padding:"10px 13px",textAlign:"right"}}>{canRecord&&p.status!=="Void"&&<button onClick={()=>voidPayout(p.id)} style={{border:"1px solid #e2e8f0",background:"#fff",color:"#94a3b8",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",padding:"5px 9px",borderRadius:7,cursor:"pointer"}}>Void</button>}</td>
+                        </tr>
+                      );
+                    })}
+                    {scopedPayouts.length===0&&(
+                      <tr><td colSpan={8} style={{padding:"28px 16px",textAlign:"center",color:"#94a3b8"}}>No payouts recorded yet.{canRecord?" Use “Record payout” to log a disbursement.":" Finance records these as commissions are paid."}</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </>
         );
       })()}
+
+      {/* Record-payout form (Finance / Manager) */}
+      {payoutDraft&&(
+        <Modal open onClose={()=>setPayoutDraft(null)} title="Record commission payout">
+          <div style={{display:"flex",flexDirection:"column",gap:12,minWidth:300}}>
+            <Fld label="Rep (sales owner)">
+              <Sel value={payoutDraft.payee} onChange={e=>setPayoutDraft(d=>({...d,payee:e.target.value}))}>
+                <option value="">— Select rep —</option>
+                {[...new Set([...payeeOptions,...(payoutDraft.payee?[payoutDraft.payee]:[])])].sort().map(n=><option key={n} value={n}>{n}</option>)}
+              </Sel>
+            </Fld>
+            <Fld label="Period" hint="e.g. the month the payout covers">
+              <Inp value={payoutDraft.periodLabel} onChange={e=>setPayoutDraft(d=>({...d,periodLabel:e.target.value}))} placeholder="Aug 2026"/>
+            </Fld>
+            <Fld label="Amount (₱)">
+              <Inp type="number" value={payoutDraft.amount} onChange={e=>setPayoutDraft(d=>({...d,amount:e.target.value}))} placeholder="0"/>
+            </Fld>
+            <div style={{display:"flex",gap:10}}>
+              <Fld label="Method"><Inp value={payoutDraft.payMethod} onChange={e=>setPayoutDraft(d=>({...d,payMethod:e.target.value}))} placeholder="Bank transfer"/></Fld>
+              <Fld label="Reference"><Inp value={payoutDraft.payRef} onChange={e=>setPayoutDraft(d=>({...d,payRef:e.target.value}))} placeholder="Ref #"/></Fld>
+            </div>
+            <Fld label="Notes"><Inp value={payoutDraft.notes} onChange={e=>setPayoutDraft(d=>({...d,notes:e.target.value}))} placeholder="Optional"/></Fld>
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:4}}>
+              <button onClick={()=>setPayoutDraft(null)} style={{border:"1px solid #e2e8f0",background:"#fff",color:"#475569",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",padding:"9px 16px",borderRadius:9,cursor:"pointer"}}>Cancel</button>
+              <button onClick={async()=>{
+                  if(!payoutDraft.payee){toastEmit("Please select a rep.","warning");return;}
+                  if(!(Number(payoutDraft.amount)>0)){toastEmit("Enter a payout amount.","warning");return;}
+                  await recordPayout(payoutDraft);
+                  setPayoutDraft(null);
+                }} style={{border:"none",background:"#059669",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",padding:"9px 18px",borderRadius:9,cursor:"pointer"}}>Record payout</button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </Wrap>
   );
 
@@ -11556,7 +12202,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     <div style={{display:"flex",gap:4}}>
                       {(role==="Manager"||role==="Sales")&&<button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#475569",cursor:"pointer",fontFamily:"inherit",minHeight:36}}>✏</button>}
                       {role==="QS"&&<button onClick={()=>setPriceModal(d)} style={{background:"#7c3aed",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",minHeight:36}}>₱</button>}
-                      {(role==="Manager"||role==="QS"||role==="Sales")&&<button onClick={()=>{setBoqCoId(null);setBoqStandaloneId(null);setBoqDealId(d.id);setPage("boq");}} style={{background:"#0ea5e9",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",minHeight:36}} title="Open BOQ Builder">🧮</button>}
+                      {(role==="Manager"||role==="QS"||role==="Sales"||role==="SalesOpsAdmin")&&<button onClick={()=>{setBoqCoId(null);setBoqStandaloneId(null);setBoqDealId(d.id);setPage("boq");}} style={{background:"#0ea5e9",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",minHeight:36}} title="Open BOQ Builder">🧮</button>}
                       {(role==="Manager"||role==="Sales"||role==="SalesOpsAdmin")?<button onClick={()=>openAward(d)} style={{background:"#059669",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",minHeight:36}}>🏆</button>:<button onClick={()=>setAwardReqModal(d)} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",minHeight:36}}>🏆</button>}
                       {(canDeleteDeal||role==="Manager"||role==="Sales")&&<button onClick={e=>{e.stopPropagation();const r=e.currentTarget.getBoundingClientRect();setRowMenu(rowMenu&&rowMenu.deal.id===d.id?null:{deal:d,top:r.bottom+4,right:Math.max(8,window.innerWidth-r.right)});}} style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#64748b",cursor:"pointer",fontFamily:"inherit",minHeight:36,fontWeight:700}} title="More actions">⋯</button>}
                     </div>
@@ -11591,7 +12237,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 {(role==="Manager"||role==="Sales")&&<button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}} title="Edit">✏</button>}
                 {role==="QS"&&!d.value&&<button onClick={()=>setPriceModal(d)} style={{background:"#7c3aed",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}} title="Set Client Price">₱</button>}
                 {role==="QS"&&d.value&&<button onClick={()=>setPriceModal(d)} style={{background:"#ede9fe",border:"1px solid #c4b5fd",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#7c3aed",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}} title="Update Client Price">₱✏</button>}
-                {(role==="Manager"||role==="QS"||role==="Sales")&&<button onClick={()=>{setBoqCoId(null);setBoqStandaloneId(null);setBoqDealId(d.id);setPage("boq");}} style={{background:"#0ea5e9",border:"none",borderRadius:5,padding:"4px 9px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap"}} title="Open BOQ Builder for this deal">🧮 BOQ</button>}
+                {(role==="Manager"||role==="QS"||role==="Sales"||role==="SalesOpsAdmin")&&<button onClick={()=>{setBoqCoId(null);setBoqStandaloneId(null);setBoqDealId(d.id);setPage("boq");}} style={{background:"#0ea5e9",border:"none",borderRadius:5,padding:"4px 9px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap"}} title="Open BOQ Builder for this deal">🧮 BOQ</button>}
                 {(role==="Manager"||role==="Sales"||role==="SalesOpsAdmin")
                   ?<button onClick={()=>openAward(d)} style={{background:"#059669",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}} title="Award Project">🏆</button>
                   :<button onClick={()=>setAwardReqModal(d)} style={{background:"#f59e0b",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}} title="Request Award">🏆</button>
@@ -11811,7 +12457,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       </td>
                       <td style={{padding:cpA,verticalAlign:"middle",display:"flex",gap:4,alignItems:"center"}}>
                         <button onClick={e=>{e.stopPropagation();openEditDeal(d);}} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
-                        {(role==="Manager"||role==="QS"||role==="Sales")&&<button onClick={e=>{e.stopPropagation();setBoqCoId(null);setBoqStandaloneId(null);setBoqDealId(d.id);setPage("boq");}} title={isChild?"Open BOQ Builder for this addendum":"Open BOQ Builder for this project"} style={{background:"#0ea5e9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>🧮</button>}
+                        {(role==="Manager"||role==="QS"||role==="Sales"||role==="SalesOpsAdmin")&&<button onClick={e=>{e.stopPropagation();setBoqCoId(null);setBoqStandaloneId(null);setBoqDealId(d.id);setPage("boq");}} title={isChild?"Open BOQ Builder for this addendum":"Open BOQ Builder for this project"} style={{background:"#0ea5e9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>🧮</button>}
                         <button onClick={e=>{e.stopPropagation();setJumpDeal(d.id);setPage("projects");}} title="Open Project Card" style={{background:"#eff6ff",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#2563eb",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>📋</button>
                         {isChild&&canDeleteDeal&&<button onClick={async e=>{e.stopPropagation();if((await uiConfirm(`Convert "${d.contact||d.client}" into an additive Change Order on the parent project and retire this linked deal?`)))convertChildToCO(d);}} title="Convert this linked deal into a Change Order and retire it" style={{background:"#fef3c7",border:"1px solid #f59e0b",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#92400e",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>⇄ CO</button>}
                         {!isChild&&canDeleteDeal&&(()=>{const kids=deals.filter(x=>x.parentDealId===d.id);if(!kids.length)return null;return<button onClick={async e=>{e.stopPropagation();if((await uiConfirm(`Convert all ${kids.length} linked deal${kids.length===1?"":"s"} on "${d.client||d.contact}" into additive Change Orders and retire them?`)))convertAllChildrenToCO(d);}} title={`Convert all ${kids.length} linked deal(s) into Change Orders`} style={{background:"#fef3c7",border:"1px solid #f59e0b",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#92400e",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>⇄ All→CO ({kids.length})</button>;})()}
@@ -12574,7 +13220,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               ))}
             </div>
             {cashSub==="daily"&&(
-              <DailyCashPosition cashPositions={cashPositions} saveDayPos={saveDayPos} wonDeals={wonDeals} billings={billings} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps} updateMilestone={updateMilestone} upExps={upExps} toSbExpense={toSbExpense} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} vouchers={vouchers} payables={payables} loans={loans} inventory={inventory} userName={session?.name||""}/>
+              <DailyCashPosition cashPositions={cashPositions} saveDayPos={saveDayPos} wonDeals={wonDeals} billings={billings} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps} updateMilestone={updateMilestone} upExps={upExps} toSbExpense={toSbExpense} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} vouchers={vouchers} payables={payables} loans={loans} inventory={inventory} userName={session?.name||""} cashStale={cashStale}/>
             )}
             {cashSub==="weekly"&&(
               <WeeklyCashFlow mode="weekly" cashPositions={cashPositions} billings={billings} exps={exps} chartOfAccounts={chartOfAccounts} setPage={setPage}/>
@@ -12725,8 +13371,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   <div style={{fontWeight:700,color:ERP.navy,fontSize:16}}>Accounts Payable</div>
                   <div style={{fontSize:12.5,color:ERP.muted,marginTop:2}}>Track what GMD owes to suppliers, subcontractors, and vendors.</div>
                 </div>
-                <button onClick={()=>{setPayForm(emptyPayForm());setEditPayId(null);setPayModal(true);}}
-                  style={{background:ERP.gold,border:"none",borderRadius:7,padding:"9px 16px",fontFamily:"inherit",fontSize:13,color:ERP.navy,cursor:"pointer",fontWeight:600}}>+ Other Payable</button>
+                <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                  {(()=>{const miss=payables.filter(p=>p.status!=="Paid"&&p.status!=="Cancelled"&&Number(p.amount)>0&&!p.dueDate).length;
+                    return miss>0?<button onClick={()=>setDueDateFixOpen(true)} style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:7,padding:"9px 14px",fontFamily:"inherit",fontSize:13,color:"#b45309",cursor:"pointer",fontWeight:700}}>📅 Set due dates ({miss})</button>:null;})()}
+                  <button onClick={()=>{setPayForm(emptyPayForm());setEditPayId(null);setPayModal(true);}}
+                    style={{background:ERP.gold,border:"none",borderRadius:7,padding:"9px 16px",fontFamily:"inherit",fontSize:13,color:ERP.navy,cursor:"pointer",fontWeight:600}}>+ Other Payable</button>
+                </div>
               </div>
               {/* Summary */}
               <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(auto-fit,minmax(190px,1fr))",gap:12,marginBottom:20}}>
@@ -12871,9 +13521,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   <Fld label="Amount (₱)" required><Inp type="number" value={payForm.amount} onChange={e=>setPayForm(p=>({...p,amount:e.target.value}))} placeholder="0"/></Fld>
                   <Fld label="Already Paid (₱)"><Inp type="number" value={payForm.paidAmount} onChange={e=>setPayForm(p=>({...p,paidAmount:e.target.value}))} placeholder="0"/></Fld>
                 </div>
-                <Fld label="Due Date">
+                <Fld label="Due Date" required>
                   <Inp type="date" value={payForm.dueDate||""} onChange={e=>setPayForm(p=>({...p,dueDate:e.target.value}))}/>
                   {payForm.dueDate&&payForm.dueDate<today&&<div style={{fontSize:".72rem",color:"#ef4444",marginTop:3,fontWeight:600}}>⚠ Due date is in the past — this payable is already overdue.</div>}
+                  {!payForm.dueDate&&<div style={{fontSize:".72rem",color:"#b45309",marginTop:3,fontWeight:600}}>Recommended — drives the cash-flow forecast.</div>}
                 </Fld>
                 <Fld label="Category"><Sel value={payForm.category} onChange={e=>setPayForm(p=>({...p,category:e.target.value}))}>{["Supplier","Subcontractor","Utility","Rent","Labor","Government","Other"].map(c=><option key={c}>{c}</option>)}</Sel></Fld>
                 <Fld label="Account (Chart of Accounts)" required>
@@ -13555,6 +14206,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           loans={loans}
           inventory={inventory}
           userName={session?.name||""}
+          cashStale={cashStale}
         />
       </Wrap>
     );
@@ -13607,7 +14259,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ── WAREHOUSE ───────────────────────────────────────────────────────────────
   if(role==="Warehouse"||(["Manager","Finance"].includes(role)&&page==="deliveries")){
     if(role==="Warehouse"&&page==="stockmove") return(<Wrap><StockMovementView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} logStockMove={logStockMove} session={session} role={role}/></Wrap>);
-    if(role==="Warehouse"&&page==="inventory") return(<Wrap><InventoryView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} prs={prs} updatePR={updatePR} addInventoryItem={addInventoryItem} updateInventoryItem={updateInventoryItem} deleteInventoryItem={deleteInventoryItem} clearAllInventory={clearAllInventory} logStockMove={logStockMove} suppliers={suppliers} addSupplier={addSupplier} projs={projs} upProjs={upProjs} deals={wonDeals} session={session} role={role}/></Wrap>);
+    if(role==="Warehouse"&&page==="inventory") return(<Wrap><InventoryView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} prs={prs} updatePR={updatePR} addPR={addPR} addInventoryItem={addInventoryItem} updateInventoryItem={updateInventoryItem} deleteInventoryItem={deleteInventoryItem} clearAllInventory={clearAllInventory} logStockMove={logStockMove} mergeInventoryItems={mergeInventoryItems} suppliers={suppliers} addSupplier={addSupplier} printDR={printDR} tools={tools} upTools={upTools} saveTool={saveTool} deleteTool={deleteTool} drs={drs} saveDr={saveDr} deleteDr={deleteDr} projs={projs} upProjs={upProjs} deals={wonDeals} session={session} role={role}/></Wrap>);
     if(page==="deliveries"||page==="home") return(
       <Wrap>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
@@ -14063,67 +14715,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // The Head Designer sees every designer's folder; others see only their own.
     if(page==="myfolder") return(
       <Wrap>
-        {(()=>{
-          const me=session?.name||"";
-          const head=isHeadDesigner(me);
-          // Build a folder per designer: assigned project cards + assigned DRFs.
-          const folderFor=(member)=>{
-            const projItems=projList.filter(d=>(projs[d.id]?.design?.designer||"")===member).map(d=>({kind:"project",id:d.id,client:d.client,title:projs[d.id]?.design?.projectTitle||d.product||d.client,status:projs[d.id]?.design?.status||"Briefing",deal:d}));
-            const drfItems=(drfs||[]).filter(x=>(x.designer||"")===member).map(x=>({kind:"drf",id:x.id,client:x.client,title:x.projectTitle,status:x.status,due:x.designDeadline}));
-            return {member,projItems,drfItems,total:projItems.length+drfItems.length};
-          };
-          // Head Designer sees all designers (own folder first); others just theirs.
-          const members=head?[me,...DESIGN_MEMBERS.filter(m=>m!==me)]:[me];
-          const folders=members.map(folderFor);
-          return(
-            <div>
-              <div style={{marginBottom:18}}>
-                <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>📁 My Folder</h2>
-                <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{head?"Every designer's folder of assigned projects — yours first.":"Your assigned projects and design requests."}</div>
-              </div>
-              {folders.map(({member,projItems,drfItems,total})=>{
-                const mine=member===me;
-                return(
-                  <div key={member} style={{background:"#fff",borderRadius:12,border:`1.5px solid ${mine?"#ec489966":"#e2e8f0"}`,overflow:"hidden",marginBottom:14}}>
-                    <div style={{background:mine?"#be185d":"#1e293b",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                      <span style={{fontWeight:700,color:"#fff",fontSize:".9rem"}}>📁 {member}{mine?" (You)":""}</span>
-                      <span style={{fontSize:".72rem",color:"rgba(255,255,255,.7)",fontWeight:600}}>{total} item{total!==1?"s":""}</span>
-                    </div>
-                    {total===0
-                      ? <div style={{padding:"18px 16px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No projects assigned yet.</div>
-                      : <div>
-                          {projItems.map((it,i)=>{
-                            const c=DS_CLR[it.status]||"#94a3b8";
-                            return(
-                              <div key={"p"+it.id} {...clickable(()=>{setSelProj(it.id);setOpsTab("design");})} aria-label="Open project design" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",borderBottom:"1px solid #f8fafc",cursor:"pointer"}}>
-                                <div style={{flex:1,minWidth:0}}>
-                                  <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{it.client}</div>
-                                  <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>{it.title}</div>
-                                </div>
-                                <span style={{marginLeft:12,fontSize:".68rem",fontWeight:700,color:c,background:c+"18",border:`1px solid ${c}44`,borderRadius:20,padding:"2px 9px",whiteSpace:"nowrap"}}>{it.status}</span>
-                              </div>
-                            );
-                          })}
-                          {drfItems.map((it)=>{
-                            const c=DRF_CLR[it.status]||"#94a3b8";
-                            return(
-                              <div key={"d"+it.id} onClick={()=>setPage("drf")} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",borderBottom:"1px solid #f8fafc",cursor:"pointer"}}>
-                                <div style={{flex:1,minWidth:0}}>
-                                  <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>🖌️ {it.title||it.client}</div>
-                                  <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>{it.client}{it.due?` · due ${it.due}`:""}</div>
-                                </div>
-                                <span style={{marginLeft:12,fontSize:".68rem",fontWeight:700,color:c,background:c+"18",border:`1px solid ${c}44`,borderRadius:20,padding:"2px 9px",whiteSpace:"nowrap"}}>{it.status}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                    }
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })()}
+        <MyFolderView session={session} projList={projList} projs={projs} drfs={drfs} updateDRF={updateDRF} upProj={upProj} setSelProj={setSelProj} setOpsTab={setOpsTab}/>
       </Wrap>
     );
     if(page==="home") return(
@@ -14193,78 +14785,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           );
         })}
         {projList.length===0&&<EmptyState icon="🎨" msg="No active projects assigned yet."/>}
-        {selProj&&proj&&(()=>{
-          const linkedDrf=drfs.find(r=>r.dealId===selProj);
-          const deal=projDeal;
-          const hasApproval=proj.design?.approvedBy&&proj.design?.approvedOn;
-          return(
-          <Modal open title={`Design Details — ${deal?.client}`} onClose={()=>setSelProj(null)} wide>
-            {/* ── Brief from Sales ─────────────────────────── */}
-            <div style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"14px 16px",marginBottom:16}}>
-              <div style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px",marginBottom:10}}>📋 Brief from Sales</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"6px 16px",fontSize:".8rem",color:"#1e293b",marginBottom:8}}>
-                <div><span style={{color:"#94a3b8",fontSize:".72rem"}}>Product / Item</span><div style={{fontWeight:600}}>{deal?.product||"—"}</div></div>
-                <div><span style={{color:"#94a3b8",fontSize:".72rem"}}>Location</span><div style={{fontWeight:600}}>{deal?.location||"—"}</div></div>
-                {deal?.drfSize&&<div><span style={{color:"#94a3b8",fontSize:".72rem"}}>Size / Dimensions</span><div style={{fontWeight:600}}>{deal.drfSize}</div></div>}
-                {deal?.contact&&<div><span style={{color:"#94a3b8",fontSize:".72rem"}}>Contact Person</span><div style={{fontWeight:600}}>{deal.contact}</div></div>}
-              </div>
-              {(deal?.drfDescription||deal?.notes)&&(
-                <div style={{fontSize:".78rem",color:"#475569",marginBottom:6,whiteSpace:"pre-wrap",borderTop:"1px solid #e2e8f0",paddingTop:8}}>
-                  {deal?.drfDescription||deal?.notes}
-                </div>
-              )}
-              {deal?.drfAccessories?.filter(a=>a).length>0&&(
-                <div style={{marginTop:6}}>
-                  <div style={{fontSize:".68rem",color:"#94a3b8",fontWeight:700,marginBottom:4}}>ACCESSORIES / COMPONENTS</div>
-                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                    {deal.drfAccessories.filter(a=>a).map((a,i)=>(
-                      <span key={i} style={{background:"#e0e7ff",color:"#4338ca",fontSize:".72rem",padding:"2px 9px",borderRadius:20,fontWeight:600}}>{a}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {linkedDrf&&(
-                <div style={{marginTop:8,paddingTop:8,borderTop:"1px solid #e2e8f0",fontSize:".75rem",color:"#6366f1",fontWeight:600}}>
-                  📄 DRF on file: {linkedDrf.drfNo||"DRF"} · {linkedDrf.type||""} · {linkedDrf.designDeadline||"no deadline"}
-                  {linkedDrf.description&&<div style={{color:"#475569",fontWeight:400,marginTop:3}}>{linkedDrf.description}</div>}
-                </div>
-              )}
-            </div>
-            {/* ── Design Work ──────────────────────────────── */}
-            <div style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px",marginBottom:10}}>🎨 Design Output</div>
-            <Fld label="Designer"><Sel value={proj.design?.designer||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,designer:e.target.value}}))}><option value="">— Select —</option>{DESIGN_MEMBERS.map(m=><option key={m}>{m}</option>)}</Sel></Fld>
-            <Fld label="Due Date"><Inp type="date" value={proj.design?.dueDate||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,dueDate:e.target.value}}))}/></Fld>
-            <Fld label="Revision No." hint="e.g. Rev 3 — lock this before handoff to Ops"><Inp value={proj.design?.revisionNo||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,revisionNo:e.target.value}}))} placeholder="e.g. Rev 3"/></Fld>
-            <Fld label="File / Link (Google Drive, Figma, etc.)"><Inp type="url" value={proj.design?.link||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,link:e.target.value}}))} placeholder="https://drive.google.com/…"/></Fld>
-            <Fld label="Notes"><Inp rows={2} value={proj.design?.notes||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,notes:e.target.value}}))}/></Fld>
-            {/* ── Approval Stamp ───────────────────────────── */}
-            <div style={{marginTop:16,background:hasApproval?"#f0fdf4":"#fffbeb",border:`1.5px solid ${hasApproval?"#bbf7d0":"#fde68a"}`,borderRadius:12,padding:"14px 16px"}}>
-              <div style={{fontSize:".68rem",fontWeight:700,color:hasApproval?"#15803d":"#92400e",textTransform:"uppercase",letterSpacing:".8px",marginBottom:10}}>
-                {hasApproval?"✅ Approved — Locked for Handoff":"⏳ Pending Approval"}
-              </div>
-              {hasApproval&&(
-                <div style={{display:"flex",gap:16,alignItems:"center",marginBottom:10,flexWrap:"wrap"}}>
-                  <div style={{background:"#dcfce7",border:"1.5px solid #86efac",borderRadius:10,padding:"8px 14px",display:"inline-flex",gap:10,alignItems:"center"}}>
-                    <span style={{fontSize:"1.2rem"}}>🔏</span>
-                    <div>
-                      <div style={{fontWeight:800,color:"#15803d",fontSize:".85rem"}}>{proj.design.revisionNo||"Rev —"}</div>
-                      <div style={{fontSize:".72rem",color:"#166534"}}>Approved by {proj.design.approvedBy} · {proj.design.approvedOn}</div>
-                    </div>
-                  </div>
-                  {proj.design.link&&<a href={proj.design.link} target="_blank" rel="noreferrer" style={{fontSize:".78rem",color:"#15803d",fontWeight:600}}>📂 View Drawings</a>}
-                </div>
-              )}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                <Fld label="Approved by"><Sel value={proj.design?.approvedBy||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,approvedBy:e.target.value}}))}><option value="">— Select approver —</option>{[...DESIGN_MEMBERS,...SALES_TEAM,...OPS_TEAM].filter((v,i,a)=>a.indexOf(v)===i).map(m=><option key={m}>{m}</option>)}</Sel></Fld>
-                <Fld label="Approved on"><Inp type="date" value={proj.design?.approvedOn||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,approvedOn:e.target.value}}))}/></Fld>
-              </div>
-              {!hasApproval&&<div style={{fontSize:".72rem",color:"#92400e",marginTop:6}}>Fill in both fields above to lock this revision for handoff to Operations.</div>}
-            </div>
-            <div style={{fontSize:".72rem",color:"#94a3b8",textAlign:"center",marginTop:10,marginBottom:4}}>Changes are saved automatically as you type.</div>
-            <Btn full onClick={()=>setSelProj(null)}>Close</Btn>
-          </Modal>
-          );
-        })()}
+        {selProj&&proj&&(
+          <DesignDetailModal selProj={selProj} proj={proj} deal={projDeal} linkedDrf={drfs.find(r=>r.dealId===selProj)} drfs={drfs} projList={projList} projs={projs} upProj={upProj} session={session} sendTelegramNotification={sendTelegramNotification} toastEmit={toastEmit} today={today} setSelProj={setSelProj} setOpsTab={setOpsTab}/>
+        )}
       </Wrap>
     );
     if(page==="procurement") return <ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Design",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap} addMR={addMR} wonDeals={wonDeals} session={session}/>;
@@ -14683,10 +15206,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   if(page==="inventory"||(role==="Warehouse"&&page==="home")) return(
     <Wrap>
       <InventoryView
-        inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} prs={prs} updatePR={updatePR}
+        inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} prs={prs} updatePR={updatePR} addPR={addPR}
         addInventoryItem={addInventoryItem} updateInventoryItem={updateInventoryItem}
-        deleteInventoryItem={deleteInventoryItem} clearAllInventory={clearAllInventory} logStockMove={logStockMove}
-        suppliers={suppliers} addSupplier={addSupplier}
+        deleteInventoryItem={deleteInventoryItem} clearAllInventory={clearAllInventory} logStockMove={logStockMove} mergeInventoryItems={mergeInventoryItems}
+        suppliers={suppliers} addSupplier={addSupplier} printDR={printDR} tools={tools} upTools={upTools} saveTool={saveTool} deleteTool={deleteTool} drs={drs} saveDr={saveDr} deleteDr={deleteDr}
         projs={projs} upProjs={upProjs} deals={wonDeals}
         session={session} role={role}/>
     </Wrap>
@@ -14725,8 +15248,23 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       };
       return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} initialCoId={boqCoId} coRecord={co} saveCoBoq={boqCoReadOnly?undefined:saveCoBoq} readOnly={boqCoReadOnly} onBack={()=>{setBoqCoReadOnly(false);setBoqCoId(null);}}/></Wrap>);
     }
-    if(boqDealId) return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} initialDealId={boqDealId} clearBoqDeal={()=>setBoqDealId(null)} onBack={()=>setBoqDealId(null)} onBoqValue={(dealId,netTotal)=>{const v=Math.round((Number(netTotal)||0)*100)/100;const cur=deals.find(d=>d.id===dealId);if(cur&&Math.round((Number(cur.value)||0)*100)/100===v)return;upDeals(ds=>ds.map(d=>d.id===dealId?{...d,value:v}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{value:v}).catch(()=>{});}} onBoqData={(dealId,bd)=>upDeals(ds=>ds.map(d=>d.id===dealId?{...d,boqData:bd}:d))} onUnlinkToStandalone={(b)=>{const did=boqDealId;const id=uid();saveStandaloneBoq({id,title:b.boqTitle||"",location:b.location||"",quotationNo:b.quotationNo||"",boqDate:b.boqDate||today,items:b.items||[],sections:b.sections||[],vatEnabled:b.vatEnabled!==false,discount:b.discount||"",createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});try{const drafts=JSON.parse(localStorage.getItem(KEYS.boqDrafts)||"{}");delete drafts[did];localStorage.setItem(KEYS.boqDrafts,JSON.stringify(drafts));}catch{}if(isSupabaseReady())sbUpdate('deals',did,{boq_data:null}).catch(()=>{});setBoqDealId(null);setBoqStandaloneId(id);toastEmit&&toastEmit("✅ BOQ unlinked to Standalone","success");}}/></Wrap>);
-    if(boqStandaloneId) return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} standaloneBoqs={standaloneBoqs} saveStandaloneBoq={saveStandaloneBoq} initialStandaloneId={boqStandaloneId} clearBoqStandalone={()=>setBoqStandaloneId(null)} onBack={()=>setBoqStandaloneId(null)} onLinkToDeal={(dealId,boqData)=>{const sid=boqStandaloneId;try{const drafts=JSON.parse(localStorage.getItem(KEYS.boqDrafts)||"{}");drafts[dealId]=boqData;localStorage.setItem(KEYS.boqDrafts,JSON.stringify(drafts));}catch{}if(isSupabaseReady())sbUpdate('deals',dealId,{boq_data:boqData}).catch(()=>{});const bi=boqData.items||[];if(bi.length){const grand=bi.reduce((s,it)=>s+(Number(it.total)||0),0);const disc=Math.min(Math.max(Number(boqData.discount)||0,0),grand);const net=Math.round((grand-disc)*100)/100;upDeals(ds=>ds.map(d=>d.id===dealId?{...d,value:net,boqData}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{value:net}).catch(()=>{});}else{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,boqData}:d));}deleteStandaloneBoq(sid);setBoqStandaloneId(null);setBoqDealId(dealId);toastEmit&&toastEmit("✅ BOQ linked to project — deal value set from BOQ","success");}}/></Wrap>);
+    if(boqDealId) return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} initialDealId={boqDealId} clearBoqDeal={()=>setBoqDealId(null)} onBack={()=>setBoqDealId(null)} onBoqValue={(dealId,netTotal)=>{const v=Math.round((Number(netTotal)||0)*100)/100;const cur=deals.find(d=>d.id===dealId);if(cur&&Math.round((Number(cur.value)||0)*100)/100===v)return;upDeals(ds=>ds.map(d=>d.id===dealId?{...d,value:v}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{value:v}).catch(()=>{});}} onBoqData={(dealId,bd)=>upDeals(ds=>ds.map(d=>d.id===dealId?{...d,boqData:bd}:d))} onBoqVat={(dealId,vatEnabled)=>{
+      // BOQ pre-fills the deal's receipt type from its VAT checkbox, but only
+      // when the deal has no explicit choice yet — a receipt type set on the
+      // deal is treated as an intentional override and is never clobbered by a
+      // later BOQ save. vatEnabled must be a decided boolean (not the unset
+      // null) for the fill to apply. VAT on → OR, exempt → AR.
+      if(typeof vatEnabled!=="boolean")return;
+      const rt=vatEnabled?"OR":"AR";
+      const cur=deals.find(d=>d.id===dealId);
+      if(!cur||["OR","AR"].includes(cur.receiptType))return;
+      upDeals(ds=>ds.map(d=>d.id===dealId?{...d,receiptType:rt,withholding:rt==="AR"?false:d.withholding}:d));
+      if(isSupabaseReady())sbUpdate('deals',dealId,{receipt_type:rt,...(rt==="AR"?{withholding:false}:{})}).catch(()=>{});
+    }} onUnlinkToStandalone={(b)=>{const did=boqDealId;const id=uid();saveStandaloneBoq({id,title:b.boqTitle||"",location:b.location||"",quotationNo:b.quotationNo||"",boqDate:b.boqDate||today,items:b.items||[],sections:b.sections||[],vatEnabled:b.vatEnabled!==false,discount:b.discount||"",createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});try{const drafts=JSON.parse(localStorage.getItem(KEYS.boqDrafts)||"{}");delete drafts[did];localStorage.setItem(KEYS.boqDrafts,JSON.stringify(drafts));}catch{}if(isSupabaseReady())sbUpdate('deals',did,{boq_data:null}).catch(()=>{});setBoqDealId(null);setBoqStandaloneId(id);toastEmit&&toastEmit("✅ BOQ unlinked to Standalone","success");}}/></Wrap>);
+    if(boqStandaloneId) return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} standaloneBoqs={standaloneBoqs} saveStandaloneBoq={saveStandaloneBoq} initialStandaloneId={boqStandaloneId} clearBoqStandalone={()=>setBoqStandaloneId(null)} onBack={()=>setBoqStandaloneId(null)} onLinkToDeal={(dealId,boqData)=>{const sid=boqStandaloneId;try{const drafts=JSON.parse(localStorage.getItem(KEYS.boqDrafts)||"{}");drafts[dealId]=boqData;localStorage.setItem(KEYS.boqDrafts,JSON.stringify(drafts));}catch{}if(isSupabaseReady())sbUpdate('deals',dealId,{boq_data:boqData}).catch(()=>{});
+      // Pre-fill receipt type from the linked BOQ's VAT choice when the deal has
+      // none yet (decided boolean only; deal-side override is preserved).
+      if(typeof boqData.vatEnabled==="boolean"){const rt=boqData.vatEnabled?"OR":"AR";const cur=deals.find(d=>d.id===dealId);if(cur&&!["OR","AR"].includes(cur.receiptType)){upDeals(ds=>ds.map(d=>d.id===dealId?{...d,receiptType:rt,withholding:rt==="AR"?false:d.withholding}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{receipt_type:rt,...(rt==="AR"?{withholding:false}:{})}).catch(()=>{});}}const bi=boqData.items||[];if(bi.length){const grand=bi.reduce((s,it)=>s+(Number(it.total)||0),0);const disc=Math.min(Math.max(Number(boqData.discount)||0,0),grand);const net=Math.round((grand-disc)*100)/100;upDeals(ds=>ds.map(d=>d.id===dealId?{...d,value:net,boqData}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{value:net}).catch(()=>{});}else{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,boqData}:d));}deleteStandaloneBoq(sid);setBoqStandaloneId(null);setBoqDealId(dealId);toastEmit&&toastEmit("✅ BOQ linked to project — deal value set from BOQ","success");}}/></Wrap>);
     return(<Wrap><BOQHomeView standaloneBoqs={standaloneBoqs} deals={deals} session={session} role={role} today={today} onOpenStandalone={id=>{setBoqCoId(null);setBoqDealId(null);setBoqStandaloneId(id);}} onOpenDeal={id=>{setBoqCoId(null);setBoqStandaloneId(null);setBoqDealId(id);}} onNewStandalone={()=>{const id=uid();saveStandaloneBoq({id,title:"",location:"",quotationNo:"",boqDate:today,items:[],sections:[],vatEnabled:true,discount:"",createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});setBoqCoId(null);setBoqDealId(null);setBoqStandaloneId(id);}} onDeleteStandalone={deleteStandaloneBoq}/></Wrap>);
   }
 
@@ -14828,6 +15366,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   if(page==="billing") return(
     <>
     <Wrap>
+      {/* Missing due-date nudge — keeps the cash-flow forecast accurate */}
+      {(()=>{const miss=billings.filter(b=>{if(b.status==="Cancelled"||b.status==="Fully Paid")return false;const paid=(b.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);return (Number(b.amount||0)-paid)>0.5&&!b.dueDate;}).length;
+        return miss>0?(
+          <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"10px 14px",marginBottom:14,display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+            <span style={{flex:1,minWidth:200,fontSize:".82rem",color:"#92400e",fontWeight:600}}>⚠️ {miss} unpaid billing{miss===1?"":"s"} missing a due date — the cash-flow forecast can't schedule {miss===1?"it":"them"}.</span>
+            <button onClick={()=>setDueDateFixOpen(true)} style={{background:"#b45309",border:"none",borderRadius:8,padding:"8px 14px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",cursor:"pointer",whiteSpace:"nowrap"}}>📅 Set due dates</button>
+          </div>
+        ):null;})()}
       {/* Aging Summary */}
       {(()=>{
         const now=new Date();
@@ -15309,7 +15855,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     <WIPView wonDeals={wonDeals} projs={projs} billings={billings} exps={exps} prs={prs} overallProg={overallProg} setPage={setPage} Wrap={Wrap} isMobile={isMobile}/>
   );
   if(page==="cashflow"&&(role==="Finance"||role==="Manager"||role==="Accounting"||role==="FinanceAssistant")) return(
-    <CashFlowView billings={billings} payables={payables} vouchers={vouchers} loans={loans} cashPositions={cashPositions} setPage={setPage} Wrap={Wrap} isMobile={isMobile}/>
+    <CashFlowView billings={billings} payables={payables} vouchers={vouchers} loans={loans} cashPositions={cashPositions} setPage={setPage} Wrap={Wrap} isMobile={isMobile} onFixDueDates={()=>setDueDateFixOpen(true)}/>
   );
   if(page==="weeklycashflow"&&(role==="Finance"||role==="Manager"||role==="Accounting")) return(
     <Wrap><WeeklyCashFlow cashPositions={cashPositions} billings={billings} exps={exps} chartOfAccounts={chartOfAccounts} setPage={setPage}/></Wrap>
@@ -16194,7 +16740,7 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
                     {drf.size&&(<div><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:3}}>Size / Dimensions</div><div style={{fontWeight:600,color:"#0f172a",fontSize:".84rem"}}>{drf.size}</div></div>)}
                     {drf.designer&&(<div><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:3}}>Assigned Designer</div><div style={{fontWeight:600,color:"#0f172a",fontSize:".84rem"}}>{drf.designer}</div></div>)}
                     {drf.designDeadline&&(<div><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:3}}>Design Deadline</div><div style={{fontWeight:600,color:"#dc2626",fontSize:".84rem"}}>{drf.designDeadline}</div></div>)}
-                    {drf.description&&(<div style={{gridColumn:"1/-1"}}><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:3}}>Description / Scope</div><div style={{color:"#334155",fontSize:".83rem",whiteSpace:"pre-wrap",lineHeight:1.5}}>{drf.description}</div></div>)}
+                    {drf.description&&(<div style={{gridColumn:"1/-1"}}><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:3}}>Description / Scope</div><div style={{color:"#334155",fontSize:".83rem",whiteSpace:"pre-wrap",lineHeight:1.5}}><Linkify text={drf.description}/></div></div>)}
                     {(drf.accessories||[]).filter(Boolean).length>0&&(<div style={{gridColumn:"1/-1"}}><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Accessories / Components</div><div style={{display:"flex",flexWrap:"wrap",gap:5}}>{drf.accessories.filter(Boolean).map((a,i)=><span key={i} style={{background:"#e0e7ff",color:"#4338ca",borderRadius:5,padding:"2px 9px",fontSize:".74rem",fontWeight:600}}>{a}</span>)}</div></div>)}
                     {(drf.refLinks||[]).filter(Boolean).length>0&&(<div style={{gridColumn:"1/-1"}}><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Reference Links</div><div style={{display:"flex",flexWrap:"wrap",gap:8}}>{drf.refLinks.filter(Boolean).map((r,i)=><a key={i} href={r} target="_blank" rel="noreferrer" style={{color:"#6366f1",fontSize:".76rem",fontWeight:600,textDecoration:"none"}}>🔗 Ref {i+1}</a>)}</div></div>)}
                   </div>
@@ -16821,11 +17367,189 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
 }
 
 // ─── DESIGN REQUEST FORM (DRF) VIEW ──────────────────────────────────────────
+// ─── DESIGN — MY FOLDER (year folders + inline editable dropdowns) ────────────
+// Each designer gets a folder of the projects + DRFs assigned to them, split into
+// year sub-folders (2026, 2027, …) and sortable by client or due date. Clicking a
+// project/DRF opens an inline editable dropdown (status · details · timeline)
+// instead of redirecting to the Design Request tab.
+function MyFolderView({session,projList,projs,drfs,updateDRF,upProj,setSelProj,setOpsTab}){
+  const me=session?.name||"";
+  const head=isHeadDesigner(me);
+  const[sortBy,setSortBy]=useState("client");
+  const[openItem,setOpenItem]=useState(null); // `${kind}:${id}`
+  const mob=window.innerWidth<768;
+  const yearOf=(...cands)=>{for(const c of cands){const m=/(\d{4})/.exec(c||"");if(m)return m[1];}return "Undated";};
+
+  const folderFor=(member)=>{
+    const projItems=projList.filter(d=>(projs[d.id]?.design?.designer||"")===member).map(d=>({
+      kind:"project",id:d.id,client:d.client,
+      title:projs[d.id]?.design?.projectTitle||d.product||d.client,
+      status:projs[d.id]?.design?.status||"Briefing",
+      due:projs[d.id]?.design?.dueDate||"",deal:d,
+    }));
+    const drfItems=(drfs||[]).filter(x=>(x.designer||"")===member).map(x=>({
+      kind:"drf",id:x.id,client:x.client,title:x.projectTitle,status:x.status,due:x.designDeadline||"",drf:x,
+    }));
+    return {member,items:[...projItems,...drfItems]};
+  };
+  const members=head?[me,...DESIGN_MEMBERS.filter(m=>m!==me)]:[me];
+  const folders=members.map(folderFor);
+
+  const sortItems=(items)=>[...items].sort((a,b)=>{
+    if(sortBy==="due"){
+      const av=a.due||"9999",bv=b.due||"9999";
+      return av.localeCompare(bv);
+    }
+    return (a.client||"").localeCompare(b.client||"");
+  });
+
+  return(
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:18,flexWrap:"wrap",gap:12}}>
+        <div>
+          <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>📁 My Projects</h2>
+          <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{head?"Every designer's projects, filed by year — yours first.":"Your assigned projects and design requests, filed by year."}</div>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <span style={{fontSize:".72rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>Sort</span>
+          <select value={sortBy} onChange={e=>setSortBy(e.target.value)}
+            style={{border:"1.5px solid #e2e8f0",borderRadius:10,padding:"7px 11px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
+            <option value="client">Client (A–Z)</option>
+            <option value="due">Due Date</option>
+          </select>
+        </div>
+      </div>
+
+      {folders.map(({member,items})=>{
+        const mine=member===me;
+        // Split into year sub-folders, newest year first (Undated last).
+        const years={};
+        items.forEach(it=>{const y=yearOf(it.due);(years[y]=years[y]||[]).push(it);});
+        const yearKeys=Object.keys(years).sort((a,b)=>{
+          if(a==="Undated") return 1; if(b==="Undated") return -1; return b.localeCompare(a);
+        });
+        return(
+          <div key={member} style={{background:"#fff",borderRadius:12,border:`1.5px solid ${mine?"#ec489966":"#e2e8f0"}`,overflow:"hidden",marginBottom:14}}>
+            <div style={{background:mine?"#be185d":"#1e293b",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{fontWeight:700,color:"#fff",fontSize:".9rem"}}>📁 {member}{mine?" (You)":""}</span>
+              <span style={{fontSize:".72rem",color:"rgba(255,255,255,.7)",fontWeight:600}}>{items.length} item{items.length!==1?"s":""}</span>
+            </div>
+            {items.length===0
+              ? <div style={{padding:"18px 16px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No projects assigned yet.</div>
+              : yearKeys.map(yr=>(
+                <div key={yr}>
+                  <div style={{background:"#f8fafc",borderBottom:"1px solid #eef2f7",borderTop:"1px solid #eef2f7",padding:"7px 16px",display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontWeight:800,color:"#475569",fontSize:".82rem",letterSpacing:".3px"}}>🗂 {yr}</span>
+                    <span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:600}}>{years[yr].length} project{years[yr].length!==1?"s":""}</span>
+                  </div>
+                  {sortItems(years[yr]).map(it=>{
+                    const isDrf=it.kind==="drf";
+                    const c=(isDrf?DRF_CLR[it.status]:DS_CLR[it.status])||"#94a3b8";
+                    const key=`${it.kind}:${it.id}`;
+                    const open=openItem===key;
+                    return(
+                      <div key={key} style={{borderBottom:"1px solid #f8fafc"}}>
+                        <div onClick={()=>setOpenItem(open?null:key)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",cursor:"pointer",background:open?"#fdf4ff":"#fff"}}>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{isDrf?"🖌️ ":""}{it.title||it.client}</div>
+                            <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>{it.client}{it.due?` · due ${it.due}`:""}</div>
+                          </div>
+                          <span style={{marginLeft:12,fontSize:".68rem",fontWeight:700,color:c,background:c+"18",border:`1px solid ${c}44`,borderRadius:20,padding:"2px 9px",whiteSpace:"nowrap"}}>{it.status}</span>
+                          <span style={{marginLeft:10,color:"#94a3b8",fontSize:".7rem"}}>{open?"▲":"▼"}</span>
+                        </div>
+                        {open&&(
+                          <div style={{background:"#faf5ff",borderTop:"1px solid #e9d5ff",padding:"14px 18px"}}>
+                            {/* Standardized data card — same Category · Client ·
+                                Location · Size block as the DRF list, so a project
+                                reads consistently wherever it appears. For a project
+                                card the values come from its linked DRF, falling back
+                                to the deal's brief. */}
+                            {(()=>{
+                              const ld=isDrf?it.drf:(drfs||[]).find(r=>r.dealId===it.id);
+                              const cat=ld?.category||"";
+                              const client=it.client||it.deal?.client||"";
+                              const loc=ld?.location||it.deal?.location||"";
+                              const size=ld?.size||it.deal?.drfSize||"";
+                              return(
+                                <div style={{background:"#fff",border:"1px solid #e9d5ff",borderRadius:10,padding:"12px 14px",marginBottom:14}}>
+                                  <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(4,1fr)",gap:"10px 16px"}}>
+                                    {[["Category",cat],["Client",client],["Location",loc],["Size",size]].map(([l,v])=>(
+                                      <div key={l}>
+                                        <div style={{fontSize:".62rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".6px",marginBottom:3}}>{l}</div>
+                                        <div style={{fontSize:".82rem",color:v?"#0f172a":"#cbd5e1",fontWeight:600}}>{v||"—"}</div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                            <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:14}}>
+                              {/* Project Status */}
+                              <div>
+                                <div style={{fontSize:".65rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Project Status</div>
+                                {isDrf
+                                  ?<select value={it.status} onChange={e=>updateDRF(it.id,{status:e.target.value})}
+                                     style={{width:"100%",boxSizing:"border-box",border:`1.5px solid ${c}`,borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:c,background:c+"12",fontWeight:700,cursor:"pointer"}}>
+                                     {DRF_STATUSES.map(s=><option key={s} value={s} style={{color:"#0f172a",background:"#fff",fontWeight:400}}>{s}</option>)}
+                                   </select>
+                                  :<select value={it.status} onChange={e=>upProj(it.id,p=>({...p,design:{...p.design,status:e.target.value,statusHistory:[...(p.design?.statusHistory||[]),{status:e.target.value,date:todayL,by:session?.name||"Design"}]}}))}
+                                     style={{width:"100%",boxSizing:"border-box",border:`1.5px solid ${c}`,borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:c,background:c+"12",fontWeight:700,cursor:"pointer"}}>
+                                     {DESIGN_STATUSES.map(s=><option key={s} value={s} style={{color:"#0f172a",background:"#fff",fontWeight:400}}>{s}</option>)}
+                                   </select>
+                                }
+                              </div>
+                              {/* Timeline / Due Date */}
+                              <div>
+                                <div style={{fontSize:".65rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Timeline / Due Date</div>
+                                <input type="date" value={it.due||""}
+                                  onChange={e=>{const v=e.target.value;if(isDrf)updateDRF(it.id,{designDeadline:v});else upProj(it.id,p=>({...p,design:{...p.design,dueDate:v}}));}}
+                                  style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a"}}/>
+                              </div>
+                              {/* Project Details — editable */}
+                              <div style={{gridColumn:mob?"auto":"1/-1"}}>
+                                <div style={{fontSize:".65rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Project Details</div>
+                                {isDrf?(
+                                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                                    <input value={it.drf.projectTitle||""} onChange={e=>updateDRF(it.id,{projectTitle:e.target.value})} placeholder="Project title"
+                                      style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a"}}/>
+                                    <textarea value={it.drf.notes||""} onChange={e=>updateDRF(it.id,{notes:e.target.value})} placeholder="Notes / details" rows={2}
+                                      style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a",resize:"vertical"}}/>
+                                  </div>
+                                ):(
+                                  <textarea value={projs[it.id]?.design?.notes||""} onChange={e=>upProj(it.id,p=>({...p,design:{...p.design,notes:e.target.value}}))} placeholder="Design notes / details" rows={2}
+                                    style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a",resize:"vertical"}}/>
+                                )}
+                              </div>
+                            </div>
+                            <div style={{display:"flex",gap:8,marginTop:12,alignItems:"center"}}>
+                              {!isDrf&&(
+                                <button onClick={e=>{e.stopPropagation();setSelProj(it.id);setOpsTab("design");}}
+                                  style={{background:"#7c3aed",border:"none",borderRadius:8,padding:"7px 14px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".76rem",cursor:"pointer"}}>Open full design →</button>
+                              )}
+                              <span style={{fontSize:".7rem",color:"#94a3b8"}}>Changes save automatically.</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))
+            }
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
   const[showForm,setShowForm]=useState(false);
   const[editId,setEditId]=useState(null);
   const[form,setForm]=useState(emptyDRF());
   const[filterSt,setFilterSt]=useState("All");
+  const[filterDesigner,setFilterDesigner]=useState("All");
+  const[query,setQuery]=useState("");
   const mob=window.innerWidth<768;
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
 
@@ -16842,7 +17566,19 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
   const setRef=(i,v)=>f("refLinks",form.refLinks.map((r,ri)=>ri===i?v:r));
 
   const[expandedId,setExpandedId]=useState(null);
-  const shown=filterSt==="All"?drfs:drfs.filter(d=>d.status===filterSt);
+  const q=query.trim().toLowerCase();
+  const shown=(drfs||[]).filter(d=>{
+    if(filterSt!=="All"&&d.status!==filterSt) return false;
+    if(filterDesigner!=="All"){
+      if(filterDesigner==="Unassigned"){if(d.designer) return false;}
+      else if(d.designer!==filterDesigner) return false;
+    }
+    if(q){
+      const hay=[d.projectTitle,d.client,d.designer,d.drfNo,d.location,d.type,d.category].filter(Boolean).join(" ").toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
   const canCreate=["Manager","Sales","Operations","SalesOpsAdmin"].includes(role);
   const canAcknowledge=["Manager","Design"].includes(role);
 
@@ -16854,6 +17590,25 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
           <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>AE submits → Design receives brief → Approved files stored</div>
         </div>
         {canCreate&&<button onClick={openNew} style={{background:"#ec4899",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>+ New DRF</button>}
+      </div>
+
+      {/* Search + Designer filter */}
+      <div style={{display:"flex",gap:10,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
+        <div style={{position:"relative",flex:mob?"1 1 100%":"1 1 260px",minWidth:200}}>
+          <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:"#94a3b8",fontSize:".9rem",pointerEvents:"none"}}>🔍</span>
+          <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search project, client, designer…"
+            style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"9px 12px 9px 34px",fontFamily:"inherit",fontSize:".84rem",color:"#0f172a"}}/>
+          {query&&<button onClick={()=>setQuery("")} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"#94a3b8",cursor:"pointer",fontSize:".9rem",fontFamily:"inherit"}}>✕</button>}
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <span style={{fontSize:".72rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>Designer</span>
+          <select value={filterDesigner} onChange={e=>setFilterDesigner(e.target.value)}
+            style={{border:"1.5px solid #e2e8f0",borderRadius:10,padding:"9px 12px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
+            <option value="All">All Designers</option>
+            <option value="Unassigned">Unassigned</option>
+            {DESIGN_MEMBERS.map(m=><option key={m} value={m}>{m}</option>)}
+          </select>
+        </div>
       </div>
 
       {/* Status filter */}
@@ -16875,7 +17630,13 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
             <Fld label="Location"><Inp value={form.location} onChange={e=>f("location",e.target.value)} placeholder="e.g. SM Megamall Unit 3B"/></Fld>
             <div style={{gridColumn:"1/-1"}}><Fld label="Project Title" required><Inp value={form.projectTitle} onChange={e=>f("projectTitle",e.target.value)} placeholder="e.g. Golf Bag Organizer Rack / Shirts Display"/></Fld></div>
             <Fld label="Type"><Sel value={form.type} onChange={e=>f("type",e.target.value)}>{DRF_TYPES.map(t=><option key={t}>{t}</option>)}</Sel></Fld>
+            <Fld label="Project Type" hint="Kiosk / In-line / Event / Other"><Sel value={form.category||""} onChange={e=>f("category",e.target.value)}><option value="">— Select —</option>{DRF_CATEGORIES.map(t=><option key={t}>{t}</option>)}</Sel></Fld>
             <Fld label="Size / Dimensions"><Inp value={form.size} onChange={e=>f("size",e.target.value)} placeholder="e.g. W1200 x H1800 x D600mm"/></Fld>
+            <Fld label="Maximum Height"><Inp value={form.maxHeight||""} onChange={e=>f("maxHeight",e.target.value)} placeholder="e.g. 2400mm"/></Fld>
+            <Fld label="Platform"><Sel value={form.platform||""} onChange={e=>f("platform",e.target.value)}><option value="">— Select —</option><option>With Platform</option><option>Without Platform</option></Sel></Fld>
+            <Fld label="Ideal Finishes"><Inp value={form.finishes||""} onChange={e=>f("finishes",e.target.value)} placeholder="e.g. Matte laminate, powder-coated steel"/></Fld>
+            <Fld label="Brand Guideline Link"><Inp type="url" value={form.brandGuideLink||""} onChange={e=>f("brandGuideLink",e.target.value)} placeholder="https://…"/></Fld>
+            <Fld label="Budget (optional)"><Inp value={form.budget||""} onChange={e=>f("budget",e.target.value)} placeholder="e.g. ₱150,000"/></Fld>
             {/* Only the Design lead (Manager/Design) assigns who works the brief —
                 Sales/Ops requesting it don't pick the designer. */}
             {canAcknowledge
@@ -16925,7 +17686,7 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
       )}
 
       {/* DRF Table */}
-      {shown.length===0&&<div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8",fontSize:".84rem"}}>No design requests yet.</div>}
+      {shown.length===0&&<div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8",fontSize:".84rem"}}>{(q||filterSt!=="All"||filterDesigner!=="All")?"No design requests match your search / filters.":"No design requests yet."}</div>}
       {shown.length>0&&(
         <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
           <div style={{overflowX:mob?"visible":"auto"}}>
@@ -16987,15 +17748,37 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
                 {/* Expanded detail panel */}
                 {isExpanded&&(
                   <div style={{background:"#faf5ff",borderTop:"1px solid #e9d5ff",padding:"14px 18px"}}>
+                    {/* Standardized brief summary — the answered Sales form.
+                        Always shows the same four fields in the same order so
+                        every DRF reads consistently. */}
+                    <div style={{background:"#fff",border:"1px solid #e9d5ff",borderRadius:10,padding:"12px 14px",marginBottom:12}}>
+                      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:"10px 16px"}}>
+                        {[["Category",drf.category],["Client",drf.client],["Location",drf.location],["Size",drf.size]].map(([l,v])=>(
+                          <div key={l}>
+                            <div style={{fontSize:".62rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".6px",marginBottom:3}}>{l}</div>
+                            <div style={{fontSize:".82rem",color:v?"#0f172a":"#cbd5e1",fontWeight:600}}>{v||"—"}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                     <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14,marginBottom:12}}>
                       {/* Left: brief details */}
                       <div>
-                        <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:8}}>
-                          {drf.location&&<span style={{fontSize:".72rem",color:"#64748b"}}>📍 {drf.location}</span>}
-                          {drf.size&&<span style={{fontSize:".72rem",color:"#64748b"}}>📐 {drf.size}</span>}
-                        </div>
+                        {(drf.maxHeight||drf.platform)&&(
+                          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:8}}>
+                            {drf.maxHeight&&<span style={{fontSize:".72rem",color:"#64748b"}}>↕ Max {drf.maxHeight}</span>}
+                            {drf.platform&&<span style={{fontSize:".72rem",color:"#64748b"}}>🧱 {drf.platform}</span>}
+                          </div>
+                        )}
+                        {(drf.finishes||drf.budget)&&(
+                          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:8,fontSize:".72rem",color:"#64748b"}}>
+                            {drf.finishes&&<span>🎨 Finishes: {drf.finishes}</span>}
+                            {drf.budget&&<span>💰 Budget: {drf.budget}</span>}
+                          </div>
+                        )}
+                        {drf.brandGuideLink&&<div style={{marginBottom:8}}><a href={drf.brandGuideLink} target="_blank" rel="noreferrer" style={{fontSize:".74rem",color:"#6366f1",fontWeight:600,textDecoration:"none"}}>📘 Brand Guideline →</a></div>}
                         {drf.description&&(
-                          <div style={{fontSize:".78rem",color:"#475569",background:"#fff",borderRadius:8,padding:"10px 12px",whiteSpace:"pre-wrap",lineHeight:1.6,border:"1px solid #e9d5ff"}}>{drf.description}</div>
+                          <div style={{fontSize:".78rem",color:"#475569",background:"#fff",borderRadius:8,padding:"10px 12px",whiteSpace:"pre-wrap",lineHeight:1.6,border:"1px solid #e9d5ff"}}><Linkify text={drf.description}/></div>
                         )}
                         {drf.accessories?.filter(Boolean).length>0&&(
                           <div style={{marginTop:8}}>
@@ -17025,12 +17808,24 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
                             <a href={drf.approvedLink} target="_blank" rel="noreferrer" style={{fontSize:".78rem",color:"#059669",fontWeight:700}}>✅ View Approved Files →</a>
                           </div>
                         )}
-                        {drf.notes&&<div style={{fontSize:".75rem",color:"#92400e",background:"#fffbeb",borderRadius:6,padding:"6px 10px",marginBottom:8}}>📝 {drf.notes}</div>}
+                        {drf.notes&&<div style={{fontSize:".75rem",color:"#92400e",background:"#fffbeb",borderRadius:6,padding:"6px 10px",marginBottom:8,whiteSpace:"pre-wrap"}}>📝 <Linkify text={drf.notes} color="#b45309"/></div>}
                         <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:4}}>Submitted by {drf.createdBy||"—"} · {drf.createdAt}</div>
                       </div>
                     </div>
                     {/* Action buttons */}
                     <div style={{display:"flex",gap:7,flexWrap:"wrap",alignItems:"center"}}>
+                      {/* Inline status editing — available at any point after a DRF
+                          exists (incl. after acknowledgement), so the design lead can
+                          push it to In Progress / For Review / Revision / Approved etc.
+                          without opening the full edit form. */}
+                      {canAcknowledge&&(
+                        <select value={drf.status} onClick={e=>e.stopPropagation()}
+                          onChange={e=>{const status=e.target.value;updateDRF(drf.id,{status});}}
+                          title="Update status"
+                          style={{border:`1.5px solid ${statusClr}`,borderRadius:8,padding:"6px 10px",fontFamily:"inherit",fontSize:".75rem",color:statusClr,background:statusClr+"12",cursor:"pointer",fontWeight:700}}>
+                          {DRF_STATUSES.filter(s=>s!=="Approved"||role==="Manager"||isHeadDesigner(session?.name)).map(s=><option key={s} value={s} style={{color:"#0f172a",background:"#fff",fontWeight:400}}>{s}</option>)}
+                        </select>
+                      )}
                       {canAcknowledge&&(
                         <select value={drf.designer||""} onClick={e=>e.stopPropagation()}
                           onChange={e=>{const designer=e.target.value;updateDRF(drf.id,{designer,status:drf.status==="New"?"Acknowledged":drf.status});}}
@@ -22626,6 +23421,11 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const submitMS=async()=>{
     if(!msForm.name||!msForm.amount) return;
     if(!(Number(msForm.amount)>0)){toastEmit&&toastEmit("Amount must be a positive number.","error");return;}
+    if(!String(msForm.dueDate||"").trim()){
+      const ok=await uiConfirm({title:"No due date set",tone:"warning",confirmLabel:"Save without due date",cancelLabel:"Go back & set it",
+        message:"This billing milestone has no due date, so the Cash-Flow Forecast will treat its expected collection as due now instead of scheduling it. Set a due date for an accurate projection.\n\nSave anyway?"});
+      if(!ok) return;
+    }
     addMilestone({...msForm,dealId:selDeal,invoiceNo:msForm.invoiceNo||await claimInv(),createdBy:session?.name||role});
     setMsForm({name:"",description:"",amount:"",invoiceNo:"",invoiceDate:today,dueDate:"",status:"Draft",receiptType:null,withholding:null});
     setShowForm(false);
@@ -22696,8 +23496,13 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     setPayForm({amount:"",date:today,refNo:"",note:"",valueDate:"",bank:"",method:"Bank Transfer"});
     setShowPay(null);
   };
-  const saveEditMs=()=>{
+  const saveEditMs=async()=>{
     if(!editMs) return;
+    if(!String(editMsForm.dueDate||"").trim()){
+      const ok=await uiConfirm({title:"No due date set",tone:"warning",confirmLabel:"Save without due date",cancelLabel:"Go back & set it",
+        message:"This billing milestone has no due date, so the Cash-Flow Forecast will treat its expected collection as due now instead of scheduling it. Set a due date for an accurate projection.\n\nSave anyway?"});
+      if(!ok) return;
+    }
     updateMilestone(editMs,{
       name:editMsForm.name,description:editMsForm.description,
       amount:Number(editMsForm.amount)||0,
@@ -23359,8 +24164,21 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
             const billedNet=ms.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+calcTax(m.amount,m.receiptType??rt,m.withholding??wh).netReceivable,0);
             const collected=ms.reduce((s,m)=>s+(m.payments||[]).filter(p=>!p.bounced).reduce((ps,p)=>ps+n(p.amount),0),0);
             const tx=calcTax(deal?.value||0,rt,wh);
+            // ── Guardrail: milestone bases must reconcile to the contract value ──
+            // Milestone amounts are entered VAT-exclusive (base), same basis as the
+            // contract value, so their sum should equal the contract. A sum over the
+            // contract means the project is over-billed (e.g. retention added on top
+            // of a 100% DP+Progress split → 110%); a sum under it means the schedule
+            // isn't fully set up yet. Cancelled milestones don't count.
+            const billedBase=ms.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+n(m.amount),0);
+            const contractBase=n(deal?.value);
+            const diff=Math.round((billedBase-contractBase)*100)/100;
+            const pctOfContract=contractBase>0?Math.round(billedBase/contractBase*100):0;
+            const overBilled=diff>0.5;                 // sums to more than the contract
+            const underBilled=diff<-0.5&&ms.some(m=>m.status!=="Cancelled"); // short, but has milestones
             return(
-              <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:16}}>
+              <>
+              <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:overBilled||underBilled?10:16}}>
                 {[
                   {l:"Contract Value",v:fmt(deal?.value||0),    c:"#0f172a"},
                   {l:"Total Billed (net)",v:fmt(billedNet),     c:"#3b82f6"},
@@ -23372,6 +24190,40 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                     <div style={{fontSize:".62rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px",marginTop:3}}>{l}</div>
                   </div>
                 ))}
+              </div>
+              {overBilled&&(
+                <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:10,padding:"10px 14px",marginBottom:16,display:"flex",alignItems:"center",gap:10}}>
+                  <span style={{fontSize:"1rem"}}>⚠️</span>
+                  <span style={{fontSize:".8rem",color:"#b91c1c"}}>
+                    <strong>Over-billed: milestones total {pctOfContract}% of the contract.</strong>{" "}
+                    Milestone bases sum to {fmt(billedBase)} vs contract {fmt(contractBase)} — {fmt(diff)} too high. Check the milestone amounts (they should be VAT-exclusive and sum to the contract value).
+                  </span>
+                </div>
+              )}
+              {underBilled&&(
+                <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"10px 14px",marginBottom:16,display:"flex",alignItems:"center",gap:10}}>
+                  <span style={{fontSize:"1rem"}}>ℹ️</span>
+                  <span style={{fontSize:".8rem",color:"#92400e"}}>
+                    Milestones cover {pctOfContract}% of the contract ({fmt(billedBase)} of {fmt(contractBase)}). {fmt(-diff)} not yet scheduled — expected if the billing schedule is still being set up.
+                  </span>
+                </div>
+              )}
+              </>
+            );
+          })()}
+
+          {/* Receipt-type consistency guard — a milestone whose receipt type disagrees with
+              its deal prints VAT differently than the app shows (OR adds 12% VAT, AR does not),
+              which silently produces a phantom balance-due on the printed invoice. Surface it so
+              Finance reconciles the deal header instead of letting it drift. */}
+          {(()=>{
+            const bad=billings.filter(m=>m.dealId===selDeal&&m.status!=="Cancelled"
+              &&m.receiptType&&deal?.receiptType&&m.receiptType!==deal.receiptType);
+            if(!bad.length)return null;
+            return(
+              <div style={{marginBottom:12,padding:"10px 14px",background:"#fffbeb",border:"1.5px solid #fcd34d",borderRadius:8,fontSize:".78rem",color:"#92400e"}}>
+                <div style={{fontWeight:700,marginBottom:3}}>⚠️ Receipt-type mismatch</div>
+                {bad.length} milestone{bad.length>1?"s":""} ({bad.map(m=>m.invoiceNo||m.name).join(", ")}) {bad.length>1?"are":"is"} set to <strong>{[...new Set(bad.map(m=>m.receiptType))].join("/")}</strong> but this deal is <strong>{deal.receiptType}</strong>. Printed invoices use the milestone's type, so the invoice and the deal summary can show different tax. Align the deal's receipt type (Edit terms) so new milestones inherit the correct VAT treatment.
               </div>
             );
           })()}
@@ -23456,11 +24308,13 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
             // confirmation dialogue previewing the milestones derived from the
             // saved payment terms; only on explicit confirmation are they created.
             const setupMilestones=async()=>{
+              const share=pct=>Math.round(val*pct/100*100)/100;
+              const peso=x=>x.toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
               const lines=[
-                terms.dp>0&&`• Down Payment (${terms.dp}%) — ₱${Math.round(val*terms.dp/100).toLocaleString("en-PH")}`,
-                terms.progress>0&&`• Progress Billing (${terms.progress}%) — ₱${Math.round(val*terms.progress/100).toLocaleString("en-PH")}`,
-                terms.final>0&&`• Final Billing (${terms.final}%) — ₱${Math.round(val*terms.final/100).toLocaleString("en-PH")}`,
-                terms.retention>0&&`• Retention (${terms.retention}%) — ₱${Math.round(val*terms.retention/100).toLocaleString("en-PH")}`,
+                terms.dp>0&&`• Down Payment (${terms.dp}%) — ₱${peso(share(terms.dp))}`,
+                terms.progress>0&&`• Progress Billing (${terms.progress}%) — ₱${peso(share(terms.progress))}`,
+                terms.final>0&&`• Final Billing (${terms.final}%) — ₱${peso(share(terms.final))}`,
+                terms.retention>0&&`• Retention (${terms.retention}%) — ₱${peso(share(terms.retention))}`,
               ].filter(Boolean).join("\n");
               const ok=await uiConfirm({
                 title:"Set Up Billing Milestones",
@@ -23554,7 +24408,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                     </Fld>
                     <Fld label="Invoice No." hint="Auto-generated if blank"><Inp value={msForm.invoiceNo} onChange={e=>fm("invoiceNo",e.target.value)} placeholder={nextInvoiceNo()}/></Fld>
                     <Fld label="Invoice Date"><Inp type="date" value={msForm.invoiceDate} onChange={e=>fm("invoiceDate",e.target.value)}/></Fld>
-                    <Fld label="Due Date"><Inp type="date" value={msForm.dueDate} onChange={e=>fm("dueDate",e.target.value)}/></Fld>
+                    <Fld label="Due Date" required hint={!msForm.dueDate?"Recommended — drives the cash-flow forecast.":undefined}><Inp type="date" value={msForm.dueDate} onChange={e=>fm("dueDate",e.target.value)}/></Fld>
                     <Fld label="Status"><Sel value={msForm.status} onChange={e=>fm("status",e.target.value)}>{BILLING_STATUSES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
                     <Fld label="Receipt Type" hint={`Defaults to deal setting (${deal?.receiptType||"OR"})`}>
                       <Sel value={msForm.receiptType||""} onChange={e=>fm("receiptType",e.target.value||null)}>
@@ -23724,7 +24578,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                             <Fld label="Amount (₱)"><Inp type="number" value={editMsForm.amount||""} onChange={e=>fme("amount",e.target.value)} placeholder="0.00"/></Fld>
                             <Fld label="Invoice No"><Inp value={editMsForm.invoiceNo||""} onChange={e=>fme("invoiceNo",e.target.value)} placeholder="INV-0001"/></Fld>
                             <Fld label="Invoice Date"><Inp type="date" value={editMsForm.invoiceDate||""} onChange={e=>fme("invoiceDate",e.target.value)}/></Fld>
-                            <Fld label="Due Date"><Inp type="date" value={editMsForm.dueDate||""} onChange={e=>fme("dueDate",e.target.value)}/></Fld>
+                            <Fld label="Due Date" required hint={!editMsForm.dueDate?"Recommended — drives the cash-flow forecast.":undefined}><Inp type="date" value={editMsForm.dueDate||""} onChange={e=>fme("dueDate",e.target.value)}/></Fld>
                             <Fld label="Description"><Inp value={editMsForm.description||""} onChange={e=>fme("description",e.target.value)} placeholder="Optional details…"/></Fld>
                             <Fld label="Receipt Type" hint={`Deal default: ${deal?.receiptType||"OR"}`}>
                               <Sel value={editMsForm.receiptType||""} onChange={e=>fme("receiptType",e.target.value||null)}>
