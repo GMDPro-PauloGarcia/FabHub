@@ -242,6 +242,11 @@ const DEFAULT_USERS = [
   { id:"u20", name:"Miel Vidallo",       username:"miel",     passwordHash:legacyHashPwSync("GMD2026!"),   role:"Design",       status:"active", createdAt:today },
   { id:"u21", name:"Adrian Adriano",     username:"adrian",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"Design",       status:"active", createdAt:today },
   { id:"u22", name:"Tisha Leyva",        username:"tisha",    passwordHash:legacyHashPwSync("GMD2026!"),   role:"Design",       status:"active", createdAt:today },
+  // ── Office wall display (65" touchscreen) ────────────────────────────────
+  // A dedicated read-only kiosk account. Logging in as this user drops straight
+  // into the fullscreen OfficeTVDashboard (no nav, no write actions). Role
+  // "Display" is granted SELECT-only RLS in migration 054; it can never write.
+  { id:"u28", name:"Office Display",     username:"tv",       passwordHash:legacyHashPwSync("GMDwall2026!"), role:"Display",   title:"Office Wall Display", status:"active", createdAt:today },
 ];
 
 // ─── SEED DATA ────────────────────────────────────────────────────────────────
@@ -3066,6 +3071,399 @@ function DailySiteLogView({dailyLogs,wonDeals,addDailyLog,delDailyLog,session,ro
   );
 }
 
+// ─── OFFICE TV WALL DISPLAY ───────────────────────────────────────────────────
+// Fullscreen, touch-navigable dashboard built for the 65" office touchscreen.
+// Rendered ONLY for the read-only "Display" kiosk account (see the render gate in
+// App). Three panels — the construction/site calendar, awarded (won) projects,
+// and announcements — laid out to fill the whole wall. No nav, no write actions:
+// every piece of data it shows is already loaded into App state and kept live by
+// the Supabase realtime subscriptions, so the board self-refreshes.
+const TV_EVENT_COLORS={Installation:"#17998a",Repair:"#3b82f6",Punchlist:"#f59e0b",Construction:"#c0392b",Others:"#64748b",Turnover:"#3b82f6","PO Delivery":"#f97316","Billing Due":"#10b981","DRF Deadline":"#ec4899",Backjob:"#dc2626",Maintenance:"#f59e0b","Site Visit":"#0ea5e9",Inspection:"#8b5cf6","Site Meeting":"#059669"};
+const TV_EVENT_ICONS={Installation:"🏗",Repair:"🔧",Punchlist:"📋",Construction:"🧱",Others:"📌",Turnover:"🏗","PO Delivery":"📦","Billing Due":"💵","DRF Deadline":"📝",Backjob:"🔄",Maintenance:"⚙️","Site Visit":"🏗","Inspection":"🔍","Site Meeting":"👥"};
+const TV_OPS_TYPES=Object.keys(TV_EVENT_COLORS);
+const TV_PRI_CLR={High:"#ef4444",Urgent:"#dc2626",Normal:"#0ea5e9",Low:"#64748b",Info:"#0ea5e9"};
+const tvPeso=n=>{const v=Number(n||0);try{return "₱"+v.toLocaleString("en-PH",{maximumFractionDigits:0});}catch{return "₱"+Math.round(v);}};
+const tvDayLabel=dateStr=>{if(!dateStr)return "";try{const d=new Date(dateStr+"T00:00:00");return d.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});}catch{return dateStr;}};
+
+const TV_JOB_TYPES=[{label:"Installation",code:"I"},{label:"Repair",code:"R"},{label:"Punchlist",code:"P"},{label:"Construction",code:"C"},{label:"Site Visit",code:"P"},{label:"Inspection",code:"P"},{label:"Site Meeting",code:"P"},{label:"Backjob",code:"R"},{label:"Others",code:"O"}];
+// Weekly Field Board — mirrors ConstructionCalendar's field board. Every field
+// job carries a top-level work code (I/R/P/C/O); auto-derived event types map
+// onto a code via TV_CAT_FROM_TYPE.
+const TV_WORK_CATEGORIES=[{code:"I",label:"Installation",color:"#17998a"},{code:"R",label:"Repair",color:"#3b82f6"},{code:"P",label:"Punchlist",color:"#f59e0b"},{code:"C",label:"Construction",color:"#c0392b"},{code:"O",label:"Others",color:"#64748b"}];
+const TV_CAT_COLOR=Object.fromEntries(TV_WORK_CATEGORIES.map(c=>[c.code,c.color]));
+const TV_CODE_FROM_LABEL=Object.fromEntries(TV_WORK_CATEGORIES.map(c=>[c.label,c.code]));
+const TV_CAT_FROM_TYPE=t=>TV_CODE_FROM_LABEL[t]||({Turnover:"I","Site Visit":"P",Inspection:"P","Site Meeting":"P",Backjob:"R",Maintenance:"R"}[t])||"R";
+const TV_DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const tvIsoDate=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+function OfficeTVDashboard({deals=[],wonDeals=[],checklists=[],announcements=[],today,todayL,onLogout,onAddJob}){
+  const[tab,setTab]=React.useState("overview");
+  const[now,setNow]=React.useState(()=>new Date());
+  const[jobModal,setJobModal]=React.useState(false);
+  const emptyJob={type:"Installation",dueDate:today,projectId:"",title:"",location:"",assignedTo:"",notes:""};
+  const[jobForm,setJobForm]=React.useState(emptyJob);
+  const openJob=()=>{setJobForm({...emptyJob,dueDate:today});setJobModal(true);};
+  const saveJob=()=>{
+    const hasProject=!!jobForm.projectId;
+    const title=(jobForm.title||"").trim();
+    if(!jobForm.dueDate){toastEmit("Pick a date for the job.","warning");return;}
+    if(!hasProject&&!title){toastEmit("Choose a project or type a job title.","warning");return;}
+    const meta=TV_JOB_TYPES.find(t=>t.label===jobForm.type)||TV_JOB_TYPES[0];
+    onAddJob&&onAddJob({type:jobForm.type,category:meta.code,dueDate:jobForm.dueDate,projectId:jobForm.projectId||"",title:hasProject?"":title,workDetail:jobForm.notes||"",location:jobForm.location||"",assignedTo:jobForm.assignedTo||"",notes:jobForm.notes||"",status:"Scheduled"});
+    toastEmit("Job added to the calendar.","success");
+    setJobModal(false);
+  };
+  // ── Weekly Field Board ────────────────────────────────────────────────────
+  const[boardMonday,setBoardMonday]=React.useState(()=>{const d=new Date(today+"T00:00:00");d.setDate(d.getDate()-((d.getDay()+6)%7));d.setHours(0,0,0,0);return d;});
+  const boardDays=React.useMemo(()=>Array.from({length:6},(_,i)=>{const d=new Date(boardMonday);d.setDate(d.getDate()+i);return{date:tvIsoDate(d),dow:TV_DOW[d.getDay()],dd:`${String(d.getMonth()+1).padStart(2,"0")}.${String(d.getDate()).padStart(2,"0")}`};}),[boardMonday]);
+  const boardJobs=React.useMemo(()=>{
+    const start=boardDays[0]?.date,end=boardDays[5]?.date;const map={};boardDays.forEach(d=>map[d.date]=[]);
+    if(!start||!end) return map;
+    (checklists||[]).filter(c=>c.dept==="Operations"&&TV_OPS_TYPES.includes(c.type)&&c.dueDate&&c.dueDate>=start&&c.dueDate<=end).forEach(c=>{const cat=c.category||TV_CAT_FROM_TYPE(c.type);const proj=wonDeals.find(d=>d.id===c.projectId);(map[c.dueDate]=map[c.dueDate]||[]).push({...c,cat,projName:proj?.contact||proj?.client||c.title||"Untitled",client:proj?.client||""});});
+    Object.values(map).forEach(a=>a.sort((x,y)=>(x.cat||"").localeCompare(y.cat||"")));
+    return map;
+  },[checklists,boardDays,wonDeals]);
+  const boardCoordLoad=React.useMemo(()=>{const m={};Object.values(boardJobs).flat().forEach(j=>{const who=(j.assignedTo||"").trim();if(who)m[who]=(m[who]||0)+1;});return Object.entries(m).map(([name,count])=>({name,count})).sort((a,b)=>b.count-a.count);},[boardJobs]);
+  const boardTotal=React.useMemo(()=>Object.values(boardJobs).reduce((s,a)=>s+a.length,0),[boardJobs]);
+  const boardMaxLoad=boardCoordLoad.length?boardCoordLoad[0].count:0;
+  const shiftWeek=n=>setBoardMonday(m=>{const d=new Date(m);d.setDate(d.getDate()+n*7);return d;});
+  const thisMonday=()=>{const d=new Date(today+"T00:00:00");d.setDate(d.getDate()-((d.getDay()+6)%7));d.setHours(0,0,0,0);setBoardMonday(d);};
+  const addJobOn=dateIso=>{setJobForm({...emptyJob,dueDate:dateIso});setJobModal(true);};
+
+  // Live clock — ticks every second. Guarded new Date() is fine at runtime.
+  React.useEffect(()=>{const t=setInterval(()=>setNow(new Date()),1000);return()=>clearInterval(t);},[]);
+
+  // ── Upcoming site/ops calendar (from the checklists table) ────────────────
+  const upcoming=React.useMemo(()=>{
+    const rows=(checklists||[]).filter(c=>c.dept==="Operations"&&TV_OPS_TYPES.includes(c.type)&&c.dueDate&&c.status!=="Done"&&c.dueDate>=today);
+    rows.sort((a,b)=>(a.dueDate||"").localeCompare(b.dueDate||""));
+    const byDay={};
+    rows.forEach(c=>{const proj=wonDeals.find(d=>d.id===c.projectId);(byDay[c.dueDate]=byDay[c.dueDate]||[]).push({...c,projName:proj?.contact||proj?.client||c.title||"Site work",client:proj?.client||""});});
+    return Object.entries(byDay).slice(0,10).map(([date,items])=>({date,items}));
+  },[checklists,wonDeals,today]);
+
+  // ── Awarded / won projects ────────────────────────────────────────────────
+  const awarded=React.useMemo(()=>{
+    const rows=(wonDeals||[]).map(d=>({id:d.id,client:d.client||"—",name:d.contact||d.product||d.client||"Project",value:Number(d.value||0),stage:d.stage||"",date:d.awardDate||d.awardedDate||d.dateAcquired||"",owner:d.salesOwner||"",location:d.location||""}));
+    rows.sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+    return rows;
+  },[wonDeals]);
+  const awardTotal=React.useMemo(()=>awarded.reduce((s,d)=>s+d.value,0),[awarded]);
+  const monthKey=today?.slice(0,7)||"";
+  const awardedThisMonth=React.useMemo(()=>awarded.filter(d=>(d.date||"").slice(0,7)===monthKey),[awarded,monthKey]);
+
+  // ── Announcements ─────────────────────────────────────────────────────────
+  const notices=React.useMemo(()=>{
+    const rows=[...(announcements||[])].filter(a=>a&&(a.title||a.body));
+    rows.sort((a,b)=>((b.pinned?1:0)-(a.pinned?1:0))||((b.date||"").localeCompare(a.date||"")));
+    return rows;
+  },[announcements]);
+
+  const C={bg:"#0b1220",panel:"#111c31",panel2:"#0f1830",border:"#1e2c48",text:"#f1f5f9",dim:"#94a3b8",amber:"#f59e0b",teal:"#17998a"};
+  const shell={position:"fixed",inset:0,background:C.bg,color:C.text,fontFamily:"'Segoe UI',system-ui,sans-serif",display:"flex",flexDirection:"column",overflow:"hidden",zIndex:9999};
+  const panel={background:C.panel,border:`1px solid ${C.border}`,borderRadius:18,display:"flex",flexDirection:"column",overflow:"hidden",minHeight:0};
+  const panelHead={display:"flex",alignItems:"center",gap:12,padding:"18px 22px",borderBottom:`1px solid ${C.border}`,flexShrink:0};
+  const panelTitle={fontFamily:"'Barlow Condensed','Segoe UI',sans-serif",fontWeight:800,fontSize:"1.7rem",letterSpacing:.3,textTransform:"uppercase"};
+  const scroll={flex:1,overflowY:"auto",padding:"14px 20px",WebkitOverflowScrolling:"touch"};
+  const clock=now.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"});
+  const bigDate=now.toLocaleDateString("en-US",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+
+  // ── Panel renderers ───────────────────────────────────────────────────────
+  const CalendarPanel=({compact})=>(
+    <div style={panel}>
+      <div style={panelHead}><span style={{fontSize:"1.7rem"}}>📅</span><span style={panelTitle}>Site Calendar</span>
+        <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:14}}>
+          <span style={{color:C.dim,fontSize:"1rem"}}>{upcoming.reduce((s,d)=>s+d.items.length,0)} upcoming</span>
+          {onAddJob&&<button onClick={openJob} style={{background:C.teal,color:"#fff",border:"none",borderRadius:12,padding:"10px 18px",fontSize:"1.05rem",fontWeight:800,cursor:"pointer"}}>+ Add Job</button>}
+        </div>
+      </div>
+      <div style={scroll}>
+        {upcoming.length===0&&<div style={{color:C.dim,textAlign:"center",padding:"40px 0",fontSize:"1.2rem"}}>No scheduled site work.</div>}
+        {upcoming.map(({date,items})=>(
+          <div key={date} style={{marginBottom:18}}>
+            <div style={{fontWeight:800,fontSize:"1.15rem",color:date===today?C.amber:C.text,marginBottom:8,display:"flex",alignItems:"center",gap:10}}>
+              {tvDayLabel(date)} {date===today&&<span style={{fontSize:".8rem",background:C.amber,color:"#0b1220",padding:"2px 10px",borderRadius:20,fontWeight:800}}>TODAY</span>}
+            </div>
+            {items.slice(0,compact?3:20).map(it=>{const t=it.type;const clr=TV_EVENT_COLORS[t]||"#64748b";return(
+              <div key={it.id} style={{display:"flex",alignItems:"center",gap:14,background:C.panel2,border:`1px solid ${C.border}`,borderLeft:`5px solid ${clr}`,borderRadius:12,padding:"12px 16px",marginBottom:8}}>
+                <span style={{fontSize:"1.5rem"}}>{TV_EVENT_ICONS[t]||"📌"}</span>
+                <div style={{minWidth:0,flex:1}}>
+                  <div style={{fontWeight:700,fontSize:"1.15rem",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{it.projName}</div>
+                  <div style={{color:C.dim,fontSize:".95rem"}}>{[it.location,it.assignedTo].filter(Boolean).join(" · ")||it.client}</div>
+                </div>
+                <span style={{fontSize:".85rem",fontWeight:700,color:clr,textTransform:"uppercase",whiteSpace:"nowrap"}}>{t}</span>
+              </div>
+            );})}
+            {compact&&items.length>3&&<div style={{color:C.dim,fontSize:".9rem",paddingLeft:4}}>+{items.length-3} more…</div>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const AwardedPanel=({compact})=>(
+    <div style={panel}>
+      <div style={panelHead}><span style={{fontSize:"1.7rem"}}>🏆</span><span style={panelTitle}>Awarded Projects</span></div>
+      <div style={{display:"flex",gap:12,padding:"14px 20px 4px",flexShrink:0}}>
+        <div style={{flex:1,background:C.panel2,border:`1px solid ${C.border}`,borderRadius:12,padding:"10px 14px"}}><div style={{color:C.dim,fontSize:".8rem",textTransform:"uppercase",letterSpacing:.5}}>Total Awarded</div><div style={{fontWeight:800,fontSize:"1.5rem",color:C.teal}}>{tvPeso(awardTotal)}</div></div>
+        <div style={{flex:1,background:C.panel2,border:`1px solid ${C.border}`,borderRadius:12,padding:"10px 14px"}}><div style={{color:C.dim,fontSize:".8rem",textTransform:"uppercase",letterSpacing:.5}}>This Month</div><div style={{fontWeight:800,fontSize:"1.5rem",color:C.amber}}>{awardedThisMonth.length} · {tvPeso(awardedThisMonth.reduce((s,d)=>s+d.value,0))}</div></div>
+      </div>
+      <div style={scroll}>
+        {awarded.length===0&&<div style={{color:C.dim,textAlign:"center",padding:"40px 0",fontSize:"1.2rem"}}>No awarded projects yet.</div>}
+        {awarded.slice(0,compact?8:100).map((d,i)=>{const clr=(typeof STAGE_CLR!=="undefined"&&STAGE_CLR[d.stage])||C.teal;return(
+          <div key={d.id} style={{display:"flex",alignItems:"center",gap:14,background:C.panel2,border:`1px solid ${C.border}`,borderRadius:12,padding:"12px 16px",marginBottom:8}}>
+            <span style={{fontWeight:800,color:C.dim,fontSize:"1.1rem",width:28,textAlign:"right"}}>{i+1}</span>
+            <div style={{minWidth:0,flex:1}}>
+              <div style={{fontWeight:700,fontSize:"1.2rem",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{d.name}</div>
+              <div style={{color:C.dim,fontSize:".95rem",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{d.client}{d.owner?` · ${d.owner}`:""}</div>
+            </div>
+            <div style={{textAlign:"right",whiteSpace:"nowrap"}}>
+              <div style={{fontWeight:800,fontSize:"1.2rem",color:C.teal}}>{tvPeso(d.value)}</div>
+              <div style={{fontSize:".8rem",fontWeight:700,color:clr,textTransform:"uppercase"}}>{(d.stage||"").replace(/^\d+\s·\s/,"")}</div>
+            </div>
+          </div>
+        );})}
+      </div>
+    </div>
+  );
+
+  const NoticesPanel=()=>(
+    <div style={panel}>
+      <div style={panelHead}><span style={{fontSize:"1.7rem"}}>📢</span><span style={panelTitle}>Announcements</span></div>
+      <div style={scroll}>
+        {notices.length===0&&<div style={{color:C.dim,textAlign:"center",padding:"40px 0",fontSize:"1.2rem"}}>No announcements right now.</div>}
+        {notices.map(a=>{const clr=TV_PRI_CLR[a.priority]||C.amber;return(
+          <div key={a.id||a.title} style={{background:C.panel2,border:`1px solid ${C.border}`,borderLeft:`5px solid ${clr}`,borderRadius:12,padding:"14px 18px",marginBottom:10}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
+              {a.pinned&&<span title="Pinned" style={{fontSize:"1.1rem"}}>📌</span>}
+              <span style={{fontWeight:800,fontSize:"1.25rem"}}>{a.title||"Notice"}</span>
+              {a.priority&&<span style={{marginLeft:"auto",fontSize:".75rem",fontWeight:800,color:clr,textTransform:"uppercase",letterSpacing:.5}}>{a.priority}</span>}
+            </div>
+            {a.body&&<div style={{color:"#dbe4f0",fontSize:"1.1rem",lineHeight:1.5,whiteSpace:"pre-wrap"}}>{a.body}</div>}
+            {(a.date||a.author)&&<div style={{color:C.dim,fontSize:".85rem",marginTop:6}}>{[a.author,a.date&&tvDayLabel(a.date)].filter(Boolean).join(" · ")}</div>}
+          </div>
+        );})}
+      </div>
+    </div>
+  );
+
+  const FieldBoardPanel=()=>{
+    const wkNo=(()=>{const d=new Date(boardMonday);const oneJan=new Date(d.getFullYear(),0,1);return Math.ceil((((d-oneJan)/86400000)+oneJan.getDay()+1)/7);})();
+    const rangeLbl=`${boardMonday.toLocaleDateString("en-PH",{month:"short",day:"numeric"})} – ${new Date(boardMonday.getTime()+5*86400000).toLocaleDateString("en-PH",{day:"numeric"})}`;
+    const navBtn={background:C.panel2,color:C.text,border:`1px solid ${C.border}`,borderRadius:10,padding:"8px 16px",fontSize:"1rem",fontWeight:700,cursor:"pointer"};
+    return(
+      <div style={{...panel,height:"100%"}}>
+        {/* Board header */}
+        <div style={{display:"flex",flexWrap:"wrap",gap:12,alignItems:"flex-end",justifyContent:"space-between",padding:"16px 22px",borderBottom:`4px solid ${C.amber}`,flexShrink:0}}>
+          <div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:".14em",fontSize:".8rem",color:C.amber,textTransform:"uppercase"}}>GMD Productions · Operations</div>
+            <div style={{...panelTitle,fontSize:"2rem"}}>Weekly Field Board</div>
+          </div>
+          <div style={{textAlign:"right",lineHeight:1.3}}>
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginBottom:6}}>
+              <button onClick={()=>shiftWeek(-1)} style={navBtn}>‹</button>
+              <button onClick={thisMonday} style={navBtn}>This week</button>
+              <button onClick={()=>shiftWeek(1)} style={navBtn}>›</button>
+            </div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,fontSize:"1.4rem"}}>WK {wkNo} · {rangeLbl}</div>
+            <div style={{fontSize:".9rem",color:C.dim}}>{boardTotal} job{boardTotal!==1?"s":""} · {boardCoordLoad.length} coordinator{boardCoordLoad.length!==1?"s":""}</div>
+          </div>
+        </div>
+        {/* Legend + coordinator load */}
+        <div style={{display:"flex",flexWrap:"wrap",gap:16,justifyContent:"space-between",alignItems:"center",padding:"10px 22px",background:C.panel2,borderBottom:`1px solid ${C.border}`,flexShrink:0}}>
+          <div style={{display:"flex",flexWrap:"wrap",gap:14}}>
+            {TV_WORK_CATEGORIES.map(c=><span key={c.code} style={{display:"flex",alignItems:"center",gap:6,fontSize:".9rem",color:"#d7dee8",fontWeight:600}}><span style={{width:12,height:12,borderRadius:3,background:c.color}}/>{c.label}</span>)}
+          </div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:8,alignItems:"center"}}>
+            <span style={{fontSize:".72rem",letterSpacing:".12em",textTransform:"uppercase",color:C.dim,fontWeight:700}}>Load</span>
+            {boardCoordLoad.length===0&&<span style={{fontSize:".85rem",color:C.dim}}>— none assigned</span>}
+            {boardCoordLoad.map(c=>{const hot=c.count>=Math.max(3,boardMaxLoad);return(<span key={c.name} style={{display:"flex",alignItems:"center",gap:6,background:hot?"rgba(245,158,11,.18)":"rgba(255,255,255,.06)",border:`1px solid ${hot?C.amber:C.border}`,padding:"3px 10px",borderRadius:20,fontSize:".9rem",fontWeight:600,color:hot?"#ffd9b8":C.text}}>{c.name} <b style={{color:hot?C.amber:C.text}}>{c.count}</b></span>);})}
+          </div>
+        </div>
+        {/* Week grid */}
+        <div style={{flex:1,minHeight:0,overflowY:"auto",padding:14}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:10,minHeight:"100%"}}>
+            {boardDays.map(day=>{
+              const jobs=boardJobs[day.date]||[];const isToday=day.date===today;const slack=jobs.length<=1;
+              return(
+                <div key={day.date} style={{background:C.panel2,border:`1px solid ${isToday?C.amber:C.border}`,borderRadius:12,display:"flex",flexDirection:"column",minHeight:220,overflow:"hidden"}}>
+                  <div style={{padding:"10px 12px",background:isToday?"rgba(245,158,11,.14)":"rgba(255,255,255,.03)",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+                    <div>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,textTransform:"uppercase",letterSpacing:".06em",fontSize:"1.1rem",color:isToday?C.amber:C.text}}>{day.dow}</div>
+                      <div style={{fontSize:".75rem",color:C.dim,fontFamily:"monospace"}}>{day.dd}</div>
+                    </div>
+                    <span style={{fontFamily:"monospace",fontSize:".8rem",color:"#0b1220",background:slack?C.amber:C.teal,borderRadius:10,padding:"2px 9px",fontWeight:800}}>{jobs.length}</span>
+                  </div>
+                  <div style={{padding:8,display:"flex",flexDirection:"column",gap:8,flex:1}}>
+                    {jobs.length===0&&<div style={{fontSize:".85rem",color:C.dim,textAlign:"center",padding:"16px 0"}}>—</div>}
+                    {jobs.map(j=>{const clr=TV_CAT_COLOR[j.cat]||"#64748b";const done=j.status==="Done";return(
+                      <div key={j.id} style={{background:C.panel,border:`1px solid ${C.border}`,borderLeft:`5px solid ${clr}`,borderRadius:8,padding:"9px 10px",position:"relative",opacity:done?.55:1}}>
+                        <span style={{position:"absolute",top:8,right:8,width:22,height:22,borderRadius:6,fontFamily:"monospace",fontWeight:800,fontSize:".8rem",color:"#fff",background:clr,display:"flex",alignItems:"center",justifyContent:"center"}}>{j.cat}</span>
+                        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:"1.1rem",lineHeight:1.1,paddingRight:26,textDecoration:done?"line-through":"none"}}>{j.projName}</div>
+                        {j.workDetail&&<div style={{fontSize:".8rem",color:clr,marginTop:2,fontWeight:700}}>{j.workDetail}</div>}
+                        {j.location&&<div style={{fontSize:".82rem",color:C.dim,marginTop:2}}>{j.location}</div>}
+                        {j.assignedTo&&<div style={{display:"inline-flex",alignItems:"center",gap:5,marginTop:5,fontSize:".8rem",fontWeight:600}}><span style={{width:6,height:6,borderRadius:"50%",background:C.dim}}/>{j.assignedTo}</div>}
+                      </div>
+                    );})}
+                    {onAddJob&&<button onClick={()=>addJobOn(day.date)} style={{marginTop:"auto",background:"transparent",border:`1px dashed ${C.border}`,borderRadius:8,padding:"8px",fontSize:".85rem",color:C.dim,cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>+ Add job</button>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <div style={{fontSize:".8rem",color:C.dim,padding:"8px 22px",borderTop:`1px solid ${C.border}`,flexShrink:0,fontFamily:"monospace"}}>I · Installation&nbsp;&nbsp; R · Repair&nbsp;&nbsp; P · Punchlist&nbsp;&nbsp; C · Construction&nbsp;&nbsp; O · Others&nbsp;&nbsp;·&nbsp;&nbsp;Sunday is a rest day and is hidden.</div>
+      </div>
+    );
+  };
+
+  const TABS=[{id:"overview",l:"Overview",icon:"🖥️"},{id:"field",l:"Field Board",icon:"🗂"},{id:"calendar",l:"Calendar",icon:"📅"},{id:"awarded",l:"Awarded",icon:"🏆"},{id:"notices",l:"Notices",icon:"📢"}];
+
+  return(
+    <div style={shell}>
+      {/* Header */}
+      <div style={{display:"flex",alignItems:"center",gap:20,padding:"16px 26px",borderBottom:`1px solid ${C.border}`,flexShrink:0}}>
+        <div style={{fontFamily:"'Barlow Condensed','Segoe UI',sans-serif",fontWeight:800,fontSize:"2.1rem",letterSpacing:-.5}}>GMD <span style={{color:C.amber}}>PRODUCTIONS</span></div>
+        <div style={{marginLeft:"auto",textAlign:"right"}}>
+          <div style={{fontWeight:800,fontSize:"2.4rem",lineHeight:1,fontVariantNumeric:"tabular-nums"}}>{clock}</div>
+          <div style={{color:C.dim,fontSize:"1rem"}}>{bigDate}</div>
+        </div>
+        <button onClick={onLogout} title="Exit display" style={{background:"transparent",border:`1px solid ${C.border}`,color:C.dim,borderRadius:10,padding:"8px 12px",fontSize:".85rem",cursor:"pointer"}}>Exit</button>
+      </div>
+      {/* Tabs */}
+      <div style={{display:"flex",gap:12,padding:"14px 26px 4px",flexShrink:0,flexWrap:"wrap"}}>
+        {TABS.map(t=>(
+          <button key={t.id} onClick={()=>setTab(t.id)} style={{display:"flex",alignItems:"center",gap:10,background:tab===t.id?C.amber:C.panel,color:tab===t.id?"#0b1220":C.text,border:`1px solid ${tab===t.id?C.amber:C.border}`,borderRadius:14,padding:"12px 24px",fontSize:"1.15rem",fontWeight:800,cursor:"pointer",transition:"all .15s"}}>
+            <span style={{fontSize:"1.3rem"}}>{t.icon}</span>{t.l}
+          </button>
+        ))}
+      </div>
+      {/* Body */}
+      <div style={{flex:1,minHeight:0,padding:"14px 26px 26px"}}>
+        {tab==="overview"&&(
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16,height:"100%"}}>
+            <CalendarPanel compact/><AwardedPanel compact/><NoticesPanel/>
+          </div>
+        )}
+        {tab==="field"&&<div style={{height:"100%"}}><FieldBoardPanel/></div>}
+        {tab==="calendar"&&<div style={{height:"100%"}}><CalendarPanel/></div>}
+        {tab==="awarded"&&<div style={{height:"100%"}}><AwardedPanel/></div>}
+        {tab==="notices"&&<div style={{height:"100%"}}><NoticesPanel/></div>}
+      </div>
+      {/* Add-job modal — touch-optimized, dark theme */}
+      {jobModal&&(()=>{
+        const lbl={display:"block",color:C.dim,fontSize:".85rem",fontWeight:700,textTransform:"uppercase",letterSpacing:.5,margin:"14px 0 6px"};
+        const inp={width:"100%",background:C.panel2,color:C.text,border:`1px solid ${C.border}`,borderRadius:12,padding:"14px 16px",fontSize:"1.15rem",fontFamily:"inherit",boxSizing:"border-box"};
+        return(
+        <div onClick={()=>setJobModal(false)} style={{position:"fixed",inset:0,background:"rgba(2,6,18,.72)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:10000,padding:24}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:20,width:"min(640px,94vw)",maxHeight:"90vh",overflowY:"auto",padding:"26px 30px",boxShadow:"0 20px 60px rgba(0,0,0,.5)"}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.9rem",marginBottom:4}}>📅 Add Site Job</div>
+            <div style={{color:C.dim,fontSize:"1rem",marginBottom:8}}>Schedules a job on the operations calendar.</div>
+            <label style={lbl}>Work Type</label>
+            <select value={jobForm.type} onChange={e=>setJobForm(f=>({...f,type:e.target.value}))} style={inp}>{TV_JOB_TYPES.map(t=><option key={t.label} value={t.label}>{TV_EVENT_ICONS[t.label]||"📌"} {t.label}</option>)}</select>
+            <label style={lbl}>Date</label>
+            <input type="date" value={jobForm.dueDate} onChange={e=>setJobForm(f=>({...f,dueDate:e.target.value}))} style={inp}/>
+            <label style={lbl}>Project (optional)</label>
+            <select value={jobForm.projectId} onChange={e=>setJobForm(f=>({...f,projectId:e.target.value}))} style={inp}>
+              <option value="">— No project / other —</option>
+              {wonDeals.map(d=><option key={d.id} value={d.id}>{(d.contact||d.product||d.client)}{d.client?` — ${d.client}`:""}</option>)}
+            </select>
+            {!jobForm.projectId&&(<><label style={lbl}>Job Title</label><input value={jobForm.title} onChange={e=>setJobForm(f=>({...f,title:e.target.value}))} placeholder="e.g. Punchlist — SM North kiosk" style={inp}/></>)}
+            <label style={lbl}>Location</label>
+            <input value={jobForm.location} onChange={e=>setJobForm(f=>({...f,location:e.target.value}))} placeholder="Site / address" style={inp}/>
+            <label style={lbl}>Assigned To</label>
+            <input value={jobForm.assignedTo} onChange={e=>setJobForm(f=>({...f,assignedTo:e.target.value}))} placeholder="Coordinator / team" style={inp}/>
+            <label style={lbl}>Notes</label>
+            <textarea value={jobForm.notes} onChange={e=>setJobForm(f=>({...f,notes:e.target.value}))} rows={3} placeholder="What's the job?" style={{...inp,resize:"vertical"}}/>
+            <div style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:22}}>
+              <button onClick={()=>setJobModal(false)} style={{background:"transparent",color:C.dim,border:`1px solid ${C.border}`,borderRadius:12,padding:"14px 24px",fontSize:"1.1rem",fontWeight:700,cursor:"pointer"}}>Cancel</button>
+              <button onClick={saveJob} style={{background:C.teal,color:"#fff",border:"none",borderRadius:12,padding:"14px 32px",fontSize:"1.1rem",fontWeight:800,cursor:"pointer"}}>Add Job</button>
+            </div>
+          </div>
+        </div>
+        );
+      })()}
+    </div>
+  );
+}
+
+// ─── OFFICE TV BOARD — ANNOUNCEMENTS EDITOR (Manager only) ─────────────────────
+// Managers curate the notices shown on the office wall display here. Writes go
+// through upAnnouncements → app_settings (key='announcements'), gated to Manager
+// by RLS migration 054. The Display kiosk account only ever reads these.
+const TVB_PRIORITIES=["Normal","High","Info"];
+function TVBoardAdmin({announcements=[],upAnnouncements,session,today}){
+  const[modal,setModal]=React.useState(false);
+  const[form,setForm]=React.useState(null); // {id?,title,body,priority,pinned}
+  const open=(a=null)=>{setForm(a?{...a}:{id:null,title:"",body:"",priority:"Normal",pinned:false});setModal(true);};
+  const close=()=>{setModal(false);setForm(null);};
+  const save=()=>{
+    const title=(form.title||"").trim();
+    if(!title){toastEmit("A title is required.","warning");return;}
+    if(form.id){
+      upAnnouncements(list=>list.map(a=>a.id===form.id?{...a,title,body:form.body||"",priority:form.priority||"Normal",pinned:!!form.pinned}:a));
+    }else{
+      const rec={id:uid(),title,body:form.body||"",priority:form.priority||"Normal",pinned:!!form.pinned,author:session?.name||"",date:today};
+      upAnnouncements(list=>[rec,...(list||[])]);
+    }
+    toastEmit("Announcement saved.","success");
+    close();
+  };
+  const remove=async(a)=>{
+    if(!await uiConfirm(`Delete announcement "${a.title}"?`)) return;
+    upAnnouncements(list=>list.filter(x=>x.id!==a.id));
+    toastEmit("Announcement removed.","info");
+  };
+  const togglePin=(a)=>upAnnouncements(list=>list.map(x=>x.id===a.id?{...x,pinned:!x.pinned}:x));
+  const sorted=[...(announcements||[])].sort((a,b)=>((b.pinned?1:0)-(a.pinned?1:0))||((b.date||"").localeCompare(a.date||"")));
+  const PRI_CLR={High:"#ef4444",Info:"#0ea5e9",Normal:"#64748b"};
+  return(
+    <div style={{padding:"24px 20px",maxWidth:900,margin:"0 auto"}}>
+      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:6}}>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.8rem"}}>📺 Office TV Board</div>
+        <div style={{marginLeft:"auto"}}><Btn onClick={()=>open()}>+ New Announcement</Btn></div>
+      </div>
+      <div style={{color:"#64748b",fontSize:".9rem",marginBottom:18}}>
+        These notices appear on the 65" wall display. Log the wall screen in as user <strong>tv</strong> to show the dashboard. Pinned items rise to the top.
+      </div>
+      {sorted.length===0&&<Card><div style={{padding:"30px 0",textAlign:"center",color:"#94a3b8"}}>No announcements yet. Add one to show it on the wall.</div></Card>}
+      {sorted.map(a=>(
+        <Card key={a.id} style={{marginBottom:12}}>
+          <div style={{display:"flex",alignItems:"flex-start",gap:12,padding:"4px 2px"}}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+                {a.pinned&&<span title="Pinned">📌</span>}
+                <span style={{fontWeight:800,fontSize:"1.1rem"}}>{a.title}</span>
+                <span style={{fontSize:".7rem",fontWeight:800,color:PRI_CLR[a.priority]||"#64748b",textTransform:"uppercase",letterSpacing:.5}}>{a.priority}</span>
+              </div>
+              {a.body&&<div style={{color:"#334155",fontSize:".95rem",whiteSpace:"pre-wrap",lineHeight:1.5}}>{a.body}</div>}
+              <div style={{color:"#94a3b8",fontSize:".78rem",marginTop:6}}>{[a.author,a.date].filter(Boolean).join(" · ")}</div>
+            </div>
+            <div style={{display:"flex",gap:6,flexShrink:0}}>
+              <Btn small variant="ghost" onClick={()=>togglePin(a)}>{a.pinned?"Unpin":"Pin"}</Btn>
+              <Btn small variant="ghost" onClick={()=>open(a)}>Edit</Btn>
+              <Btn small variant="danger" onClick={()=>remove(a)}>Delete</Btn>
+            </div>
+          </div>
+        </Card>
+      ))}
+      {modal&&form&&(
+        <Modal open onClose={close} title={form.id?"Edit Announcement":"New Announcement"}>
+          <Fld label="Title" required><Inp value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} placeholder="e.g. All-hands Friday 4 PM"/></Fld>
+          <Fld label="Message"><Inp rows={4} value={form.body} onChange={e=>setForm(f=>({...f,body:e.target.value}))} placeholder="Details to show on the wall…"/></Fld>
+          <Fld label="Priority"><Sel value={form.priority} onChange={e=>setForm(f=>({...f,priority:e.target.value}))}>{TVB_PRIORITIES.map(p=><option key={p} value={p}>{p}</option>)}</Sel></Fld>
+          <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:16,cursor:"pointer",fontSize:".9rem",fontWeight:600,color:"#334155"}}>
+            <input type="checkbox" checked={!!form.pinned} onChange={e=>setForm(f=>({...f,pinned:e.target.checked}))}/> Pin to top of the board
+          </label>
+          <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+            <Btn variant="ghost" onClick={close}>Cancel</Btn>
+            <Btn onClick={save}>Save</Btn>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
 export default function App(){
   const[users,      setUsers]     = useState(DEFAULT_USERS);
   const[cashPositions,setCashPos]  = useState({});
@@ -3122,6 +3520,7 @@ export default function App(){
   const[projs,    setProjs]   = useState({});
   const[exps,     setExps]    = useState([]);
   const[evouchers,setEvouchers]= useState([]);
+  const[announcements,setAnnouncements]= useState([]); // office TV board notices
   const[dailyLogs,setDailyLogs]= useState([]);
   const[infs,     setInfs]    = useState([]);
   const[jos,      setJos]     = useState([]);
@@ -3214,6 +3613,7 @@ export default function App(){
         if(idb["gmdv5:auditFindings"]) setAuditFindings(idb["gmdv5:auditFindings"]);
         if(idb[KEYS.vouchers])    setVouchers(idb[KEYS.vouchers]);
         if(idb[KEYS.evouchers])   setEvouchers(idb[KEYS.evouchers]);
+        if(idb[KEYS.announcements]) setAnnouncements(idb[KEYS.announcements]);
         if(idb[KEYS.dailylogs])   setDailyLogs(idb[KEYS.dailylogs]);
         if(idb[KEYS.ceReqs])      setCeReqs(idb[KEYS.ceReqs]);
         if(idb[KEYS.payouts])     setPayouts(idb[KEYS.payouts]);
@@ -3327,6 +3727,7 @@ export default function App(){
             if(data.settings?.customclients){const cc=data.settings.customclients;setCustomClients(cc);idbE.push([KEYS.customclients,cc]);cc.forEach(c=>{if(!GMD_CLIENTS.find(x=>x.name.toLowerCase()===c.name.toLowerCase())) GMD_CLIENTS.push(c);}); }
             if(data.settings?.custom_members){const cm=data.settings.custom_members;setCustomMembers(cm);localStorage.setItem("gmdv5:customMembers",JSON.stringify(cm));idbE.push(["gmdv5:customMembers",cm]);}
             if(data.settings?.evouchers){const ev=data.settings.evouchers;setEvouchers(ev);idbE.push([KEYS.evouchers,ev]);}
+            if(data.settings?.announcements){const an=data.settings.announcements;setAnnouncements(an);idbE.push([KEYS.announcements,an]);}
             if(data.settings?.clientprofiles){const cp=data.settings.clientprofiles;setClientProfiles(cp);idbE.push(["gmdv5:clientprofiles",cp]);}
             if(data.standaloneBoqs){
               // Standalone BOQs now come from their own table, one row per BOQ
@@ -3940,6 +4341,10 @@ export default function App(){
   const upUsers    =useCallback(fn=>setUsers(p=>{const n=fn(p);persist(KEYS.users,n);return n;}),[persist]);
   const upCashPos  =useCallback(fn=>setCashPos(p=>{const n=fn(p);persist(KEYS.cashPos,n);return n;}),[persist]);
   const upEvouchers=useCallback(fn=>setEvouchers(p=>{const n=fn(p);persist(KEYS.evouchers,n);if(isSupabaseReady())sbUpsert('app_settings',{key:'evouchers',value:n,updated_at:new Date().toISOString()},'key').catch(()=>{});return n;}),[persist]);
+  // Office TV board announcements — stored as one JSON blob in app_settings
+  // (key='announcements'), same pattern as evouchers. Manager-write only (RLS
+  // migration 054); the Display kiosk account reads them but can't touch them.
+  const upAnnouncements=useCallback(fn=>setAnnouncements(p=>{const n=fn(p);persist(KEYS.announcements,n);if(isSupabaseReady())sbUpsert('app_settings',{key:'announcements',value:n,updated_at:new Date().toISOString()},'key').catch(e=>{toastEmit("Announcement sync failed — check connection.","warning");console.error("upAnnouncements:",e);});return n;}),[persist]);
   // EV/LQ numbers used local max+1 with no server-side atomicity — the same
   // cross-device collision risk already fixed for PO/CV/JO/CE.
   const addEV=async(ev)=>{
@@ -5616,6 +6021,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     upSwatches(ss=>ss.filter(s=>s.id!==id));if(isSupabaseReady()) sbDelete('swatches',id).catch(()=>{});
   };
   const upChecklist=useCallback(fn=>setChecklist(p=>{const n=fn(p);persist(KEYS.checklist,n);return n;}),[persist]);
+  // Create an Operations calendar job (checklists row). Shared by the normal
+  // Construction Calendar and the office TV wall board. Mirrors the inline
+  // addOpsEvent handlers used by ConstructionCalendar so a job entered on the
+  // wall behaves identically to one entered in the app.
+  const addOpsEvent=useCallback(data=>{
+    const rec={...data,id:uid(),dept:"Operations",createdDate:today,createdBy:session?.name||role};
+    upChecklist(cs=>[...cs,rec]);
+    if(isSupabaseReady()) sbInsert('checklists',toSbChecklist(rec)).catch(err=>{console.error("Calendar item sync:",err);toastEmit&&toastEmit("Job saved locally only — tap 🔄 sync to push it to the server.","warning",8000);});
+    return rec;
+  },[upChecklist,session,role]);
 
   // ── DRF CRUD ─────────────────────────────────────────────────────────────
   const upDrfs   =useCallback(fn=>setDrfs(p=>{const n=fn(p);persist(KEYS.drfs,n);return n;}),[persist]);
@@ -5886,7 +6301,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const sess={userId:u.id,username:u.username,name:u.name,role:u.role,title:u.title||u.role};
     setSession(sess); setRole(u.role);
     logActivity(null,"Login",u.role,sess.name);
-    const defaultPages={Manager:"home",Sales:"pipeline",Finance:"home",Procurement:"home",QS:"home",Operations:"home",Design:"home",ProjectMover:"home",SalesOpsAdmin:"home",FinanceAssistant:"home"};
+    const defaultPages={Manager:"home",Sales:"pipeline",Finance:"home",Procurement:"home",QS:"home",Operations:"home",Design:"home",ProjectMover:"home",SalesOpsAdmin:"home",FinanceAssistant:"home",Display:"tv"};
     setPage(defaultPages[u.role]||"home");
     localStorage.setItem(KEYS.session,JSON.stringify(sess));
     localStorage.setItem(KEYS.role,u.role);
@@ -7584,7 +7999,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
       {group:"Warehousing", items:[{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"}]},
-      {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"audit",l:"Audit"},{id:"botsettings",l:"Bot Settings"},{id:"activity",l:"Team Activity"}]},
+      {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"audit",l:"Audit"},{id:"botsettings",l:"Bot Settings"},{id:"tvboard",l:"Office TV Board"},{id:"activity",l:"Team Activity"}]},
     ],
     Sales:[
       {group:"Pipeline",     items:[{id:"pipeline",l:"Sales Pipeline"},{id:"calendar",l:"Calendar"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Reports"}]},
@@ -7673,7 +8088,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       reports:"📈", "sales-reports":"📈", "finance-reports":"📈", acctdash:"📒", executive:"🎯", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅", financecal:"📅",
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
-      masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆", audit:"🔎",
+      masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆", audit:"🔎", tvboard:"📺",
       deliveries:"🚚",stockmove:"🔄",addenda:"⚠️",   pmupdates:"📝",  pmfeed:"📋",  suppliers:"🏭",
       subcontractors:"👷",materialreq:"🔧",budgetreq:"💳",collections:"💵",
       checklist:"✅",joborders:"📄", ops:"⚙️",        datamanagement:"⚙️", myfolder:"📁",
@@ -7816,7 +8231,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       reports:"📈", "sales-reports":"📈", "finance-reports":"📈", acctdash:"📒", executive:"🎯", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅", financecal:"📅",
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
-      masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆", audit:"🔎",
+      masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆", audit:"🔎", tvboard:"📺",
       deliveries:"🚚",stockmove:"🔄",addenda:"⚠️",   pmupdates:"📝",  pmfeed:"📋",  suppliers:"🏭",
       subcontractors:"👷",materialreq:"🔧",budgetreq:"💳",collections:"💵",
       checklist:"✅",joborders:"📄", ops:"⚙️",        datamanagement:"⚙️", myfolder:"📁",
@@ -7830,7 +8245,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       stockmove:"Stock",reports:"Reports",suppliers:"Suppliers",
       subcontractors:"Subcon",calendar:"Calendar",inventory:"Inventory",
       pmupdates:"Updates",addenda:"Scope",botsettings:"Bot",activity:"Activity",
-      requests:"Requests",masters:"Masters",
+      requests:"Requests",masters:"Masters",tvboard:"TV Board",
     };
     // Notification badge counts per tab
     const openBlockersAll=(blockers||[]).filter(b=>b.status==="Open").length;
@@ -8249,6 +8664,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   // ── AUTH GATE ─────────────────────────────────────────────────────────────
   if(!session) return <><AuthScreen authView={authView} setAuthView={setAuthView} onLogin={login} onRegister={register} sbReady={sbReady}/><Toaster/><DialogHost/></>;
+
+  // ── OFFICE TV WALL DISPLAY ─────────────────────────────────────────────────
+  // The dedicated read-only kiosk account (role "Display") never sees the normal
+  // app shell — it lands straight on the fullscreen, touch-navigable dashboard
+  // built to fill the 65" office touchscreen. No nav, no write actions.
+  if(role==="Display") return <><OfficeTVDashboard deals={deals} wonDeals={wonDeals} checklists={checklist} announcements={announcements} today={today} todayL={todayL} onLogout={logout} onAddJob={addOpsEvent}/><Toaster/><DialogHost/></>;
 
 
 
@@ -14847,6 +15268,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     return(<Wrap><BOQHomeView standaloneBoqs={standaloneBoqs} deals={deals} session={session} role={role} today={today} onOpenStandalone={id=>{setBoqCoId(null);setBoqDealId(null);setBoqStandaloneId(id);}} onOpenDeal={id=>{setBoqCoId(null);setBoqStandaloneId(null);setBoqDealId(id);}} onNewStandalone={()=>{const id=uid();saveStandaloneBoq({id,title:"",location:"",quotationNo:"",boqDate:today,items:[],sections:[],vatEnabled:true,discount:"",createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});setBoqCoId(null);setBoqDealId(null);setBoqStandaloneId(id);}} onDeleteStandalone={deleteStandaloneBoq}/></Wrap>);
   }
 
+  if(page==="tvboard"&&role==="Manager") return(<Wrap><TVBoardAdmin announcements={announcements} upAnnouncements={upAnnouncements} session={session} today={today}/></Wrap>);
   if(page==="coa") return(<Wrap><ChartOfAccountsView chartOfAccounts={chartOfAccounts} saveChartOfAccounts={saveChartOfAccounts} session={session} role={role}/></Wrap>);
   if(page==="acctreport") return(<Wrap><AccountReportView chartOfAccounts={chartOfAccounts} exps={exps} role={role}/></Wrap>);
 
