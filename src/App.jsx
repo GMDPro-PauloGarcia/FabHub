@@ -11148,11 +11148,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {(()=>{
         const peso   =(v)=>"₱"+Math.round(Number(v)||0).toLocaleString("en-PH");
         const isMgr  =role==="Manager";
+        // Team-wide commission visibility: Manager plus the finance/oversight roles
+        // (Finance, FinanceAssistant, Accounting, SalesOpsAdmin) — the same roles the
+        // DB already grants read access to commission_payouts — can flip to the whole
+        // team. Approving a payout stays Manager-only (see the Approve button below).
+        const canSeeTeam=["Manager","Finance","FinanceAssistant","Accounting","SalesOpsAdmin"].includes(ROLE_ALIASES[role]||role);
         // Awarded = deal in a WON stage (06→14). Exclude standby-PO umbrellas (0 value carriers).
         const awarded=wonDeals.filter(d=>!d.standbyPO);
-        // Visibility: everyone sees their own; managers can flip to the whole team.
+        // Visibility: everyone sees their own; the roles above can flip to the whole team.
         const mine   =d=>[d.salesOwner,d.assignedAE].filter(Boolean).includes(session?.name);
-        const scope  =(isMgr&&awardScope==="team")?"team":"mine";
+        const scope  =(canSeeTeam&&awardScope==="team")?"team":"mine";
         const rows   =(scope==="team"?awarded:awarded.filter(mine))
                         .slice().sort((a,b)=>(commissionEarned(b)-commissionEarned(a)));
         const done   =s=>["12 · Close-Out","14 · Completed"].includes(s);
@@ -11243,7 +11248,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   <button onClick={()=>setPayoutDraft({payee:scope==="team"?"":(session?.name||""),periodLabel:`${MONTHS[new Date().getMonth()]} ${new Date().getFullYear()}`,amount:"",payBank:"",payMethod:"",payRef:"",notes:""})}
                     style={{border:"none",background:"#059669",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",padding:"8px 14px",borderRadius:8,cursor:"pointer"}}>+ Record payout</button>
                 )}
-                {isMgr&&(
+                {canSeeTeam&&(
                   <div style={{display:"flex",background:"#f1f5f9",borderRadius:9,padding:3}}>
                     {[["mine","My projects"],["team","Whole team"]].map(([v,l])=>(
                       <button key={v} onClick={()=>setAwardScope(v)} style={{border:"none",background:awardScope===v?"#3b82f6":"transparent",color:awardScope===v?"#fff":"#475569",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",padding:"6px 14px",borderRadius:6,cursor:"pointer"}}>{l}</button>
