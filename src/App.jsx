@@ -5835,6 +5835,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const costMsg=`⚠️ <b>Scope Change Approved</b>\nProject: <b>${deal?.client||"?"}</b>${deal?.ceNo?`\nCE: ${deal.ceNo}`:""}\nScope: ${a.title||"?"}\nCost Impact: ₱${Number(a.value||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nApproved by: ${session?.name||"Ops"}\nRevised contract value updated automatically.\n\n💰 Finance team: please review cost impact and update billing milestones if applicable.`;
         sendTelegramNotification("finance",costMsg);
         sendTelegramNotification("management",costMsg);
+        // Ops owns the added scope: tell them there's extra work and an updated
+        // budget/BOQ to draw against, so an approved change order isn't only a
+        // finance event.
+        const opsMsg=`🛠️ <b>Additional Scope Approved</b>\nProject: <b>${deal?.client||"?"}</b>${deal?.ceNo?`\nCE: ${deal.ceNo}`:""}\nScope: ${a.title||"?"}${a.kind==="Deductive"?"\n(Deductive — scope removed)":""}\nBudget Impact: ₱${Number(a.value||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nContract value & BOQ updated automatically.\n\n🔧 Ops: additional work is in scope — plan/procure against the revised project budget.`;
+        sendTelegramNotification("ops",opsMsg);
       }
       return n;
     }));
