@@ -5649,7 +5649,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const msTx=calcTax(milestone?.amount||0,milestone?.receiptType??milestone?.receipt_type??payDeal?.receiptType??"OR",milestone?.withholding??payDeal?.withholding??false);
     const totalPaidAfter=(milestone?.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0)+Number(payment.amount||0);
     const isFullyPaid=totalPaidAfter>=msTx.netReceivable;
-    const payMsg=`💵 <b>Payment Received</b>\nClient: <b>${payDeal?.client||milestone?.title||"?"}</b>\nMilestone: ${milestone?.title||"—"}\nAmount: ₱${Number(payment.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nRef: ${payment.refNo||payment.ref_no||"—"}\nRecorded by: ${payment.recordedBy||session?.name||"Finance"}${isFullyPaid?"\n✅ Milestone fully paid!":""}`;
+    // Where the money landed: resolve the stored bank code (e.g. "bpi") to its
+    // short name, then append the method (Bank Transfer / Cheque / Cash…).
+    const payBankCode=payment.bank??payment.bank_id;
+    const payBankRow=(BANKS||[]).find(x=>x.id===payBankCode||x.short===payBankCode||x.name===payBankCode);
+    const payBankLabel=payBankRow?payBankRow.short:(payBankCode||"—");
+    const payMethod=payment.method||payment.payment_method||"";
+    const depositedTo=`${payBankLabel}${payMethod?` · ${payMethod}`:""}`;
+    // "Credited" = value date (when funds were actually available); fall back to
+    // the date received, then today.
+    const creditedOn=payment.valueDate||payment.value_date||payment.date||today;
+    const payMsg=`💵 <b>Payment Received</b>\nProject: <b>${payDeal?.contact||milestone?.name||milestone?.title||"—"}</b>\nClient: ${payDeal?.client||"—"}\nDeposited to: ${depositedTo}\nAmount: ₱${Number(payment.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nCredited: ${creditedOn}\nRef: ${payment.refNo||payment.ref_no||"—"}\nRecorded by: ${payment.recordedBy||session?.name||"Finance"}${isFullyPaid?"\n✅ Milestone fully paid!":""}`;
     sendTelegramNotification("sales",payMsg);
     sendTelegramNotification("management",payMsg);
     if(dealId) logActivity(dealId,"Payment Received",`₱${Number(payment.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})} on ${milestone?.name||"milestone"}${payment.refNo?` · Ref: ${payment.refNo}`:""}`,payment.recordedBy||session?.name);
