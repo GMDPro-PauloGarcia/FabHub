@@ -230,6 +230,7 @@ const DEFAULT_USERS = [
   { id:"u25", name:"Accounting",         username:"accounting",passwordHash:legacyHashPwSync("GMD2026!"),  role:"Accounting",   status:"active", createdAt:today },
   { id:"u17", name:"Marian Prile",       username:"marian",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"Procurement",  status:"active", createdAt:today },
   { id:"u27", name:"Mark Acejo",         username:"mark",     passwordHash:legacyHashPwSync("GMD2026!"),   role:"FinanceAssistant", title:"Finance Assistant",          status:"active", createdAt:today },
+  { id:"u29", name:"Jerwin Limon",       username:"jerwin",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"FinanceAssistant", title:"Finance Assistant",          status:"active", createdAt:today },
   // ── Sales & Ops Admin ─────────────────────────────────────────────────────
   { id:"u26", name:"Jessica Castro",     username:"jessica",  passwordHash:legacyHashPwSync("GMD2026!"),   role:"SalesOpsAdmin",    title:"Operations & Sales Admin",   status:"active", createdAt:today },
   // ── QS / Cost Estimator ───────────────────────────────────────────────────
@@ -23397,7 +23398,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const fm =(k,v)=>setMsForm(p=>({...p,[k]:v}));
   const fp =(k,v)=>setPayForm(p=>({...p,[k]:v}));
   const fme=(k,v)=>setEditMsForm(p=>({...p,[k]:v}));
-  const canEdit=role==="Manager"||role==="Finance"||role==="SalesOpsAdmin";
+  const canEdit=role==="Manager"||role==="Finance"||role==="FinanceAssistant"||role==="SalesOpsAdmin";
   // Look up across ALL deals, not just wonDeals — addendum child-deals live in
   // their own (often non-won) stage, so a wonDeals-only lookup returned undefined
   // and every tax calc below fell back to "OR", applying 12% VAT to AR/VAT-exempt
