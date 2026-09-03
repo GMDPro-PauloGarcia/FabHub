@@ -5510,7 +5510,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     sendTelegramNotification("management",msg);
     logActivity(dealId,"Billing Setup Requested",`Jessica notified to set up billing milestones for ${client||"the awarded project"}.`,session?.name||role);
   };
-  const updateMilestone=(id,ch)=>{
+  const updateMilestone=(id,ch,audit)=>{
     if(ch.status==='Fully Paid'){
       const ms=billings.find(b=>b.id===id);
       const msDeal=ms?.dealId?deals.find(d=>d.id===ms.dealId):null;
@@ -5564,6 +5564,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         if(isSupabaseReady()) sbSyncOne("deals",nd,toSbDeal);
         return nd;
       }));
+    }
+    // Payment-mutation audit trail (edit / bounce / clear / restore). Deletes are
+    // already archived via confirmFinancialDelete; edits previously left no trace.
+    if(audit&&audit.action){
+      const aMs=billings.find(b=>b.id===id);
+      logActivity(aMs?.dealId||dealId,audit.action,audit.detail||"",session?.name||role);
     }
   };
   const deleteMilestone=async(id)=>{
@@ -23535,7 +23541,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     addMilestone({name:"Retention Release",description:`Release of retention withheld across progress billings (${deal.paymentTerms?.retentionRelease||"on completion"}).`,amount:out,dealId:selDeal,isRetentionRelease:true,invoiceNo:await claimInv(),invoiceDate:today,dueDate:"",status:"Draft",receiptType:deal.receiptType||null,withholding:deal.withholding??null,createdBy:session?.name||role});
     toastEmit&&toastEmit(`Retention release drafted: ₱${out.toLocaleString("en-PH")}.`,"success",6000);
   };
-  const submitPay=()=>{
+  const submitPay=async()=>{
     if(!payForm.amount||!showPay) return;
     const amt=Number(payForm.amount);
     if(!isFinite(amt)||amt<=0){toastEmit("Enter a payment amount greater than zero.","warning");return;}
@@ -23549,6 +23555,9 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         return;
       }
     }
+    // #4 Date sanity — warn (not block) on illogical dates.
+    if(payForm.date&&payForm.date>today&&!(await uiConfirm("The Date Received is in the future. Save anyway?")))return;
+    if(payForm.date&&payForm.valueDate&&payForm.valueDate<payForm.date&&!(await uiConfirm("The Value Date is before the Date Received (funds credited before payment received?). Save anyway?")))return;
     logBillingPayment(showPay,{...payForm,recordedBy:session?.name||role});
     setPayForm({amount:"",date:today,refNo:"",note:"",valueDate:"",bank:"",method:"Bank Transfer"});
     setShowPay(null);
@@ -24573,11 +24582,21 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                                     <Fld label="Note"><Inp value={editPayForm.note??p.note??""} onChange={e=>setEditPayForm(f=>({...f,note:e.target.value}))} placeholder="Note…"/></Fld>
                                   </div>
                                   <div style={{display:"flex",gap:6,marginTop:6}}>
-                                    <button onClick={()=>{
+                                    <button onClick={async()=>{
                                       const amt=Number(editPayForm.amount??p.amount);
                                       if(!isFinite(amt)||amt<=0){toastEmit("Enter a payment amount greater than zero.","warning");return;}
+                                      // #3 Overpayment cap on edit (Add already enforces this).
+                                      const eTx=calcTax(ms.amount,ms.receiptType??deal?.receiptType??"OR",ms.withholding??deal?.withholding??false);
+                                      const otherPaid=(ms.payments||[]).filter(px=>px.id!==p.id&&!px.bounced).reduce((s,px)=>s+Number(px.amount||0),0);
+                                      const eBalance=Math.max(0,eTx.netReceivable-otherPaid);
+                                      if(amt>eBalance+0.01){toastEmit(`Payment ₱${amt.toLocaleString("en-PH")} exceeds the milestone balance of ₱${eBalance.toLocaleString("en-PH")}.`,"warning");return;}
+                                      // #4 Date sanity — warn (not block) on illogical dates.
+                                      const nDate=editPayForm.date??p.date;
+                                      const nVal=editPayForm.valueDate??p.valueDate;
+                                      if(nDate&&nDate>today&&!(await uiConfirm("The Date Received is in the future. Save anyway?")))return;
+                                      if(nDate&&nVal&&nVal<nDate&&!(await uiConfirm("The Value Date is before the Date Received (funds credited before payment received?). Save anyway?")))return;
                                       const updated={...p,...editPayForm,amount:amt};
-                                      updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?updated:px)});
+                                      updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?updated:px)},{action:"Payment Edited",detail:`${ms.name||"Milestone"}: ₱${Number(p.amount||0).toLocaleString("en-PH")} → ₱${amt.toLocaleString("en-PH")}`});
                                       setEditPay(null);setEditPayForm({});
                                     }} style={{background:"#1d4ed8",border:"none",borderRadius:6,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#fff",cursor:"pointer"}}>Save</button>
                                     <button onClick={()=>{setEditPay(null);setEditPayForm({});}} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 10px",fontFamily:"inherit",fontSize:".75rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
@@ -24602,17 +24621,17 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                                   {canEdit&&(
                                     <div style={{display:"flex",gap:4,flexShrink:0}}>
                                       {!p.bounced&&!isPaymentCleared(p,today)&&(
-                                        <button onClick={()=>updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?{...px,valueDate:today,bounced:false}:px)})}
+                                        <button onClick={()=>updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?{...px,valueDate:today,bounced:false}:px)},{action:"Payment Cleared",detail:`${ms.name||"Milestone"}: ₱${Number(p.amount||0).toLocaleString("en-PH")} marked cleared`})}
                                           title="Mark funds cleared today"
                                           style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:5,padding:"2px 7px",fontFamily:"inherit",fontSize:".65rem",color:"#059669",cursor:"pointer",fontWeight:600}}>✓ Clear</button>
                                       )}
                                       {!p.bounced&&(
-                                        <button onClick={async ()=>{if((await uiConfirm("Mark this collection as bounced? It will stop counting as cleared cash.")))updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?{...px,bounced:true}:px)});}}
+                                        <button onClick={async ()=>{if((await uiConfirm("Mark this collection as bounced? It will stop counting as cleared cash.")))updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?{...px,bounced:true}:px)},{action:"Payment Bounced",detail:`${ms.name||"Milestone"}: ₱${Number(p.amount||0).toLocaleString("en-PH")} marked bounced`});}}
                                           title="Mark cheque bounced"
                                           style={{background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:5,padding:"2px 7px",fontFamily:"inherit",fontSize:".65rem",color:"#c2410c",cursor:"pointer",fontWeight:600}}>⤺</button>
                                       )}
                                       {p.bounced&&(
-                                        <button onClick={()=>updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?{...px,bounced:false}:px)})}
+                                        <button onClick={()=>updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?{...px,bounced:false}:px)},{action:"Payment Restored",detail:`${ms.name||"Milestone"}: ₱${Number(p.amount||0).toLocaleString("en-PH")} un-bounced`})}
                                           title="Un-bounce"
                                           style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:5,padding:"2px 7px",fontFamily:"inherit",fontSize:".65rem",color:"#059669",cursor:"pointer",fontWeight:600}}>↺</button>
                                       )}
