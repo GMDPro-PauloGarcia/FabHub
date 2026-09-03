@@ -5514,7 +5514,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(ch.status==='Fully Paid'){
       const ms=billings.find(b=>b.id===id);
       const msDeal=ms?.dealId?deals.find(d=>d.id===ms.dealId):null;
-      const msg=`✅ <b>Milestone Fully Paid</b>\nClient: <b>${msDeal?.client||ms?.title||"?"}</b>\nMilestone: ${ms?.title||"—"}\nAmount: ₱${Number(ms?.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nUpdated by: ${session?.name||"Finance"}`;
+      const msg=`✅ <b>Milestone Fully Paid</b>\nProject: <b>${msDeal?.contact||ms?.name||ms?.title||"—"}</b>\nClient: ${msDeal?.client||"—"}\nMilestone: ${ms?.name||ms?.title||"—"}\nAmount: ₱${Number(ms?.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nUpdated by: ${session?.name||"Finance"}`;
       sendTelegramNotification("sales",msg);
       sendTelegramNotification("management",msg);
     }
@@ -5653,7 +5653,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // short name, then append the method (Bank Transfer / Cheque / Cash…).
     const payBankCode=payment.bank??payment.bank_id;
     const payBankRow=(BANKS||[]).find(x=>x.id===payBankCode||x.short===payBankCode||x.name===payBankCode);
-    const payBankLabel=payBankRow?payBankRow.short:(payBankCode||"—");
+    const payBankLabel=payBankCode==="cash"?"Cash":payBankRow?payBankRow.short:(payBankCode||"—");
     const payMethod=payment.method||payment.payment_method||"";
     const depositedTo=`${payBankLabel}${payMethod?` · ${payMethod}`:""}`;
     // "Credited" = value date (when funds were actually available); fall back to
@@ -23537,6 +23537,8 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   };
   const submitPay=()=>{
     if(!payForm.amount||!showPay) return;
+    const amt=Number(payForm.amount);
+    if(!isFinite(amt)||amt<=0){toastEmit("Enter a payment amount greater than zero.","warning");return;}
     const ms=billings.find(b=>b.id===showPay);
     if(ms){
       const alreadyPaid=(ms.payments||[]).filter(p=>!p.bounced).reduce((s,p)=>s+Number(p.amount||0),0);
@@ -24564,7 +24566,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                                   <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:6}}>
                                     <Fld label="Amount (₱)"><Inp type="number" value={editPayForm.amount??p.amount} onChange={e=>setEditPayForm(f=>({...f,amount:e.target.value}))}/></Fld>
                                     <Fld label="Date"><Inp type="date" value={editPayForm.date??p.date??today} onChange={e=>setEditPayForm(f=>({...f,date:e.target.value}))}/></Fld>
-                                    <Fld label="Bank"><Sel value={editPayForm.bank??p.bank??""} onChange={e=>setEditPayForm(f=>({...f,bank:e.target.value}))}><option value="">— Select bank</option>{BANKS.map(b=><option key={b.id} value={b.id}>{b.short}</option>)}</Sel></Fld>
+                                    <Fld label="Bank"><Sel value={editPayForm.bank??p.bank??""} onChange={e=>setEditPayForm(f=>({...f,bank:e.target.value}))}><option value="">— Select bank</option>{BANKS.map(b=><option key={b.id} value={b.id}>{b.short}</option>)}<option value="cash">Cash</option></Sel></Fld>
                                     <Fld label="Method"><Sel value={editPayForm.method??p.method??"Bank Transfer"} onChange={e=>setEditPayForm(f=>({...f,method:e.target.value}))}>{PAYMENT_METHODS.map(m=><option key={m} value={m}>{m}</option>)}</Sel></Fld>
                                     <Fld label="Value Date"><Inp type="date" value={editPayForm.valueDate??p.valueDate??""} onChange={e=>setEditPayForm(f=>({...f,valueDate:e.target.value}))}/></Fld>
                                     <Fld label="Reference No."><Inp value={editPayForm.refNo??p.refNo??""} onChange={e=>setEditPayForm(f=>({...f,refNo:e.target.value}))} placeholder="Ref…"/></Fld>
@@ -24572,7 +24574,9 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                                   </div>
                                   <div style={{display:"flex",gap:6,marginTop:6}}>
                                     <button onClick={()=>{
-                                      const updated={...p,...editPayForm,amount:Number(editPayForm.amount??p.amount)};
+                                      const amt=Number(editPayForm.amount??p.amount);
+                                      if(!isFinite(amt)||amt<=0){toastEmit("Enter a payment amount greater than zero.","warning");return;}
+                                      const updated={...p,...editPayForm,amount:amt};
                                       updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?updated:px)});
                                       setEditPay(null);setEditPayForm({});
                                     }} style={{background:"#1d4ed8",border:"none",borderRadius:6,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#fff",cursor:"pointer"}}>Save</button>
@@ -24585,7 +24589,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                                     <span>{p.date}</span>
                                     <span style={{fontWeight:700,color:"#059669"}}>₱{n(p.amount).toLocaleString("en-PH")}</span>
                                     {p.method&&<span style={{color:"#64748b"}}>{p.method}</span>}
-                                    {p.bank&&<span style={{color:"#64748b"}}>🏦 {p.bank}</span>}
+                                    {p.bank&&<span style={{color:"#64748b"}}>🏦 {p.bank==="cash"?"Cash":(BANKS.find(x=>x.id===p.bank)?.short||p.bank)}</span>}
                                     {(()=>{
                                       const cd=paymentClearDate(p);
                                       if(p.bounced) return <span style={{fontSize:".65rem",fontWeight:700,padding:"1px 7px",borderRadius:20,background:"#fef2f2",color:"#dc2626"}}>✕ Bounced</span>;
@@ -24665,7 +24669,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                             <Fld label="Bank Deposited To">
                               <Sel value={payForm.bank||""} onChange={e=>fp("bank",e.target.value)}>
                                 <option value="">— Select Bank —</option>
-                                {[{v:"bpi",l:"BPI"},{v:"metro",l:"Metrobank"},{v:"china",l:"Chinabank"},{v:"bdo",l:"BDO"},{v:"security",l:"Security Bank"},{v:"union",l:"Unionbank"},{v:"cash",l:"Cash"}].map(b=><option key={b.v} value={b.v}>{b.l}</option>)}
+                                {[...BANKS.map(b=>({v:b.id,l:b.short})),{v:"cash",l:"Cash"}].map(b=><option key={b.v} value={b.v}>{b.l}</option>)}
                               </Sel>
                             </Fld>
                             <Fld label="Payment Method">
