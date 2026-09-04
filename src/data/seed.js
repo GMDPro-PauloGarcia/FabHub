@@ -301,7 +301,8 @@ export const GMD_CLIENTS = [
 
 export const mkDesign=(status="Briefing",designer="",type="in-house",dueDate="",link="",notes="")=>({
   status,designer,designerType:type,dueDate,link,notes,revisionNo:"",approvedBy:"",approvedOn:"",
-  statusHistory:[{status,date:today,by:"System"}],deliverables:[]
+  statusHistory:[{status,date:today,by:"System"}],deliverables:[],
+  committedDate:"",blockers:[],productionBriefed:null
 });
 
 export const SEED_DEALS=[

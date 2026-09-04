@@ -6,7 +6,7 @@ import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -440,15 +440,178 @@ const RefThumb=({url,label,icon="🖼"})=>{
   );
 };
 
+// Single source of truth for a design status change — used by the modal, the
+// home cards, and the Kanban board's drag-drop so the "Done → Fabrication"
+// handoff + notifications never drift between call sites.
+function applyDesignStatus(upProj,id,proj,deal,s,session,today,sendTelegramNotification){
+  const cur=proj?.design||{};
+  if(s===cur.status) return;
+  const next={...cur,status:s,statusHistory:[...(cur.statusHistory||[]),{status:s,date:today,by:session?.name||"Design"}]};
+  upProj(id,x=>({...x,design:{...x.design,...next}}));
+  if(s==="Done"&&proj?.currentStage==="Design"){
+    upProj(id,x=>({...x,currentStage:"Fabrication",progress:{...x.progress,Design:100},stageDates:{...x.stageDates,Design:{...x.stageDates?.Design,e:today},Fabrication:{...x.stageDates?.Fabrication,s:x.stageDates?.Fabrication?.s||today}}}));
+    const msg=`🎨 <b>Design Complete — Ready for Fabrication</b>\nProject: <b>${deal?.client||"?"}</b>${deal?.ceNo?`\nCE: ${deal.ceNo}`:""}\nDesigner: ${next.designer||"—"}${next.revisionNo?`\nRevision: ${next.revisionNo}`:""}\n${next.link?`<a href="${next.link}">View Drawings</a>`:"No file link yet"}\nBy: ${session?.name||"Design"}`;
+    sendTelegramNotification?.("ops",msg);sendTelegramNotification?.("management",msg);
+  }
+}
+
+// ─── DESIGN KANBAN BOARD ──────────────────────────────────────────────────────
+// One triage board reused on the Design home and the Manager side panel. Columns
+// are the live design statuses; Done/Cancelled collapse into a "Closed" lane.
+// Filter tiles double as the "most-due / what's urgent" widgets. Desktop supports
+// drag-drop between columns; mobile falls back to a per-card status dropdown.
+function DesignBoard({projList,projs,drfs,upProj,session,role,today,setSelProj,setOpsTab,sendTelegramNotification,toastEmit}){
+  const mob=window.innerWidth<768;
+  const[filter,setFilter]=React.useState(null);
+  const[showClosed,setShowClosed]=React.useState(false);
+  const[dragId,setDragId]=React.useState(null);
+  const[mobStatus,setMobStatus]=React.useState(""); // mobile-only status filter (no columns on phones)
+
+  const items=(projList||[]).map(dl=>{
+    const p=projs[dl.id];if(!p)return null;
+    const design=p.design||{};
+    const drf=(drfs||[]).find(r=>r.dealId===dl.id);
+    return {id:dl.id,deal:dl,design,drf,u:designUrgency(design,drf,today),promised:designPromisedDate(design,drf)};
+  }).filter(Boolean);
+
+  // Filter-tile widgets. Each is {key,label,color,test,count}.
+  const tiles=[
+    {key:"overdue", label:"Overdue",           color:"#dc2626", test:it=>it.u.tier==="overdue"},
+    {key:"soon",    label:"Due ≤ 7 days",      color:"#f59e0b", test:it=>it.u.tier==="due-soon"||it.u.tier==="at-risk"},
+    {key:"blocked", label:"Blocked",           color:"#dc2626", test:it=>it.u.tier==="blocked"},
+    {key:"ack",     label:"Awaiting prod ack", color:"#3b82f6", test:it=>(it.design.status==="Production Plans"||it.design.status==="Done")&&!isProductionBriefed(it.design)},
+    {key:"undated", label:"No committed date", color:"#a855f7", test:it=>!isDesignClosed(it.design.status)&&!it.design.committedDate},
+    {key:"art",     label:"Artwork / Signage", color:"#7c3aed", test:it=>designNeedsArtwork(it.design)},
+  ].map(t=>({...t,count:items.filter(t.test).length}));
+
+  const activeTile=tiles.find(t=>t.key===filter);
+  const visible=activeTile?items.filter(activeTile.test):items;
+  // Rank inside each column by urgency (most urgent on top).
+  const byStatus=(st)=>visible.filter(it=>it.design.status===st).sort((a,b)=>b.u.rank-a.u.rank||(a.promised||"9999").localeCompare(b.promised||"9999"));
+
+  const openCard=(id)=>{setSelProj(id);setOpsTab&&setOpsTab("design");};
+  const dropTo=(st)=>{
+    if(!dragId)return;const it=items.find(x=>x.id===dragId);setDragId(null);
+    if(!it||it.design.status===st)return;
+    if(st==="Done"&&!it.design.link){toastEmit&&toastEmit("⚠ Add a file / link before marking Done — opening the card.","warning");openCard(it.id);return;}
+    applyDesignStatus(upProj,it.id,projs[it.id],it.deal,st,session,today,sendTelegramNotification);
+  };
+
+  const cols=[...DESIGN_ACTIVE_STATUSES,...(showClosed?DESIGN_CLOSED_STATUSES:[])];
+
+  const Cardlet=(it)=>{
+    const c=DS_CLR[it.design.status]||"#94a3b8";
+    const openB=openBlockers(it.design).length;
+    return(
+      <div key={it.id}
+        draggable={!mob}
+        onDragStart={()=>setDragId(it.id)}
+        onDragEnd={()=>setDragId(null)}
+        onClick={()=>openCard(it.id)}
+        style={{background:"#fff",border:`1.5px solid ${it.u.rank>=3?"#fecaca":"#e2e8f0"}`,borderLeft:`4px solid ${it.u.color}`,borderRadius:10,padding:"9px 11px",marginBottom:8,cursor:"pointer",boxShadow:dragId===it.id?"0 8px 20px rgba(0,0,0,.15)":"none",opacity:dragId===it.id?.5:1}}>
+        <div style={{fontWeight:700,color:"#0f172a",fontSize:".8rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{it.deal.client}</div>
+        <div style={{fontSize:".7rem",color:"#94a3b8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginTop:1}}>{it.design.projectTitle||it.deal.product||"—"}</div>
+        <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center",marginTop:6}}>
+          <span style={{fontSize:".64rem",fontWeight:700,color:it.u.color,background:it.u.color+"18",border:`1px solid ${it.u.color}44`,borderRadius:12,padding:"1px 7px"}}>{it.u.label}</span>
+          {openB>0&&<span style={{fontSize:".64rem",fontWeight:700,color:"#dc2626"}}>🚧 {openB}</span>}
+          {designNeedsArtwork(it.design)&&<span style={{fontSize:".62rem",fontWeight:700,color:"#7c3aed",background:"#f5f3ff",borderRadius:12,padding:"1px 6px"}}>🎨</span>}
+          {isProductionBriefed(it.design)&&<span style={{fontSize:".62rem"}} title="Briefed to Production">📦</span>}
+        </div>
+        <div style={{fontSize:".66rem",color:"#94a3b8",marginTop:5}}>{it.design.designer||"Unassigned"}{it.promised?` · ${it.promised}`:""}</div>
+        {mob&&(
+          <select value={it.design.status} onClick={e=>e.stopPropagation()} onChange={e=>{e.stopPropagation();const s=e.target.value;if(s==="Done"&&!it.design.link){toastEmit&&toastEmit("⚠ Add a file / link first.","warning");openCard(it.id);return;}applyDesignStatus(upProj,it.id,projs[it.id],it.deal,s,session,today,sendTelegramNotification);}}
+            style={{marginTop:7,width:"100%",boxSizing:"border-box",border:`1.5px solid ${c}`,borderRadius:7,padding:"5px 8px",fontFamily:"inherit",fontSize:".72rem",color:c,background:c+"12",fontWeight:700}}>
+            {DESIGN_STATUSES.map(s=><option key={s} value={s} style={{color:"#0f172a",background:"#fff"}}>{s}</option>)}
+          </select>
+        )}
+      </div>
+    );
+  };
+
+  return(
+    <div>
+      {/* Filter-tile widgets */}
+      <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr 1fr":"repeat(6,1fr)",gap:8,marginBottom:14}}>
+        {tiles.map(t=>(
+          <div key={t.key} onClick={()=>setFilter(filter===t.key?null:t.key)}
+            style={{background:filter===t.key?t.color+"14":"#fff",border:`1.5px solid ${filter===t.key?t.color:t.color+"33"}`,borderRadius:11,padding:"9px 11px",cursor:"pointer"}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:t.count?t.color:"#cbd5e1"}}>{t.count}</div>
+            <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:".5px",color:"#94a3b8",marginTop:2,fontWeight:700}}>{t.label}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,flexWrap:"wrap",gap:8}}>
+        <div style={{fontSize:".72rem",color:"#94a3b8"}}>{activeTile?`Filtered: ${activeTile.label} · ${visible.length} project${visible.length!==1?"s":""}`:`${items.length} project${items.length!==1?"s":""}`}{!mob&&" · drag cards between columns to change status"}</div>
+        <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+          {mob&&(
+            <select value={mobStatus} onChange={e=>setMobStatus(e.target.value)}
+              style={{border:"1.5px solid #e2e8f0",borderRadius:9,padding:"6px 10px",fontFamily:"inherit",fontSize:".76rem",color:"#0f172a",background:"#fff",fontWeight:700}}>
+              <option value="">All statuses</option>
+              {DESIGN_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
+            </select>
+          )}
+          <label style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:".72rem",color:"#64748b",cursor:"pointer"}}>
+            <input type="checkbox" checked={showClosed} onChange={e=>setShowClosed(e.target.checked)} style={{cursor:"pointer"}}/>Show closed
+          </label>
+        </div>
+      </div>
+      {mob
+        ? (/* Mobile: no Kanban columns — a single most-due-first list driven by the tiles + status filter */
+          (()=>{
+            const list=visible
+              .filter(it=>showClosed||!isDesignClosed(it.design.status))
+              .filter(it=>!mobStatus||it.design.status===mobStatus)
+              .sort((a,b)=>b.u.rank-a.u.rank||(a.promised||"9999").localeCompare(b.promised||"9999"));
+            return list.length===0
+              ? <div style={{fontSize:".8rem",color:"#94a3b8",textAlign:"center",padding:"24px 0"}}>Nothing matches this filter.</div>
+              : <div>{list.map(Cardlet)}</div>;
+          })()
+        )
+        : (/* Desktop: Kanban columns with drag-drop */
+          <div style={{display:"flex",gap:12,overflowX:"auto",paddingBottom:8}}>
+            {cols.map(st=>{
+              const list=byStatus(st);const c=DS_CLR[st]||"#94a3b8";
+              return(
+                <div key={st}
+                  onDragOver={e=>{e.preventDefault();}}
+                  onDrop={()=>dropTo(st)}
+                  style={{flex:"1",minWidth:180,background:"#f8fafc",border:`1.5px solid ${dragId?c+"66":"#eef2f7"}`,borderRadius:12,padding:"10px 10px 6px"}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                    <span style={{fontSize:".72rem",fontWeight:800,color:c}}>{st}</span>
+                    <span style={{fontSize:".66rem",fontWeight:700,color:"#94a3b8",background:"#fff",borderRadius:10,padding:"1px 7px"}}>{list.length}</span>
+                  </div>
+                  {list.length===0?<div style={{fontSize:".68rem",color:"#cbd5e1",textAlign:"center",padding:"14px 0"}}>—</div>:list.map(Cardlet)}
+                </div>
+              );
+            })}
+          </div>
+        )}
+    </div>
+  );
+}
+
 // ─── DESIGN DETAILS MODAL ─────────────────────────────────────────────────────
 // The designer's working modal for one project: Sales brief, design output,
 // status, revisions, approvals (internal + client), a handoff-readiness gate,
 // and a comment thread. Extracted to a component so it can hold local UI state.
-function DesignDetailModal({selProj,proj,deal,linkedDrf,drfs,projList,projs,upProj,session,sendTelegramNotification,toastEmit,today,setSelProj,setOpsTab}){
+function DesignDetailModal({selProj,proj,deal,linkedDrf,drfs,projList,projs,upProj,session,role,sendTelegramNotification,toastEmit,today,setSelProj,setOpsTab}){
   const mob=window.innerWidth<768;
   const d=proj.design||{};
+  // ── Draft / Save ────────────────────────────────────────────────────────────
+  // Typed fields buffer into a local draft and commit on Save (one write instead
+  // of one-per-keystroke). Discrete actions — status, blockers, deliverables,
+  // comments, approvals-as-stamps — still commit immediately via setD. `v` is the
+  // effective view: committed design with unsaved edits layered on top.
+  const[draft,setDraft]=React.useState({});
+  const v={...d,...draft};
+  const setF=(patch)=>setDraft(prev=>({...prev,...patch}));
+  const dirty=Object.keys(draft).length>0;
+  const saveDraft=()=>{ if(!dirty) return; upProj(selProj,p=>({...p,design:{...p.design,...draft}})); setDraft({}); toastEmit("✔ Design details saved","success"); };
+  const discardDraft=()=>setDraft({});
+  const closeModal=async()=>{ if(dirty&&!(await uiConfirm("You have unsaved changes. Discard them?"))) return; setDraft({}); setSelProj(null); };
+
   const status=d.status||"Briefing";
-  const hasApproval=d.approvedBy&&d.approvedOn;
+  const hasApproval=v.approvedBy&&v.approvedOn;
   const notify=!!d.notifyStatus;
   const[commentText,setCommentText]=React.useState("");
   const[briefOpen,setBriefOpen]=React.useState(status==="Briefing");
@@ -503,12 +666,12 @@ function DesignDetailModal({selProj,proj,deal,linkedDrf,drfs,projList,projs,upPr
     catch{ toastEmit("Couldn't copy automatically — select the brief text manually.","warning"); }
   };
 
-  // Handoff-readiness checklist.
+  // Handoff-readiness checklist (reflects unsaved edits via v).
   const checks=[
-    {label:"File / drawings link",ok:!!d.link},
-    {label:"Revision no. locked",ok:!!d.revisionNo},
+    {label:"File / drawings link",ok:!!v.link},
+    {label:"Revision no. locked",ok:!!v.revisionNo},
     {label:"Internal approval",ok:!!hasApproval},
-    {label:"Client approval",ok:d.clientStatus==="Client Approved"},
+    {label:"Client approval",ok:v.clientStatus==="Client Approved"},
   ];
   const readyCount=checks.filter(c=>c.ok).length;
   const allReady=readyCount===checks.length;
@@ -516,14 +679,33 @@ function DesignDetailModal({selProj,proj,deal,linkedDrf,drfs,projList,projs,upPr
   // Days in current status (from the last status-history entry).
   const lastHist=(d.statusHistory||[]).slice(-1)[0];
   const daysInStatus=lastHist?.date?Math.max(0,Math.floor((new Date(today)-new Date(lastHist.date))/86400000)):null;
-  const dueOverdue=d.dueDate&&!hasApproval&&new Date(d.dueDate)<new Date(today);
+  const dueOverdue=v.dueDate&&!hasApproval&&new Date(v.dueDate)<new Date(today);
 
   const refs=(linkedDrf?.refLinks||[]).filter(Boolean);
   const CS_CLR={"Not Sent":"#94a3b8","Sent for Review":"#3b82f6","Client Approved":"#059669","Client Revisions":"#ef4444"};
-  const cs=d.clientStatus||"Not Sent";
+  const cs=v.clientStatus||"Not Sent";
+
+  // Committed (promised) date is owned by the design manager only; everyone else
+  // sees it read-only. Blockers can be raised by any designer. Urgency/promised
+  // reflect unsaved edits (v) so the badge updates live as Gab types a date.
+  const canSetCommitted=role==="Manager";
+  const promised=designPromisedDate(v,linkedDrf);
+  const urgency=designUrgency(v,linkedDrf,today);
+  const openBlks=openBlockers(d);
+  const briefed=isProductionBriefed(d);
+  const[blkText,setBlkText]=React.useState("");
+  const addBlocker=()=>{
+    const t=blkText.trim(); if(!t) return;
+    setD({blockers:[...(d.blockers||[]),{text:t,by:session?.name||"Design",at:new Date().toISOString(),resolved:false}]});
+    setBlkText("");
+    if(notify) sendTelegramNotification("design",`🚧 <b>Design Blocker — ${deal?.client||"?"}</b>\n${t}\nBy: ${session?.name||"Design"}`);
+  };
+  const toggleBlocker=(idx)=>setD({blockers:(d.blockers||[]).map((b,j)=>j===idx?{...b,resolved:!b.resolved,resolvedBy:session?.name,resolvedAt:new Date().toISOString()}:b)});
+  const toggleDeliverable=(t)=>{const cur=d.deliverables||[];setD({deliverables:cur.includes(t)?cur.filter(x=>x!==t):[...cur,t]});};
+  const markBriefed=()=>setD({productionBriefed:{by:session?.name||"—",at:new Date().toISOString()}});
 
   return(
-    <Modal open title={`Design Details — ${deal?.client}`} onClose={()=>setSelProj(null)} wide>
+    <Modal open title={`Design Details — ${deal?.client}`} onClose={closeModal} wide>
       {/* ── Handoff readiness gate ─────────────────────── */}
       <div style={{background:allReady?"#f0fdf4":"#fff7ed",border:`1.5px solid ${allReady?"#bbf7d0":"#fed7aa"}`,borderRadius:12,padding:"10px 14px",marginBottom:14}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,flexWrap:"wrap",marginBottom:7}}>
@@ -534,6 +716,56 @@ function DesignDetailModal({selProj,proj,deal,linkedDrf,drfs,projList,projs,upPr
           {checks.map(c=>(
             <span key={c.label} style={{fontSize:".72rem",fontWeight:600,color:c.ok?"#15803d":"#b45309"}}>{c.ok?"✅":"⬜"} {c.label}</span>
           ))}
+        </div>
+      </div>
+
+      {/* ── Timeline · Blockers · Production handoff ────── */}
+      <div style={{background:"#fff",border:`1.5px solid ${urgency.color}44`,borderRadius:12,padding:"12px 14px",marginBottom:14}}>
+        <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:12}}>
+          {/* Committed / promised date — manager-owned */}
+          <div>
+            <div style={{fontSize:".64rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>Committed Date {canSetCommitted?"":" (set by Design Mgr)"}</div>
+            {canSetCommitted
+              ? <Inp type="date" value={v.committedDate||""} onChange={e=>setF({committedDate:e.target.value})}/>
+              : <div style={{fontSize:".9rem",fontWeight:800,color:v.committedDate?"#0f172a":"#cbd5e1"}}>{v.committedDate||"— not committed —"}</div>}
+            <div style={{marginTop:5,fontSize:".72rem",fontWeight:700,color:urgency.color}}>{urgency.label}</div>
+            {linkedDrf?.designDeadline&&<div style={{fontSize:".68rem",color:"#94a3b8",marginTop:2}}>Sales requested: {linkedDrf.designDeadline}</div>}
+          </div>
+          {/* Production handoff acknowledgement */}
+          <div>
+            <div style={{fontSize:".64rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>Production Briefed</div>
+            {briefed
+              ? <div style={{background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:9,padding:"8px 12px",fontSize:".76rem",color:"#166534",fontWeight:700}}>✅ Briefed by {d.productionBriefed.by} · {new Date(d.productionBriefed.at).toLocaleDateString()}
+                  {canSetCommitted&&<button onClick={()=>setD({productionBriefed:null})} style={{marginLeft:8,background:"none",border:"none",color:"#94a3b8",cursor:"pointer",fontSize:".7rem"}}>undo</button>}</div>
+              : <button onClick={markBriefed} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:9,padding:"8px 12px",fontFamily:"inherit",fontSize:".76rem",color:"#1d4ed8",fontWeight:700,cursor:"pointer"}}>📦 Mark briefed to Production</button>}
+            {/* Deliverable tags */}
+            <div style={{marginTop:8}}>
+              <div style={{fontSize:".62rem",color:"#94a3b8",fontWeight:700,marginBottom:4}}>DELIVERABLES</div>
+              <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                {DESIGN_DELIVERABLES.map(t=>{const on=(d.deliverables||[]).includes(t);return(
+                  <button key={t} onClick={()=>toggleDeliverable(t)} style={{padding:"3px 10px",borderRadius:16,border:`1.5px solid ${on?"#7c3aed":"#e2e8f0"}`,background:on?"#f5f3ff":"#fff",color:on?"#6d28d9":"#94a3b8",fontWeight:on?700:400,cursor:"pointer",fontSize:".7rem",fontFamily:"inherit"}}>{on?"✓ ":""}{t}</button>
+                );})}
+              </div>
+            </div>
+          </div>
+        </div>
+        {/* Blockers — raised by any designer */}
+        <div style={{marginTop:12,borderTop:"1px solid #f1f5f9",paddingTop:10}}>
+          <div style={{fontSize:".64rem",color:openBlks.length?"#dc2626":"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:6}}>🚧 Blockers — what we need to move {openBlks.length>0&&`(${openBlks.length} open)`}</div>
+          <div style={{display:"flex",gap:8,marginBottom:(d.blockers||[]).length?8:0}}>
+            <Inp value={blkText} onChange={e=>setBlkText(e.target.value)} placeholder="e.g. Waiting on client artwork / final dimensions from Sales…" onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addBlocker();}}}/>
+            <button onClick={addBlocker} disabled={!blkText.trim()} style={{flexShrink:0,background:blkText.trim()?"#dc2626":"#e2e8f0",border:"none",borderRadius:8,padding:"0 14px",color:blkText.trim()?"#fff":"#94a3b8",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",cursor:blkText.trim()?"pointer":"not-allowed"}}>Raise</button>
+          </div>
+          {(d.blockers||[]).map((b,idx)=>(
+            <div key={idx} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:8,background:b.resolved?"#f8fafc":"#fef2f2",border:`1px solid ${b.resolved?"#eef2f7":"#fecaca"}`,marginBottom:5}}>
+              <button onClick={()=>toggleBlocker(idx)} title={b.resolved?"Reopen":"Resolve"} style={{background:"none",border:"none",cursor:"pointer",fontSize:".85rem"}}>{b.resolved?"✅":"⬜"}</button>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:".78rem",color:b.resolved?"#94a3b8":"#7f1d1d",fontWeight:600,textDecoration:b.resolved?"line-through":"none"}}>{b.text}</div>
+                <div style={{fontSize:".66rem",color:"#94a3b8"}}>{b.by}{b.at?` · ${new Date(b.at).toLocaleDateString()}`:""}{b.resolved&&b.resolvedBy?` · resolved by ${b.resolvedBy}`:""}</div>
+              </div>
+            </div>
+          ))}
+          {(d.blockers||[]).length===0&&<div style={{fontSize:".72rem",color:"#94a3b8",fontStyle:"italic"}}>No blockers — designer can flag anything they're waiting on here.</div>}
         </div>
       </div>
 
@@ -615,27 +847,28 @@ function DesignDetailModal({selProj,proj,deal,linkedDrf,drfs,projList,projs,upPr
         </div>
       )}
       <Fld label="Designer">
-        <Sel value={d.designer||""} onChange={e=>setD({designer:e.target.value})}><option value="">— Select —</option>{DESIGN_MEMBERS.map(m=><option key={m}>{m}{workload[m]!=null?`  (${workload[m]} open)`:""}</option>)}</Sel>
-        {d.designer&&workload[d.designer]!=null&&<div style={{fontSize:".7rem",color:"#94a3b8",marginTop:4}}>{d.designer} currently has {workload[d.designer]} open item{workload[d.designer]!==1?"s":""}.</div>}
+        <Sel value={v.designer||""} onChange={e=>setF({designer:e.target.value})}><option value="">— Select —</option>{DESIGN_MEMBERS.map(m=><option key={m}>{m}{workload[m]!=null?`  (${workload[m]} open)`:""}</option>)}</Sel>
+        {v.designer&&workload[v.designer]!=null&&<div style={{fontSize:".7rem",color:"#94a3b8",marginTop:4}}>{v.designer} currently has {workload[v.designer]} open item{workload[v.designer]!==1?"s":""}.</div>}
       </Fld>
-      <Fld label="Due Date">
-        <Inp type="date" value={d.dueDate||""} onChange={e=>setD({dueDate:e.target.value})}/>
-        {d.dueDate&&!hasApproval&&(()=>{
-          const diff=Math.ceil((new Date(d.dueDate)-new Date(today))/86400000);
+      <Fld label="Working Due Date" hint="Internal target; the committed date above is the promise to Sales.">
+        <Inp type="date" value={v.dueDate||""} onChange={e=>setF({dueDate:e.target.value})}/>
+        {v.dueDate&&!hasApproval&&(()=>{
+          const diff=Math.ceil((new Date(v.dueDate)-new Date(today))/86400000);
           const over=diff<0,soon=diff>=0&&diff<=2;const c=over?"#dc2626":soon?"#f59e0b":"#059669";
           return <div style={{marginTop:5,fontSize:".72rem",fontWeight:700,color:c}}>{over?`⚠ Overdue by ${Math.abs(diff)} day${Math.abs(diff)!==1?"s":""}`:diff===0?"⏰ Due today":`⏳ ${diff} day${diff!==1?"s":""} left`}</div>;
         })()}
       </Fld>
-      <Fld label="Revision No." hint="e.g. Rev 3 — lock this before handoff to Ops"><Inp value={d.revisionNo||""} onChange={e=>setD({revisionNo:e.target.value})} placeholder="e.g. Rev 3"/></Fld>
-      <Fld label="File / Link (Google Drive, Figma, etc.)"><Inp type="url" value={d.link||""} onChange={e=>setD({link:e.target.value})} placeholder="https://drive.google.com/…"/></Fld>
+      <Fld label="Revision No." hint="e.g. Rev 3 — lock this before handoff to Ops"><Inp value={v.revisionNo||""} onChange={e=>setF({revisionNo:e.target.value})} placeholder="e.g. Rev 3"/></Fld>
+      <Fld label="File / Link (Google Drive, Figma, etc.)"><Inp type="url" value={v.link||""} onChange={e=>setF({link:e.target.value})} placeholder="https://drive.google.com/…"/></Fld>
       {/* ── Revision Log ─────────────────────────────── */}
       <div style={{gridColumn:"1/-1"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
           <div style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px"}}>📑 Revision Log</div>
           <button onClick={()=>{
-            if(!d.revisionNo&&!d.link){toastEmit("⚠ Set a Revision No. and file link before logging a revision.","warning");return;}
-            const rev={no:d.revisionNo||`Rev ${(d.revisions||[]).length+1}`,link:d.link||"",date:today,by:session?.name||"Design",status:d.status||""};
-            setD({revisions:[...(d.revisions||[]),rev]});
+            if(!v.revisionNo&&!v.link){toastEmit("⚠ Set a Revision No. and file link before logging a revision.","warning");return;}
+            const rev={no:v.revisionNo||`Rev ${(d.revisions||[]).length+1}`,link:v.link||"",date:today,by:session?.name||"Design",status:d.status||""};
+            // Commit any unsaved edits (revisionNo/link) alongside the new log entry.
+            upProj(selProj,p=>({...p,design:{...p.design,...draft,revisions:[...(p.design?.revisions||[]),rev]}}));setDraft({});
             toastEmit(`📑 Logged ${rev.no}`,"success");
           }} style={{background:"#f5f3ff",border:"1.5px solid #ddd6fe",borderRadius:8,padding:"5px 12px",fontFamily:"inherit",fontSize:".73rem",color:"#6d28d9",cursor:"pointer",fontWeight:700}}>+ Log current revision</button>
         </div>
@@ -653,7 +886,7 @@ function DesignDetailModal({selProj,proj,deal,linkedDrf,drfs,projList,projs,upPr
             </div>
         }
       </div>
-      <Fld label="Notes"><Inp rows={2} value={d.notes||""} onChange={e=>setD({notes:e.target.value})}/></Fld>
+      <Fld label="Notes"><Inp rows={2} value={v.notes||""} onChange={e=>setF({notes:e.target.value})}/></Fld>
       {/* ── Approval Stamp ───────────────────────────── */}
       <div style={{marginTop:16,background:hasApproval?"#f0fdf4":"#fffbeb",border:`1.5px solid ${hasApproval?"#bbf7d0":"#fde68a"}`,borderRadius:12,padding:"14px 16px"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,flexWrap:"wrap",marginBottom:10}}>
@@ -664,14 +897,14 @@ function DesignDetailModal({selProj,proj,deal,linkedDrf,drfs,projList,projs,upPr
           <div style={{display:"flex",gap:16,alignItems:"center",marginBottom:10,flexWrap:"wrap"}}>
             <div style={{background:"#dcfce7",border:"1.5px solid #86efac",borderRadius:10,padding:"8px 14px",display:"inline-flex",gap:10,alignItems:"center"}}>
               <span style={{fontSize:"1.2rem"}}>🔏</span>
-              <div><div style={{fontWeight:800,color:"#15803d",fontSize:".85rem"}}>{d.revisionNo||"Rev —"}</div><div style={{fontSize:".72rem",color:"#166534"}}>Approved by {d.approvedBy} · {d.approvedOn}</div></div>
+              <div><div style={{fontWeight:800,color:"#15803d",fontSize:".85rem"}}>{v.revisionNo||"Rev —"}</div><div style={{fontSize:".72rem",color:"#166534"}}>Approved by {v.approvedBy} · {v.approvedOn}</div></div>
             </div>
-            {d.link&&<a href={d.link} target="_blank" rel="noreferrer" style={{fontSize:".78rem",color:"#15803d",fontWeight:600}}>📂 View Drawings</a>}
+            {v.link&&<a href={v.link} target="_blank" rel="noreferrer" style={{fontSize:".78rem",color:"#15803d",fontWeight:600}}>📂 View Drawings</a>}
           </div>
         )}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-          <Fld label="Approved by"><Sel value={d.approvedBy||""} onChange={e=>setD({approvedBy:e.target.value})}><option value="">— Select approver —</option>{[...DESIGN_MEMBERS,...SALES_TEAM,...OPS_TEAM].filter((v,i,a)=>a.indexOf(v)===i).map(m=><option key={m}>{m}</option>)}</Sel></Fld>
-          <Fld label="Approved on"><Inp type="date" value={d.approvedOn||""} onChange={e=>setD({approvedOn:e.target.value})}/></Fld>
+          <Fld label="Approved by"><Sel value={v.approvedBy||""} onChange={e=>setF({approvedBy:e.target.value})}><option value="">— Select approver —</option>{[...DESIGN_MEMBERS,...SALES_TEAM,...OPS_TEAM].filter((val,i,a)=>a.indexOf(val)===i).map(m=><option key={m}>{m}</option>)}</Sel></Fld>
+          <Fld label="Approved on"><Inp type="date" value={v.approvedOn||""} onChange={e=>setF({approvedOn:e.target.value})}/></Fld>
         </div>
         {!hasApproval&&<div style={{fontSize:".72rem",color:"#92400e",marginTop:6}}>Fill in both fields above to lock this revision for handoff to Operations.</div>}
       </div>
@@ -683,20 +916,20 @@ function DesignDetailModal({selProj,proj,deal,linkedDrf,drfs,projList,projs,upPr
         </div>
         <Fld label="Client Review Link" hint="Shareable drawings / presentation link to send the client for sign-off">
           <div style={{display:"flex",gap:8}}>
-            <Inp type="url" value={d.clientReviewLink||""} onChange={e=>setD({clientReviewLink:e.target.value})} placeholder="https://drive.google.com/…"/>
-            {d.clientReviewLink&&<a href={d.clientReviewLink} target="_blank" rel="noreferrer" style={{flexShrink:0,background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"8px 12px",fontSize:".75rem",color:"#1d4ed8",fontWeight:700,textDecoration:"none",alignSelf:"center"}}>Open ↗</a>}
+            <Inp type="url" value={v.clientReviewLink||""} onChange={e=>setF({clientReviewLink:e.target.value})} placeholder="https://drive.google.com/…"/>
+            {v.clientReviewLink&&<a href={v.clientReviewLink} target="_blank" rel="noreferrer" style={{flexShrink:0,background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"8px 12px",fontSize:".75rem",color:"#1d4ed8",fontWeight:700,textDecoration:"none",alignSelf:"center"}}>Open ↗</a>}
           </div>
         </Fld>
         <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:10}}>
-          <Fld label="Review Status"><Sel value={cs} onChange={e=>{const v=e.target.value;const patch={clientStatus:v};if(v==="Client Approved"&&!d.clientSignoffDate)patch.clientSignoffDate=today;setD(patch);}}>{["Not Sent","Sent for Review","Client Approved","Client Revisions"].map(s=><option key={s}>{s}</option>)}</Sel></Fld>
-          <Fld label="Client Sign-off (name)"><Inp value={d.clientSignoffName||""} onChange={e=>setD({clientSignoffName:e.target.value})} placeholder="Client contact who approved"/></Fld>
-          <Fld label="Sign-off Date"><Inp type="date" value={d.clientSignoffDate||""} onChange={e=>setD({clientSignoffDate:e.target.value})}/></Fld>
-          <Fld label="Client Feedback"><Inp value={d.clientFeedback||""} onChange={e=>setD({clientFeedback:e.target.value})} placeholder="Revisions requested, comments…"/></Fld>
+          <Fld label="Review Status"><Sel value={cs} onChange={e=>{const val=e.target.value;const patch={clientStatus:val};if(val==="Client Approved"&&!v.clientSignoffDate)patch.clientSignoffDate=today;setF(patch);}}>{["Not Sent","Sent for Review","Client Approved","Client Revisions"].map(s=><option key={s}>{s}</option>)}</Sel></Fld>
+          <Fld label="Client Sign-off (name)"><Inp value={v.clientSignoffName||""} onChange={e=>setF({clientSignoffName:e.target.value})} placeholder="Client contact who approved"/></Fld>
+          <Fld label="Sign-off Date"><Inp type="date" value={v.clientSignoffDate||""} onChange={e=>setF({clientSignoffDate:e.target.value})}/></Fld>
+          <Fld label="Client Feedback"><Inp value={v.clientFeedback||""} onChange={e=>setF({clientFeedback:e.target.value})} placeholder="Revisions requested, comments…"/></Fld>
         </div>
-        {cs==="Client Approved"&&d.clientSignoffName&&(
+        {cs==="Client Approved"&&v.clientSignoffName&&(
           <div style={{marginTop:10,background:"#dcfce7",border:"1.5px solid #86efac",borderRadius:10,padding:"8px 14px",display:"inline-flex",gap:10,alignItems:"center"}}>
             <span style={{fontSize:"1.1rem"}}>✅</span>
-            <div style={{fontSize:".76rem",color:"#166534",fontWeight:600}}>Client approved by {d.clientSignoffName}{d.clientSignoffDate?` · ${d.clientSignoffDate}`:""}</div>
+            <div style={{fontSize:".76rem",color:"#166534",fontWeight:600}}>Client approved by {v.clientSignoffName}{v.clientSignoffDate?` · ${v.clientSignoffDate}`:""}</div>
           </div>
         )}
       </div>
@@ -726,8 +959,16 @@ function DesignDetailModal({selProj,proj,deal,linkedDrf,drfs,projList,projs,upPr
             </div>
         }
       </div>
-      <div style={{fontSize:".72rem",color:"#94a3b8",textAlign:"center",marginTop:14,marginBottom:4}}>Changes are saved automatically as you type.</div>
-      <Btn full onClick={()=>setSelProj(null)}>Close</Btn>
+      {/* ── Save bar ─────────────────────────────────────
+          Typed fields (dates, links, notes, approvals) buffer locally and commit
+          here. Status changes, blockers, deliverables and comments still save on
+          click, so the bar only lights up for the fields it owns. */}
+      <div style={{position:"sticky",bottom:0,marginTop:16,paddingTop:12,background:"#fff",borderTop:"1px solid #eef2f7",display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+        <div style={{flex:1,minWidth:120,fontSize:".74rem",fontWeight:700,color:dirty?"#b45309":"#94a3b8"}}>{dirty?"● Unsaved changes":"✓ All changes saved"}</div>
+        {dirty&&<button onClick={discardDraft} style={{background:"#f1f5f9",border:"none",borderRadius:9,padding:"9px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".85rem",color:"#475569",cursor:"pointer"}}>Discard</button>}
+        <button onClick={saveDraft} disabled={!dirty} style={{background:dirty?"#7c3aed":"#e2e8f0",border:"none",borderRadius:9,padding:"9px 24px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:dirty?"#fff":"#94a3b8",cursor:dirty?"pointer":"not-allowed"}}>💾 Save</button>
+        <button onClick={closeModal} style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"9px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".85rem",color:"#475569",cursor:"pointer"}}>Close</button>
+      </div>
     </Modal>
   );
 }
@@ -8030,7 +8271,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"finance-reports",l:"Reports"}]},
       {group:"Accounting",  items:[{id:"coa",l:"Chart of Accounts"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
-      {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
+      {group:"Design",      items:[{id:"designboard",l:"Design Board"},{id:"drf",l:"Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
       {group:"Warehousing", items:[{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"}]},
       {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"audit",l:"Audit"},{id:"botsettings",l:"Bot Settings"},{id:"tvboard",l:"Office TV Board"},{id:"activity",l:"Team Activity"}]},
@@ -8039,7 +8280,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Pipeline",     items:[{id:"pipeline",l:"Sales Pipeline"},{id:"calendar",l:"Calendar"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Reports"}]},
       {group:"Projects",     items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
       {group:"Billing",      items:[{id:"billing",l:"Billing"}]},
-      {group:"Deliverables", items:[{id:"drf",l:"Design Requests"}]},
+      {group:"Deliverables", items:[{id:"designstatus",l:"Design Status"},{id:"drf",l:"Design Requests"}]},
       {group:"QS",           items:[{id:"ceqs",l:"CE Requests"},{id:"boq",l:"BOQ"}]},
     ],
     Finance:[
@@ -8088,7 +8329,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Requests",  items:[{id:"costanalysis",l:"Cost Analysis"}]},
     ],
     Design:[
-      {group:"Overview",    items:[{id:"home",l:"Projects"},{id:"myfolder",l:"My Projects"}]},
+      {group:"Overview",    items:[{id:"home",l:"Projects"},{id:"designboard",l:"Design Board"},{id:"myfolder",l:"My Projects"}]},
       // Sales Pipeline is limited to the Head Designer — the rest of the design
       // team only sees their design work, not the sales funnel.
       ...(isHeadDesigner(session?.name)?[{group:"Sales", items:[{id:"pipeline",l:"Sales Pipeline"}]}]:[]),
@@ -9631,6 +9872,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
         return(
           <div style={{display:"flex",flexDirection:"column",gap:14}}>
+
+            {/* Trial pointer — surfaces the new Design Board during the evaluation
+                window. Remove this block once the team has picked a default view. */}
+            <div onClick={()=>setPage("designboard")} style={{background:"linear-gradient(90deg,#faf5ff,#eef2ff)",border:"1.5px solid #ddd6fe",borderRadius:12,padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,cursor:"pointer",flexWrap:"wrap"}}>
+              <div>
+                <div style={{fontWeight:700,color:"#6d28d9",fontSize:".9rem"}}>🆕 Try the new Design Board</div>
+                <div style={{fontSize:".75rem",color:"#94a3b8",marginTop:2}}>Kanban + most-due view with committed dates and blockers. Tell us if it should replace this page.</div>
+              </div>
+              <span style={{background:"#7c3aed",border:"none",borderRadius:8,padding:"8px 16px",color:"#fff",fontWeight:700,fontSize:".78rem",whiteSpace:"nowrap"}}>Open board →</span>
+            </div>
 
             {/* KPI strip */}
             {drfs.filter(d=>d.status==="New").length>0&&(
@@ -14763,64 +15014,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             {label:"Swatchboard",  icon:"🎨", bg:"#8b5cf6", action:()=>setPage("swatchboard")},
           ]}
         />
-        <SecHead title="Design Projects"/>
-        {projList.map(d=>{
-          const p=projs[d.id]; if(!p) return null; const ds=p?.design?.status||"Briefing";
-          const dsPct=Math.round((DESIGN_STATUSES.indexOf(ds))/(DESIGN_STATUSES.length-1)*100);
-          return(
-            <Card key={d.id} onClick={()=>{setSelProj(d.id);setOpsTab("design");}} accent={p?.currentStage==="Design"?DS_CLR[ds]:undefined}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
-                <div>
-                  <div style={{fontWeight:700,color:"#0f172a",fontSize:"1rem"}}>{d.client}</div>
-                  <div style={{fontSize:".76rem",color:"#64748b",marginTop:2}}>{d.product}</div>
-                </div>
-                <div style={{display:"flex",gap:7,flexWrap:"wrap",justifyContent:"flex-end"}}>
-                  <Badge label={p.currentStage} color={PROD_CLR[p.currentStage]}/>
-                  <Badge label={ds} color={DS_CLR[ds]}/>
-                </div>
-              </div>
-              <div style={{marginBottom:6}}>
-                <div style={{display:"flex",justifyContent:"space-between",fontSize:".7rem",color:"#94a3b8",marginBottom:4}}><span>Design progress</span><span style={{fontWeight:700,color:DS_CLR[ds]}}>{dsPct}%</span></div>
-                <ProgBar pct={dsPct} color={DS_CLR[ds]}/>
-              </div>
-              <div style={{display:"flex",gap:12,fontSize:".74rem",color:"#94a3b8",marginTop:6,flexWrap:"wrap",alignItems:"center"}}>
-                <span>Designer: {p.design?.designer||"—"}</span>
-                <span>Due: {p.design?.dueDate||"—"}</span>
-                {p.design?.approvedBy&&p.design?.approvedOn&&(
-                  <span style={{background:"#dcfce7",color:"#15803d",fontWeight:700,fontSize:".68rem",padding:"2px 9px",borderRadius:20,border:"1px solid #86efac"}}>🔏 {p.design?.revisionNo||"Rev"} · Approved by {p.design.approvedBy}</span>
-                )}
-              </div>
-              <div style={{marginTop:10,display:"flex",gap:7,flexWrap:"wrap",alignItems:"center"}}>
-                {DESIGN_STATUSES.map(s=>(
-                  <button key={s} onClick={e=>{
-                    e.stopPropagation();
-                    if(s==="Done"&&!p.design?.link){
-                      toastEmit("⚠ Please add a file / link before marking Done.","warning");
-                      setSelProj(d.id);setOpsTab("design");
-                      return;
-                    }
-                    const next={...p.design,status:s,statusHistory:[...(p.design?.statusHistory||[]),{status:s,date:today,by:"Design"}]};
-                    upProj(d.id,x=>({...x,design:next}));
-                    if(s==="Done"&&p.currentStage==="Design"){
-                      upProj(d.id,x=>({...x,currentStage:"Fabrication",progress:{...x.progress,Design:100},stageDates:{...x.stageDates,Design:{...x.stageDates?.Design,e:today},Fabrication:{...x.stageDates?.Fabrication,s:x.stageDates?.Fabrication?.s||today}}}));
-                      const msg=`🎨 <b>Design Complete — Ready for Fabrication</b>\nProject: <b>${d.client||"?"}</b>${d.ceNo?`\nCE: ${d.ceNo}`:""}\nDesigner: ${next.designer||"—"}${next.revisionNo?`\nRevision: ${next.revisionNo}`:""}\n${next.link?`<a href="${next.link}">View Drawings</a>`:"No file link yet"}\nBy: ${session?.name||"Design"}`;
-                      sendTelegramNotification("ops",msg);
-                      sendTelegramNotification("management",msg);
-                    }
-                  }} style={{padding:"4px 11px",border:`1.5px solid ${ds===s?DS_CLR[s]:"#e2e8f0"}`,borderRadius:16,background:ds===s?DS_CLR[s]+"18":"#fff",color:ds===s?DS_CLR[s]:"#94a3b8",fontWeight:ds===s?700:400,cursor:"pointer",fontSize:".72rem",fontFamily:"inherit"}}>
-                    {s}
-                  </button>
-                ))}
-                <button onClick={e=>{e.stopPropagation();setJumpDeal(d.id);setPage("projects");}} style={{marginLeft:"auto",padding:"4px 10px",border:"1.5px solid #fecaca",borderRadius:16,background:"#fef2f2",color:"#dc2626",fontWeight:600,cursor:"pointer",fontSize:".68rem",fontFamily:"inherit",whiteSpace:"nowrap"}}>
-                  ⛔ Raise Blocker
-                </button>
-              </div>
-            </Card>
-          );
-        })}
-        {projList.length===0&&<EmptyState icon="🎨" msg="No active projects assigned yet."/>}
+        <SecHead title="Design Board — most-due first"/>
+        {projList.length===0
+          ? <EmptyState icon="🎨" msg="No active projects assigned yet."/>
+          : <DesignBoard projList={projList} projs={projs} drfs={drfs} upProj={upProj} session={session} role={role} today={today} setSelProj={setSelProj} setOpsTab={setOpsTab} sendTelegramNotification={sendTelegramNotification} toastEmit={toastEmit}/>}
         {selProj&&proj&&(
-          <DesignDetailModal selProj={selProj} proj={proj} deal={projDeal} linkedDrf={drfs.find(r=>r.dealId===selProj)} drfs={drfs} projList={projList} projs={projs} upProj={upProj} session={session} sendTelegramNotification={sendTelegramNotification} toastEmit={toastEmit} today={today} setSelProj={setSelProj} setOpsTab={setOpsTab}/>
+          <DesignDetailModal selProj={selProj} proj={proj} deal={projDeal} linkedDrf={drfs.find(r=>r.dealId===selProj)} drfs={drfs} projList={projList} projs={projs} upProj={upProj} session={session} role={role} sendTelegramNotification={sendTelegramNotification} toastEmit={toastEmit} today={today} setSelProj={setSelProj} setOpsTab={setOpsTab}/>
         )}
       </Wrap>
     );
@@ -14831,6 +15030,55 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   // ── GLOBAL DRF PAGE (Sales / Manager) ───────────────────────────────────
   if(page==="drf") return(<Wrap><DRFView drfs={drfs} addDRF={addDRF} updateDRF={updateDRF} deleteDRF={deleteDRF} wonDeals={wonDeals} session={session} role={role}/></Wrap>);
+
+  // ── DESIGN BOARD (Manager side panel — same board Design sees) ───────────
+  if(page==="designboard") return(
+    <Wrap>
+      <SecHead title="Design Board — most-due first"/>
+      {projList.length===0
+        ? <EmptyState icon="🎨" msg="No active design projects yet."/>
+        : <DesignBoard projList={projList} projs={projs} drfs={drfs} upProj={upProj} session={session} role={role} today={today} setSelProj={setSelProj} setOpsTab={setOpsTab} sendTelegramNotification={sendTelegramNotification} toastEmit={toastEmit}/>}
+      {selProj&&proj&&(
+        <DesignDetailModal selProj={selProj} proj={proj} deal={projDeal} linkedDrf={drfs.find(r=>r.dealId===selProj)} drfs={drfs} projList={projList} projs={projs} upProj={upProj} session={session} role={role} sendTelegramNotification={sendTelegramNotification} toastEmit={toastEmit} today={today} setSelProj={setSelProj} setOpsTab={setOpsTab}/>
+      )}
+    </Wrap>
+  );
+
+  // ── DESIGN STATUS (Sales — read-only, own deals only) ────────────────────
+  // Answers the three things Sales asks Design: promised date, briefed yet, and
+  // which projects carry artwork / signage. No editing — Sales watches, not drives.
+  if(page==="designstatus"){
+    const mine=projList.filter(d=>d.salesOwner===session?.name||d.assignedAE===session?.name);
+    return(
+      <Wrap>
+        <SecHead title="Design Status — my projects"/>
+        {mine.length===0
+          ? <EmptyState icon="🎨" msg="None of your projects are in design yet."/>
+          : mine.map(d=>{
+            const dz=projs[d.id]?.design||{};const drf=drfs.find(r=>r.dealId===d.id);
+            const u=designUrgency(dz,drf,today);const promised=designPromisedDate(dz,drf);
+            const openB=openBlockers(dz).length;const briefed=isProductionBriefed(dz);
+            return(
+              <Card key={d.id} accent={u.color}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,flexWrap:"wrap"}}>
+                  <div>
+                    <div style={{fontWeight:700,color:"#0f172a",fontSize:"1rem"}}>{d.client}</div>
+                    <div style={{fontSize:".76rem",color:"#64748b",marginTop:2}}>{d.product}</div>
+                  </div>
+                  <Badge label={dz.status||"Briefing"} color={DS_CLR[dz.status]||"#94a3b8"}/>
+                </div>
+                <div style={{display:"flex",gap:14,flexWrap:"wrap",marginTop:10,fontSize:".76rem"}}>
+                  <span><span style={{color:"#94a3b8"}}>Promised: </span><b style={{color:promised?u.color:"#cbd5e1"}}>{promised||"not committed"}</b></span>
+                  <span><span style={{color:"#94a3b8"}}>Briefed to production: </span><b style={{color:briefed?"#15803d":"#b45309"}}>{briefed?"Yes":"Not yet"}</b></span>
+                  {designNeedsArtwork(dz)&&<span style={{color:"#7c3aed",fontWeight:700}}>🎨 {(dz.deliverables||[]).filter(t=>ARTWORK_DELIVERABLES.includes(t)).join(" · ")}</span>}
+                </div>
+                {openB>0&&<div style={{marginTop:8,fontSize:".74rem",color:"#dc2626",fontWeight:600}}>🚧 {openB} open blocker{openB!==1?"s":""}: {openBlockers(dz).map(b=>b.text).join("; ")}</div>}
+              </Card>
+            );
+          })}
+      </Wrap>
+    );
+  }
 
   // ── PROJECT CARDS ────────────────────────────────────────────────────────────
   // ── TEAM ACTIVITY DASHBOARD ──────────────────────────────────────────────
