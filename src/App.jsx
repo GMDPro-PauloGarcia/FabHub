@@ -465,6 +465,7 @@ function DesignBoard({projList,projs,drfs,upProj,session,role,today,setSelProj,s
   const[filter,setFilter]=React.useState(null);
   const[showClosed,setShowClosed]=React.useState(false);
   const[dragId,setDragId]=React.useState(null);
+  const[mobStatus,setMobStatus]=React.useState(""); // mobile-only status filter (no columns on phones)
 
   const items=(projList||[]).map(dl=>{
     const p=projs[dl.id];if(!p)return null;
@@ -541,28 +542,50 @@ function DesignBoard({projList,projs,drfs,upProj,session,role,today,setSelProj,s
       </div>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,flexWrap:"wrap",gap:8}}>
         <div style={{fontSize:".72rem",color:"#94a3b8"}}>{activeTile?`Filtered: ${activeTile.label} · ${visible.length} project${visible.length!==1?"s":""}`:`${items.length} project${items.length!==1?"s":""}`}{!mob&&" · drag cards between columns to change status"}</div>
-        <label style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:".72rem",color:"#64748b",cursor:"pointer"}}>
-          <input type="checkbox" checked={showClosed} onChange={e=>setShowClosed(e.target.checked)} style={{cursor:"pointer"}}/>Show closed
-        </label>
+        <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+          {mob&&(
+            <select value={mobStatus} onChange={e=>setMobStatus(e.target.value)}
+              style={{border:"1.5px solid #e2e8f0",borderRadius:9,padding:"6px 10px",fontFamily:"inherit",fontSize:".76rem",color:"#0f172a",background:"#fff",fontWeight:700}}>
+              <option value="">All statuses</option>
+              {DESIGN_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
+            </select>
+          )}
+          <label style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:".72rem",color:"#64748b",cursor:"pointer"}}>
+            <input type="checkbox" checked={showClosed} onChange={e=>setShowClosed(e.target.checked)} style={{cursor:"pointer"}}/>Show closed
+          </label>
+        </div>
       </div>
-      {/* Columns */}
-      <div style={{display:"flex",gap:12,overflowX:"auto",paddingBottom:8}}>
-        {cols.map(st=>{
-          const list=byStatus(st);const c=DS_CLR[st]||"#94a3b8";
-          return(
-            <div key={st}
-              onDragOver={e=>{if(!mob){e.preventDefault();}}}
-              onDrop={()=>dropTo(st)}
-              style={{flex:mob?"0 0 78%":"1",minWidth:mob?"78%":180,background:"#f8fafc",border:`1.5px solid ${dragId?c+"66":"#eef2f7"}`,borderRadius:12,padding:"10px 10px 6px"}}>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-                <span style={{fontSize:".72rem",fontWeight:800,color:c}}>{st}</span>
-                <span style={{fontSize:".66rem",fontWeight:700,color:"#94a3b8",background:"#fff",borderRadius:10,padding:"1px 7px"}}>{list.length}</span>
-              </div>
-              {list.length===0?<div style={{fontSize:".68rem",color:"#cbd5e1",textAlign:"center",padding:"14px 0"}}>—</div>:list.map(Cardlet)}
-            </div>
-          );
-        })}
-      </div>
+      {mob
+        ? (/* Mobile: no Kanban columns — a single most-due-first list driven by the tiles + status filter */
+          (()=>{
+            const list=visible
+              .filter(it=>showClosed||!isDesignClosed(it.design.status))
+              .filter(it=>!mobStatus||it.design.status===mobStatus)
+              .sort((a,b)=>b.u.rank-a.u.rank||(a.promised||"9999").localeCompare(b.promised||"9999"));
+            return list.length===0
+              ? <div style={{fontSize:".8rem",color:"#94a3b8",textAlign:"center",padding:"24px 0"}}>Nothing matches this filter.</div>
+              : <div>{list.map(Cardlet)}</div>;
+          })()
+        )
+        : (/* Desktop: Kanban columns with drag-drop */
+          <div style={{display:"flex",gap:12,overflowX:"auto",paddingBottom:8}}>
+            {cols.map(st=>{
+              const list=byStatus(st);const c=DS_CLR[st]||"#94a3b8";
+              return(
+                <div key={st}
+                  onDragOver={e=>{e.preventDefault();}}
+                  onDrop={()=>dropTo(st)}
+                  style={{flex:"1",minWidth:180,background:"#f8fafc",border:`1.5px solid ${dragId?c+"66":"#eef2f7"}`,borderRadius:12,padding:"10px 10px 6px"}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                    <span style={{fontSize:".72rem",fontWeight:800,color:c}}>{st}</span>
+                    <span style={{fontSize:".66rem",fontWeight:700,color:"#94a3b8",background:"#fff",borderRadius:10,padding:"1px 7px"}}>{list.length}</span>
+                  </div>
+                  {list.length===0?<div style={{fontSize:".68rem",color:"#cbd5e1",textAlign:"center",padding:"14px 0"}}>—</div>:list.map(Cardlet)}
+                </div>
+              );
+            })}
+          </div>
+        )}
     </div>
   );
 }
@@ -574,8 +597,21 @@ function DesignBoard({projList,projs,drfs,upProj,session,role,today,setSelProj,s
 function DesignDetailModal({selProj,proj,deal,linkedDrf,drfs,projList,projs,upProj,session,role,sendTelegramNotification,toastEmit,today,setSelProj,setOpsTab}){
   const mob=window.innerWidth<768;
   const d=proj.design||{};
+  // ── Draft / Save ────────────────────────────────────────────────────────────
+  // Typed fields buffer into a local draft and commit on Save (one write instead
+  // of one-per-keystroke). Discrete actions — status, blockers, deliverables,
+  // comments, approvals-as-stamps — still commit immediately via setD. `v` is the
+  // effective view: committed design with unsaved edits layered on top.
+  const[draft,setDraft]=React.useState({});
+  const v={...d,...draft};
+  const setF=(patch)=>setDraft(prev=>({...prev,...patch}));
+  const dirty=Object.keys(draft).length>0;
+  const saveDraft=()=>{ if(!dirty) return; upProj(selProj,p=>({...p,design:{...p.design,...draft}})); setDraft({}); toastEmit("✔ Design details saved","success"); };
+  const discardDraft=()=>setDraft({});
+  const closeModal=async()=>{ if(dirty&&!(await uiConfirm("You have unsaved changes. Discard them?"))) return; setDraft({}); setSelProj(null); };
+
   const status=d.status||"Briefing";
-  const hasApproval=d.approvedBy&&d.approvedOn;
+  const hasApproval=v.approvedBy&&v.approvedOn;
   const notify=!!d.notifyStatus;
   const[commentText,setCommentText]=React.useState("");
   const[briefOpen,setBriefOpen]=React.useState(status==="Briefing");
@@ -630,12 +666,12 @@ function DesignDetailModal({selProj,proj,deal,linkedDrf,drfs,projList,projs,upPr
     catch{ toastEmit("Couldn't copy automatically — select the brief text manually.","warning"); }
   };
 
-  // Handoff-readiness checklist.
+  // Handoff-readiness checklist (reflects unsaved edits via v).
   const checks=[
-    {label:"File / drawings link",ok:!!d.link},
-    {label:"Revision no. locked",ok:!!d.revisionNo},
+    {label:"File / drawings link",ok:!!v.link},
+    {label:"Revision no. locked",ok:!!v.revisionNo},
     {label:"Internal approval",ok:!!hasApproval},
-    {label:"Client approval",ok:d.clientStatus==="Client Approved"},
+    {label:"Client approval",ok:v.clientStatus==="Client Approved"},
   ];
   const readyCount=checks.filter(c=>c.ok).length;
   const allReady=readyCount===checks.length;
@@ -643,17 +679,18 @@ function DesignDetailModal({selProj,proj,deal,linkedDrf,drfs,projList,projs,upPr
   // Days in current status (from the last status-history entry).
   const lastHist=(d.statusHistory||[]).slice(-1)[0];
   const daysInStatus=lastHist?.date?Math.max(0,Math.floor((new Date(today)-new Date(lastHist.date))/86400000)):null;
-  const dueOverdue=d.dueDate&&!hasApproval&&new Date(d.dueDate)<new Date(today);
+  const dueOverdue=v.dueDate&&!hasApproval&&new Date(v.dueDate)<new Date(today);
 
   const refs=(linkedDrf?.refLinks||[]).filter(Boolean);
   const CS_CLR={"Not Sent":"#94a3b8","Sent for Review":"#3b82f6","Client Approved":"#059669","Client Revisions":"#ef4444"};
-  const cs=d.clientStatus||"Not Sent";
+  const cs=v.clientStatus||"Not Sent";
 
   // Committed (promised) date is owned by the design manager only; everyone else
-  // sees it read-only. Blockers can be raised by any designer.
+  // sees it read-only. Blockers can be raised by any designer. Urgency/promised
+  // reflect unsaved edits (v) so the badge updates live as Gab types a date.
   const canSetCommitted=role==="Manager";
-  const promised=designPromisedDate(d,linkedDrf);
-  const urgency=designUrgency(d,linkedDrf,today);
+  const promised=designPromisedDate(v,linkedDrf);
+  const urgency=designUrgency(v,linkedDrf,today);
   const openBlks=openBlockers(d);
   const briefed=isProductionBriefed(d);
   const[blkText,setBlkText]=React.useState("");
@@ -668,7 +705,7 @@ function DesignDetailModal({selProj,proj,deal,linkedDrf,drfs,projList,projs,upPr
   const markBriefed=()=>setD({productionBriefed:{by:session?.name||"—",at:new Date().toISOString()}});
 
   return(
-    <Modal open title={`Design Details — ${deal?.client}`} onClose={()=>setSelProj(null)} wide>
+    <Modal open title={`Design Details — ${deal?.client}`} onClose={closeModal} wide>
       {/* ── Handoff readiness gate ─────────────────────── */}
       <div style={{background:allReady?"#f0fdf4":"#fff7ed",border:`1.5px solid ${allReady?"#bbf7d0":"#fed7aa"}`,borderRadius:12,padding:"10px 14px",marginBottom:14}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,flexWrap:"wrap",marginBottom:7}}>
@@ -689,8 +726,8 @@ function DesignDetailModal({selProj,proj,deal,linkedDrf,drfs,projList,projs,upPr
           <div>
             <div style={{fontSize:".64rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>Committed Date {canSetCommitted?"":" (set by Design Mgr)"}</div>
             {canSetCommitted
-              ? <Inp type="date" value={d.committedDate||""} onChange={e=>setD({committedDate:e.target.value})}/>
-              : <div style={{fontSize:".9rem",fontWeight:800,color:d.committedDate?"#0f172a":"#cbd5e1"}}>{d.committedDate||"— not committed —"}</div>}
+              ? <Inp type="date" value={v.committedDate||""} onChange={e=>setF({committedDate:e.target.value})}/>
+              : <div style={{fontSize:".9rem",fontWeight:800,color:v.committedDate?"#0f172a":"#cbd5e1"}}>{v.committedDate||"— not committed —"}</div>}
             <div style={{marginTop:5,fontSize:".72rem",fontWeight:700,color:urgency.color}}>{urgency.label}</div>
             {linkedDrf?.designDeadline&&<div style={{fontSize:".68rem",color:"#94a3b8",marginTop:2}}>Sales requested: {linkedDrf.designDeadline}</div>}
           </div>
@@ -810,27 +847,28 @@ function DesignDetailModal({selProj,proj,deal,linkedDrf,drfs,projList,projs,upPr
         </div>
       )}
       <Fld label="Designer">
-        <Sel value={d.designer||""} onChange={e=>setD({designer:e.target.value})}><option value="">— Select —</option>{DESIGN_MEMBERS.map(m=><option key={m}>{m}{workload[m]!=null?`  (${workload[m]} open)`:""}</option>)}</Sel>
-        {d.designer&&workload[d.designer]!=null&&<div style={{fontSize:".7rem",color:"#94a3b8",marginTop:4}}>{d.designer} currently has {workload[d.designer]} open item{workload[d.designer]!==1?"s":""}.</div>}
+        <Sel value={v.designer||""} onChange={e=>setF({designer:e.target.value})}><option value="">— Select —</option>{DESIGN_MEMBERS.map(m=><option key={m}>{m}{workload[m]!=null?`  (${workload[m]} open)`:""}</option>)}</Sel>
+        {v.designer&&workload[v.designer]!=null&&<div style={{fontSize:".7rem",color:"#94a3b8",marginTop:4}}>{v.designer} currently has {workload[v.designer]} open item{workload[v.designer]!==1?"s":""}.</div>}
       </Fld>
-      <Fld label="Due Date">
-        <Inp type="date" value={d.dueDate||""} onChange={e=>setD({dueDate:e.target.value})}/>
-        {d.dueDate&&!hasApproval&&(()=>{
-          const diff=Math.ceil((new Date(d.dueDate)-new Date(today))/86400000);
+      <Fld label="Working Due Date" hint="Internal target; the committed date above is the promise to Sales.">
+        <Inp type="date" value={v.dueDate||""} onChange={e=>setF({dueDate:e.target.value})}/>
+        {v.dueDate&&!hasApproval&&(()=>{
+          const diff=Math.ceil((new Date(v.dueDate)-new Date(today))/86400000);
           const over=diff<0,soon=diff>=0&&diff<=2;const c=over?"#dc2626":soon?"#f59e0b":"#059669";
           return <div style={{marginTop:5,fontSize:".72rem",fontWeight:700,color:c}}>{over?`⚠ Overdue by ${Math.abs(diff)} day${Math.abs(diff)!==1?"s":""}`:diff===0?"⏰ Due today":`⏳ ${diff} day${diff!==1?"s":""} left`}</div>;
         })()}
       </Fld>
-      <Fld label="Revision No." hint="e.g. Rev 3 — lock this before handoff to Ops"><Inp value={d.revisionNo||""} onChange={e=>setD({revisionNo:e.target.value})} placeholder="e.g. Rev 3"/></Fld>
-      <Fld label="File / Link (Google Drive, Figma, etc.)"><Inp type="url" value={d.link||""} onChange={e=>setD({link:e.target.value})} placeholder="https://drive.google.com/…"/></Fld>
+      <Fld label="Revision No." hint="e.g. Rev 3 — lock this before handoff to Ops"><Inp value={v.revisionNo||""} onChange={e=>setF({revisionNo:e.target.value})} placeholder="e.g. Rev 3"/></Fld>
+      <Fld label="File / Link (Google Drive, Figma, etc.)"><Inp type="url" value={v.link||""} onChange={e=>setF({link:e.target.value})} placeholder="https://drive.google.com/…"/></Fld>
       {/* ── Revision Log ─────────────────────────────── */}
       <div style={{gridColumn:"1/-1"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
           <div style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px"}}>📑 Revision Log</div>
           <button onClick={()=>{
-            if(!d.revisionNo&&!d.link){toastEmit("⚠ Set a Revision No. and file link before logging a revision.","warning");return;}
-            const rev={no:d.revisionNo||`Rev ${(d.revisions||[]).length+1}`,link:d.link||"",date:today,by:session?.name||"Design",status:d.status||""};
-            setD({revisions:[...(d.revisions||[]),rev]});
+            if(!v.revisionNo&&!v.link){toastEmit("⚠ Set a Revision No. and file link before logging a revision.","warning");return;}
+            const rev={no:v.revisionNo||`Rev ${(d.revisions||[]).length+1}`,link:v.link||"",date:today,by:session?.name||"Design",status:d.status||""};
+            // Commit any unsaved edits (revisionNo/link) alongside the new log entry.
+            upProj(selProj,p=>({...p,design:{...p.design,...draft,revisions:[...(p.design?.revisions||[]),rev]}}));setDraft({});
             toastEmit(`📑 Logged ${rev.no}`,"success");
           }} style={{background:"#f5f3ff",border:"1.5px solid #ddd6fe",borderRadius:8,padding:"5px 12px",fontFamily:"inherit",fontSize:".73rem",color:"#6d28d9",cursor:"pointer",fontWeight:700}}>+ Log current revision</button>
         </div>
@@ -848,7 +886,7 @@ function DesignDetailModal({selProj,proj,deal,linkedDrf,drfs,projList,projs,upPr
             </div>
         }
       </div>
-      <Fld label="Notes"><Inp rows={2} value={d.notes||""} onChange={e=>setD({notes:e.target.value})}/></Fld>
+      <Fld label="Notes"><Inp rows={2} value={v.notes||""} onChange={e=>setF({notes:e.target.value})}/></Fld>
       {/* ── Approval Stamp ───────────────────────────── */}
       <div style={{marginTop:16,background:hasApproval?"#f0fdf4":"#fffbeb",border:`1.5px solid ${hasApproval?"#bbf7d0":"#fde68a"}`,borderRadius:12,padding:"14px 16px"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,flexWrap:"wrap",marginBottom:10}}>
@@ -859,14 +897,14 @@ function DesignDetailModal({selProj,proj,deal,linkedDrf,drfs,projList,projs,upPr
           <div style={{display:"flex",gap:16,alignItems:"center",marginBottom:10,flexWrap:"wrap"}}>
             <div style={{background:"#dcfce7",border:"1.5px solid #86efac",borderRadius:10,padding:"8px 14px",display:"inline-flex",gap:10,alignItems:"center"}}>
               <span style={{fontSize:"1.2rem"}}>🔏</span>
-              <div><div style={{fontWeight:800,color:"#15803d",fontSize:".85rem"}}>{d.revisionNo||"Rev —"}</div><div style={{fontSize:".72rem",color:"#166534"}}>Approved by {d.approvedBy} · {d.approvedOn}</div></div>
+              <div><div style={{fontWeight:800,color:"#15803d",fontSize:".85rem"}}>{v.revisionNo||"Rev —"}</div><div style={{fontSize:".72rem",color:"#166534"}}>Approved by {v.approvedBy} · {v.approvedOn}</div></div>
             </div>
-            {d.link&&<a href={d.link} target="_blank" rel="noreferrer" style={{fontSize:".78rem",color:"#15803d",fontWeight:600}}>📂 View Drawings</a>}
+            {v.link&&<a href={v.link} target="_blank" rel="noreferrer" style={{fontSize:".78rem",color:"#15803d",fontWeight:600}}>📂 View Drawings</a>}
           </div>
         )}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-          <Fld label="Approved by"><Sel value={d.approvedBy||""} onChange={e=>setD({approvedBy:e.target.value})}><option value="">— Select approver —</option>{[...DESIGN_MEMBERS,...SALES_TEAM,...OPS_TEAM].filter((v,i,a)=>a.indexOf(v)===i).map(m=><option key={m}>{m}</option>)}</Sel></Fld>
-          <Fld label="Approved on"><Inp type="date" value={d.approvedOn||""} onChange={e=>setD({approvedOn:e.target.value})}/></Fld>
+          <Fld label="Approved by"><Sel value={v.approvedBy||""} onChange={e=>setF({approvedBy:e.target.value})}><option value="">— Select approver —</option>{[...DESIGN_MEMBERS,...SALES_TEAM,...OPS_TEAM].filter((val,i,a)=>a.indexOf(val)===i).map(m=><option key={m}>{m}</option>)}</Sel></Fld>
+          <Fld label="Approved on"><Inp type="date" value={v.approvedOn||""} onChange={e=>setF({approvedOn:e.target.value})}/></Fld>
         </div>
         {!hasApproval&&<div style={{fontSize:".72rem",color:"#92400e",marginTop:6}}>Fill in both fields above to lock this revision for handoff to Operations.</div>}
       </div>
@@ -878,20 +916,20 @@ function DesignDetailModal({selProj,proj,deal,linkedDrf,drfs,projList,projs,upPr
         </div>
         <Fld label="Client Review Link" hint="Shareable drawings / presentation link to send the client for sign-off">
           <div style={{display:"flex",gap:8}}>
-            <Inp type="url" value={d.clientReviewLink||""} onChange={e=>setD({clientReviewLink:e.target.value})} placeholder="https://drive.google.com/…"/>
-            {d.clientReviewLink&&<a href={d.clientReviewLink} target="_blank" rel="noreferrer" style={{flexShrink:0,background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"8px 12px",fontSize:".75rem",color:"#1d4ed8",fontWeight:700,textDecoration:"none",alignSelf:"center"}}>Open ↗</a>}
+            <Inp type="url" value={v.clientReviewLink||""} onChange={e=>setF({clientReviewLink:e.target.value})} placeholder="https://drive.google.com/…"/>
+            {v.clientReviewLink&&<a href={v.clientReviewLink} target="_blank" rel="noreferrer" style={{flexShrink:0,background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"8px 12px",fontSize:".75rem",color:"#1d4ed8",fontWeight:700,textDecoration:"none",alignSelf:"center"}}>Open ↗</a>}
           </div>
         </Fld>
         <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:10}}>
-          <Fld label="Review Status"><Sel value={cs} onChange={e=>{const v=e.target.value;const patch={clientStatus:v};if(v==="Client Approved"&&!d.clientSignoffDate)patch.clientSignoffDate=today;setD(patch);}}>{["Not Sent","Sent for Review","Client Approved","Client Revisions"].map(s=><option key={s}>{s}</option>)}</Sel></Fld>
-          <Fld label="Client Sign-off (name)"><Inp value={d.clientSignoffName||""} onChange={e=>setD({clientSignoffName:e.target.value})} placeholder="Client contact who approved"/></Fld>
-          <Fld label="Sign-off Date"><Inp type="date" value={d.clientSignoffDate||""} onChange={e=>setD({clientSignoffDate:e.target.value})}/></Fld>
-          <Fld label="Client Feedback"><Inp value={d.clientFeedback||""} onChange={e=>setD({clientFeedback:e.target.value})} placeholder="Revisions requested, comments…"/></Fld>
+          <Fld label="Review Status"><Sel value={cs} onChange={e=>{const val=e.target.value;const patch={clientStatus:val};if(val==="Client Approved"&&!v.clientSignoffDate)patch.clientSignoffDate=today;setF(patch);}}>{["Not Sent","Sent for Review","Client Approved","Client Revisions"].map(s=><option key={s}>{s}</option>)}</Sel></Fld>
+          <Fld label="Client Sign-off (name)"><Inp value={v.clientSignoffName||""} onChange={e=>setF({clientSignoffName:e.target.value})} placeholder="Client contact who approved"/></Fld>
+          <Fld label="Sign-off Date"><Inp type="date" value={v.clientSignoffDate||""} onChange={e=>setF({clientSignoffDate:e.target.value})}/></Fld>
+          <Fld label="Client Feedback"><Inp value={v.clientFeedback||""} onChange={e=>setF({clientFeedback:e.target.value})} placeholder="Revisions requested, comments…"/></Fld>
         </div>
-        {cs==="Client Approved"&&d.clientSignoffName&&(
+        {cs==="Client Approved"&&v.clientSignoffName&&(
           <div style={{marginTop:10,background:"#dcfce7",border:"1.5px solid #86efac",borderRadius:10,padding:"8px 14px",display:"inline-flex",gap:10,alignItems:"center"}}>
             <span style={{fontSize:"1.1rem"}}>✅</span>
-            <div style={{fontSize:".76rem",color:"#166534",fontWeight:600}}>Client approved by {d.clientSignoffName}{d.clientSignoffDate?` · ${d.clientSignoffDate}`:""}</div>
+            <div style={{fontSize:".76rem",color:"#166534",fontWeight:600}}>Client approved by {v.clientSignoffName}{v.clientSignoffDate?` · ${v.clientSignoffDate}`:""}</div>
           </div>
         )}
       </div>
@@ -921,8 +959,16 @@ function DesignDetailModal({selProj,proj,deal,linkedDrf,drfs,projList,projs,upPr
             </div>
         }
       </div>
-      <div style={{fontSize:".72rem",color:"#94a3b8",textAlign:"center",marginTop:14,marginBottom:4}}>Changes are saved automatically as you type.</div>
-      <Btn full onClick={()=>setSelProj(null)}>Close</Btn>
+      {/* ── Save bar ─────────────────────────────────────
+          Typed fields (dates, links, notes, approvals) buffer locally and commit
+          here. Status changes, blockers, deliverables and comments still save on
+          click, so the bar only lights up for the fields it owns. */}
+      <div style={{position:"sticky",bottom:0,marginTop:16,paddingTop:12,background:"#fff",borderTop:"1px solid #eef2f7",display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+        <div style={{flex:1,minWidth:120,fontSize:".74rem",fontWeight:700,color:dirty?"#b45309":"#94a3b8"}}>{dirty?"● Unsaved changes":"✓ All changes saved"}</div>
+        {dirty&&<button onClick={discardDraft} style={{background:"#f1f5f9",border:"none",borderRadius:9,padding:"9px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".85rem",color:"#475569",cursor:"pointer"}}>Discard</button>}
+        <button onClick={saveDraft} disabled={!dirty} style={{background:dirty?"#7c3aed":"#e2e8f0",border:"none",borderRadius:9,padding:"9px 24px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:dirty?"#fff":"#94a3b8",cursor:dirty?"pointer":"not-allowed"}}>💾 Save</button>
+        <button onClick={closeModal} style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"9px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".85rem",color:"#475569",cursor:"pointer"}}>Close</button>
+      </div>
     </Modal>
   );
 }
@@ -8283,7 +8329,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Requests",  items:[{id:"costanalysis",l:"Cost Analysis"}]},
     ],
     Design:[
-      {group:"Overview",    items:[{id:"home",l:"Projects"},{id:"myfolder",l:"My Projects"}]},
+      {group:"Overview",    items:[{id:"home",l:"Projects"},{id:"designboard",l:"Design Board"},{id:"myfolder",l:"My Projects"}]},
       // Sales Pipeline is limited to the Head Designer — the rest of the design
       // team only sees their design work, not the sales funnel.
       ...(isHeadDesigner(session?.name)?[{group:"Sales", items:[{id:"pipeline",l:"Sales Pipeline"}]}]:[]),
