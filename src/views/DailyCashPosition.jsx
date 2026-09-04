@@ -228,7 +228,28 @@ function DailyCashPosition({
     return s+Math.max(0,Number(b.amount||0)-paid);
   },0),[billings]);
 
-  const payablesUnpaid=useMemo(()=>(payables||[]).filter(p=>!["Paid","Cancelled"].includes(p.status)).reduce((s,p)=>s+Number(p.amount||0),0),[payables]);
+  // Open payables = anything not settled or cancelled. Running Payables must count
+  // the OUTSTANDING BALANCE (amount − paid_amount), not the gross invoice — a Partial
+  // payable that's half-settled otherwise overstates what's actually owed.
+  const openPayables=useMemo(()=>(payables||[]).filter(p=>!["Paid","Cancelled"].includes(p.status)),[payables]);
+  const payBal=(p)=>Math.max(0,Number(p.amount||0)-Number(p.paidAmount||0));
+  const payablesUnpaid=useMemo(()=>openPayables.reduce((s,p)=>s+payBal(p),0),[openPayables]);
+
+  // ── Payables aging — bucket each open balance by its due date ──────────────
+  // Dated payables split into Overdue / Due ≤7d / Due ≤30d / Later. Payables with
+  // NO due date can't be aged, so they get their own bucket and are surfaced as a
+  // data-quality gap (Finance should fill the due date so the forecast is honest).
+  const payAging=useMemo(()=>{
+    const b={overdue:0,d7:0,d30:0,later:0,undated:0};
+    let undatedCount=0;
+    openPayables.forEach(p=>{
+      const bal=payBal(p); if(bal<=0) return;
+      if(!p.dueDate){b.undated+=bal;undatedCount++;return;}
+      const days=Math.ceil((new Date(p.dueDate)-new Date(selDate))/86400000);
+      if(days<0) b.overdue+=bal; else if(days<=7) b.d7+=bal; else if(days<=30) b.d30+=bal; else b.later+=bal;
+    });
+    return{...b,undatedCount,due30:b.overdue+b.d7+b.d30};
+  },[openPayables,selDate]);
 
   // ── Bank Account Detail column totals ──
   const tot={
@@ -489,6 +510,63 @@ function DailyCashPosition({
               </div>
             ))}
           </div>
+
+          {/* PAYABLES AGING & CASH COVERAGE — answers "can we actually pay this?" */}
+          {(()=>{
+            const spendable=opBook;                 // operating book cash (ending − uncleared checks)
+            const due30=payAging.due30;             // overdue + due within 30 days
+            const gap=spendable-due30;              // >0 = covered, <0 = shortfall
+            const covered=gap>=0;
+            const pct=due30>0?Math.min(100,Math.round((spendable/due30)*100)):100;
+            const buckets=[
+              {l:"Overdue",     v:payAging.overdue,c:"#dc2626"},
+              {l:"Due ≤ 7 days", v:payAging.d7,    c:"#ea580c"},
+              {l:"Due ≤ 30 days",v:payAging.d30,   c:"#d97706"},
+              {l:"Later",       v:payAging.later,  c:"#0f766e"},
+              {l:"No due date", v:payAging.undated,c:"#64748b"},
+            ];
+            return(
+              <div style={{marginTop:12,border:`1px solid ${C.grid}`,borderRadius:10,overflow:"hidden"}}>
+                <div style={{background:"#0f172a",color:"#fff",padding:"7px 12px",fontSize:".68rem",fontWeight:800,letterSpacing:".5px",textTransform:"uppercase",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span>Payables Aging &amp; Cash Coverage</span>
+                  <span style={{fontWeight:600,color:"#94a3b8",textTransform:"none",letterSpacing:0}}>Total open ₱{fmt2(payablesUnpaid)}</span>
+                </div>
+                <div style={{padding:"12px",background:"#fff"}}>
+                  {/* Aging buckets */}
+                  <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(5,1fr)",gap:8}}>
+                    {buckets.map(({l,v,c})=>(
+                      <div key={l} style={{background:"#f8fafc",border:`1px solid ${C.grid}`,borderRadius:8,padding:"8px 10px"}}>
+                        <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".5px",color:"#94a3b8",fontWeight:700}}>{l}</div>
+                        <div style={{fontWeight:800,fontSize:".92rem",color:v>0?c:"#cbd5e1",marginTop:2,fontVariantNumeric:"tabular-nums"}}>{peso(v)}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Coverage verdict */}
+                  <div style={{marginTop:12,background:covered?"#f0fdf4":"#fef2f2",border:`1.5px solid ${covered?"#bbf7d0":"#fecaca"}`,borderRadius:9,padding:"11px 13px"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",flexWrap:"wrap",gap:6}}>
+                      <span style={{fontWeight:800,fontSize:".82rem",color:covered?"#15803d":"#b91c1c"}}>
+                        {covered?"✓ Cash covers all payables due within 30 days":"⚠ Cash shortfall on payables due within 30 days"}
+                      </span>
+                      <span style={{fontSize:".72rem",fontWeight:700,color:"#475569"}}>{pct}% covered</span>
+                    </div>
+                    <div style={{height:7,background:"#e2e8f0",borderRadius:4,overflow:"hidden",margin:"8px 0"}}>
+                      <div style={{width:pct+"%",height:"100%",background:covered?"#22c55e":"#ef4444",transition:"width .3s"}}/>
+                    </div>
+                    <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:"2px 16px",fontSize:".7rem",color:"#475569"}}>
+                      <span>Spendable operating cash (book): <strong>{peso(spendable)}</strong></span>
+                      <span>Due within 30 days: <strong>{peso(due30)}</strong></span>
+                      <span style={{fontWeight:700,color:covered?"#15803d":"#b91c1c"}}>{covered?"Surplus":"Shortfall"}: {peso(Math.abs(gap))}</span>
+                    </div>
+                  </div>
+                  {payAging.undatedCount>0&&(
+                    <div style={{marginTop:8,fontSize:".68rem",color:"#b45309",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:7,padding:"7px 10px"}}>
+                      ⚠ {payAging.undatedCount} open payable{payAging.undatedCount!==1?"s":""} ({peso(payAging.undated)}) {payAging.undatedCount!==1?"have":"has"} no due date — not counted in the 30-day coverage above. Add due dates so this figure is complete.
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         {/* BANK ACCOUNT DETAIL */}
