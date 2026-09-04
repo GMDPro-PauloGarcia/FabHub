@@ -5511,11 +5511,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     sendTelegramNotification("management",msg);
     logActivity(dealId,"Billing Setup Requested",`Jessica notified to set up billing milestones for ${client||"the awarded project"}.`,session?.name||role);
   };
-  const updateMilestone=(id,ch)=>{
+  const updateMilestone=(id,ch,audit)=>{
     if(ch.status==='Fully Paid'){
       const ms=billings.find(b=>b.id===id);
       const msDeal=ms?.dealId?deals.find(d=>d.id===ms.dealId):null;
-      const msg=`✅ <b>Milestone Fully Paid</b>\nClient: <b>${msDeal?.client||ms?.title||"?"}</b>\nMilestone: ${ms?.title||"—"}\nAmount: ₱${Number(ms?.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nUpdated by: ${session?.name||"Finance"}`;
+      const msg=`✅ <b>Milestone Fully Paid</b>\nProject: <b>${msDeal?.contact||ms?.name||ms?.title||"—"}</b>\nClient: ${msDeal?.client||"—"}\nMilestone: ${ms?.name||ms?.title||"—"}\nAmount: ₱${Number(ms?.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nUpdated by: ${session?.name||"Finance"}`;
       sendTelegramNotification("sales",msg);
       sendTelegramNotification("management",msg);
     }
@@ -5565,6 +5565,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         if(isSupabaseReady()) sbSyncOne("deals",nd,toSbDeal);
         return nd;
       }));
+    }
+    // Payment-mutation audit trail (edit / bounce / clear / restore). Deletes are
+    // already archived via confirmFinancialDelete; edits previously left no trace.
+    if(audit&&audit.action){
+      const aMs=billings.find(b=>b.id===id);
+      logActivity(aMs?.dealId||dealId,audit.action,audit.detail||"",session?.name||role);
     }
   };
   const deleteMilestone=async(id)=>{
@@ -5650,7 +5656,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const msTx=calcTax(milestone?.amount||0,milestone?.receiptType??milestone?.receipt_type??payDeal?.receiptType??"OR",milestone?.withholding??payDeal?.withholding??false);
     const totalPaidAfter=(milestone?.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0)+Number(payment.amount||0);
     const isFullyPaid=totalPaidAfter>=msTx.netReceivable;
-    const payMsg=`💵 <b>Payment Received</b>\nClient: <b>${payDeal?.client||milestone?.title||"?"}</b>\nMilestone: ${milestone?.title||"—"}\nAmount: ₱${Number(payment.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nRef: ${payment.refNo||payment.ref_no||"—"}\nRecorded by: ${payment.recordedBy||session?.name||"Finance"}${isFullyPaid?"\n✅ Milestone fully paid!":""}`;
+    // Where the money landed: resolve the stored bank code (e.g. "bpi") to its
+    // short name, then append the method (Bank Transfer / Cheque / Cash…).
+    const payBankCode=payment.bank??payment.bank_id;
+    const payBankRow=(BANKS||[]).find(x=>x.id===payBankCode||x.short===payBankCode||x.name===payBankCode);
+    const payBankLabel=payBankCode==="cash"?"Cash":payBankRow?payBankRow.short:(payBankCode||"—");
+    const payMethod=payment.method||payment.payment_method||"";
+    const depositedTo=`${payBankLabel}${payMethod?` · ${payMethod}`:""}`;
+    // "Credited" = value date (when funds were actually available); fall back to
+    // the date received, then today.
+    const creditedOn=payment.valueDate||payment.value_date||payment.date||today;
+    const payMsg=`💵 <b>Payment Received</b>\nProject: <b>${payDeal?.contact||milestone?.name||milestone?.title||"—"}</b>\nClient: ${payDeal?.client||"—"}\nDeposited to: ${depositedTo}\nAmount: ₱${Number(payment.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nCredited: ${creditedOn}\nRef: ${payment.refNo||payment.ref_no||"—"}\nRecorded by: ${payment.recordedBy||session?.name||"Finance"}${isFullyPaid?"\n✅ Milestone fully paid!":""}`;
     sendTelegramNotification("sales",payMsg);
     sendTelegramNotification("management",payMsg);
     if(dealId) logActivity(dealId,"Payment Received",`₱${Number(payment.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})} on ${milestone?.name||"milestone"}${payment.refNo?` · Ref: ${payment.refNo}`:""}`,payment.recordedBy||session?.name);
@@ -15087,12 +15103,25 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     const mapped=smartImport.rows.map((r,idx)=>{
                       const client=String(r["Client Name"]||r.client||r.Client||r["client_name"]||r.company||"").trim();
                       const ceNo=String(r["CE No"]||r.ceNo||r["CE Number"]||r.ce_no||r["CE No."]||"").trim();
+                      const product=String(r["Project / Product"]||r.product||r.Product||r["Project Name"]||r.project||"").trim();
                       const rawStage=r.Stage||r.stage||r.status||r._defaultStage||"";
-                      const exists=deals.find(d=>ceNo&&d.ceNo&&(d.ceNo===ceNo||d.ceNo==="#"+ceNo.replace(/^#/,"")));
+                      // Match an existing deal by CE number; when the row has NO CE
+                      // number, fall back to an exact client + product match against
+                      // a non-lost deal — otherwise every re-import of a CE-less row
+                      // spawns a fresh duplicate (root cause of the empty Kareila /
+                      // Archives / Diageo stub duplicates).
+                      const exists=deals.find(d=>{
+                        if(ceNo&&d.ceNo&&(d.ceNo===ceNo||d.ceNo==="#"+ceNo.replace(/^#/,""))) return true;
+                        if(!ceNo&&!isLostStage(d.stage)&&client&&d.client&&d.client.toLowerCase()===client.toLowerCase()){
+                          const dprod=String(d.product||d.contact||"").trim().toLowerCase();
+                          if(product&&dprod&&dprod===product.toLowerCase()) return true;
+                        }
+                        return false;
+                      });
                       return{
                         _idx:idx,_exists:!!exists,_existingId:exists?.id,
                         id:exists?.id||uid(),client,
-                        product:String(r["Project / Product"]||r.product||r.Product||r["Project Name"]||r.project||"").trim(),
+                        product,
                         contact:String(r["Contact Person"]||r.contact||r.Contact||"").trim(),
                         ceNo:ceNo||("CE-IMPORT-"+Date.now()+"-"+idx),
                         ceType:normType(r["CE Type"]||r.ceType||r.type||""),
@@ -18934,7 +18963,10 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
   const[editClient, setEditClient] = useState(null);
   const[editName,   setEditName]   = useState("");
   const[addOpen,    setAddOpen]    = useState(false);
-  const EMPTY_ADD={name:"",contactPerson:"",email:"",phone:"",mobile:"",website:"",billingAddress:"",city:"",province:"",zipCode:"",country:"Philippines",tin:"",paymentTerms:"Due on receipt",notes:""};
+  const EMPTY_ADD={name:"",parentGroup:"",contactPerson:"",email:"",phone:"",mobile:"",website:"",billingAddress:"",city:"",province:"",zipCode:"",country:"Philippines",tin:"",paymentTerms:"Due on receipt",notes:""};
+  // Existing parent groups already in use — offered as suggestions so people
+  // pick a consistent spelling instead of inventing "Diageo" / "Diageo PH" / etc.
+  const knownGroups=useMemo(()=>[...new Set(Object.values(clientProfiles||{}).map(p=>p?.parentGroup).filter(Boolean))].sort(),[clientProfiles]);
   const[addForm,    setAddForm]    = useState(EMPTY_ADD);
   const fa=(k,v)=>setAddForm(p=>({...p,[k]:v}));
   const doAddClient=()=>{
@@ -18943,7 +18975,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
     const allC=[...GMD_CLIENTS,...(customClients||[])];
     if(allC.find(c=>c.name.toLowerCase()===name.toLowerCase())){alert("Client already exists.");return;}
     if(addNewClient) addNewClient(name); else GMD_CLIENTS.push({name,id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today});
-    const prof={contactPerson:addForm.contactPerson,email:addForm.email,phone:addForm.phone,mobile:addForm.mobile,website:addForm.website,billingAddress:addForm.billingAddress,city:addForm.city,province:addForm.province,zipCode:addForm.zipCode,country:addForm.country,tin:addForm.tin,paymentTerms:addForm.paymentTerms,notes:addForm.notes};
+    const prof={parentGroup:(addForm.parentGroup||"").trim(),contactPerson:addForm.contactPerson,email:addForm.email,phone:addForm.phone,mobile:addForm.mobile,website:addForm.website,billingAddress:addForm.billingAddress,city:addForm.city,province:addForm.province,zipCode:addForm.zipCode,country:addForm.country,tin:addForm.tin,paymentTerms:addForm.paymentTerms,notes:addForm.notes};
     if(saveClientProfile&&Object.values(prof).some(v=>v)) saveClientProfile(name,prof);
     setAddForm(EMPTY_ADD);
     setAddOpen(false);
@@ -18954,7 +18986,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
   const[,forceUpdate]              = useState(0);
   const fp2=(k,v)=>setProfileForm(p=>({...p,[k]:v}));
   const openProfile=(name)=>{
-    setProfileForm({...({contactPerson:"",email:"",phone:"",mobile:"",website:"",billingAddress:"",city:"",province:"",zipCode:"",country:"Philippines",tin:"",paymentTerms:"Due on receipt",notes:""}),...((clientProfiles||{})[name]||{})});
+    setProfileForm({...({parentGroup:"",contactPerson:"",email:"",phone:"",mobile:"",website:"",billingAddress:"",city:"",province:"",zipCode:"",country:"Philippines",tin:"",paymentTerms:"Due on receipt",notes:""}),...((clientProfiles||{})[name]||{})});
     setProfileModal(name);
   };
   const saveProfile=()=>{
@@ -19026,6 +19058,36 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
         ))}
       </div>
 
+      {/* Consolidated rollup by parent group (e.g. all Diageo departments) */}
+      {(()=>{
+        const g={};
+        deals.forEach(d=>{
+          const grp=(clientProfiles||{})[d.client]?.parentGroup;
+          if(!grp) return;
+          g[grp]=g[grp]||{group:grp,clients:new Set(),value:0,collected:0};
+          g[grp].clients.add(d.client);
+          if(WON_STAGES.includes(d.stage)) g[grp].value+=Number(d.value||0);
+          g[grp].collected+=Number(d.amountPaid||0);
+        });
+        const rows=Object.values(g).sort((a,b)=>b.value-a.value);
+        if(!rows.length) return null;
+        return(
+          <div style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"14px 18px",marginBottom:16}}>
+            <div style={{fontSize:".65rem",fontWeight:700,textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginBottom:10}}>Consolidated by Group</div>
+            <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(auto-fill,minmax(220px,1fr))",gap:10}}>
+              {rows.map(r=>(
+                <div key={r.group} style={{background:"#f8fafc",borderRadius:10,padding:"11px 14px",border:"1px solid #eef2f7"}}>
+                  <div style={{fontWeight:800,color:"#0f172a",fontSize:".92rem"}}>{r.group}</div>
+                  <div style={{fontSize:".7rem",color:"#94a3b8",margin:"1px 0 6px"}}>{r.clients.size} account{r.clients.size>1?"s":""}</div>
+                  <div style={{fontSize:".74rem",color:"#64748b"}}>Awarded: <strong style={{color:"#0f172a"}}>₱{r.value.toLocaleString("en-PH",{maximumFractionDigits:0})}</strong></div>
+                  <div style={{fontSize:".74rem",color:"#64748b"}}>Collected: <strong style={{color:"#059669"}}>₱{r.collected.toLocaleString("en-PH",{maximumFractionDigits:0})}</strong></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Open balances alert */}
       {allClients.filter(c=>c.balance>0).length>0&&(
         <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:12,padding:"12px 18px",marginBottom:16,display:"flex",gap:16,flexWrap:"wrap",alignItems:"center"}}>
@@ -19096,6 +19158,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
                     ):(
                       <>
                         <span style={{fontWeight:600,color:"#0f172a",fontSize:".88rem"}}>{c.name}</span>
+                        {(clientProfiles||{})[c.name]?.parentGroup&&<span style={{fontSize:".62rem",background:"#eef2ff",color:"#4338ca",border:"1px solid #c7d2fe",borderRadius:20,padding:"1px 7px",fontWeight:700}} title="Parent group">🏛 {(clientProfiles||{})[c.name].parentGroup}</span>}
                         {vvipClients?.has(c.name)&&<span style={{fontSize:".65rem",background:"#fef3c7",color:"#d97706",border:"1px solid #fde68a",borderRadius:20,padding:"1px 7px",fontWeight:700}}>VVIP</span>}
                         {(role==="Manager")&&<button onClick={e=>{e.stopPropagation();setEditClient(c.name);setEditName(c.name);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:".75rem",color:"#94a3b8",padding:"0 2px"}} title="Edit client name">✏️</button>}
                         {saveClientProfile&&<button onClick={e=>{e.stopPropagation();openProfile(c.name);}} style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:5,padding:"1px 7px",cursor:"pointer",fontSize:".65rem",color:"#3b82f6",fontWeight:700}} title="Edit client profile">👤 Profile</button>}
@@ -19207,6 +19270,11 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
             <div style={{background:"#f0fdf4",borderRadius:10,padding:"14px 16px",marginBottom:12,border:"1.5px solid #6ee7b7"}}>
               <div style={{fontWeight:700,fontSize:".8rem",color:"#059669",marginBottom:8}}>Company / Client Name <span style={{color:"#ef4444"}}>*</span></div>
               <Inp autoFocus value={addForm.name} onChange={e=>fa("name",e.target.value)} onKeyDown={e=>e.key==="Enter"&&doAddClient()} placeholder="Full company or client name…"/>
+              <div style={{marginTop:10}}>
+                <div style={{fontWeight:700,fontSize:".75rem",color:"#475569",marginBottom:4}}>Parent Group <span style={{fontWeight:400,color:"#94a3b8"}}>(optional — e.g. “Diageo” for a department/subsidiary)</span></div>
+                <input list="clientGroupOpts" value={addForm.parentGroup} onChange={e=>fa("parentGroup",e.target.value)} placeholder="Leave blank for a standalone client…" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 11px",fontFamily:"inherit",fontSize:".85rem",color:"#1e293b",outline:"none",boxSizing:"border-box"}}/>
+                <datalist id="clientGroupOpts">{knownGroups.map(g=><option key={g} value={g}/>)}</datalist>
+              </div>
             </div>
             <div style={{background:"#f8fafc",borderRadius:10,padding:"14px 16px",marginBottom:12,border:"1px solid #e2e8f0"}}>
               <div style={{fontWeight:700,fontSize:".8rem",color:"#475569",marginBottom:10}}>📇 Name & Contact</div>
@@ -19260,6 +19328,10 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
             <div style={{background:"#f8fafc",borderRadius:10,padding:"14px 16px",marginBottom:12,border:"1px solid #e2e8f0"}}>
               <div style={{fontWeight:700,fontSize:".8rem",color:"#475569",marginBottom:10}}>📇 Name & Contact</div>
               <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10}}>
+                <Fld label="Parent Group" hint="e.g. “Diageo” — groups departments/subsidiaries for consolidated reporting">
+                  <input list="clientGroupOpts" value={profileForm.parentGroup||""} onChange={e=>fp2("parentGroup",e.target.value)} placeholder="Blank = standalone client" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 11px",fontFamily:"inherit",fontSize:".85rem",color:"#1e293b",outline:"none",boxSizing:"border-box"}}/>
+                  <datalist id="clientGroupOpts">{knownGroups.map(g=><option key={g} value={g}/>)}</datalist>
+                </Fld>
                 <Fld label="Contact Person"><Inp value={profileForm.contactPerson||""} onChange={e=>fp2("contactPerson",e.target.value)} placeholder="e.g. Juan dela Cruz"/></Fld>
                 <Fld label="Email"><Inp type="email" value={profileForm.email||""} onChange={e=>fp2("email",e.target.value)} placeholder="accounts@company.com"/></Fld>
                 <Fld label="Phone"><Inp value={profileForm.phone||""} onChange={e=>fp2("phone",e.target.value)} placeholder="+63 2 8xxx xxxx"/></Fld>
@@ -23526,8 +23598,10 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     addMilestone({name:"Retention Release",description:`Release of retention withheld across progress billings (${deal.paymentTerms?.retentionRelease||"on completion"}).`,amount:out,dealId:selDeal,isRetentionRelease:true,invoiceNo:await claimInv(),invoiceDate:today,dueDate:"",status:"Draft",receiptType:deal.receiptType||null,withholding:deal.withholding??null,createdBy:session?.name||role});
     toastEmit&&toastEmit(`Retention release drafted: ₱${out.toLocaleString("en-PH")}.`,"success",6000);
   };
-  const submitPay=()=>{
+  const submitPay=async()=>{
     if(!payForm.amount||!showPay) return;
+    const amt=Number(payForm.amount);
+    if(!isFinite(amt)||amt<=0){toastEmit("Enter a payment amount greater than zero.","warning");return;}
     const ms=billings.find(b=>b.id===showPay);
     if(ms){
       const alreadyPaid=(ms.payments||[]).filter(p=>!p.bounced).reduce((s,p)=>s+Number(p.amount||0),0);
@@ -23538,6 +23612,9 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         return;
       }
     }
+    // #4 Date sanity — warn (not block) on illogical dates.
+    if(payForm.date&&payForm.date>today&&!(await uiConfirm("The Date Received is in the future. Save anyway?")))return;
+    if(payForm.date&&payForm.valueDate&&payForm.valueDate<payForm.date&&!(await uiConfirm("The Value Date is before the Date Received (funds credited before payment received?). Save anyway?")))return;
     logBillingPayment(showPay,{...payForm,recordedBy:session?.name||role});
     setPayForm({amount:"",date:today,refNo:"",note:"",valueDate:"",bank:"",method:"Bank Transfer"});
     setShowPay(null);
@@ -24555,16 +24632,28 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                                   <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:6}}>
                                     <Fld label="Amount (₱)"><Inp type="number" value={editPayForm.amount??p.amount} onChange={e=>setEditPayForm(f=>({...f,amount:e.target.value}))}/></Fld>
                                     <Fld label="Date"><Inp type="date" value={editPayForm.date??p.date??today} onChange={e=>setEditPayForm(f=>({...f,date:e.target.value}))}/></Fld>
-                                    <Fld label="Bank"><Sel value={editPayForm.bank??p.bank??""} onChange={e=>setEditPayForm(f=>({...f,bank:e.target.value}))}><option value="">— Select bank</option>{BANKS.map(b=><option key={b.id} value={b.id}>{b.short}</option>)}</Sel></Fld>
+                                    <Fld label="Bank"><Sel value={editPayForm.bank??p.bank??""} onChange={e=>setEditPayForm(f=>({...f,bank:e.target.value}))}><option value="">— Select bank</option>{BANKS.map(b=><option key={b.id} value={b.id}>{b.short}</option>)}<option value="cash">Cash</option></Sel></Fld>
                                     <Fld label="Method"><Sel value={editPayForm.method??p.method??"Bank Transfer"} onChange={e=>setEditPayForm(f=>({...f,method:e.target.value}))}>{PAYMENT_METHODS.map(m=><option key={m} value={m}>{m}</option>)}</Sel></Fld>
                                     <Fld label="Value Date"><Inp type="date" value={editPayForm.valueDate??p.valueDate??""} onChange={e=>setEditPayForm(f=>({...f,valueDate:e.target.value}))}/></Fld>
                                     <Fld label="Reference No."><Inp value={editPayForm.refNo??p.refNo??""} onChange={e=>setEditPayForm(f=>({...f,refNo:e.target.value}))} placeholder="Ref…"/></Fld>
                                     <Fld label="Note"><Inp value={editPayForm.note??p.note??""} onChange={e=>setEditPayForm(f=>({...f,note:e.target.value}))} placeholder="Note…"/></Fld>
                                   </div>
                                   <div style={{display:"flex",gap:6,marginTop:6}}>
-                                    <button onClick={()=>{
-                                      const updated={...p,...editPayForm,amount:Number(editPayForm.amount??p.amount)};
-                                      updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?updated:px)});
+                                    <button onClick={async()=>{
+                                      const amt=Number(editPayForm.amount??p.amount);
+                                      if(!isFinite(amt)||amt<=0){toastEmit("Enter a payment amount greater than zero.","warning");return;}
+                                      // #3 Overpayment cap on edit (Add already enforces this).
+                                      const eTx=calcTax(ms.amount,ms.receiptType??deal?.receiptType??"OR",ms.withholding??deal?.withholding??false);
+                                      const otherPaid=(ms.payments||[]).filter(px=>px.id!==p.id&&!px.bounced).reduce((s,px)=>s+Number(px.amount||0),0);
+                                      const eBalance=Math.max(0,eTx.netReceivable-otherPaid);
+                                      if(amt>eBalance+0.01){toastEmit(`Payment ₱${amt.toLocaleString("en-PH")} exceeds the milestone balance of ₱${eBalance.toLocaleString("en-PH")}.`,"warning");return;}
+                                      // #4 Date sanity — warn (not block) on illogical dates.
+                                      const nDate=editPayForm.date??p.date;
+                                      const nVal=editPayForm.valueDate??p.valueDate;
+                                      if(nDate&&nDate>today&&!(await uiConfirm("The Date Received is in the future. Save anyway?")))return;
+                                      if(nDate&&nVal&&nVal<nDate&&!(await uiConfirm("The Value Date is before the Date Received (funds credited before payment received?). Save anyway?")))return;
+                                      const updated={...p,...editPayForm,amount:amt};
+                                      updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?updated:px)},{action:"Payment Edited",detail:`${ms.name||"Milestone"}: ₱${Number(p.amount||0).toLocaleString("en-PH")} → ₱${amt.toLocaleString("en-PH")}`});
                                       setEditPay(null);setEditPayForm({});
                                     }} style={{background:"#1d4ed8",border:"none",borderRadius:6,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#fff",cursor:"pointer"}}>Save</button>
                                     <button onClick={()=>{setEditPay(null);setEditPayForm({});}} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 10px",fontFamily:"inherit",fontSize:".75rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
@@ -24576,7 +24665,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                                     <span>{p.date}</span>
                                     <span style={{fontWeight:700,color:"#059669"}}>₱{n(p.amount).toLocaleString("en-PH")}</span>
                                     {p.method&&<span style={{color:"#64748b"}}>{p.method}</span>}
-                                    {p.bank&&<span style={{color:"#64748b"}}>🏦 {p.bank}</span>}
+                                    {p.bank&&<span style={{color:"#64748b"}}>🏦 {p.bank==="cash"?"Cash":(BANKS.find(x=>x.id===p.bank)?.short||p.bank)}</span>}
                                     {(()=>{
                                       const cd=paymentClearDate(p);
                                       if(p.bounced) return <span style={{fontSize:".65rem",fontWeight:700,padding:"1px 7px",borderRadius:20,background:"#fef2f2",color:"#dc2626"}}>✕ Bounced</span>;
@@ -24589,17 +24678,17 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                                   {canEdit&&(
                                     <div style={{display:"flex",gap:4,flexShrink:0}}>
                                       {!p.bounced&&!isPaymentCleared(p,today)&&(
-                                        <button onClick={()=>updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?{...px,valueDate:today,bounced:false}:px)})}
+                                        <button onClick={()=>updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?{...px,valueDate:today,bounced:false}:px)},{action:"Payment Cleared",detail:`${ms.name||"Milestone"}: ₱${Number(p.amount||0).toLocaleString("en-PH")} marked cleared`})}
                                           title="Mark funds cleared today"
                                           style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:5,padding:"2px 7px",fontFamily:"inherit",fontSize:".65rem",color:"#059669",cursor:"pointer",fontWeight:600}}>✓ Clear</button>
                                       )}
                                       {!p.bounced&&(
-                                        <button onClick={async ()=>{if((await uiConfirm("Mark this collection as bounced? It will stop counting as cleared cash.")))updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?{...px,bounced:true}:px)});}}
+                                        <button onClick={async ()=>{if((await uiConfirm("Mark this collection as bounced? It will stop counting as cleared cash.")))updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?{...px,bounced:true}:px)},{action:"Payment Bounced",detail:`${ms.name||"Milestone"}: ₱${Number(p.amount||0).toLocaleString("en-PH")} marked bounced`});}}
                                           title="Mark cheque bounced"
                                           style={{background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:5,padding:"2px 7px",fontFamily:"inherit",fontSize:".65rem",color:"#c2410c",cursor:"pointer",fontWeight:600}}>⤺</button>
                                       )}
                                       {p.bounced&&(
-                                        <button onClick={()=>updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?{...px,bounced:false}:px)})}
+                                        <button onClick={()=>updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?{...px,bounced:false}:px)},{action:"Payment Restored",detail:`${ms.name||"Milestone"}: ₱${Number(p.amount||0).toLocaleString("en-PH")} un-bounced`})}
                                           title="Un-bounce"
                                           style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:5,padding:"2px 7px",fontFamily:"inherit",fontSize:".65rem",color:"#059669",cursor:"pointer",fontWeight:600}}>↺</button>
                                       )}
@@ -24656,7 +24745,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                             <Fld label="Bank Deposited To">
                               <Sel value={payForm.bank||""} onChange={e=>fp("bank",e.target.value)}>
                                 <option value="">— Select Bank —</option>
-                                {[{v:"bpi",l:"BPI"},{v:"metro",l:"Metrobank"},{v:"china",l:"Chinabank"},{v:"bdo",l:"BDO"},{v:"security",l:"Security Bank"},{v:"union",l:"Unionbank"},{v:"cash",l:"Cash"}].map(b=><option key={b.v} value={b.v}>{b.l}</option>)}
+                                {[...BANKS.map(b=>({v:b.id,l:b.short})),{v:"cash",l:"Cash"}].map(b=><option key={b.v} value={b.v}>{b.l}</option>)}
                               </Sel>
                             </Fld>
                             <Fld label="Payment Method">
