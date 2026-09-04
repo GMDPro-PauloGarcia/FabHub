@@ -24,5 +24,25 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+// ── Global safety net for errors OUTSIDE React render ────────────────────────
+// React error boundaries only catch errors thrown during render/lifecycle. An
+// error in an async callback, an event handler, or a rejected promise escapes
+// them and would otherwise vanish silently. These two listeners route those
+// into the same fail-safe telemetry (logClientError never throws), so a crash
+// that doesn't blank the UI is still visible instead of invisible. They only
+// observe — they never preventDefault, so the browser console still shows the
+// error and nothing about existing behavior changes.
+if (typeof window !== 'undefined') {
+  window.addEventListener('error', (ev) => {
+    try { logClientError(ev?.error || new Error(ev?.message || 'window.onerror'), null, 'window.error'); } catch (_) {}
+  });
+  window.addEventListener('unhandledrejection', (ev) => {
+    try {
+      const r = ev?.reason;
+      logClientError(r instanceof Error ? r : new Error(typeof r === 'string' ? r : 'Unhandled promise rejection'), null, 'unhandledrejection');
+    } catch (_) {}
+  });
+}
+
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<ErrorBoundary><App /></ErrorBoundary>);
