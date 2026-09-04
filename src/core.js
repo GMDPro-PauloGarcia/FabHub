@@ -201,6 +201,53 @@ export const PRI_CLR   = { Normal:"#3b82f6",High:"#f59e0b",Urgent:"#ef4444" };
 
 export const DS_CLR    = { Briefing:"#94a3b8","On-going":"#3b82f6","First Pass":"#8b5cf6",Revision:"#f97316","Production Plans":"#eab308",Done:"#10b981",Cancelled:"#dc2626" };
 
+// ── Design board: Kanban columns ──────────────────────────────────────────────
+// The board shows only the live columns; Done/Cancelled are terminal, so they
+// collapse into one "Closed" lane behind a toggle instead of eating two columns.
+export const DESIGN_ACTIVE_STATUSES = ["Briefing","On-going","First Pass","Revision","Production Plans"];
+export const DESIGN_CLOSED_STATUSES = ["Done","Cancelled"];
+export const isDesignClosed = (s) => DESIGN_CLOSED_STATUSES.includes(s);
+
+// Deliverable tags on a design card — lets Sales filter "which of my projects
+// involve artwork / signage" and lets the board colour those cards.
+export const DESIGN_DELIVERABLES = ["Signage","Artwork","Graphics","Fixtures","Lighting"];
+export const ARTWORK_DELIVERABLES = ["Signage","Artwork","Graphics"]; // the "needs creative" subset Sales cares about
+export const designNeedsArtwork = (design) => (design?.deliverables||[]).some(t=>ARTWORK_DELIVERABLES.includes(t));
+
+// Open (unresolved) blockers on a design card.
+export const openBlockers = (design) => (design?.blockers||[]).filter(b=>b&&!b.resolved);
+
+// The date the work is *promised* by. The designer manager's committed date wins;
+// otherwise fall back to the working due date, then the linked DRF's requested
+// deadline. Returns "" when nothing is set (which is itself a signal).
+export const designPromisedDate = (design, drf) =>
+  design?.committedDate || design?.dueDate || drf?.designDeadline || "";
+
+// True once Production has acknowledged the handoff (two-sided, unlike the
+// fire-and-forget Telegram on "Done").
+export const isProductionBriefed = (design) => !!(design?.productionBriefed?.at);
+
+// ── Design urgency ────────────────────────────────────────────────────────────
+// One ranking used by the board, the cards, and the filter tiles so they never
+// drift. Higher rank = more urgent. Explainable tiers, not a black-box score.
+//   4 blocked · 3 overdue · 2 due≤7d & behind · 1 due≤7d · 0 on-track · -1 closed
+export const designUrgency = (design, drf, todayISO) => {
+  const d = design || {};
+  if (isDesignClosed(d.status)) return { rank:-1, tier:"closed",   label:"Closed",       color:"#94a3b8" };
+  if (openBlockers(d).length)   return { rank: 4, tier:"blocked",  label:"Blocked",      color:"#dc2626" };
+  const promised = designPromisedDate(d, drf);
+  const approved = !!(d.approvedBy && d.approvedOn);
+  if (promised && !approved) {
+    const days = Math.ceil((new Date(promised) - new Date(todayISO)) / 86400000);
+    const behind = ["Briefing","On-going"].includes(d.status); // early-stage but deadline is near/past
+    if (days < 0)                return { rank: 3, tier:"overdue",  label:`Overdue ${Math.abs(days)}d`, color:"#dc2626" };
+    if (days <= 7 && behind)     return { rank: 2, tier:"at-risk",  label:`Due ${days}d · behind`,      color:"#f97316" };
+    if (days <= 7)               return { rank: 1, tier:"due-soon", label:days===0?"Due today":`Due ${days}d`, color:"#f59e0b" };
+  }
+  if (!promised)                 return { rank: 0, tier:"undated",  label:"No committed date", color:"#a855f7" };
+  return { rank: 0, tier:"on-track", label:"On track", color:"#10b981" };
+};
+
 export const SW_CLR    = { "To Buy":"#ef4444",Ordered:"#f59e0b",Received:"#10b981","Client Approved":"#059669" };
 
 export const DRF_TYPES = ["Module / Display Fixture","Signage","Retail Fit-Out","Counter / Reception","Kiosk","Wall Panel / Decor","Custom Furniture","Other"];
