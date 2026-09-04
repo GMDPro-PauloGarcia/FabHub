@@ -9873,6 +9873,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         return(
           <div style={{display:"flex",flexDirection:"column",gap:14}}>
 
+            {/* Trial pointer — surfaces the new Design Board during the evaluation
+                window. Remove this block once the team has picked a default view. */}
+            <div onClick={()=>setPage("designboard")} style={{background:"linear-gradient(90deg,#faf5ff,#eef2ff)",border:"1.5px solid #ddd6fe",borderRadius:12,padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,cursor:"pointer",flexWrap:"wrap"}}>
+              <div>
+                <div style={{fontWeight:700,color:"#6d28d9",fontSize:".9rem"}}>🆕 Try the new Design Board</div>
+                <div style={{fontSize:".75rem",color:"#94a3b8",marginTop:2}}>Kanban + most-due view with committed dates and blockers. Tell us if it should replace this page.</div>
+              </div>
+              <span style={{background:"#7c3aed",border:"none",borderRadius:8,padding:"8px 16px",color:"#fff",fontWeight:700,fontSize:".78rem",whiteSpace:"nowrap"}}>Open board →</span>
+            </div>
+
             {/* KPI strip */}
             {drfs.filter(d=>d.status==="New").length>0&&(
               <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:12,padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
