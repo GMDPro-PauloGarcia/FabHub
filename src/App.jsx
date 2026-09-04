@@ -15102,12 +15102,25 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     const mapped=smartImport.rows.map((r,idx)=>{
                       const client=String(r["Client Name"]||r.client||r.Client||r["client_name"]||r.company||"").trim();
                       const ceNo=String(r["CE No"]||r.ceNo||r["CE Number"]||r.ce_no||r["CE No."]||"").trim();
+                      const product=String(r["Project / Product"]||r.product||r.Product||r["Project Name"]||r.project||"").trim();
                       const rawStage=r.Stage||r.stage||r.status||r._defaultStage||"";
-                      const exists=deals.find(d=>ceNo&&d.ceNo&&(d.ceNo===ceNo||d.ceNo==="#"+ceNo.replace(/^#/,"")));
+                      // Match an existing deal by CE number; when the row has NO CE
+                      // number, fall back to an exact client + product match against
+                      // a non-lost deal — otherwise every re-import of a CE-less row
+                      // spawns a fresh duplicate (root cause of the empty Kareila /
+                      // Archives / Diageo stub duplicates).
+                      const exists=deals.find(d=>{
+                        if(ceNo&&d.ceNo&&(d.ceNo===ceNo||d.ceNo==="#"+ceNo.replace(/^#/,""))) return true;
+                        if(!ceNo&&!isLostStage(d.stage)&&client&&d.client&&d.client.toLowerCase()===client.toLowerCase()){
+                          const dprod=String(d.product||d.contact||"").trim().toLowerCase();
+                          if(product&&dprod&&dprod===product.toLowerCase()) return true;
+                        }
+                        return false;
+                      });
                       return{
                         _idx:idx,_exists:!!exists,_existingId:exists?.id,
                         id:exists?.id||uid(),client,
-                        product:String(r["Project / Product"]||r.product||r.Product||r["Project Name"]||r.project||"").trim(),
+                        product,
                         contact:String(r["Contact Person"]||r.contact||r.Contact||"").trim(),
                         ceNo:ceNo||("CE-IMPORT-"+Date.now()+"-"+idx),
                         ceType:normType(r["CE Type"]||r.ceType||r.type||""),
