@@ -18962,7 +18962,10 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
   const[editClient, setEditClient] = useState(null);
   const[editName,   setEditName]   = useState("");
   const[addOpen,    setAddOpen]    = useState(false);
-  const EMPTY_ADD={name:"",contactPerson:"",email:"",phone:"",mobile:"",website:"",billingAddress:"",city:"",province:"",zipCode:"",country:"Philippines",tin:"",paymentTerms:"Due on receipt",notes:""};
+  const EMPTY_ADD={name:"",parentGroup:"",contactPerson:"",email:"",phone:"",mobile:"",website:"",billingAddress:"",city:"",province:"",zipCode:"",country:"Philippines",tin:"",paymentTerms:"Due on receipt",notes:""};
+  // Existing parent groups already in use — offered as suggestions so people
+  // pick a consistent spelling instead of inventing "Diageo" / "Diageo PH" / etc.
+  const knownGroups=useMemo(()=>[...new Set(Object.values(clientProfiles||{}).map(p=>p?.parentGroup).filter(Boolean))].sort(),[clientProfiles]);
   const[addForm,    setAddForm]    = useState(EMPTY_ADD);
   const fa=(k,v)=>setAddForm(p=>({...p,[k]:v}));
   const doAddClient=()=>{
@@ -18971,7 +18974,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
     const allC=[...GMD_CLIENTS,...(customClients||[])];
     if(allC.find(c=>c.name.toLowerCase()===name.toLowerCase())){alert("Client already exists.");return;}
     if(addNewClient) addNewClient(name); else GMD_CLIENTS.push({name,id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today});
-    const prof={contactPerson:addForm.contactPerson,email:addForm.email,phone:addForm.phone,mobile:addForm.mobile,website:addForm.website,billingAddress:addForm.billingAddress,city:addForm.city,province:addForm.province,zipCode:addForm.zipCode,country:addForm.country,tin:addForm.tin,paymentTerms:addForm.paymentTerms,notes:addForm.notes};
+    const prof={parentGroup:(addForm.parentGroup||"").trim(),contactPerson:addForm.contactPerson,email:addForm.email,phone:addForm.phone,mobile:addForm.mobile,website:addForm.website,billingAddress:addForm.billingAddress,city:addForm.city,province:addForm.province,zipCode:addForm.zipCode,country:addForm.country,tin:addForm.tin,paymentTerms:addForm.paymentTerms,notes:addForm.notes};
     if(saveClientProfile&&Object.values(prof).some(v=>v)) saveClientProfile(name,prof);
     setAddForm(EMPTY_ADD);
     setAddOpen(false);
@@ -18982,7 +18985,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
   const[,forceUpdate]              = useState(0);
   const fp2=(k,v)=>setProfileForm(p=>({...p,[k]:v}));
   const openProfile=(name)=>{
-    setProfileForm({...({contactPerson:"",email:"",phone:"",mobile:"",website:"",billingAddress:"",city:"",province:"",zipCode:"",country:"Philippines",tin:"",paymentTerms:"Due on receipt",notes:""}),...((clientProfiles||{})[name]||{})});
+    setProfileForm({...({parentGroup:"",contactPerson:"",email:"",phone:"",mobile:"",website:"",billingAddress:"",city:"",province:"",zipCode:"",country:"Philippines",tin:"",paymentTerms:"Due on receipt",notes:""}),...((clientProfiles||{})[name]||{})});
     setProfileModal(name);
   };
   const saveProfile=()=>{
@@ -19054,6 +19057,36 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
         ))}
       </div>
 
+      {/* Consolidated rollup by parent group (e.g. all Diageo departments) */}
+      {(()=>{
+        const g={};
+        deals.forEach(d=>{
+          const grp=(clientProfiles||{})[d.client]?.parentGroup;
+          if(!grp) return;
+          g[grp]=g[grp]||{group:grp,clients:new Set(),value:0,collected:0};
+          g[grp].clients.add(d.client);
+          if(WON_STAGES.includes(d.stage)) g[grp].value+=Number(d.value||0);
+          g[grp].collected+=Number(d.amountPaid||0);
+        });
+        const rows=Object.values(g).sort((a,b)=>b.value-a.value);
+        if(!rows.length) return null;
+        return(
+          <div style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"14px 18px",marginBottom:16}}>
+            <div style={{fontSize:".65rem",fontWeight:700,textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginBottom:10}}>Consolidated by Group</div>
+            <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(auto-fill,minmax(220px,1fr))",gap:10}}>
+              {rows.map(r=>(
+                <div key={r.group} style={{background:"#f8fafc",borderRadius:10,padding:"11px 14px",border:"1px solid #eef2f7"}}>
+                  <div style={{fontWeight:800,color:"#0f172a",fontSize:".92rem"}}>{r.group}</div>
+                  <div style={{fontSize:".7rem",color:"#94a3b8",margin:"1px 0 6px"}}>{r.clients.size} account{r.clients.size>1?"s":""}</div>
+                  <div style={{fontSize:".74rem",color:"#64748b"}}>Awarded: <strong style={{color:"#0f172a"}}>₱{r.value.toLocaleString("en-PH",{maximumFractionDigits:0})}</strong></div>
+                  <div style={{fontSize:".74rem",color:"#64748b"}}>Collected: <strong style={{color:"#059669"}}>₱{r.collected.toLocaleString("en-PH",{maximumFractionDigits:0})}</strong></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Open balances alert */}
       {allClients.filter(c=>c.balance>0).length>0&&(
         <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:12,padding:"12px 18px",marginBottom:16,display:"flex",gap:16,flexWrap:"wrap",alignItems:"center"}}>
@@ -19124,6 +19157,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
                     ):(
                       <>
                         <span style={{fontWeight:600,color:"#0f172a",fontSize:".88rem"}}>{c.name}</span>
+                        {(clientProfiles||{})[c.name]?.parentGroup&&<span style={{fontSize:".62rem",background:"#eef2ff",color:"#4338ca",border:"1px solid #c7d2fe",borderRadius:20,padding:"1px 7px",fontWeight:700}} title="Parent group">🏛 {(clientProfiles||{})[c.name].parentGroup}</span>}
                         {vvipClients?.has(c.name)&&<span style={{fontSize:".65rem",background:"#fef3c7",color:"#d97706",border:"1px solid #fde68a",borderRadius:20,padding:"1px 7px",fontWeight:700}}>VVIP</span>}
                         {(role==="Manager")&&<button onClick={e=>{e.stopPropagation();setEditClient(c.name);setEditName(c.name);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:".75rem",color:"#94a3b8",padding:"0 2px"}} title="Edit client name">✏️</button>}
                         {saveClientProfile&&<button onClick={e=>{e.stopPropagation();openProfile(c.name);}} style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:5,padding:"1px 7px",cursor:"pointer",fontSize:".65rem",color:"#3b82f6",fontWeight:700}} title="Edit client profile">👤 Profile</button>}
@@ -19235,6 +19269,11 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
             <div style={{background:"#f0fdf4",borderRadius:10,padding:"14px 16px",marginBottom:12,border:"1.5px solid #6ee7b7"}}>
               <div style={{fontWeight:700,fontSize:".8rem",color:"#059669",marginBottom:8}}>Company / Client Name <span style={{color:"#ef4444"}}>*</span></div>
               <Inp autoFocus value={addForm.name} onChange={e=>fa("name",e.target.value)} onKeyDown={e=>e.key==="Enter"&&doAddClient()} placeholder="Full company or client name…"/>
+              <div style={{marginTop:10}}>
+                <div style={{fontWeight:700,fontSize:".75rem",color:"#475569",marginBottom:4}}>Parent Group <span style={{fontWeight:400,color:"#94a3b8"}}>(optional — e.g. “Diageo” for a department/subsidiary)</span></div>
+                <input list="clientGroupOpts" value={addForm.parentGroup} onChange={e=>fa("parentGroup",e.target.value)} placeholder="Leave blank for a standalone client…" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 11px",fontFamily:"inherit",fontSize:".85rem",color:"#1e293b",outline:"none",boxSizing:"border-box"}}/>
+                <datalist id="clientGroupOpts">{knownGroups.map(g=><option key={g} value={g}/>)}</datalist>
+              </div>
             </div>
             <div style={{background:"#f8fafc",borderRadius:10,padding:"14px 16px",marginBottom:12,border:"1px solid #e2e8f0"}}>
               <div style={{fontWeight:700,fontSize:".8rem",color:"#475569",marginBottom:10}}>📇 Name & Contact</div>
@@ -19288,6 +19327,10 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
             <div style={{background:"#f8fafc",borderRadius:10,padding:"14px 16px",marginBottom:12,border:"1px solid #e2e8f0"}}>
               <div style={{fontWeight:700,fontSize:".8rem",color:"#475569",marginBottom:10}}>📇 Name & Contact</div>
               <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10}}>
+                <Fld label="Parent Group" hint="e.g. “Diageo” — groups departments/subsidiaries for consolidated reporting">
+                  <input list="clientGroupOpts" value={profileForm.parentGroup||""} onChange={e=>fp2("parentGroup",e.target.value)} placeholder="Blank = standalone client" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 11px",fontFamily:"inherit",fontSize:".85rem",color:"#1e293b",outline:"none",boxSizing:"border-box"}}/>
+                  <datalist id="clientGroupOpts">{knownGroups.map(g=><option key={g} value={g}/>)}</datalist>
+                </Fld>
                 <Fld label="Contact Person"><Inp value={profileForm.contactPerson||""} onChange={e=>fp2("contactPerson",e.target.value)} placeholder="e.g. Juan dela Cruz"/></Fld>
                 <Fld label="Email"><Inp type="email" value={profileForm.email||""} onChange={e=>fp2("email",e.target.value)} placeholder="accounts@company.com"/></Fld>
                 <Fld label="Phone"><Inp value={profileForm.phone||""} onChange={e=>fp2("phone",e.target.value)} placeholder="+63 2 8xxx xxxx"/></Fld>
