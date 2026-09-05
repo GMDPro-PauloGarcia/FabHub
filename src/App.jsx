@@ -7015,6 +7015,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // brings them back so other pages stay reachable and favorites remain editable.
   const[favOnly, setFavOnly] = useState(()=>{try{return localStorage.getItem("gmdv5:favOnly")==="1";}catch{return false;}});
   useEffect(()=>{try{localStorage.setItem("gmdv5:favOnly",favOnly?"1":"0");}catch{}},[favOnly]);
+  // Collapsed nav department groups (accordion). Set holds the group NAMES a user
+  // has collapsed; persisted so the sidebar reopens the way they left it. Kept at
+  // this level (not inside the memoized Nav) so toggling never resets on re-render.
+  const[navGroupsCollapsed, setNavGroupsCollapsed] = useState(()=>{try{return new Set(JSON.parse(localStorage.getItem("gmdv5:navGroupsCollapsed")||"[]"));}catch{return new Set();}});
+  const toggleNavGroup = (g)=>setNavGroupsCollapsed(prev=>{const nx=new Set(prev);nx.has(g)?nx.delete(g):nx.add(g);try{localStorage.setItem("gmdv5:navGroupsCollapsed",JSON.stringify([...nx]));}catch{}return nx;});
   const toggleFav=(id)=>setFavNav(f=>f.includes(id)?f.filter(x=>x!==id):[...f,id]);
   const isMobile = useIsMobile();
   const[moreNavOpen,  setMoreNavOpen]  = useState(false);
@@ -8514,14 +8519,22 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   {favItems.map(({id,l})=><NavBtn key={"fav-"+id} id={id} l={l} collapsed={false}/>)}
                 </div>
               )}
-              {!(favOnly&&favItems.length>0)&&groups.map((section,si)=>(
+              {!(favOnly&&favItems.length>0)&&groups.map((section,si)=>{
+                // A group stays open if it holds the current page, so collapsing
+                // never hides where you are. Otherwise honor the saved collapse.
+                const hasActive=(section.items||[]).some(it=>it.id===page);
+                const open=hasActive||!navGroupsCollapsed.has(section.group);
+                return(
                 <div key={si} style={{marginBottom:4}}>
-                  <div style={{padding:"8px 16px 3px",fontSize:".58rem",fontWeight:800,color:"#475569",textTransform:"uppercase",letterSpacing:"0.08em"}}>
-                    {section.group}
+                  <div role="button" tabIndex={-1} onClick={()=>toggleNavGroup(section.group)}
+                    title={open?"Collapse":"Expand"}
+                    style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 16px 3px",fontSize:".58rem",fontWeight:800,color:"#475569",textTransform:"uppercase",letterSpacing:"0.08em",cursor:"pointer",userSelect:"none"}}>
+                    <span>{section.group}</span>
+                    <span style={{fontSize:".7rem",color:"#334155",transform:open?"rotate(90deg)":"rotate(0deg)",transition:"transform .15s",lineHeight:1}}>›</span>
                   </div>
-                  {(section.items||[]).map(({id,l})=><NavBtn key={id} id={id} l={l} collapsed={false}/>)}
+                  {open&&(section.items||[]).map(({id,l})=><NavBtn key={id} id={id} l={l} collapsed={false}/>)}
                 </div>
-              ))}
+              );})}
               {!(favOnly&&favItems.length>0)&&pauloExtra.map(({id,l})=><NavBtn key={id} id={id} l={l} collapsed={false}/>)}
             </>
           )}
