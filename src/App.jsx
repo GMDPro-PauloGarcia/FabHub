@@ -2087,6 +2087,101 @@ class ViewErrorBoundary extends React.Component{
   }
 }
 
+// ── SYSTEM HEALTH ────────────────────────────────────────────────────────────
+// Manager-only view over the `client_errors` crash-telemetry table. The app's
+// error boundaries and the global window handlers already CAPTURE crashes; this
+// surfaces them in-app so they're read instead of sitting unseen in Supabase.
+// Read-only, fail-safe: if the table is absent or the read fails, it shows an
+// empty/So-far-so-good state rather than erroring.
+function SystemHealthView({session}){
+  const[rows,setRows]=React.useState(null);   // null = loading, [] = loaded empty
+  const[failed,setFailed]=React.useState(false);
+  const[copied,setCopied]=React.useState(false);
+  const load=React.useCallback(async()=>{
+    setFailed(false);
+    if(!isSupabaseReady()){setRows([]);return;}
+    try{
+      const data=await sbList('client_errors',{order:'created_at',asc:false,limit:100});
+      setRows(Array.isArray(data)?data:[]);
+    }catch(_){setRows([]);setFailed(true);}
+  },[]);
+  React.useEffect(()=>{load();},[load]);
+
+  const fmtWhen=(ts)=>{try{return new Date(ts).toLocaleString("en-PH",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});}catch{return ts||"—";}};
+  const shortUA=(ua)=>{if(!ua)return"";const m=ua.match(/(Chrome|Firefox|Safari|Edg|Samsung|Mobile)[\/ ]?([\d.]*)/g);return m?m.slice(0,2).join(" · "):ua.slice(0,40);};
+
+  // 24-hour and 7-day counts for the header tiles.
+  const now=Date.now();
+  const within=(ts,ms)=>{const t=new Date(ts).getTime();return !isNaN(t)&&(now-t)<=ms;};
+  const c24=(rows||[]).filter(r=>within(r.created_at,864e5)).length;
+  const c7d=(rows||[]).filter(r=>within(r.created_at,7*864e5)).length;
+
+  // One-tap copy of the whole recent log, formatted so it can be pasted straight
+  // into a chat with Claude / a dev to diagnose.
+  const copyAll=async()=>{
+    const text=(rows||[]).map(r=>`[${fmtWhen(r.created_at)}] (${r.view||"?"}) ${r.message||""}\n  url: ${r.url||""}\n  ${(r.stack||"").split("\n").slice(0,4).join("\n  ")}`).join("\n\n");
+    try{await navigator.clipboard.writeText(text||"No crashes logged.");setCopied(true);setTimeout(()=>setCopied(false),2000);}catch{}
+  };
+
+  const card={background:"#fff",border:"1px solid #e2e8f0",borderRadius:10,padding:"12px 14px"};
+  return(
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10,marginBottom:14}}>
+        <div>
+          <div style={{fontWeight:900,fontSize:"1.15rem",color:"#0f172a"}}>🩺 System Health</div>
+          <div style={{fontSize:".78rem",color:"#64748b",marginTop:2}}>Crashes caught across the app. If a page ever misbehaves, check here and copy the log.</div>
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={load} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#334155",cursor:"pointer"}}>🔄 Refresh</button>
+          <button onClick={copyAll} disabled={!rows||rows.length===0} style={{background:!rows||rows.length===0?"#e2e8f0":"#1e293b",border:"none",borderRadius:8,padding:"8px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:!rows||rows.length===0?"#94a3b8":"#fff",cursor:!rows||rows.length===0?"default":"pointer"}}>{copied?"✓ Copied":"📋 Copy log"}</button>
+        </div>
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:10,marginBottom:14}}>
+        {[
+          {l:"Crashes · last 24h",v:c24,c:c24>0?"#dc2626":"#16a34a"},
+          {l:"Crashes · last 7 days",v:c7d,c:c7d>0?"#d97706":"#16a34a"},
+          {l:"Shown (most recent)",v:(rows||[]).length,c:"#475569"},
+        ].map(t=>(
+          <div key={t.l} style={card}>
+            <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:".5px",color:"#94a3b8",fontWeight:700}}>{t.l}</div>
+            <div style={{fontWeight:900,fontSize:"1.5rem",color:t.c,marginTop:2}}>{rows===null?"…":t.v}</div>
+          </div>
+        ))}
+      </div>
+
+      {failed&&<div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:9,padding:"10px 13px",marginBottom:12,fontSize:".78rem",color:"#92400e"}}>Couldn't reach the crash log just now. Tap Refresh to retry.</div>}
+
+      {rows===null?(
+        <div style={{...card,textAlign:"center",color:"#94a3b8"}}>Loading…</div>
+      ):rows.length===0?(
+        <div style={{...card,textAlign:"center",padding:"32px 16px"}}>
+          <div style={{fontSize:"2rem",marginBottom:8}}>✅</div>
+          <div style={{fontWeight:800,color:"#0f172a"}}>No crashes logged</div>
+          <div style={{fontSize:".8rem",color:"#64748b",marginTop:4}}>Nothing has crashed that the app captured. That's the good state.</div>
+        </div>
+      ):(
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {rows.map((r,i)=>(
+            <div key={r.id||i} style={{...card,borderLeft:"3px solid #dc2626"}}>
+              <div style={{display:"flex",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
+                <span style={{fontWeight:800,color:"#0f172a",fontSize:".85rem",wordBreak:"break-word",flex:1,minWidth:200}}>{r.message||"Unknown error"}</span>
+                <span style={{fontSize:".72rem",color:"#94a3b8",whiteSpace:"nowrap"}}>{fmtWhen(r.created_at)}</span>
+              </div>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:5}}>
+                {r.view&&<span style={{fontSize:".64rem",fontWeight:700,color:"#6366f1",background:"#eef2ff",borderRadius:5,padding:"2px 7px"}}>{r.view}</span>}
+                {r.url&&<span style={{fontSize:".64rem",color:"#94a3b8"}}>{String(r.url).replace(/^https?:\/\/[^/]+/,"")||"/"}</span>}
+                {r.user_agent&&<span style={{fontSize:".64rem",color:"#cbd5e1"}}>{shortUA(r.user_agent)}</span>}
+              </div>
+              {r.stack&&<details style={{marginTop:6}}><summary style={{fontSize:".7rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>Stack trace</summary><pre style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:6,padding:"8px 10px",fontSize:".68rem",color:"#475569",overflowX:"auto",whiteSpace:"pre-wrap",wordBreak:"break-word",marginTop:5}}>{r.stack}</pre></details>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 // ── PM UPDATE MODAL (proper component — fixes focus loss from IIFE hooks) ──
 
@@ -8274,7 +8369,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Design",      items:[{id:"designboard",l:"Design Board"},{id:"drf",l:"Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
       {group:"Warehousing", items:[{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"}]},
-      {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"audit",l:"Audit"},{id:"botsettings",l:"Bot Settings"},{id:"tvboard",l:"Office TV Board"},{id:"activity",l:"Team Activity"}]},
+      {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"audit",l:"Audit"},{id:"syshealth",l:"System Health"},{id:"botsettings",l:"Bot Settings"},{id:"tvboard",l:"Office TV Board"},{id:"activity",l:"Team Activity"}]},
     ],
     Sales:[
       {group:"Pipeline",     items:[{id:"pipeline",l:"Sales Pipeline"},{id:"calendar",l:"Calendar"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Reports"}]},
@@ -8363,7 +8458,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       reports:"📈", "sales-reports":"📈", "finance-reports":"📈", acctdash:"📒", executive:"🎯", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅", financecal:"📅",
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
-      masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆", audit:"🔎", tvboard:"📺",
+      masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆", audit:"🔎", syshealth:"🩺", tvboard:"📺",
       deliveries:"🚚",stockmove:"🔄",addenda:"⚠️",   pmupdates:"📝",  pmfeed:"📋",  suppliers:"🏭",
       subcontractors:"👷",materialreq:"🔧",budgetreq:"💳",collections:"💵",
       checklist:"✅",joborders:"📄", ops:"⚙️",        datamanagement:"⚙️", myfolder:"📁",
@@ -8506,7 +8601,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       reports:"📈", "sales-reports":"📈", "finance-reports":"📈", acctdash:"📒", executive:"🎯", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅", financecal:"📅",
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
-      masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆", audit:"🔎", tvboard:"📺",
+      masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆", audit:"🔎", syshealth:"🩺", tvboard:"📺",
       deliveries:"🚚",stockmove:"🔄",addenda:"⚠️",   pmupdates:"📝",  pmfeed:"📋",  suppliers:"🏭",
       subcontractors:"👷",materialreq:"🔧",budgetreq:"💳",collections:"💵",
       checklist:"✅",joborders:"📄", ops:"⚙️",        datamanagement:"⚙️", myfolder:"📁",
@@ -15641,6 +15736,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   if(page==="audit") return(
     <Wrap>
       <AuditView findings={auditFindings} addFinding={addFinding} updateFinding={updateFinding} session={session} role={role}/>
+    </Wrap>
+  );
+
+  if(page==="syshealth"&&role==="Manager") return(
+    <Wrap>
+      <SystemHealthView session={session}/>
     </Wrap>
   );
 
