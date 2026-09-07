@@ -405,9 +405,19 @@ export const EWT_RATES = [
 
 export const todayL= new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"});
 
-export const mergeLocalOnly=(serverList,localList)=>{
+// Re-add records that exist locally but weren't in the server's response — but
+// ONLY the ones that are genuinely unsynced local creates, never rows the server
+// deleted. Without `keepIds` this cannot tell those two cases apart and keeps
+// EVERY local-only row, which silently resurrects deleted deals/records on the
+// next reload (and cross-user: another user's cached copy comes back to life the
+// moment they refresh, because they never issued the delete). `keepIds` is the
+// set of ids with a pending offline-queue write (see sbPendingIds) — i.e. the
+// only ids that legitimately exist locally but not yet on the server. Any other
+// local-only row is a server-side deletion and is dropped. When keepIds is null
+// (e.g. before the app has wired it up) the old keep-everything behavior stands.
+export const mergeLocalOnly=(serverList,localList,keepIds=null)=>{
   const ids=new Set(serverList.map(x=>x.id));
-  const localOnly=(localList||[]).filter(x=>x.id&&!ids.has(x.id));
+  const localOnly=(localList||[]).filter(x=>x.id&&!ids.has(x.id)&&(!keepIds||keepIds.has(x.id)));
   return localOnly.length?[...serverList,...localOnly]:serverList;
 };
 
