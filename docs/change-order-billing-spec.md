@@ -87,6 +87,25 @@ drifting out of sync). Instead:
 - **Who deploys FabHub?** These are changes to a live system; nothing ships until the
   merge + deploy owner is identified. This spec is the handoff document for that person.
 
+## 8b. Implementation status
+
+- ✅ **#1 Trigger** — CO billing milestone now created at **Approved** (`syncCoBilling`
+  called with `ADDENDUM_ROLLED`), not left until "Billed".
+- ✅ **#2 Base = original** — `generateBillingSchedule` (and the Billing setup preview)
+  split the **original** contract (`deal.originalValue` when a CO has rolled in), never the
+  blended `deal.value`.
+- ✅ **#3 No double-count** — achieved structurally by #2 (base = original) + per-CO
+  milestones; no separate runtime guard needed.
+- ✅ **#4 VAT inheritance** — the CO milestone takes `receiptType` / `withholding` from the
+  **parent deal**, not the CO's own fields.
+- ⏳ **#6 Card "raise claim" signal + snapshot breakdown** — deferred to a follow-up
+  (UI only; the billing engine above is the correctness-critical part). The Billing view
+  already renders the per-CO breakdown via `ContractBreakdown`.
+
+⚠️ **Not verified in a running app** — authored without a build/test environment. Must be
+clicked through in the Vercel preview (approve a CO → confirm one separate CO milestone
+appears, base schedule unchanged, VAT matches the parent) before merge.
+
 ## 9. Related work already on branch `claude/missing-addendums-yyy2lz`
 
 - Unconverted linked child deals now surface in the Change Order Log tagged

@@ -5804,7 +5804,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // Billing was remounted — "every awarded deal has a proper billing" wasn't
   // actually guaranteed.
   const generateBillingSchedule=(dealId,terms,contractVal)=>{
-    const val=Number(contractVal)||0;
+    // The base schedule bills the ORIGINAL contract only. Approved change orders
+    // each carry their own separate billing milestone (see syncCoBilling), so if
+    // this deal has had a CO rolled in, split the pre-CO base (originalValue) —
+    // never the blended deal.value — otherwise the CO would be billed twice (once
+    // inside the base schedule and once as its own line). With no CO, originalValue
+    // is unset and this is the passed contract value unchanged.
+    const _deal=deals.find(d=>d.id===dealId);
+    const val=Number(_deal&&_deal.originalValue!=null?_deal.originalValue:contractVal)||0;
     if(!terms||val<=0) return;
     // Idempotency: never regenerate once a schedule has been generated. The
     // persistent deal.billingGenerated flag survives reloads / remounts / other
@@ -6127,16 +6134,20 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     }));
     logActivity(dealId,"Contract Value Updated",`${delta>0?"+":"−"}₱${Number(Math.abs(delta)).toLocaleString("en-PH",{maximumFractionDigits:2})} from change order "${addendum?.title||""}" → revised contract value`);
   };
-  // Once a change order is billed/collected it should carry its own billing
-  // milestone so Finance can invoice the delta directly instead of hand-rolling
-  // it. Deductive change orders create a negative (credit) milestone.
-  const CO_BILLED=s=>["Billed","Collected"].includes(s);
+  // Once a change order is APPROVED it carries its own billing milestone so
+  // Finance can raise the claim for the delta directly — as a SEPARATE line from
+  // the original contract's schedule, never blended into it (the base schedule
+  // bills the original contract only; see generateBillingSchedule). Deductive
+  // change orders create a negative (credit) milestone. The milestone's tax basis
+  // is INHERITED from the parent contract (receipt type + withholding) so a CO is
+  // never taxed on a different basis than its project.
   const syncCoBilling=(co,shouldExist)=>{
     const dealId=co.dealId||co.projectId;
     const existing=billings.find(b=>b.coId===co.id);
     if(shouldExist&&!existing&&dealId){
+      const parentDeal=deals.find(d=>d.id===dealId);
       const invMax=billings.reduce((m,b)=>{const x=parseInt(String(b.invoiceNo||"").replace(/\D/g,""))||0;return Math.max(m,x);},0);
-      addMilestone({name:`Change Order — ${co.title||"Scope Change"}`,description:co.description||co.desc||"",amount:coSignedValue(co),dealId,coId:co.id,invoiceNo:`INV-${String(invMax+1).padStart(4,"0")}`,invoiceDate:today,dueDate:"",status:"Draft",receiptType:co.receiptType||null,withholding:co.withholding??null,createdBy:session?.name||role,deductions:[]});
+      addMilestone({name:`Change Order — ${co.title||"Scope Change"}`,description:co.description||co.desc||"",amount:coSignedValue(co),dealId,coId:co.id,invoiceNo:`INV-${String(invMax+1).padStart(4,"0")}`,invoiceDate:today,dueDate:"",status:"Draft",receiptType:parentDeal?.receiptType||co.receiptType||null,withholding:parentDeal?.withholding??co.withholding??null,createdBy:session?.name||role,deductions:[]});
     }else if(!shouldExist&&existing){
       upBillings(bs=>bs.filter(b=>b.coId!==co.id));
       if(isSupabaseReady()) sbDelete('billing_milestones',existing.id).catch(()=>{});
@@ -6185,9 +6196,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       else if(!nowIn&&n.awardedDate&&!ch.awardedDate) n.awardedDate=null;
       const delta=(nowIn?newVal:0)-(wasIn?oldVal:0);
       if(delta) rollDealContract(n.dealId||n.projectId,delta,n);
-      // Scope items flow into the BOQ on approval, billing milestone on billing.
+      // Scope items flow into the BOQ on approval; the CO's own billing milestone
+      // is created on approval too (ADDENDUM_ROLLED = Approved/Billed/Collected) so
+      // Finance can raise the claim immediately — not left until someone marks it
+      // "Billed", which used to leave the delta unbilled and the contract short.
       if(wasIn!==nowIn||(nowIn&&oldVal!==newVal)) syncCoBoq(n,nowIn);
-      syncCoBilling(n,CO_BILLED(n.status));
+      syncCoBilling(n,ADDENDUM_ROLLED(n.status));
       if(isSupabaseReady()) sbSyncOne("addenda",n,toSbAddendum);
       if(ch.status==="Approved"||ch.clientApproved){
         const deal=deals.find(d=>d.id===(a.dealId||a.projectId));
@@ -24731,7 +24745,10 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
           {(()=>{
             const terms=deal?.paymentTerms;
             const existingMs=billings.filter(b=>b.dealId===selDeal);
-            const val=Number(deal?.value||0);
+            // Base schedule is off the ORIGINAL contract (pre change orders) — each
+            // approved CO is billed as its own separate milestone. This keeps the
+            // preview in step with generateBillingSchedule so both split the same base.
+            const val=Number(deal?.originalValue!=null?deal.originalValue:deal?.value||0);
             const onboardingReady=dealOnboardingGate(deal).ready;
             const canGenerate=canEdit&&terms&&existingMs.length===0&&val>0&&!deal?.billingGenerated&&onboardingReady;
             // Billing schedules are no longer created automatically. This opens a
