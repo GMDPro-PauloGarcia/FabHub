@@ -17035,6 +17035,22 @@ function ContractBreakdown({deal,addenda,compact}){
 }
 function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,projDeal,upProj,overallProg,costOf,marginOf,openDesignEdit,swatches,swQ,openAddSwatch,openEditSwatch,delSwatch,exps,openAddExp,openEditExp,delExp,clientName,matModal,setMatModal,matForm,setMatForm,editMat,setEditMat,saveMat,addPmUpdate,addAddendum,updateAddendumStatus,session,Wrap,addenda,addAddendum2,updateAddendum,deleteAddendum,pcards,setPage,logActivity,drfs,jos,budgets,role,onCloseProject,openPmModal}){
   const BUDGET_ONLY_OPS=["Operations","ProjectMover"];
+  // Approving a change order changes what we can legally bill — it rolls the CO's
+  // value into the client's contract (and later drives a billing milestone). Gate
+  // the transition INTO a contract-affecting status (Approved/Billed/Collected)
+  // behind an explicit sign-off confirmation so a mis-click can't silently inflate
+  // a contract. Returns true to proceed; non-rolling transitions pass through.
+  const CO_ROLLED_STATUSES=["Approved","Billed","Collected"];
+  const confirmCoApproval=async(a,nextStatus)=>{
+    const crossing=CO_ROLLED_STATUSES.includes(nextStatus)&&!CO_ROLLED_STATUSES.includes(a.status);
+    if(!crossing) return true;
+    const signed=coSignedValue(a);
+    if(!signed) return true; // nothing rolls into the contract, no need to gate
+    const deal=(deals||[]).find(d=>d.id===a.dealId);
+    const who=deal?.client||deal?.ceNo||"this project";
+    const impact=signed<0?"deduct ₱"+Math.abs(signed).toLocaleString("en-PH")+" from":"add ₱"+Math.abs(signed).toLocaleString("en-PH")+" to";
+    return uiConfirm(`Approve "${a.title||"this change order"}"?\n\nConfirm the client has signed off — approving will ${impact} the contract value for ${who} and update billing, BOQ, and sales credit automatically. This is hard to undo cleanly.`);
+  };
   const qsBudgetTotalOps=id=>{const b=(budgets||{})[id]||{};return["Materials","Labor","Overhead","Subcon"].reduce((s,k)=>s+Number(b[k]||0),0);};
   const opsAmt=(d)=>{if(BUDGET_ONLY_OPS.includes(role)){const t=qsBudgetTotalOps(d?.id);return t>0?fmt(t)+" (budget)":"Budget Pending";}return fmt(d?.value);};
   const uid2=()=>String(Date.now());
@@ -17550,7 +17566,7 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
 
                       {/* Actions */}
                       <div style={{display:"flex",flexDirection:"column",gap:6,flexShrink:0,minWidth:160}}>
-                        <select value={a.status} onChange={e=>updateAddendum(a.id,{status:e.target.value})}
+                        <select value={a.status} onChange={async e=>{const s=e.target.value;if(await confirmCoApproval(a,s))updateAddendum(a.id,{status:s});}}
                           style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:".78rem",color:"#0f172a",background:"#fff",cursor:"pointer",width:"100%"}}>
                           {ADDENDUM_STATUSES.map(s=><option key={s}>{s}</option>)}
                         </select>
@@ -17560,7 +17576,7 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
                             style={{flex:1,background:a.salesNotified?"#f0fdf4":"#fffbeb",border:`1.5px solid ${a.salesNotified?"#6ee7b7":"#fde68a"}`,borderRadius:7,padding:"5px 8px",fontSize:".68rem",color:a.salesNotified?"#059669":"#92400e",cursor:a.salesNotified?"default":"pointer",fontWeight:600,fontFamily:"inherit"}}>
                             {a.salesNotified?"Notified":"Notify Sales"}
                           </button>
-                          <button onClick={()=>updateAddendum(a.id,{clientApproved:true,status:"Approved"})}
+                          <button onClick={async()=>{if(await confirmCoApproval(a,"Approved"))updateAddendum(a.id,{clientApproved:true,status:"Approved"});}}
                             disabled={a.clientApproved}
                             style={{flex:1,background:a.clientApproved?"#f0fdf4":"#f8fafc",border:`1.5px solid ${a.clientApproved?"#6ee7b7":"#e2e8f0"}`,borderRadius:7,padding:"5px 8px",fontSize:".68rem",color:a.clientApproved?"#059669":"#64748b",cursor:a.clientApproved?"default":"pointer",fontWeight:600,fontFamily:"inherit"}}>
                             {a.clientApproved?"Approved":"Mark Approved"}
