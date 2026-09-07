@@ -2595,7 +2595,7 @@ function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logAc
 
 // ─── ADDENDA PAGE CONTENT ─────────────────────────────────────────────────────
 // Extracted from App IIFE to fix React hooks #310 — hooks must be at top level
-function AddendaPageContent({role,wonDeals,jos,session,addenda,upAddenda,logActivity,onOpenCoBoq}){
+function AddendaPageContent({role,wonDeals,deals,jos,session,addenda,upAddenda,logActivity,onOpenCoBoq}){
   const canCreate=!["Sales","Finance"].includes(role);
   const myName=session?.name||"";
   const myProjects=wonDeals.filter(d=>{
@@ -2616,14 +2616,35 @@ function AddendaPageContent({role,wonDeals,jos,session,addenda,upAddenda,logActi
   const setScopeRow=(i,ch)=>setScopeItems(r=>r.map((it,j)=>j===i?{...it,...ch}:it));
   const delScopeRow=(i)=>setScopeItems(r=>r.filter((_,j)=>j!==i));
 
+  // Unconverted linked child deals are change orders in waiting: surface them in
+  // the log alongside real addenda so it's a complete ledger of every change
+  // order — pending or approved. Converted children are DELETED on conversion
+  // (see convertChildToCO → delDeal), so there is no double-count; the only
+  // children still present are the not-yet-converted ones. They're normalized
+  // into an addendum-like shape and flagged _pendingChild so they render as
+  // "not converted" rather than posing as approved COs.
+  const childEntries=(deals||[]).filter(d=>d.parentDealId).map(d=>{
+    const par=(deals||[]).find(p=>p.id===d.parentDealId);
+    return{
+      id:d.id,dealId:d.parentDealId,
+      title:d.contact||d.client||"Linked deal",
+      description:d.notes||"Linked deal — not yet converted to a change order.",
+      kind:"Additive",value:Math.abs(Number(d.value)||0),
+      status:"Linked — not converted",
+      discoveredBy:d.salesOwner||"",salesOwner:d.salesOwner||"",
+      subAccount:(d.client&&par&&d.client!==par.client)?d.client:"",
+      ceNo:d.ceNo||"",_pendingChild:true,
+    };
+  });
+  const allEntries=[...addenda,...childEntries];
   const visibleAddenda=canCreate
-    ?(["Manager","QS"].includes(role)?addenda:addenda.filter(a=>myProjects.find(d=>d.id===a.dealId)))
-    :addenda;
+    ?(["Manager","QS"].includes(role)?allEntries:allEntries.filter(a=>myProjects.find(d=>d.id===a.dealId)))
+    :allEntries;
   const filteredAddenda=addSearch
-    ?visibleAddenda.filter(a=>{const d=wonDeals.find(x=>x.id===a.dealId);return[a.title,a.status,d?.client,d?.ceNo].join(" ").toLowerCase().includes(addSearch.toLowerCase());})
+    ?visibleAddenda.filter(a=>{const d=(deals||[]).find(x=>x.id===a.dealId);return[a.title,a.status,d?.client,d?.ceNo].join(" ").toLowerCase().includes(addSearch.toLowerCase());})
     :visibleAddenda;
 
-  const statusClr={Discovered:"#f59e0b","Sales Notified":"#3b82f6","Client Coordinating":"#8b5cf6",Approved:"#059669",Billed:"#06b6d4",Collected:"#10b981",Rejected:"#ef4444"};
+  const statusClr={Discovered:"#f59e0b","Sales Notified":"#3b82f6","Client Coordinating":"#8b5cf6",Approved:"#059669",Billed:"#06b6d4",Collected:"#10b981",Rejected:"#ef4444","Linked — not converted":"#94a3b8"};
   const totalValue=filteredAddenda.reduce((s,a)=>s+coSignedValue(a),0);
   const fmtSigned=(v)=>`${v<0?"−":"+"}₱${Number(Math.abs(v)).toLocaleString("en-PH")}`;
 
@@ -2647,7 +2668,7 @@ function AddendaPageContent({role,wonDeals,jos,session,addenda,upAddenda,logActi
               byDeal[a.dealId].items.push(a);
             });
             return groups.map(g=>{
-              const d=wonDeals.find(x=>x.id===g.dealId);
+              const d=(deals||[]).find(x=>x.id===g.dealId)||wonDeals.find(x=>x.id===g.dealId);
               const grpTotal=g.items.reduce((s,a)=>s+coSignedValue(a),0);
               return(
                 <div key={g.dealId||"unassigned"}>
@@ -2668,12 +2689,13 @@ function AddendaPageContent({role,wonDeals,jos,session,addenda,upAddenda,logActi
                           {a.description&&<div style={{fontSize:".75rem",color:"#64748b",marginTop:2,lineHeight:1.4}}>{a.description}</div>}
                         </div>
                         <div style={{display:"flex",alignItems:"center",gap:6,marginLeft:8,flexShrink:0}}>
-                          {canCreate&&onOpenCoBoq&&<button onClick={()=>onOpenCoBoq(a.id)} title="Build this change order's BOQ (sections, rate card, markup)" style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:6,padding:"3px 9px",fontSize:".66rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>🧮 BOQ{(a.coBoqData?.items?.length)?` (${a.coBoqData.items.length})`:""}</button>}
-                          {!canCreate&&onOpenCoBoq&&(a.coBoqData?.items?.length)>0&&<button onClick={()=>onOpenCoBoq(a.id,true)} title="View & print this change order's BOQ to send to the client" style={{background:"#f5f3ff",border:"1.5px solid #ddd6fe",borderRadius:6,padding:"3px 9px",fontSize:".66rem",fontWeight:700,color:"#7c3aed",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>📄 Print BOQ</button>}
+                          {!a._pendingChild&&canCreate&&onOpenCoBoq&&<button onClick={()=>onOpenCoBoq(a.id)} title="Build this change order's BOQ (sections, rate card, markup)" style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:6,padding:"3px 9px",fontSize:".66rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>🧮 BOQ{(a.coBoqData?.items?.length)?` (${a.coBoqData.items.length})`:""}</button>}
+                          {!a._pendingChild&&!canCreate&&onOpenCoBoq&&(a.coBoqData?.items?.length)>0&&<button onClick={()=>onOpenCoBoq(a.id,true)} title="View & print this change order's BOQ to send to the client" style={{background:"#f5f3ff",border:"1.5px solid #ddd6fe",borderRadius:6,padding:"3px 9px",fontSize:".66rem",fontWeight:700,color:"#7c3aed",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>📄 Print BOQ</button>}
+                          {a._pendingChild&&<span title="This is a linked child deal in the pipeline. Convert it to a Change Order (⇄ CO) to roll its scope and value into the parent project." style={{fontSize:".62rem",fontWeight:700,color:"#b45309",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:6,padding:"2px 7px",whiteSpace:"nowrap"}}>⇄ needs conversion</span>}
                           <span style={{fontSize:".68rem",fontWeight:700,color:statusClr[a.status]||"#64748b",background:(statusClr[a.status]||"#64748b")+"18",borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap"}}>{a.status}</span>
                         </div>
                       </div>
-                      {Number(a.value)>0&&<div style={{fontSize:".75rem",color:a.kind==="Deductive"?"#dc2626":"#059669",marginTop:3,fontWeight:600}}>{fmtSigned(coSignedValue(a))} {a.kind==="Deductive"?"deducted":"additional"}{Array.isArray(a.scopeItems)&&a.scopeItems.length?` · ${a.scopeItems.length} BOQ item${a.scopeItems.length>1?"s":""}`:""}</div>}
+                      {Number(a.value)>0&&<div style={{fontSize:".75rem",color:a.kind==="Deductive"?"#dc2626":"#059669",marginTop:3,fontWeight:600}}>{fmtSigned(coSignedValue(a))} {a._pendingChild?"pending conversion":a.kind==="Deductive"?"deducted":"additional"}{Array.isArray(a.scopeItems)&&a.scopeItems.length?` · ${a.scopeItems.length} BOQ item${a.scopeItems.length>1?"s":""}`:""}</div>}
                     </div>
                   ))}
                 </div>
@@ -15281,7 +15303,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   if(page==="addenda") return(
     <Wrap>
       <SecHead title="⚠️ Scope Changes" sub={["Sales","Finance"].includes(role)?"View all scope changes across active projects":"Flag addenda discovered on site — AE and Paolo will be notified"}/>
-      <AddendaPageContent role={role} wonDeals={wonDeals} jos={jos} session={session} addenda={addenda} upAddenda={upAddenda} logActivity={logActivity} onOpenCoBoq={(id,readOnly=false)=>{setBoqDealId(null);setBoqStandaloneId(null);setBoqCoReadOnly(!!readOnly);setBoqCoId(id);setPage("boq");}}/>
+      <AddendaPageContent role={role} wonDeals={wonDeals} deals={deals} jos={jos} session={session} addenda={addenda} upAddenda={upAddenda} logActivity={logActivity} onOpenCoBoq={(id,readOnly=false)=>{setBoqDealId(null);setBoqStandaloneId(null);setBoqCoReadOnly(!!readOnly);setBoqCoId(id);setPage("boq");}}/>
     </Wrap>
   );
 
