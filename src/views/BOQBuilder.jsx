@@ -184,6 +184,23 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   const[suggest,setSuggest]=useState({id:null,matches:[]});
   const[draftSaved,setDraftSaved]=useState(false);
   const draftTimerRef=useRef(null);
+  // ── Document status & last-edited stamp ────────────────────────────────────
+  // Draft  = in progress, freely editable.
+  // Issued = sent/printed for a client or handed to Ops — still editable, but the
+  //          badge warns that changes affect a document already in someone's hands.
+  // Locked = frozen; every mutator no-ops (same gate as the read-only prop) until
+  //          someone explicitly sets it back to Draft/Issued.
+  const BOQ_STATUSES=["Draft","Issued","Locked"];
+  const[boqStatus,setBoqStatus]=useState("Draft");
+  const[lastEditedBy,setLastEditedBy]=useState("");
+  const[lastEditedAt,setLastEditedAt]=useState("");
+  const locked=boqStatus==="Locked";
+  const editLocked=ro||locked;               // content edits blocked by the read-only prop OR a lock
+  // Only stamp "last edited by" on a genuine user edit — never on the autosave that
+  // fires when a BOQ is merely opened (that would restamp the editor as whoever
+  // opened it). Reset per mount; each mutator/header input flips it true.
+  const userEditedRef=useRef(false);
+  const markEdited=()=>{userEditedRef.current=true;};
 
   // Dynamic sections — start empty, fully built per BOQ (no fixed sections)
   const SEC_COLORS=["#64748b","#3b82f6","#f59e0b","#8b5cf6","#06b6d4","#10b981","#ef4444","#f97316","#ec4899","#0ea5e9","#14b8a6","#a855f7","#e11d48","#84cc16","#d97706","#6366f1"];
@@ -194,9 +211,9 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   const[addSecOpen,setAddSecOpen]=useState(false);
   const[newSecForm,setNewSecForm]=useState({id:"",label:""});
 
-  const renameSection=(id,label)=>{if(ro)return;setSections(ss=>ss.map(s=>s.id===id?{...s,label}:s));};
+  const renameSection=(id,label)=>{if(editLocked)return;markEdited();setSections(ss=>ss.map(s=>s.id===id?{...s,label}:s));};
   const addSection=()=>{
-    if(ro)return;
+    if(editLocked)return;markEdited();
     const sid=newSecForm.id.trim()||String(sections.length+1);
     if(!newSecForm.label.trim()){toastEmit("Section name is required.");return;}
     if(sections.find(s=>s.id===sid)){toastEmit(`Section "${sid}" already exists.`);return;}
@@ -205,7 +222,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
     setAddSecOpen(false);
   };
   const deleteSection=(id)=>{
-    if(ro)return;
+    if(editLocked)return;markEdited();
     if(items.some(it=>it.section===id)){toastEmit("Move or delete all items in this section first.");return;}
     setSections(ss=>{
       const remaining=ss.filter(s=>s.id!==id);
@@ -293,7 +310,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   // Ensure legacy items (saved before markup existed) carry baseCost/markup fields.
   const normItem=it=>({...it,baseCost:it.baseCost!=null?it.baseCost:(Number(it.unitCost)||0),markup:it.markup!=null?it.markup:0});
   const applyMarkupToAll=()=>{
-    if(ro)return;
+    if(editLocked)return;markEdited();
     const m=Number(markupPct)||0;
     setItems(its=>its.map(it=>{const base=it.baseCost!=null?it.baseCost:(Number(it.unitCost)||0);const uc=applyMk(base,m);return{...it,baseCost:base,markup:m,unitCost:uc,total:roundP((it.qty||0)*uc)};}));
     toastEmit&&toastEmit(m>0?`${m}% standard markup applied to all items`:"Markup cleared — showing direct costs","success");
@@ -475,6 +492,12 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   const dealLabel=(d)=>d?`${d.client||""}${d.contact?" · "+d.contact:""}${d.ceNo?" ("+d.ceNo+")":""}`.trim():"";
 
   const applyBoqSrc=(src)=>{
+    // Loading a BOQ is not a user edit — clear the flag so the autosave that fires
+    // right after this doesn't restamp "last edited by" as whoever opened it.
+    userEditedRef.current=false;
+    setBoqStatus(BOQ_STATUSES.includes(src.status)?src.status:"Draft");
+    setLastEditedBy(src.lastEditedBy||"");
+    setLastEditedAt(src.lastEditedAt||"");
     if(src.items) setItems(src.items.map(normItem));
     if(src.sections) setSections(src.sections);
     if(src.boqTitle!==undefined) setBoqTitle(src.boqTitle);
@@ -568,6 +591,17 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
     }
   },[selDeal,standaloneId,coId]);
 
+  // Status + last-edited stamp folded into every saved payload. "Last edited by"
+  // advances to the current user only on a genuine edit (userEditedRef), so opening
+  // a BOQ never rewrites who touched it last.
+  const buildStamp=()=>{
+    const edited=userEditedRef.current;
+    const by=edited?(session?.name||"—"):lastEditedBy;
+    const at=edited?new Date().toISOString():lastEditedAt;
+    if(edited){setLastEditedBy(by);setLastEditedAt(at);}
+    return{status:boqStatus,lastEditedBy:by,lastEditedAt:at};
+  };
+
   React.useEffect(()=>{
     if(ro){setDraftSaved(true);return;}   // read-only view never persists
     if(coId){
@@ -577,7 +611,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       setDraftSaved(false);
       clearTimeout(draftTimerRef.current);
       draftTimerRef.current=setTimeout(()=>{
-        saveCoBoq&&saveCoBoq(coId,{items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount,markupPct});
+        saveCoBoq&&saveCoBoq(coId,{items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount,markupPct,...buildStamp()});
         setDraftSaved(true);
       },1200);
       return()=>clearTimeout(draftTimerRef.current);
@@ -587,7 +621,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       setDraftSaved(false);
       clearTimeout(draftTimerRef.current);
       draftTimerRef.current=setTimeout(()=>{
-        saveStandaloneBoq&&saveStandaloneBoq({id:standaloneId,title:boqTitle,location,quotationNo,boqDate,items,sections,vatEnabled,discount,markupPct,updatedAt:new Date().toISOString()});
+        saveStandaloneBoq&&saveStandaloneBoq({id:standaloneId,title:boqTitle,location,quotationNo,boqDate,items,sections,vatEnabled,discount,markupPct,updatedAt:new Date().toISOString(),...buildStamp()});
         setDraftSaved(true);
       },1200);
       return()=>clearTimeout(draftTimerRef.current);
@@ -599,7 +633,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
     setDraftSaved(false);
     clearTimeout(draftTimerRef.current);
     draftTimerRef.current=setTimeout(()=>{
-      const boqData={items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount,markupPct};
+      const boqData={items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount,markupPct,...buildStamp()};
       saveDraft(selDeal||BOQ_SCRATCH_KEY,boqData);
       if(selDeal&&isSupabaseReady()) sbUpdate('deals',selDeal,{boq_data:boqData}).catch(()=>{});
       // Reflect the saved BOQ in the shared deals state immediately so surfaces
@@ -620,10 +654,10 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       setDraftSaved(true);
     },1200);
     return()=>clearTimeout(draftTimerRef.current);
-  },[coId,standaloneId,selDeal,items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount,markupPct]);
+  },[coId,standaloneId,selDeal,items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount,markupPct,boqStatus]);
 
 
-  const updateItem=(id,key,val)=>{if(ro)return;setItems(its=>its.map(it=>{
+  const updateItem=(id,key,val)=>{if(editLocked)return;markEdited();setItems(its=>its.map(it=>{
     if(it._id!==id) return it;
     const upd={...it,[key]:["description","unit","section","subsection","remarks"].includes(key)?val:Number(val)||0};
     // Unit cost / markup / qty all derive the effective cost and line total from
@@ -635,8 +669,8 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
     upd.total=roundP((upd.qty||0)*upd.unitCost);
     return upd;
   }));};
-  const removeItem=id=>{if(ro)return;setItems(its=>its.filter(it=>it._id!==id));};
-  const addRow=(sec,subsection="")=>{if(ro)return;setItems(its=>[...its,{_id:uid(),section:sec||sections[0]?.id||"A",subsection,description:"",unit:"lot",qty:1,baseCost:0,unitCost:0,total:0,remarks:"",markup:0}]);};
+  const removeItem=id=>{if(editLocked)return;markEdited();setItems(its=>its.filter(it=>it._id!==id));};
+  const addRow=(sec,subsection="")=>{if(editLocked)return;markEdited();setItems(its=>[...its,{_id:uid(),section:sec||sections[0]?.id||"A",subsection,description:"",unit:"lot",qty:1,baseCost:0,unitCost:0,total:0,remarks:"",markup:0}]);};
 
   // ── Sub-sections ───────────────────────────────────────────────────────────
   // A section groups its items by an optional per-item `subsection` label. Items
@@ -651,9 +685,9 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
     return {ungrouped,subs};
   };
   const subsectionsOf=(secId)=>{const seen=[];items.forEach(it=>{if(it.section!==secId)return;const s=(it.subsection||"").trim();if(s&&!seen.includes(s))seen.push(s);});return seen;};
-  const renameSubsection=(secId,oldLabel,newLabel)=>{const nl=(newLabel||"").trim();if(nl===oldLabel)return;setItems(its=>its.map(it=>(it.section===secId&&(it.subsection||"").trim()===oldLabel)?{...it,subsection:nl}:it));};
+  const renameSubsection=(secId,oldLabel,newLabel)=>{if(editLocked)return;const nl=(newLabel||"").trim();if(nl===oldLabel)return;markEdited();setItems(its=>its.map(it=>(it.section===secId&&(it.subsection||"").trim()===oldLabel)?{...it,subsection:nl}:it));};
   // Delete a sub-section by ungrouping its items (non-destructive — items stay).
-  const removeSubsection=(secId,label)=>setItems(its=>its.map(it=>(it.section===secId&&(it.subsection||"").trim()===label)?{...it,subsection:""}:it));
+  const removeSubsection=(secId,label)=>{if(editLocked)return;markEdited();return setItems(its=>its.map(it=>(it.section===secId&&(it.subsection||"").trim()===label)?{...it,subsection:""}:it));};
   const addSubsection=(secId)=>{
     const existing=subsectionsOf(secId);let n=existing.length+1,label=`Sub-section ${n}`;
     while(existing.includes(label)){n++;label=`Sub-section ${n}`;}
@@ -835,11 +869,30 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,gap:12}}>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:"2px",color:"#94a3b8",marginBottom:3}}>BILL OF QUANTITIES</div>
-            <input value={boqTitle} onChange={e=>setBoqTitle(e.target.value)} placeholder="Project Name"
+            <input value={boqTitle} onChange={e=>{markEdited();setBoqTitle(e.target.value);}} placeholder="Project Name" readOnly={editLocked}
               style={{fontWeight:800,fontSize:mob?"1rem":"1.15rem",color:"#0f172a",border:"none",outline:"none",fontFamily:"inherit",background:"transparent",width:"100%",padding:0}}/>
           </div>
-          <img src="/gmd-logo.png" alt="GMD" style={{height:34,objectFit:"contain",flexShrink:0}}/>
+          <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6,flexShrink:0}}>
+            <img src="/gmd-logo.png" alt="GMD" style={{height:34,objectFit:"contain"}}/>
+            {/* Document status — Draft / Issued / Locked */}
+            {!ro&&(()=>{
+              const STCLR={Draft:{bg:"#f1f5f9",bd:"#cbd5e1",fg:"#475569"},Issued:{bg:"#eff6ff",bd:"#bfdbfe",fg:"#1d4ed8"},Locked:{bg:"#fef2f2",bd:"#fecaca",fg:"#b91c1c"}};
+              const c=STCLR[boqStatus]||STCLR.Draft;
+              return(
+                <select value={boqStatus} onChange={e=>{markEdited();setBoqStatus(e.target.value);}} title="Draft = editable · Issued = sent/printed · Locked = frozen"
+                  style={{fontFamily:"inherit",fontSize:".68rem",fontWeight:800,letterSpacing:".4px",textTransform:"uppercase",color:c.fg,background:c.bg,border:`1.5px solid ${c.bd}`,borderRadius:20,padding:"3px 12px",outline:"none",cursor:"pointer"}}>
+                  {BOQ_STATUSES.map(s=><option key={s} value={s}>{s==="Locked"?"🔒 ":s==="Issued"?"📤 ":"✏️ "}{s}</option>)}
+                </select>
+              );
+            })()}
+            {lastEditedBy&&<div style={{fontSize:".62rem",color:"#94a3b8",fontWeight:600,textAlign:"right"}}>Last edited by {lastEditedBy}{lastEditedAt?` · ${new Date(lastEditedAt).toLocaleString("en-PH",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}`:""}</div>}
+          </div>
         </div>
+        {locked&&!ro&&(
+          <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:9,padding:"8px 12px",marginBottom:12,fontSize:".74rem",color:"#b91c1c",fontWeight:600,display:"flex",alignItems:"center",gap:7}}>
+            🔒 This BOQ is <strong>Locked</strong> — editing is frozen. Set the status back to Draft or Issued to make changes.
+          </div>
+        )}
         <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:"6px 24px",fontSize:".8rem",color:"#0f172a"}}>
           <div style={{display:"flex",gap:6,alignItems:"center"}}>
             <span style={{fontWeight:600,color:"#64748b",flexShrink:0,minWidth:70}}>Project:</span>
@@ -861,7 +914,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
           </div>
           <div style={{display:"flex",gap:6,alignItems:"center"}}>
             <span style={{fontWeight:600,color:"#64748b",flexShrink:0,minWidth:70}}>Location:</span>
-            <input value={location} onChange={e=>setLocation(e.target.value)} placeholder="e.g. SM Mall of Asia" style={{border:"none",borderBottom:"1px dashed #cbd5e1",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",outline:"none",background:"transparent",flex:1,minWidth:0}}/>
+            <input value={location} onChange={e=>{markEdited();setLocation(e.target.value);}} readOnly={editLocked} placeholder="e.g. SM Mall of Asia" style={{border:"none",borderBottom:"1px dashed #cbd5e1",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",outline:"none",background:"transparent",flex:1,minWidth:0}}/>
           </div>
           <div style={{display:"flex",gap:6,alignItems:"center"}}>
             <span style={{fontWeight:600,color:"#64748b",flexShrink:0,minWidth:70}}>Contractor:</span>
@@ -869,11 +922,11 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
           </div>
           <div style={{display:"flex",gap:6,alignItems:"center"}}>
             <span style={{fontWeight:600,color:"#64748b",flexShrink:0,minWidth:70}}>Date:</span>
-            <input type="date" value={boqDate} onChange={e=>setBoqDate(e.target.value)} style={{border:"none",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",outline:"none",background:"transparent"}}/>
+            <input type="date" value={boqDate} onChange={e=>{markEdited();setBoqDate(e.target.value);}} readOnly={editLocked} style={{border:"none",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",outline:"none",background:"transparent"}}/>
           </div>
           <div style={{display:"flex",gap:6,alignItems:"center"}}>
             <span style={{fontWeight:600,color:"#64748b",flexShrink:0,minWidth:70}}>Quotation No.:</span>
-            <input value={quotationNo} onChange={e=>setQuotationNo(e.target.value)} placeholder="e.g. 0012" style={{border:"none",borderBottom:"1px dashed #cbd5e1",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",outline:"none",background:"transparent",width:80}}/>
+            <input value={quotationNo} onChange={e=>{markEdited();setQuotationNo(e.target.value);}} readOnly={editLocked} placeholder="e.g. 0012" style={{border:"none",borderBottom:"1px dashed #cbd5e1",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",outline:"none",background:"transparent",width:80}}/>
           </div>
         </div>
       </div>
@@ -893,8 +946,8 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
             </>}
         </div>
         <div style={{display:"flex",gap:6}}>
-          {!ro&&<button onClick={()=>{setImportMode(items.length>0?"append":"replace");setImportErr("");setImportPreview(null);setImportFileName("");setImportMarkup(markupPct||"50");setImportOpen(true);}} style={{background:"#eef2ff",border:"1.5px solid #c7d2fe",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#4338ca",cursor:"pointer"}} title="Upload an Excel/CSV BOQ and build from it">⬆ Import Excel</button>}
-          {!ro&&<button onClick={()=>setLibOpen(o=>!o)} style={{background:libOpen?"#ede9fe":"#f5f3ff",border:`1.5px solid ${libOpen?"#7c3aed":"#c4b5fd"}`,borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#5b21b6",cursor:"pointer"}}>
+          {!editLocked&&<button onClick={()=>{setImportMode(items.length>0?"append":"replace");setImportErr("");setImportPreview(null);setImportFileName("");setImportMarkup(markupPct||"50");setImportOpen(true);}} style={{background:"#eef2ff",border:"1.5px solid #c7d2fe",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#4338ca",cursor:"pointer"}} title="Upload an Excel/CSV BOQ and build from it">⬆ Import Excel</button>}
+          {!editLocked&&<button onClick={()=>setLibOpen(o=>!o)} style={{background:libOpen?"#ede9fe":"#f5f3ff",border:`1.5px solid ${libOpen?"#7c3aed":"#c4b5fd"}`,borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#5b21b6",cursor:"pointer"}}>
             📚 Library{boqLibrary.length>0&&<span style={{background:"#7c3aed",color:"#fff",borderRadius:20,padding:"0 6px",fontSize:".62rem",fontWeight:800,marginLeft:4}}>{boqLibrary.length}</span>}
           </button>}
           {items.length>0&&<button onClick={printBOQ} style={{background:"#f0fdf4",border:"1.5px solid #86efac",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#166534",cursor:"pointer"}}>🖨 Preview / Print</button>}
@@ -921,7 +974,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
             </div>
             <div style={{display:"flex",alignItems:"center",gap:6,marginLeft:"auto",flexWrap:"wrap"}}>
               <div style={{position:"relative",display:"flex",alignItems:"center"}}>
-                <input type="number" value={markupPct} onChange={e=>setMarkupPct(e.target.value)} placeholder="0" min="0" step="0.5"
+                <input type="number" value={markupPct} onChange={e=>{markEdited();setMarkupPct(e.target.value);}} readOnly={editLocked} placeholder="0" min="0" step="0.5"
                   onKeyDown={e=>e.key==="Enter"&&applyMarkupToAll()}
                   style={{width:78,border:"1.5px solid #fbbf24",borderRadius:7,padding:"6px 22px 6px 10px",fontFamily:"inherit",fontSize:".85rem",fontWeight:700,color:"#92400e",outline:"none",textAlign:"right",background:"#fff"}}/>
                 <span style={{position:"absolute",right:9,color:"#a16207",fontWeight:700,fontSize:".8rem",pointerEvents:"none"}}>%</span>
@@ -1329,7 +1382,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
               <div style={{display:"grid",gridTemplateColumns:GRID,padding:"7px 12px",background:"#fffbeb",borderTop:"1px solid #fde68a",alignItems:"center"}}>
                 <div style={{gridColumn:"1/7",fontSize:".78rem",fontWeight:600,color:"#92400e"}}>Discount <span style={{fontWeight:400,color:"#a16207"}}>(₱ off, before VAT)</span></div>
                 <div style={{textAlign:"right"}}>
-                  <input type="number" min="0" value={discount} onChange={e=>setDiscount(e.target.value)} placeholder="—"
+                  <input type="number" min="0" value={discount} onChange={e=>{markEdited();setDiscount(e.target.value);}} readOnly={editLocked} placeholder="—"
                     style={{border:"none",borderBottom:"1.5px solid #fde68a",background:"transparent",fontFamily:"inherit",fontSize:".88rem",fontWeight:700,color:"#92400e",textAlign:"right",width:130,outline:"none"}}/>
                 </div>
                 <div/><div/>
@@ -1348,7 +1401,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                 <div style={{gridColumn:"1/7",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                   <span style={{fontSize:".78rem",color:"#64748b",fontWeight:600}}>VAT treatment{discountVal>0?" (on net)":""} <span style={{color:"#dc2626"}}>*</span></span>
                   {!ro&&[["VAT 12%",true],["No VAT (exempt)",false]].map(([label,val])=>(
-                    <button key={String(val)} type="button" onClick={()=>setVatEnabled(val)}
+                    <button key={String(val)} type="button" onClick={()=>{if(editLocked)return;markEdited();setVatEnabled(val);}}
                       style={{padding:"4px 12px",border:`2px solid ${vatEnabled===val?"#d97706":(vatEnabled==null?"#fca5a5":"#e2e8f0")}`,borderRadius:8,background:vatEnabled===val?"#fef3c7":"#fff",color:vatEnabled===val?"#92400e":"#64748b",fontWeight:vatEnabled===val?700:400,cursor:"pointer",fontFamily:"inherit",fontSize:".74rem"}}>
                       {label}
                     </button>
