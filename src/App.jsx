@@ -6094,8 +6094,20 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const ADDENDUM_ROLLED=s=>["Approved","Billed","Collected"].includes(s);
   // Apply a delta to a deal's contract value (and remember the pre-addenda base
   // for transparency). Derives nothing from flags, so it can't double-count.
+  // Returns true only when a matching deal was actually found and updated. If the
+  // change order's dealId/projectId points at no existing deal, the value would
+  // silently fail to roll while callers (activity log, Telegram) still announce
+  // "contract updated" — so refuse the update, warn loudly, and return false so
+  // callers can hold their own "updated automatically" messaging.
   const rollDealContract=(dealId,delta,addendum)=>{
-    if(!dealId||!delta) return;
+    if(!dealId||!delta) return false;
+    // Resolve the target from the current deals array (not a flag set inside the
+    // setState updater, which may not have run yet by the time we read it back).
+    if(!deals.some(d=>d.id===dealId)){
+      logActivity(dealId,"Contract Update Failed",`⚠ Change order "${addendum?.title||""}" is not linked to a deal — ₱${Number(Math.abs(delta)).toLocaleString("en-PH",{maximumFractionDigits:2})} was NOT rolled into any contract. Fix the change order's deal link before approving.`);
+      toastEmit(`⚠ "${addendum?.title||"Change order"}" isn't linked to a deal — contract value not updated. Fix the link, then re-approve.`,"error");
+      return false;
+    }
     upDeals(ds=>ds.map(d=>{
       if(d.id!==dealId) return d;
       const base=d.originalValue!=null?d.originalValue:Number(d.value)||0;
@@ -6104,6 +6116,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       return nd;
     }));
     logActivity(dealId,"Contract Value Updated",`${delta>0?"+":"−"}₱${Number(Math.abs(delta)).toLocaleString("en-PH",{maximumFractionDigits:2})} from change order "${addendum?.title||""}" → revised contract value`);
+    return true;
   };
   // Once a change order is billed/collected it should carry its own billing
   // milestone so Finance can invoice the delta directly instead of hand-rolling
@@ -6156,6 +6169,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       // Values are signed by kind so a deductive CO subtracts from the contract.
       const oldVal=coSignedValue(a), newVal=coSignedValue(n);
       const wasIn=ADDENDUM_ROLLED(a.status), nowIn=ADDENDUM_ROLLED(n.status);
+      // Guard: refuse to advance a change order into a contract-affecting status
+      // (Approved/Billed/Collected) when it carries real value but points at no
+      // existing deal. Otherwise its status would show "in contract" (green) in
+      // the breakdown while the deal's contract value silently never moved. Keep
+      // the old record untouched and tell the user to fix the deal link first.
+      if(nowIn&&!wasIn&&newVal!==0&&!deals.some(d=>d.id===(n.dealId||n.projectId))){
+        toastEmit(`⚠ "${n.title||"Change order"}" isn't linked to a deal — can't roll ₱${Number(Math.abs(newVal)).toLocaleString("en-PH",{maximumFractionDigits:2})} into a contract. Fix the deal link, then approve.`,"error");
+        return a;
+      }
       // Stamp the awarded date the first time a CO becomes Approved — this is the
       // month its value is credited to the AE on the Sales Value report. Cleared
       // if it ever rolls back out (unapproved), so it re-stamps on re-approval.
@@ -6167,8 +6189,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       if(wasIn!==nowIn||(nowIn&&oldVal!==newVal)) syncCoBoq(n,nowIn);
       syncCoBilling(n,CO_BILLED(n.status));
       if(isSupabaseReady()) sbSyncOne("addenda",n,toSbAddendum);
-      if(ch.status==="Approved"||ch.clientApproved){
-        const deal=deals.find(d=>d.id===(a.dealId||a.projectId));
+      // Only announce "revised contract value updated automatically" when the CO
+      // is actually linked to a deal — otherwise rollDealContract already warned
+      // and nothing rolled, so a Finance/Ops notification would be misleading.
+      const notifyDeal=deals.find(d=>d.id===(a.dealId||a.projectId));
+      if((ch.status==="Approved"||ch.clientApproved)&&notifyDeal){
+        const deal=notifyDeal;
         const costMsg=`⚠️ <b>Scope Change Approved</b>\nProject: <b>${deal?.client||"?"}</b>${deal?.ceNo?`\nCE: ${deal.ceNo}`:""}\nScope: ${a.title||"?"}\nCost Impact: ₱${Number(a.value||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nApproved by: ${session?.name||"Ops"}\nRevised contract value updated automatically.\n\n💰 Finance team: please review cost impact and update billing milestones if applicable.`;
         sendTelegramNotification("finance",costMsg);
         sendTelegramNotification("management",costMsg);
