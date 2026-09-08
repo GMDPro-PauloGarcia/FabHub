@@ -7446,9 +7446,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       receiptType:parent.receiptType||"OR",
       withholding:parent.withholding||false,
       // Sales attribution: credit the child's AE; the child's own brand becomes
-      // the sub-account when it differs from the parent's client. awardedDate is
-      // stamped when the CO is Approved (drives the Sales Value month).
+      // the sub-account when it differs from the parent's client. For an umbrella
+      // sub-project the child deal is the source of truth — the CO must inherit
+      // the child's own award date (project-card award date, else its intake
+      // date), NOT today, so it books into the month it was actually awarded.
+      // Only if the child carries no date at all does approval fall back to today.
       salesOwner:child.salesOwner||parent.salesOwner||"",
+      awardedDate:pcards[child.id]?.awardDate||child.dateAcquired||null,
       subAccount:(child.client&&child.client!==parent.client)?child.client:"",
       status:"Discovered",salesNotified:true,
       discoveredBy:session?.name||role,
