@@ -1524,8 +1524,87 @@ function ClientAutocomplete({value:initVal, onChange, existingNames=[]}){
   );
 }
 
+// Hard-locked client selector for deals: you can only choose a client that
+// exists in the `clients` master table (or create one if your role allows),
+// so a deal can never be booked against a free-typed / misspelled name. Sub-
+// customers show as "Parent › Sub". Replaces the old free-text ClientAutocomplete.
+function ClientPicker({value, onChange, clients=[], role, onCreateClient, editId}){
+  const[q,setQ]=useState("");
+  const[show,setShow]=useState(false);
+  const[creating,setCreating]=useState(false);
+  const[newName,setNewName]=useState("");
+  const[newParent,setNewParent]=useState("");   // parent client id ("" = top-level)
+  const canCreate=roleCan(role,'insert','clients');
+
+  const byId=useMemo(()=>{const m=new Map();clients.forEach(c=>m.set(c.id,c));return m;},[clients]);
+  const labelFor=(c)=> c.parentId&&byId.get(c.parentId) ? `${byId.get(c.parentId).name} › ${c.name}` : c.name;
+  // Selectable = active, non-internal. The current deal's client is matched
+  // separately so an existing deal never loses a now-inactive/internal client.
+  const selectable=useMemo(()=>clients.filter(c=>c.isActive&&!c.isInternal),[clients]);
+  const current=useMemo(()=>{const k=clientKey(value||"");return k?clients.find(c=>clientKey(c.name)===k):null;},[value,clients]);
+  const legacy=value&&!current;   // deal points at a name not yet in the table
+  const opts=useMemo(()=>{
+    const base=[...selectable].sort((a,b)=>labelFor(a).localeCompare(labelFor(b)));
+    if(!q) return base.slice(0,60);
+    const s=q.toLowerCase();
+    return base.filter(c=>labelFor(c).toLowerCase().includes(s)).slice(0,60);
+  },[q,selectable,byId]);
+  const parents=useMemo(()=>clients.filter(c=>!c.parentId&&!c.isInternal).sort((a,b)=>a.name.localeCompare(b.name)),[clients]);
+
+  const pick=(c)=>{ onChange(c.name); setShow(false); setQ(""); };
+  const doCreate=async()=>{
+    const created=await onCreateClient?.(newName,newParent||null);
+    if(created){ onChange(created.name); setCreating(false); setNewName(""); setNewParent(""); setShow(false); setQ(""); }
+  };
+
+  return(
+    <div style={{position:"relative"}}>
+      <div onClick={()=>setShow(s=>!s)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,cursor:"pointer",border:`1.5px solid ${legacy?"#f59e0b":value?"#e2e8f0":"#cbd5e1"}`,borderRadius:8,padding:"9px 12px",background:"#fff"}}>
+        <span style={{fontSize:".87rem",color:value?"#0f172a":"#94a3b8",fontWeight:value?600:400}}>
+          {current?labelFor(current):value?value:"Select a client…"}
+        </span>
+        <span style={{color:"#94a3b8",fontSize:".8rem"}}>▾</span>
+      </div>
+      {legacy&&<div style={{marginTop:5,fontSize:".72rem",color:"#b45309"}}>⚠ “{value}” isn’t in the client list yet — pick the matching client to standardize it.</div>}
+      {show&&(
+        <div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:200,marginTop:4,background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,boxShadow:"0 8px 24px rgba(0,0,0,.12)",maxHeight:320,overflowY:"auto"}}>
+          <div style={{padding:8,borderBottom:"1px solid #f1f5f9",position:"sticky",top:0,background:"#fff"}}>
+            <input autoFocus value={q} onChange={e=>setQ(e.target.value)} placeholder="Search clients…" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box",outline:"none"}}/>
+          </div>
+          {opts.length===0&&<div style={{padding:"12px 14px",fontSize:".8rem",color:"#94a3b8"}}>No matching client.</div>}
+          {opts.map(c=>(
+            <div key={c.id} onClick={()=>pick(c)} style={{padding:"9px 14px",cursor:"pointer",borderBottom:"1px solid #f6f8fa",fontSize:".85rem",color:"#0f172a",fontWeight:current&&current.id===c.id?700:500}}
+              onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
+              {c.parentId?<span><span style={{color:"#94a3b8"}}>{byId.get(c.parentId)?.name} › </span>{c.name}</span>:c.name}
+            </div>
+          ))}
+          {canCreate&&(
+            <div style={{borderTop:"1px solid #e2e8f0",background:"#fafafa"}}>
+              {!creating?(
+                <div onClick={()=>{setCreating(true);setNewName(q);}} style={{padding:"10px 14px",cursor:"pointer",fontSize:".82rem",color:"#3b82f6",fontWeight:600}}>+ New client / sub-customer</div>
+              ):(
+                <div style={{padding:"10px 14px"}}>
+                  <input autoFocus value={newName} onChange={e=>setNewName(e.target.value)} placeholder="New client name" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box",marginBottom:8,outline:"none"}}/>
+                  <select value={newParent} onChange={e=>setNewParent(e.target.value)} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",boxSizing:"border-box",marginBottom:8,background:"#fff"}}>
+                    <option value="">— Top-level client (no parent) —</option>
+                    {parents.map(p=><option key={p.id} value={p.id}>Sub-customer of {p.name}</option>)}
+                  </select>
+                  <div style={{display:"flex",gap:8}}>
+                    <button type="button" onClick={doCreate} style={{background:"#059669",border:"none",borderRadius:7,padding:"7px 14px",color:"#fff",fontWeight:700,fontFamily:"inherit",fontSize:".8rem",cursor:"pointer"}}>Add &amp; select</button>
+                    <button type="button" onClick={()=>{setCreating(false);setNewName("");setNewParent("");}} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"7px 12px",color:"#64748b",fontFamily:"inherit",fontSize:".8rem",cursor:"pointer"}}>Cancel</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── CLIENT DIRECTORY ────────────────────────────────────────────────────────
-function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId,deals=[],addenda=[],role}){
+function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId,deals=[],addenda=[],role,clients=[],onCreateClient}){
   // Local state — prevents App re-render on every keystroke (fixes focus bug)
   const[form,setForm]=useState(initialForm||emptyDeal);
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
@@ -1557,6 +1636,11 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
       setVatErr(true);
       return;
     }
+    // Hard-lock: a deal must carry a client chosen from the master list.
+    if(!String(form.client||"").trim()){
+      toastEmit("Select a client for this deal.","error");
+      return;
+    }
     setVatErr(false);
     setSaving(true);
     // Pass local form data directly to saveDeal — bypasses async state sync
@@ -1574,8 +1658,8 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
       {/* ── SECTION 1: DEAL ESSENTIALS ─────────────────────────────────── */}
       <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:14}}>
         <div style={{gridColumn:"1/-1"}}>
-          <Fld label="Client Name" required hint="Start typing to search from your GMD clients">
-            <ClientAutocomplete value={form.client} onChange={v=>f("client",v)} existingNames={[...new Set((deals||[]).map(d=>d.client).filter(Boolean))]}/>
+          <Fld label="Client Name" required hint="Pick from the client list — new clients/sub-customers are added here (Sales/Manager)">
+            <ClientPicker value={form.client} onChange={v=>f("client",v)} clients={clients} role={role} onCreateClient={onCreateClient} editId={editId}/>
           </Fld>
         </div>
         <Fld label="Project Name" hint="e.g. SM Megamall Fit-Out Phase 1"><Inp value={form.contact} onChange={e=>f("contact",e.target.value)} placeholder="e.g. SM Megamall Fit-Out Phase 1"/></Fld>
@@ -3891,6 +3975,37 @@ export default function App(){
   // is recognized as sales without waiting on another team.
   const canConvertChild=(d)=>canDeleteDeal||((role==="Sales"||role==="SalesOpsAdmin")&&!!d?.salesOwner&&d.salesOwner===session?.name);
   const[deals,    setDeals]   = useState([]);
+  // ── Clients master table (Supabase `clients`) ─────────────────────────────
+  // Controlled client list that backs the hard-locked picker on deals. Loaded
+  // once the user is authenticated (JWT present for RLS). Kept separate from the
+  // legacy GMD_CLIENTS/app_settings blob for now; the deal picker sources this.
+  const[clients,  setClients] = useState([]);
+  const mapClientRow=(r)=>({id:r.id,name:r.name,parentId:r.parent_id||null,isInternal:!!r.is_internal,isActive:r.is_active!==false});
+  const loadClients=useCallback(async()=>{
+    if(!isSupabaseReady())return;
+    try{
+      const rows=await sbList('clients',{order:'name',asc:true,limit:2000});
+      if(Array.isArray(rows)) setClients(rows.map(mapClientRow));
+    }catch{/* non-fatal: picker falls back to whatever is already loaded */}
+  },[]);
+  // Create a client (or sub-customer). parentId=null → top-level. Gated to the
+  // same roles the RLS allows so we fail fast client-side with a clear message.
+  const createClient=useCallback(async(name,parentId=null)=>{
+    const nm=String(name||"").replace(/</g,"").replace(/>/g,"").trim();
+    if(!nm){toastEmit("Enter a client name.","error");return null;}
+    if(!roleCan(role,'insert','clients')){toastEmit("Only Sales or Manager can add clients.","error");return null;}
+    const k=clientKey(nm);
+    const existing=clients.find(c=>clientKey(c.name)===k);
+    if(existing){toastEmit(`"${existing.name}" already exists — selecting it.`,"info");return existing;}
+    if(!isSupabaseReady()){toastEmit("Can't add a client while offline.","error");return null;}
+    const row=await sbInsert('clients',{name:nm,parent_id:parentId||null,created_by:session?.username||session?.name||""});
+    if(!row||!row.id){toastEmit("Couldn't save the client — try again.","error");return null;}
+    const mapped=mapClientRow(row);
+    setClients(prev=>[...prev,mapped].sort((a,b)=>a.name.localeCompare(b.name)));
+    toastEmit(`Client "${nm}" added.`,"success");
+    return mapped;
+  },[clients,role,session]);
+  useEffect(()=>{ if(session?.userId) loadClients(); },[session,loadClients]);
   const[projs,    setProjs]   = useState({});
   const[exps,     setExps]    = useState([]);
   const[evouchers,setEvouchers]= useState([]);
@@ -7246,21 +7361,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       // exactly which step needs a retry instead of guessing from a vague
       // warning + the console.
       const stepResults=[];
-      // Save new client to master list if not already present
-      if(rec.client && !GMD_CLIENTS.find(c=>c.name.toLowerCase()===rec.client.toLowerCase())){
-        const safeName=rec.client.replace(/</g,"&lt;").replace(/>/g,"&gt;");
-        const newClient={name:safeName,id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today};
-        GMD_CLIENTS.push(newClient);
-        // Compute the new list up front. Reading it out of the setState updater
-        // (which React 18 runs asynchronously, after this line) left it null when
-        // the upsert fired, sending value:null and hitting app_settings' NOT NULL
-        // constraint — the "server rejected a change (bad data)" drop.
-        const newClientList=[...customClients,newClient];
-        setCustomClients(newClientList);
-        try{localStorage.setItem(KEYS.customclients,JSON.stringify(newClientList));}catch{}
-        const clientOk=isSupabaseReady()?await sbUpsert('app_settings',{key:'customclients',value:newClientList,updated_at:new Date().toISOString()},'key'):true;
-        stepResults.push({label:"Client directory",ok:clientOk});
-      }
+      // Client is chosen from the `clients` master table via the hard-locked
+      // ClientPicker (created there if new), so there is no longer a save-time
+      // auto-create of a free-typed name into the legacy GMD_CLIENTS/app_settings
+      // blob — that path is exactly what let duplicate/misspelled clients in.
       // Auto-create DRF when the Sales rep ticked "Request Design" — designer is
       // left unset here; the Design lead assigns who handles it (DRFView "Assign").
       // Gated on dealSynced: firing this before the deal committed would fail
@@ -8975,7 +9079,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         </div>
       )}
       {/* Global Modals */}
-      <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal} deals={deals} addenda={addenda} role={role}/>
+      <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal} deals={deals} addenda={addenda} role={role} clients={clients} onCreateClient={createClient}/>
       <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={projList} clientName={clientName} chartOfAccounts={chartOfAccounts} suppliers={suppliers} exps={exps} poRefOptions={[...new Set([...prs.map(p=>p.poNumber),...swos.map(w=>w.woNumber)].filter(Boolean))]}/>
       <Modal open={confirmDel!==null} onClose={()=>setConfirmDel(null)} title="Delete this deal?">
         {(()=>{const d=deals.find(x=>x.id===confirmDel);return(

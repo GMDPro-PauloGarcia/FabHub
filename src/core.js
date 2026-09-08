@@ -316,6 +316,7 @@ export const PERMISSIONS = {
   project_budgets:     { label:"Project Budgets",          group:"QS / Cost",   select:["Manager","Finance","FinanceAssistant","QS","ProjectMover"], insert:["Manager","QS"], update:["Manager","Finance","FinanceAssistant","QS"], delete:["Manager"] },
   audit_findings:      { label:"Audit Findings",           group:"Audit",       select:["Manager","Finance","Audit","HRAdmin"], insert:["Manager","Audit","HRAdmin"], update:["Manager","Audit","HRAdmin"], delete:["Manager","Audit","HRAdmin"] },
   commission_payouts:  { label:"Commission Payouts",       group:"Sales",       select:["Manager","Sales","Finance","FinanceAssistant","Accounting","SalesOpsAdmin"], insert:["Manager","Finance","FinanceAssistant"], update:["Manager","Finance","FinanceAssistant"], delete:["Manager"] },
+  clients:             { label:"Client Directory",         group:"Sales",       select:[AUTH], insert:["Manager","Sales","SalesOpsAdmin"], update:["Manager","Sales","SalesOpsAdmin"], delete:["Manager"] },
 };
 
 // Human-readable caveats for rules a plain role list can't express.
