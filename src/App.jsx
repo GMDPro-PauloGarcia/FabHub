@@ -24363,14 +24363,24 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         {[
           {l:"Total Billed",      v:fmt(allBilled),                c:"#3b82f6"},
           {l:"Total Collected",   v:fmt(allCollected),             c:"#059669"},
-          {l:"Outstanding",       v:fmt(allOutstanding), c:allOutstanding>0?"#ef4444":"#059669"},
-          {l:"Overdue Invoices",  v:overdue.length,                c:overdue.length>0?"#ef4444":"#94a3b8"},
-        ].map(({l,v,c})=>(
-          <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0"}}>
+          {l:"Outstanding",       v:fmt(allOutstanding), c:allOutstanding>0?"#ef4444":"#059669", filter:"outstanding", hint:"View all clients with a balance →"},
+          {l:"Overdue Invoices",  v:overdue.length,                c:overdue.length>0?"#ef4444":"#94a3b8", filter:"overdue", hint:"View overdue invoices →"},
+        ].map(({l,v,c,filter,hint})=>{
+          const isLink=!!filter;
+          return(
+          <div key={l}
+            {...(isLink?clickable(()=>{setBillingFilter(filter);const el=document.getElementById("billing-list-top");if(el)el.scrollIntoView({behavior:"smooth",block:"start"});}):{})}
+            aria-label={isLink?hint:undefined}
+            title={isLink?hint:undefined}
+            style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:`1.5px solid ${isLink&&billingFilter===filter?c:"#e2e8f0"}`,cursor:isLink?"pointer":"default",transition:"border-color .1s,box-shadow .1s"}}
+            onMouseEnter={isLink?e=>{e.currentTarget.style.borderColor=c;e.currentTarget.style.boxShadow="0 2px 8px rgba(0,0,0,.06)";}:undefined}
+            onMouseLeave={isLink?e=>{e.currentTarget.style.borderColor=billingFilter===filter?c:"#e2e8f0";e.currentTarget.style.boxShadow="none";}:undefined}>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:c}}>{v}</div>
             <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:5}}>{l}</div>
+            {isLink&&<div style={{fontSize:".6rem",color:c,marginTop:4,fontWeight:600,opacity:.85}}>{hint}</div>}
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* ── Collection Forecast — expected net collections by due date ──── */}
@@ -24456,7 +24466,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       })()}
 
       {/* ── SEARCH + FILTER ────────────────────────────────────────────── */}
-      <div style={{display:"flex",gap:10,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
+      <div id="billing-list-top" style={{display:"flex",gap:10,marginBottom:12,flexWrap:"wrap",alignItems:"center",scrollMarginTop:12}}>
         <div style={{flex:1,minWidth:200,position:"relative"}}>
           <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#94a3b8",fontSize:".85rem",pointerEvents:"none"}}>🔍</span>
           <input value={billingSearch} onChange={e=>setBillingSearch(e.target.value)} placeholder="Search project, CE no, or contact…"
