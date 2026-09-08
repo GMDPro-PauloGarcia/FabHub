@@ -1,6 +1,42 @@
 # Change Order / Addendum — Billing Spec
 
-**Status:** Approved direction (Paulo, Manager) — pending implementation + running-app test.
+> ## ⚠️ SUPERSEDED (2026-09) — reverted to the linked-deal model
+>
+> **Decision (Paulo, Manager):** A change order is a **linked child deal** again, not a
+> CO record on the project. The Path-A "scope change on the project card, auto-convert to
+> a CO, roll into `deal.value`" model below caused disappearing children, orphaned/
+> "needs conversion" states, and two competing models the code couldn't keep straight.
+>
+> **Current model (Option B):**
+> 1. **Sales** raises a change order via **➕ Add New Deal → 🔗 Link to Parent Deal**.
+> 2. The child deal **stays its own live deal** — awarded and billed on its own. It is
+>    **never** converted into a CO record, never retired, and never deleted.
+> 3. **Operations keeps the single parent project card** — a child deal never spawns its
+>    own `projs` entry, Job Order, or design/procurement record. Added scope runs under
+>    the parent's card and JO.
+> 4. **Finance & Sales bill each deal separately.** The parent bills its **own** value;
+>    the addendum bills its **own** value. Nothing is rolled into `parent.value`.
+> 5. **Total Contract = Initial (parent.value) + Σ approved addendum children** — a
+>    **display-only** roll-up (`ContractBreakdown`), shown on the project card, in Billing,
+>    and on the client SOA. Never written back into `parent.value`, so there is no
+>    double-billing.
+>
+> The double-billing risk that drove Path A only existed because Path A rolled the CO
+> into `parent.value` **and** billed it as a separate milestone. In Option B nothing is
+> rolled in, so per-deal billing is clean by construction.
+>
+> **Legacy data:** already-converted CO records (from the Path-A period) still exist as
+> `addenda` rows with their value folded into `parent.value`; `ContractBreakdown` still
+> renders them correctly. They were **not** auto-migrated back into child deals — unwinding
+> live billing data is out of scope. New change orders use the linked-deal model above.
+>
+> Everything below this line documents the **superseded** Path-A model, kept for history.
+
+---
+
+# Change Order / Addendum — Billing Spec (SUPERSEDED Path-A model)
+
+**Status:** ~~Approved direction (Paulo, Manager)~~ — **superseded, see note above.**
 **Scope:** How a Change Order (addendum) is created, approved, and billed within a project.
 **Reference mockup:** proposed Billing layout — original contract + per-CO claim within one project.
 

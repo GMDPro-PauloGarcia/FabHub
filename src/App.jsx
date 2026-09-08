@@ -1567,8 +1567,8 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
     <Modal open={open} onClose={onClose} title={editId?"Edit Deal":"Add New Deal"} wide key={formKey}>
 
       {/* Contract breakdown (original + addenda) — shown when this deal has change orders */}
-      {editId&&(addenda||[]).some(a=>a.dealId===editId&&a.status!=="Rejected")&&(
-        <div style={{marginBottom:16}}><ContractBreakdown deal={deals.find(d=>d.id===editId)} addenda={addenda}/></div>
+      {editId&&((addenda||[]).some(a=>a.dealId===editId&&a.status!=="Rejected")||(deals||[]).some(d=>d.parentDealId===editId&&!isLostStage(d.stage)))&&(
+        <div style={{marginBottom:16}}><ContractBreakdown deal={deals.find(d=>d.id===editId)} addenda={addenda} deals={deals}/></div>
       )}
 
       {/* ── SECTION 1: DEAL ESSENTIALS ─────────────────────────────────── */}
@@ -2620,24 +2620,25 @@ function AddendaPageContent({role,wonDeals,deals,jos,session,addenda,upAddenda,u
   const setScopeRow=(i,ch)=>setScopeItems(r=>r.map((it,j)=>j===i?{...it,...ch}:it));
   const delScopeRow=(i)=>setScopeItems(r=>r.filter((_,j)=>j!==i));
 
-  // Unconverted linked child deals are change orders in waiting: surface them in
-  // the log alongside real addenda so it's a complete ledger of every change
-  // order — pending or approved. Converted children are DELETED on conversion
-  // (see convertChildToCO → delDeal), so there is no double-count; the only
-  // children still present are the not-yet-converted ones. They're normalized
-  // into an addendum-like shape and flagged _pendingChild so they render as
-  // "not converted" rather than posing as approved COs.
-  const childEntries=(deals||[]).filter(d=>d.parentDealId).map(d=>{
+  // Linked child deals ARE the addendums (parentDealId set). They stay their own
+  // live deals — created by Sales via "+ Add New Deal → Link to Parent Deal",
+  // awarded and billed on their own — and roll into the parent's Total Contract
+  // as a display line. Surface them here alongside legacy CO records so the log
+  // is a complete ledger of every change order. A child in a won stage is an
+  // approved addendum; otherwise it reflects its pipeline stage. They're
+  // read-only in this log (managed from the Pipeline), flagged _linkedDeal.
+  const childEntries=(deals||[]).filter(d=>d.parentDealId&&!isLostStage(d.stage)).map(d=>{
     const par=(deals||[]).find(p=>p.id===d.parentDealId);
+    const won=WON_STAGES.includes(d.stage);
     return{
       id:d.id,dealId:d.parentDealId,
-      title:d.contact||d.client||"Linked deal",
-      description:d.notes||"Linked deal — not yet converted to a change order.",
+      title:d.contact||d.client||"Addendum",
+      description:d.notes||"Addendum — linked deal with its own billing.",
       kind:"Additive",value:Math.abs(Number(d.value)||0),
-      status:"Linked — not converted",
+      status:won?"Approved":(d.stage||"In pipeline"),
       discoveredBy:d.salesOwner||"",salesOwner:d.salesOwner||"",
       subAccount:(d.client&&par&&d.client!==par.client)?d.client:"",
-      ceNo:d.ceNo||"",_pendingChild:true,
+      ceNo:d.ceNo||"",_linkedDeal:true,_won:won,
     };
   });
   const allEntries=[...addenda,...childEntries];
@@ -2693,10 +2694,10 @@ function AddendaPageContent({role,wonDeals,deals,jos,session,addenda,upAddenda,u
                           {a.description&&<div style={{fontSize:".75rem",color:"#64748b",marginTop:2,lineHeight:1.4}}>{a.description}</div>}
                         </div>
                         <div style={{display:"flex",alignItems:"center",gap:6,marginLeft:8,flexShrink:0}}>
-                          {!a._pendingChild&&canCreate&&onOpenCoBoq&&<button onClick={()=>onOpenCoBoq(a.id)} title="Build this change order's BOQ (sections, rate card, markup)" style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:6,padding:"3px 9px",fontSize:".66rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>🧮 BOQ{(a.coBoqData?.items?.length)?` (${a.coBoqData.items.length})`:""}</button>}
-                          {!a._pendingChild&&!canCreate&&onOpenCoBoq&&(a.coBoqData?.items?.length)>0&&<button onClick={()=>onOpenCoBoq(a.id,true)} title="View & print this change order's BOQ to send to the client" style={{background:"#f5f3ff",border:"1.5px solid #ddd6fe",borderRadius:6,padding:"3px 9px",fontSize:".66rem",fontWeight:700,color:"#7c3aed",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>📄 Print BOQ</button>}
-                          {a._pendingChild&&<span title="This is a linked child deal in the pipeline. Convert it to a Change Order (⇄ CO) to roll its scope and value into the parent project." style={{fontSize:".62rem",fontWeight:700,color:"#b45309",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:6,padding:"2px 7px",whiteSpace:"nowrap"}}>⇄ needs conversion</span>}
-                          {canApprove&&!a._pendingChild
+                          {!a._linkedDeal&&canCreate&&onOpenCoBoq&&<button onClick={()=>onOpenCoBoq(a.id)} title="Build this change order's BOQ (sections, rate card, markup)" style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:6,padding:"3px 9px",fontSize:".66rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>🧮 BOQ{(a.coBoqData?.items?.length)?` (${a.coBoqData.items.length})`:""}</button>}
+                          {!a._linkedDeal&&!canCreate&&onOpenCoBoq&&(a.coBoqData?.items?.length)>0&&<button onClick={()=>onOpenCoBoq(a.id,true)} title="View & print this change order's BOQ to send to the client" style={{background:"#f5f3ff",border:"1.5px solid #ddd6fe",borderRadius:6,padding:"3px 9px",fontSize:".66rem",fontWeight:700,color:"#7c3aed",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>📄 Print BOQ</button>}
+                          {a._linkedDeal&&<span title="This addendum is a linked deal, managed from the Sales Pipeline. It has its own billing and rolls into the parent's Total Contract when awarded." style={{fontSize:".62rem",fontWeight:700,color:"#0369a1",background:"#f0f9ff",border:"1px solid #bae6fd",borderRadius:6,padding:"2px 7px",whiteSpace:"nowrap"}}>🔗 linked deal</span>}
+                          {canApprove&&!a._linkedDeal
                             ? <select value={a.status} title="Advance this change order's status. Set to Approved once the client agrees — it rolls into the contract and creates its billing claim."
                                 onChange={e=>{const v=e.target.value;updateAddendum(a.id,v==="Approved"?{status:v,clientApproved:true}:{status:v});}}
                                 style={{fontSize:".68rem",fontWeight:700,color:statusClr[a.status]||"#64748b",background:(statusClr[a.status]||"#64748b")+"18",border:`1px solid ${(statusClr[a.status]||"#64748b")}55`,borderRadius:20,padding:"2px 8px",fontFamily:"inherit",cursor:"pointer",whiteSpace:"nowrap"}}>
@@ -2705,7 +2706,7 @@ function AddendaPageContent({role,wonDeals,deals,jos,session,addenda,upAddenda,u
                             : <span style={{fontSize:".68rem",fontWeight:700,color:statusClr[a.status]||"#64748b",background:(statusClr[a.status]||"#64748b")+"18",borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap"}}>{a.status}</span>}
                         </div>
                       </div>
-                      {Number(a.value)>0&&<div style={{fontSize:".75rem",color:a.kind==="Deductive"?"#dc2626":"#059669",marginTop:3,fontWeight:600}}>{fmtSigned(coSignedValue(a))} {a._pendingChild?"pending conversion":a.kind==="Deductive"?"deducted":"additional"}{Array.isArray(a.scopeItems)&&a.scopeItems.length?` · ${a.scopeItems.length} BOQ item${a.scopeItems.length>1?"s":""}`:""}</div>}
+                      {Number(a.value)>0&&<div style={{fontSize:".75rem",color:a.kind==="Deductive"?"#dc2626":"#059669",marginTop:3,fontWeight:600}}>{fmtSigned(coSignedValue(a))} {a._linkedDeal?(a._won?"additional (own billing)":"additional — pending award"):a.kind==="Deductive"?"deducted":"additional"}{Array.isArray(a.scopeItems)&&a.scopeItems.length?` · ${a.scopeItems.length} BOQ item${a.scopeItems.length>1?"s":""}`:""}</div>}
                     </div>
                   ))}
                 </div>
@@ -3885,11 +3886,6 @@ export default function App(){
   // role; the server-side RLS in migration 033 mirrors this exact allow-list.
   const DEAL_DELETE_USERS=["jena","wyn","paolo"];
   const canDeleteDeal=role==="Manager"||DEAL_DELETE_USERS.includes(session?.username);
-  // Converting a linked child deal into a Change Order is a Sales action, not an
-  // Ops/PM one: allow anyone who can delete deals, plus the Sales / SalesOpsAdmin
-  // AE who owns the child deal, to convert (and approve) their own addendum so it
-  // is recognized as sales without waiting on another team.
-  const canConvertChild=(d)=>canDeleteDeal||((role==="Sales"||role==="SalesOpsAdmin")&&!!d?.salesOwner&&d.salesOwner===session?.name);
   const[deals,    setDeals]   = useState([]);
   const[projs,    setProjs]   = useState({});
   const[exps,     setExps]    = useState([]);
@@ -6755,8 +6751,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const projsKeyCount=Object.keys(projs).length;
   useEffect(()=>{
     // Standby PO umbrellas have no production of their own (their jobs do),
-    // so don't spin up an empty ₱0 project shell for them.
-    const missing=wonDeals.filter(d=>!projs[d.id]&&!d.standbyPO);
+    // so don't spin up an empty ₱0 project shell for them. Child/addendum deals
+    // (parentDealId) never get their own project card either — Ops maintains the
+    // single parent card even when the project has addendums.
+    const missing=wonDeals.filter(d=>!projs[d.id]&&!d.standbyPO&&!d.parentDealId);
     if(missing.length>0){
       const patch={};
       missing.forEach(d=>{patch[d.id]=emptyProject();});
@@ -7211,7 +7209,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     };
     // Only trigger award logic for NEW deals entering won stages — never on edit
     const wasAlreadyAwarded = editDeal && WON_STAGES.includes(deals.find(d=>d.id===editDeal)?.stage);
-    if(WON_STAGES.includes(data.stage) && !editDeal) upProjs(ps=>ps[rec.id]?ps:{...ps,[rec.id]:emptyProject()});
+    // Child/addendum deals (parentDealId set) never get their own project card —
+    // Ops keeps the single parent project card. Only parent deals do.
+    if(WON_STAGES.includes(data.stage) && !editDeal && !rec.parentDealId) upProjs(ps=>ps[rec.id]?ps:{...ps,[rec.id]:emptyProject()});
     upDeals(ds=>editDeal?ds.map(d=>d.id===editDeal?rec:d):[...ds,rec]);
     // Await the deal's own write before firing the DRF auto-create below, which
     // references rec.id by foreign key — firing it unawaited let the design
@@ -7318,10 +7318,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             `\nAwarded by: ${session?.name||"Manager"}`
           );
           logActivity(rec.id,"Project Awarded",`${rec.client} moved to awarded stage by ${session?.name}`,session?.name);
-          // A linked child deal (addendum) awarded via the edit modal is auto-
-          // converted into an approved Change Order on its parent — same behavior
-          // as the pipeline quick-stage control — so it never lingers as a deal.
-          if(rec.parentDealId) convertChildToCO(rec,{silent:true,approve:true,system:true});
+          // A linked child deal (addendum) stays its own deal — it is awarded and
+          // billed on its own, and rolls into the parent's Total Contract as a
+          // display-only addendum line (see ContractBreakdown). It is never
+          // converted or retired, and never spawns a second project card.
         }
         // Fire notification when stage moves back out of awarded (e.g. cancelled)
         if(!WON_STAGES.includes(rec.stage)&&WON_STAGES.includes(prevStage)&&rec.stage==="Cancelled"){
@@ -7415,89 +7415,24 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     }
   };
 
-  // Convert a linked "child" deal (parentDealId set) into a real Change Order on
-  // its parent, then retire the child so its value isn't double-counted. Child
-  // deals have no additive/deductive concept, so we default to Additive; the CO
-  // enters as "Discovered" (the normal entry point) for Ops to approve on the
-  // Scope Changes page, at which point it rolls into the parent contract.
-  const convertChildToCO=(child,opts={})=>{
-    // approve — immediately push the new CO to "Approved" so it rolls into the
-    //   parent contract and is credited as sales (award date stamped to today).
-    // system — internal/automated call (e.g. auto-convert on award); skips the
-    //   interactive permission gate since the triggering action was itself gated.
-    const {silent=false,approve=false,system=false}=opts;
-    if(!child?.parentDealId){if(!silent)toastEmit("This deal has no parent to attach a change order to.","error");return false;}
-    if(!system&&!canConvertChild(child)){if(!silent)toastEmit("You don't have permission to convert this deal.","error");return false;}
-    const parent=deals.find(d=>d.id===child.parentDealId);
-    if(!parent){if(!silent)toastEmit("Parent project not found.","error");return false;}
-    const title=(child.contact||child.product||child.client||"Scope Change").trim();
-    // Carry any BOQ line items over as the change order's scope items so approval
-    // flows them into the parent BOQ; otherwise fall back to a single lump value.
-    // The child's FULL BOQ (sections, markup, VAT…) is carried as coBoqData so the
-    // change order opens in the BOQ Builder exactly as it was built on the deal.
-    const boqItems=Array.isArray(child.boqData?.items)?child.boqData.items:[];
-    const scopeItems=boqItems.filter(it=>(it.description||"").trim()).map(it=>({description:(it.description||"").trim(),qty:Number(it.qty)||0,unit:it.unit||"lot",rate:Number(it.unitCost!=null?it.unitCost:it.rate)||0}));
-    const rec={
-      id:"add"+Date.now()+Math.floor(Math.random()*1000),dealId:parent.id,
-      title,description:(child.notes||`Converted from linked deal "${title}".`).trim(),
-      kind:"Additive",value:Math.abs(Number(child.value)||0),scopeItems,
-      coBoqData:child.boqData||null,
-      ceNo:parent.ceNo||child.ceNo||"",
-      receiptType:parent.receiptType||"OR",
-      withholding:parent.withholding||false,
-      // Sales attribution: credit the child's AE; the child's own brand becomes
-      // the sub-account when it differs from the parent's client. For an umbrella
-      // sub-project the child deal is the source of truth — the CO must inherit
-      // the child's own award date (project-card award date, else its intake
-      // date), NOT today, so it books into the month it was actually awarded.
-      // Only if the child carries no date at all does approval fall back to today.
-      salesOwner:child.salesOwner||parent.salesOwner||"",
-      awardedDate:pcards[child.id]?.awardDate||child.dateAcquired||null,
-      subAccount:(child.client&&child.client!==parent.client)?child.client:"",
-      status:"Discovered",salesNotified:true,
-      discoveredBy:session?.name||role,
-      convertedFromDealId:child.id,
-    };
-    upAddenda(as=>[...as,rec]);
-    if(isSupabaseReady()) sbSyncOne("addenda",rec,toSbAddendum);
-    // Optionally approve right away — updateAddendum stamps the award date, rolls
-    // the value into the parent contract and flows the scope into the BOQ, so the
-    // CO is recognized as sales immediately instead of sitting as "Discovered".
-    if(approve) updateAddendum(rec.id,{status:"Approved"});
-    logActivity(parent.id,"Change Order Created",`${session?.name||role} converted linked deal "${title}" (₱${Number(rec.value).toLocaleString("en-PH")}) into an additive change order${approve?" and approved it — now credited as sales.":" — pending approval."}`);
-    // Retire the now-redundant child deal (cascade handled by delDeal).
-    delDeal(child.id);
-    if(!silent)toastEmit(approve?"Converted & approved — now recognized as sales.":"Converted to Change Order — review & approve on Scope Changes.","success");
-    return true;
-  };
-  // Bulk: convert every linked child deal of a parent into a change order in one
-  // action. Keeps the per-deal ⇄ CO button; this just fans it out across all
-  // children of the given parent and reports a single summary toast.
-  const convertAllChildrenToCO=(parent)=>{
-    if(!parent){toastEmit("Parent project not found.","error");return;}
-    if(!canDeleteDeal){toastEmit("You don't have permission to convert these deals.","error");return;}
-    const children=deals.filter(d=>d.parentDealId===parent.id);
-    if(!children.length){toastEmit("No linked deals to convert on this project.","info");return;}
-    let n=0;
-    children.forEach(c=>{if(convertChildToCO(c,{silent:true}))n++;});
-    toastEmit(`Converted ${n} linked deal${n===1?"":"s"} on ${parent.client||"this project"} into change orders — review & approve on Scope Changes.`,"success");
-  };
+  // NOTE: Change orders are modeled as linked child deals (parentDealId set) that
+  // stay their own live deals — created by Sales via "+ Add New Deal → Link to
+  // Parent Deal", awarded and billed on their own. They are NEVER converted into
+  // a CO record or retired, and never spawn a second project card; they roll into
+  // the parent's Total Contract as a display-only line (see ContractBreakdown).
+  // The old convertChildToCO / convertAllChildrenToCO helpers were removed with
+  // that model change.
 
   const updatePayment=(id,key,val)=>upDeals(ds=>ds.map(d=>d.id===id?{...d,[key]:val}:d));
 
   const stageQ=(id,st)=>{
-    // A linked child deal (addendum) that reaches an awarded stage should not sit
-    // in the pipeline: auto-convert it into an approved Change Order on its parent
-    // so it is recognized as sales in the month it was awarded, then retire it.
+    // A linked child deal (addendum) stays its own live deal — it is NEVER
+    // converted or retired. It counts as sales/billing on its own, but it must
+    // NOT spawn a second project card: Operations maintains the ONE parent
+    // project card even when the project has addendums, so only parent deals
+    // (no parentDealId) get a projs entry on award.
     const staging=deals.find(x=>x.id===id);
-    if(staging?.parentDealId&&WON_STAGES.includes(st)){
-      if(convertChildToCO(staging,{silent:true,approve:true,system:true})){
-        toastEmit(`"${staging.contact||staging.client}" awarded — auto-converted into an approved Change Order on its parent project.`,"success");
-        return;
-      }
-      // Conversion failed (e.g. missing parent) — fall through to a normal stage move.
-    }
-    if(WON_STAGES.includes(st)) upProjs(ps=>ps[id]?ps:{...ps,[id]:emptyProject()});
+    if(WON_STAGES.includes(st)&&!staging?.parentDealId) upProjs(ps=>ps[id]?ps:{...ps,[id]:emptyProject()});
     if(st==="14 · Completed"){
       const d=deals.find(x=>x.id===id);
       // Standby PO umbrellas have no contract value/payments of their own.
@@ -7618,8 +7553,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       if(awardSynced) toastUpdate(savingToastId,`✅ ${awardModal.client} awarded and saved to server`,"success",3000);
       else toastUpdate(savingToastId,`⚠️ ${awardModal.client} awarded on this device only — didn't reach the server yet. Keep this browser/tab around so it can sync.`,"warning",12000);
     }
-    // Create project record
-    if(!projs[id]) upProjs(ps=>ps[id]?ps:{...ps,[id]:emptyProject()});
+    // Create project record — but never for a child/addendum deal, which shares
+    // its parent's single project card.
+    if(!projs[id]&&!awardedDeal.parentDealId) upProjs(ps=>ps[id]?ps:{...ps,[id]:emptyProject()});
     // Build PM list
     const pms=[form.pm1,form.pm2,form.pm3].filter(Boolean);
     const pmDisplay=pms.join(", ")||"TBA";
@@ -8400,7 +8336,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // scope belongs to the parent project. Steer it to the change-order flow.
     if(d?.parentDealId){
       const par=deals.find(x=>x.id===d.parentDealId);
-      toastEmit(`"${d.contact||d.client}" is an addendum of ${par?.client||"another project"}${par?.ceNo?` (${par.ceNo})`:""}. Don't issue a Job Order for it — convert it to a Change Order (⇄ CO) so the scope rolls into the parent project.`,"error",9000);
+      toastEmit(`"${d.contact||d.client}" is an addendum of ${par?.client||"another project"}${par?.ceNo?` (${par.ceNo})`:""}. Don't issue a separate Job Order for it — the added scope runs under the parent project's Job Order.`,"error",9000);
       return;
     }
     const matT=(p?.materials||[]).reduce((s,m)=>s+m.cost,0);
@@ -12906,9 +12842,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       <td style={{padding:cpA,verticalAlign:"middle",display:"flex",gap:4,alignItems:"center"}}>
                         <button onClick={e=>{e.stopPropagation();openEditDeal(d);}} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
                         {(role==="Manager"||role==="QS"||role==="Sales"||role==="SalesOpsAdmin")&&<button onClick={e=>{e.stopPropagation();setBoqCoId(null);setBoqStandaloneId(null);setBoqDealId(d.id);setPage("boq");}} title={isChild?"Open BOQ Builder for this addendum":"Open BOQ Builder for this project"} style={{background:"#0ea5e9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>🧮</button>}
-                        <button onClick={e=>{e.stopPropagation();setJumpDeal(d.id);setPage("projects");}} title="Open Project Card" style={{background:"#eff6ff",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#2563eb",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>📋</button>
-                        {isChild&&canConvertChild(d)&&<button onClick={async e=>{e.stopPropagation();if((await uiConfirm(`Convert "${d.contact||d.client}" into an approved additive Change Order on the parent project and retire this linked deal? It will be credited as sales for this month.`)))convertChildToCO(d,{approve:true});}} title="Convert this linked deal into an approved Change Order (credited as sales) and retire it" style={{background:"#fef3c7",border:"1px solid #f59e0b",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#92400e",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>⇄ CO</button>}
-                        {!isChild&&canDeleteDeal&&(()=>{const kids=deals.filter(x=>x.parentDealId===d.id);if(!kids.length)return null;return<button onClick={async e=>{e.stopPropagation();if((await uiConfirm(`Convert all ${kids.length} linked deal${kids.length===1?"":"s"} on "${d.client||d.contact}" into additive Change Orders and retire them?`)))convertAllChildrenToCO(d);}} title={`Convert all ${kids.length} linked deal(s) into Change Orders`} style={{background:"#fef3c7",border:"1px solid #f59e0b",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#92400e",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>⇄ All→CO ({kids.length})</button>;})()}
+                        <button onClick={e=>{e.stopPropagation();setJumpDeal(isChild?(d.parentDealId||d.id):d.id);setPage("projects");}} title={isChild?"Open the parent project card":"Open Project Card"} style={{background:"#eff6ff",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#2563eb",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>📋</button>
                       </td>
                     </tr>
                   );
@@ -15606,7 +15540,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     if(rec._exists){
                       upDeals(ds=>ds.map(d=>d.id===rec._existingId?rec:d));
                       if(isSupabaseReady()) sbSyncOne("deals",rec,toSbDeal);
-                      if(WON_STAGES.includes(rec.stage)){
+                      if(WON_STAGES.includes(rec.stage)&&!rec.parentDealId){
                         upProjs(ps=>({...ps,[rec.id]:ps[rec.id]||emptyProject()}));
                         upPcards(ps=>({...ps,[rec.id]:ps[rec.id]||emptyProjectCard(rec.id,rec)}));
                       }
@@ -15614,7 +15548,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     } else {
                       upDeals(ds=>[...ds,rec]);
                       if(isSupabaseReady()) sbSyncOne("deals",rec,toSbDeal);
-                      if(WON_STAGES.includes(rec.stage)){
+                      if(WON_STAGES.includes(rec.stage)&&!rec.parentDealId){
                         upProjs(ps=>({...ps,[rec.id]:emptyProject()}));
                         upPcards(ps=>({...ps,[rec.id]:emptyProjectCard(rec.id,rec)}));
                         const newJo={
@@ -17032,17 +16966,34 @@ function OpsUpdateForm({selProj,selProjName,session,addPmUpdate,logActivity,open
 // so the original base is derived as (current value − rolled addenda) — correct
 // even after a reload, and never double-counting. Reused across Project Cards,
 // Billing, Sales, and Pipeline so every team sees the same numbers.
-function ContractBreakdown({deal,addenda,compact}){
+function ContractBreakdown({deal,addenda,deals,compact}){
   if(!deal) return null;
   const ROLLED=s=>["Approved","Billed","Collected"].includes(s);
   const peso=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:0});
-  const items=(addenda||[]).filter(a=>(a.dealId||a.projectId)===deal.id&&a.status!=="Rejected");
+  // Two kinds of addendum feed the breakdown:
+  //  1. Legacy CO records (addenda) — value was folded into deal.value via
+  //     rollDealContract, so the original base is (value − rolled COs).
+  //  2. Child deals (parentDealId set) — the current model. These are their OWN
+  //     deals and are NEVER rolled into the parent's value; they add on top.
+  //     A child in a won stage is an approved addendum; otherwise it's pending.
+  const coItems=(addenda||[]).filter(a=>(a.dealId||a.projectId)===deal.id&&a.status!=="Rejected");
+  const childItems=(deals||[]).filter(d=>d.parentDealId===deal.id&&!isLostStage(d.stage)).map(d=>({
+    id:d.id,title:d.contact||d.client||"Addendum",ceNo:d.ceNo||"",
+    value:Math.abs(Number(d.value)||0),
+    status:WON_STAGES.includes(d.stage)?"Approved":d.stage,
+    _child:true,_won:WON_STAGES.includes(d.stage),
+  }));
+  const items=[...coItems,...childItems];
   if(compact&&!items.length) return null;
-  const rolledSum=items.filter(a=>ROLLED(a.status)).reduce((s,a)=>s+(Number(a.value)||0),0);
-  const current=Number(deal.value)||0;
-  const original=Math.round((current-rolledSum)*100)/100;
-  const pendingSum=items.filter(a=>!ROLLED(a.status)).reduce((s,a)=>s+(Number(a.value)||0),0);
-  const approvedCount=items.filter(a=>ROLLED(a.status)).length;
+  // Legacy COs are already inside deal.value; child deals are additive on top.
+  const rolledCoSum=coItems.filter(a=>ROLLED(a.status)).reduce((s,a)=>s+(Number(a.value)||0),0);
+  const childApprovedSum=childItems.filter(a=>a._won).reduce((s,a)=>s+(Number(a.value)||0),0);
+  const dealVal=Number(deal.value)||0;
+  const original=Math.round((dealVal-rolledCoSum)*100)/100;
+  const current=Math.round((dealVal+childApprovedSum)*100)/100;
+  const isRolled=a=>a._child?a._won:ROLLED(a.status);
+  const pendingSum=items.filter(a=>!isRolled(a)).reduce((s,a)=>s+(Number(a.value)||0),0);
+  const approvedCount=items.filter(a=>isRolled(a)).length;
   const row=(key,label,sub,amt,clr,strong)=>(
     <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:10,padding:"5px 0",borderTop:strong?"1.5px solid #e2e8f0":"1px solid #f1f5f9"}}>
       <div style={{minWidth:0}}>
@@ -17055,9 +17006,9 @@ function ContractBreakdown({deal,addenda,compact}){
   return(
     <div style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 14px"}}>
       <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",fontWeight:700,marginBottom:2}}>Contract Breakdown</div>
-      {row("orig","Original Contract"+(deal.ceNo?" · "+deal.ceNo:""),null,peso(original),"#0f172a",false)}
-      {items.map(a=>row(a.id,(ROLLED(a.status)?"":"⏳ ")+(a.title||"Addendum"),(a.ceNo?a.ceNo+" · ":"")+(a.status||"")+(ROLLED(a.status)?"":" — not yet in contract"),peso(Number(a.value)||0),ROLLED(a.status)?"#059669":"#d97706",false))}
-      {row("cur","Current Contract",rolledSum>0?`original + ${approvedCount} approved addend${approvedCount===1?"um":"a"}`:null,peso(current),"#10b981",true)}
+      {row("orig","Initial Contract"+(deal.ceNo?" · "+deal.ceNo:""),null,peso(original),"#0f172a",false)}
+      {items.map(a=>row(a.id,(isRolled(a)?"":"⏳ ")+(a._child?"Addendum · ":"")+(a.title||"Addendum"),(a.ceNo?a.ceNo+" · ":"")+(a.status||"")+(isRolled(a)?"":" — not yet in contract"),peso(Number(a.value)||0),isRolled(a)?"#059669":"#d97706",false))}
+      {row("cur","Total Contract",approvedCount>0?`initial + ${approvedCount} approved addend${approvedCount===1?"um":"a"}`:null,peso(current),"#10b981",true)}
       {pendingSum>0&&row("pot","If pending approved","+"+peso(pendingSum)+" awaiting client approval",peso(current+pendingSum),"#d97706",false)}
     </div>
   );
@@ -17472,7 +17423,7 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
           <div>
             {/* Header summary — original contract + addenda with the correct revised total */}
             <div style={{marginBottom:14}}>
-              <ContractBreakdown deal={projDeal} addenda={addenda}/>
+              <ContractBreakdown deal={projDeal} addenda={addenda} deals={deals}/>
             </div>
 
             <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:".8rem",color:"#92400e"}}>
@@ -18468,13 +18419,12 @@ function JOView({deals,wonDeals,projs,jos,joStep,setJoStep,joSel,setJoSel,joExtr
       <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:16}}>
         <div>
           <SecHead title="Job Order Builder" sub="Select a Won deal to generate a job order"/>
-          {/* Addenda / linked deals are excluded — added scope belongs to the
-              parent project's Job Order, not its own. They're converted to Change
-              Orders (⇄ CO) instead. */}
+          {/* Addenda / linked deals are excluded — added scope runs under the
+              parent project's Job Order, so they never get their own. */}
           {(()=>{const joEligible=wonDeals.filter(d=>!d.parentDealId),joAddenda=wonDeals.filter(d=>d.parentDealId);return(<>
           {joAddenda.length>0&&(
             <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"9px 13px",marginBottom:10,fontSize:".76rem",color:"#92400e"}}>
-              ⚠️ {joAddenda.length} linked deal{joAddenda.length!==1?"s":""} (addend{joAddenda.length!==1?"a":"um"}) hidden — these belong to a parent project. Convert them to a <strong>Change Order (⇄ CO)</strong> in the Pipeline instead of issuing a separate Job Order.
+              ⚠️ {joAddenda.length} linked deal{joAddenda.length!==1?"s":""} (addend{joAddenda.length!==1?"a":"um"}) hidden — these are addendums that run under their parent project's Job Order, not a separate one.
             </div>
           )}
           {joEligible.map(d=>{const p=projs[d.id];return(
@@ -24702,7 +24652,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
           })()}
 
           {/* Contract breakdown (original + addenda) — shown when this project has change orders */}
-          {(addenda||[]).some(a=>a.dealId===selDeal&&a.status!=="Rejected")&&<div style={{marginBottom:12}}><ContractBreakdown deal={deal} addenda={addenda}/></div>}
+          {((addenda||[]).some(a=>a.dealId===selDeal&&a.status!=="Rejected")||(deals||[]).some(d=>d.parentDealId===selDeal&&!isLostStage(d.stage)))&&<div style={{marginBottom:12}}><ContractBreakdown deal={deal} addenda={addenda} deals={deals}/></div>}
 
           {/* COC-to-Finance notification banner */}
           {(()=>{
@@ -26509,8 +26459,8 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:projAddenda.length>0?10:0}}>
                   <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>⚠️ Scope Changes{projAddenda.length>0&&<span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:400,marginLeft:5}}>({projAddenda.length})</span>}</div>
                 </div>
-                {projAddenda.length>0&&<div style={{marginBottom:10}}><ContractBreakdown deal={deal} addenda={addenda}/></div>}
-                {projAddenda.length===0&&<div style={{fontSize:".78rem",color:"#94a3b8"}}>No scope changes for this project.</div>}
+                {(projAddenda.length>0||(deals||[]).some(d=>d.parentDealId===deal.id&&!isLostStage(d.stage)))&&<div style={{marginBottom:10}}><ContractBreakdown deal={deal} addenda={addenda} deals={deals}/></div>}
+                {projAddenda.length===0&&!(deals||[]).some(d=>d.parentDealId===deal.id&&!isLostStage(d.stage))&&<div style={{fontSize:".78rem",color:"#94a3b8"}}>No scope changes for this project.</div>}
                 {projAddenda.slice(0,3).map(a=>{
                   const sc={"Discovered":"#94a3b8","Sales Notified":"#f59e0b","Client Coordinating":"#3b82f6","Approved":"#059669","Billed":"#8b5cf6","Collected":"#10b981","Rejected":"#ef4444"}[a.status]||"#94a3b8";
                   return(
