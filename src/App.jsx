@@ -2595,8 +2595,12 @@ function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logAc
 
 // ─── ADDENDA PAGE CONTENT ─────────────────────────────────────────────────────
 // Extracted from App IIFE to fix React hooks #310 — hooks must be at top level
-function AddendaPageContent({role,wonDeals,deals,jos,session,addenda,upAddenda,logActivity,onOpenCoBoq}){
+function AddendaPageContent({role,wonDeals,deals,jos,session,addenda,upAddenda,updateAddendum,logActivity,onOpenCoBoq}){
   const canCreate=!["Sales","Finance"].includes(role);
+  // Who may advance a change order's status (Discovered → … → Approved) from this
+  // page. Sales, Ops and Management all speak to clients directly, so all three
+  // can approve. (Server-side RLS must allow the same set — see migration 054.)
+  const canApprove=["Manager","Sales","Operations","ProjectMover","SalesOpsAdmin"].includes(role)&&typeof updateAddendum==="function";
   const myName=session?.name||"";
   const myProjects=wonDeals.filter(d=>{
     const jo=jos.find(j=>j.dealId===d.id);
@@ -2692,7 +2696,13 @@ function AddendaPageContent({role,wonDeals,deals,jos,session,addenda,upAddenda,l
                           {!a._pendingChild&&canCreate&&onOpenCoBoq&&<button onClick={()=>onOpenCoBoq(a.id)} title="Build this change order's BOQ (sections, rate card, markup)" style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:6,padding:"3px 9px",fontSize:".66rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>🧮 BOQ{(a.coBoqData?.items?.length)?` (${a.coBoqData.items.length})`:""}</button>}
                           {!a._pendingChild&&!canCreate&&onOpenCoBoq&&(a.coBoqData?.items?.length)>0&&<button onClick={()=>onOpenCoBoq(a.id,true)} title="View & print this change order's BOQ to send to the client" style={{background:"#f5f3ff",border:"1.5px solid #ddd6fe",borderRadius:6,padding:"3px 9px",fontSize:".66rem",fontWeight:700,color:"#7c3aed",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>📄 Print BOQ</button>}
                           {a._pendingChild&&<span title="This is a linked child deal in the pipeline. Convert it to a Change Order (⇄ CO) to roll its scope and value into the parent project." style={{fontSize:".62rem",fontWeight:700,color:"#b45309",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:6,padding:"2px 7px",whiteSpace:"nowrap"}}>⇄ needs conversion</span>}
-                          <span style={{fontSize:".68rem",fontWeight:700,color:statusClr[a.status]||"#64748b",background:(statusClr[a.status]||"#64748b")+"18",borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap"}}>{a.status}</span>
+                          {canApprove&&!a._pendingChild
+                            ? <select value={a.status} title="Advance this change order's status. Set to Approved once the client agrees — it rolls into the contract and creates its billing claim."
+                                onChange={e=>{const v=e.target.value;updateAddendum(a.id,v==="Approved"?{status:v,clientApproved:true}:{status:v});}}
+                                style={{fontSize:".68rem",fontWeight:700,color:statusClr[a.status]||"#64748b",background:(statusClr[a.status]||"#64748b")+"18",border:`1px solid ${(statusClr[a.status]||"#64748b")}55`,borderRadius:20,padding:"2px 8px",fontFamily:"inherit",cursor:"pointer",whiteSpace:"nowrap"}}>
+                                {ADDENDUM_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
+                              </select>
+                            : <span style={{fontSize:".68rem",fontWeight:700,color:statusClr[a.status]||"#64748b",background:(statusClr[a.status]||"#64748b")+"18",borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap"}}>{a.status}</span>}
                         </div>
                       </div>
                       {Number(a.value)>0&&<div style={{fontSize:".75rem",color:a.kind==="Deductive"?"#dc2626":"#059669",marginTop:3,fontWeight:600}}>{fmtSigned(coSignedValue(a))} {a._pendingChild?"pending conversion":a.kind==="Deductive"?"deducted":"additional"}{Array.isArray(a.scopeItems)&&a.scopeItems.length?` · ${a.scopeItems.length} BOQ item${a.scopeItems.length>1?"s":""}`:""}</div>}
@@ -5804,7 +5814,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // Billing was remounted — "every awarded deal has a proper billing" wasn't
   // actually guaranteed.
   const generateBillingSchedule=(dealId,terms,contractVal)=>{
-    const val=Number(contractVal)||0;
+    // The base schedule bills the ORIGINAL contract only. Approved change orders
+    // each carry their own separate billing milestone (see syncCoBilling), so if
+    // this deal has had a CO rolled in, split the pre-CO base (originalValue) —
+    // never the blended deal.value — otherwise the CO would be billed twice (once
+    // inside the base schedule and once as its own line). With no CO, originalValue
+    // is unset and this is the passed contract value unchanged.
+    const _deal=deals.find(d=>d.id===dealId);
+    const val=Number(_deal&&_deal.originalValue!=null?_deal.originalValue:contractVal)||0;
     if(!terms||val<=0) return;
     // Idempotency: never regenerate once a schedule has been generated. The
     // persistent deal.billingGenerated flag survives reloads / remounts / other
@@ -6127,16 +6144,20 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     }));
     logActivity(dealId,"Contract Value Updated",`${delta>0?"+":"−"}₱${Number(Math.abs(delta)).toLocaleString("en-PH",{maximumFractionDigits:2})} from change order "${addendum?.title||""}" → revised contract value`);
   };
-  // Once a change order is billed/collected it should carry its own billing
-  // milestone so Finance can invoice the delta directly instead of hand-rolling
-  // it. Deductive change orders create a negative (credit) milestone.
-  const CO_BILLED=s=>["Billed","Collected"].includes(s);
+  // Once a change order is APPROVED it carries its own billing milestone so
+  // Finance can raise the claim for the delta directly — as a SEPARATE line from
+  // the original contract's schedule, never blended into it (the base schedule
+  // bills the original contract only; see generateBillingSchedule). Deductive
+  // change orders create a negative (credit) milestone. The milestone's tax basis
+  // is INHERITED from the parent contract (receipt type + withholding) so a CO is
+  // never taxed on a different basis than its project.
   const syncCoBilling=(co,shouldExist)=>{
     const dealId=co.dealId||co.projectId;
     const existing=billings.find(b=>b.coId===co.id);
     if(shouldExist&&!existing&&dealId){
+      const parentDeal=deals.find(d=>d.id===dealId);
       const invMax=billings.reduce((m,b)=>{const x=parseInt(String(b.invoiceNo||"").replace(/\D/g,""))||0;return Math.max(m,x);},0);
-      addMilestone({name:`Change Order — ${co.title||"Scope Change"}`,description:co.description||co.desc||"",amount:coSignedValue(co),dealId,coId:co.id,invoiceNo:`INV-${String(invMax+1).padStart(4,"0")}`,invoiceDate:today,dueDate:"",status:"Draft",receiptType:co.receiptType||null,withholding:co.withholding??null,createdBy:session?.name||role,deductions:[]});
+      addMilestone({name:`Change Order — ${co.title||"Scope Change"}`,description:co.description||co.desc||"",amount:coSignedValue(co),dealId,coId:co.id,invoiceNo:`INV-${String(invMax+1).padStart(4,"0")}`,invoiceDate:today,dueDate:"",status:"Draft",receiptType:parentDeal?.receiptType||co.receiptType||null,withholding:parentDeal?.withholding??co.withholding??null,createdBy:session?.name||role,deductions:[]});
     }else if(!shouldExist&&existing){
       upBillings(bs=>bs.filter(b=>b.coId!==co.id));
       if(isSupabaseReady()) sbDelete('billing_milestones',existing.id).catch(()=>{});
@@ -6185,9 +6206,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       else if(!nowIn&&n.awardedDate&&!ch.awardedDate) n.awardedDate=null;
       const delta=(nowIn?newVal:0)-(wasIn?oldVal:0);
       if(delta) rollDealContract(n.dealId||n.projectId,delta,n);
-      // Scope items flow into the BOQ on approval, billing milestone on billing.
+      // Scope items flow into the BOQ on approval; the CO's own billing milestone
+      // is created on approval too (ADDENDUM_ROLLED = Approved/Billed/Collected) so
+      // Finance can raise the claim immediately — not left until someone marks it
+      // "Billed", which used to leave the delta unbilled and the contract short.
       if(wasIn!==nowIn||(nowIn&&oldVal!==newVal)) syncCoBoq(n,nowIn);
-      syncCoBilling(n,CO_BILLED(n.status));
+      syncCoBilling(n,ADDENDUM_ROLLED(n.status));
       if(isSupabaseReady()) sbSyncOne("addenda",n,toSbAddendum);
       if(ch.status==="Approved"||ch.clientApproved){
         const deal=deals.find(d=>d.id===(a.dealId||a.projectId));
@@ -7422,9 +7446,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       receiptType:parent.receiptType||"OR",
       withholding:parent.withholding||false,
       // Sales attribution: credit the child's AE; the child's own brand becomes
-      // the sub-account when it differs from the parent's client. awardedDate is
-      // stamped when the CO is Approved (drives the Sales Value month).
+      // the sub-account when it differs from the parent's client. For an umbrella
+      // sub-project the child deal is the source of truth — the CO must inherit
+      // the child's own award date (project-card award date, else its intake
+      // date), NOT today, so it books into the month it was actually awarded.
+      // Only if the child carries no date at all does approval fall back to today.
       salesOwner:child.salesOwner||parent.salesOwner||"",
+      awardedDate:pcards[child.id]?.awardDate||child.dateAcquired||null,
       subAccount:(child.client&&child.client!==parent.client)?child.client:"",
       status:"Discovered",salesNotified:true,
       discoveredBy:session?.name||role,
@@ -8468,7 +8496,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     SalesOpsAdmin:[
       {group:"Overview",   items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
-      {group:"Sales",      items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"},{id:"ceqs",l:"CE Requests"},{id:"boq",l:"BOQ"}]},
+      {group:"Sales",      items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Reports"},{id:"ceqs",l:"CE Requests"},{id:"boq",l:"BOQ"}]},
       {group:"Billing",    items:[{id:"billing",l:"Billing"}]},
       {group:"Finance",    items:[{id:"financecal",l:"Finance Calendar"}]},
       {group:"Operations", items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
@@ -12757,10 +12785,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 const AwardRow=({d,isChild=false})=>{
                   const jo=jos.find(j=>j.dealId===d.id);
                   const pc=pcards[d.id];
-                  // Award date is editable inline (Manager/Sales) so a mis-dated award
-                  // can be corrected without a DB touch — it drives the month each deal
-                  // lands in on the Awarded / Sales Value report (awardedMonth above).
-                  const canEditAward=(role==="Manager"||role==="Sales")&&!isChild;
+                  // Award date is editable inline (Manager/Sales/SalesOpsAdmin) so a
+                  // mis-dated award can be corrected without a DB touch — it drives the
+                  // month each deal lands in on the Awarded / Sales Value report
+                  // (awardedMonth above). Sub-project (child) rows are editable too: an
+                  // umbrella's standby-PO parent earns ₱0, so it is the sub-projects that
+                  // carry sales value and must be datable into the correct month.
+                  const canEditAward=(role==="Manager"||role==="Sales"||role==="SalesOpsAdmin");
                   const setCardAwardDate=(date)=>{
                     if(!date) return;
                     upPcards(ps=>({...ps,[d.id]:{...(ps[d.id]||emptyProjectCard(d.id,d)),awardDate:date}}));
@@ -12845,7 +12876,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                         </div>
                       </td>
                       <td style={{padding:cp,verticalAlign:"middle",whiteSpace:"nowrap"}} onClick={e=>e.stopPropagation()}>
-                        {canEditAward?(
+                        {isStandby?(
+                          <span title="Standby-PO umbrella earns ₱0 itself — set award dates on its sub-projects below, not here" style={{color:"#94a3b8",fontSize:".64rem",fontStyle:"italic"}}>on sub-projects ↓</span>
+                        ):canEditAward?(
                           <input type="date" value={pc?.awardDate||""} max={new Date().toISOString().slice(0,10)}
                             onClick={e=>e.stopPropagation()}
                             onChange={e=>setCardAwardDate(e.target.value)}
@@ -15303,7 +15336,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   if(page==="addenda") return(
     <Wrap>
       <SecHead title="⚠️ Scope Changes" sub={["Sales","Finance"].includes(role)?"View all scope changes across active projects":"Flag addenda discovered on site — AE and Paolo will be notified"}/>
-      <AddendaPageContent role={role} wonDeals={wonDeals} deals={deals} jos={jos} session={session} addenda={addenda} upAddenda={upAddenda} logActivity={logActivity} onOpenCoBoq={(id,readOnly=false)=>{setBoqDealId(null);setBoqStandaloneId(null);setBoqCoReadOnly(!!readOnly);setBoqCoId(id);setPage("boq");}}/>
+      <AddendaPageContent role={role} wonDeals={wonDeals} deals={deals} jos={jos} session={session} addenda={addenda} upAddenda={upAddenda} updateAddendum={updateAddendum} logActivity={logActivity} onOpenCoBoq={(id,readOnly=false)=>{setBoqDealId(null);setBoqStandaloneId(null);setBoqCoReadOnly(!!readOnly);setBoqCoId(id);setPage("boq");}}/>
     </Wrap>
   );
 
@@ -24741,7 +24774,10 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
           {(()=>{
             const terms=deal?.paymentTerms;
             const existingMs=billings.filter(b=>b.dealId===selDeal);
-            const val=Number(deal?.value||0);
+            // Base schedule is off the ORIGINAL contract (pre change orders) — each
+            // approved CO is billed as its own separate milestone. This keeps the
+            // preview in step with generateBillingSchedule so both split the same base.
+            const val=Number(deal?.originalValue!=null?deal.originalValue:deal?.value||0);
             const onboardingReady=dealOnboardingGate(deal).ready;
             const canGenerate=canEdit&&terms&&existingMs.length===0&&val>0&&!deal?.billingGenerated&&onboardingReady;
             // Billing schedules are no longer created automatically. This opens a
