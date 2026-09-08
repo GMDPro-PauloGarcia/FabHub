@@ -7446,9 +7446,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       receiptType:parent.receiptType||"OR",
       withholding:parent.withholding||false,
       // Sales attribution: credit the child's AE; the child's own brand becomes
-      // the sub-account when it differs from the parent's client. awardedDate is
-      // stamped when the CO is Approved (drives the Sales Value month).
+      // the sub-account when it differs from the parent's client. For an umbrella
+      // sub-project the child deal is the source of truth — the CO must inherit
+      // the child's own award date (project-card award date, else its intake
+      // date), NOT today, so it books into the month it was actually awarded.
+      // Only if the child carries no date at all does approval fall back to today.
       salesOwner:child.salesOwner||parent.salesOwner||"",
+      awardedDate:pcards[child.id]?.awardDate||child.dateAcquired||null,
       subAccount:(child.client&&child.client!==parent.client)?child.client:"",
       status:"Discovered",salesNotified:true,
       discoveredBy:session?.name||role,
@@ -8492,7 +8496,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     SalesOpsAdmin:[
       {group:"Overview",   items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
-      {group:"Sales",      items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"},{id:"ceqs",l:"CE Requests"},{id:"boq",l:"BOQ"}]},
+      {group:"Sales",      items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Reports"},{id:"ceqs",l:"CE Requests"},{id:"boq",l:"BOQ"}]},
       {group:"Billing",    items:[{id:"billing",l:"Billing"}]},
       {group:"Finance",    items:[{id:"financecal",l:"Finance Calendar"}]},
       {group:"Operations", items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
@@ -12781,10 +12785,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 const AwardRow=({d,isChild=false})=>{
                   const jo=jos.find(j=>j.dealId===d.id);
                   const pc=pcards[d.id];
-                  // Award date is editable inline (Manager/Sales) so a mis-dated award
-                  // can be corrected without a DB touch — it drives the month each deal
-                  // lands in on the Awarded / Sales Value report (awardedMonth above).
-                  const canEditAward=(role==="Manager"||role==="Sales")&&!isChild;
+                  // Award date is editable inline (Manager/Sales/SalesOpsAdmin) so a
+                  // mis-dated award can be corrected without a DB touch — it drives the
+                  // month each deal lands in on the Awarded / Sales Value report
+                  // (awardedMonth above). Sub-project (child) rows are editable too: an
+                  // umbrella's standby-PO parent earns ₱0, so it is the sub-projects that
+                  // carry sales value and must be datable into the correct month.
+                  const canEditAward=(role==="Manager"||role==="Sales"||role==="SalesOpsAdmin");
                   const setCardAwardDate=(date)=>{
                     if(!date) return;
                     upPcards(ps=>({...ps,[d.id]:{...(ps[d.id]||emptyProjectCard(d.id,d)),awardDate:date}}));
@@ -12869,7 +12876,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                         </div>
                       </td>
                       <td style={{padding:cp,verticalAlign:"middle",whiteSpace:"nowrap"}} onClick={e=>e.stopPropagation()}>
-                        {canEditAward?(
+                        {isStandby?(
+                          <span title="Standby-PO umbrella earns ₱0 itself — set award dates on its sub-projects below, not here" style={{color:"#94a3b8",fontSize:".64rem",fontStyle:"italic"}}>on sub-projects ↓</span>
+                        ):canEditAward?(
                           <input type="date" value={pc?.awardDate||""} max={new Date().toISOString().slice(0,10)}
                             onClick={e=>e.stopPropagation()}
                             onChange={e=>setCardAwardDate(e.target.value)}
