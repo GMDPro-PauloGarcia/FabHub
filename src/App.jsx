@@ -8423,7 +8423,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     ProjectMover:[
       {group:"Overview", items:[{id:"home",l:"My Projects"},{id:"calendar",l:"Calendar"}]},
-      {group:"Updates",  items:[{id:"pmupdates",l:"PM Updates"},{id:"addenda",l:"Scope Changes"}]},
+      // Scope changes are Sales-owned (a linked deal). A PM who spots one reports
+      // it via PM Updates; Sales picks it up and logs the linked addendum.
+      {group:"Updates",  items:[{id:"pmupdates",l:"PM Updates"}]},
       {group:"Work",     items:[{id:"projects",l:"Project Cards"}]},
     ],
     Warehouse:[
@@ -13133,7 +13135,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {dupPrompt&&(
         <div onClick={()=>{setDupPrompt(null);setDupScopeTarget(null);setDupScopeForm({title:"",desc:"",value:"",});}} style={{position:"fixed",inset:0,background:"rgba(15,23,42,.65)",zIndex:1200,display:"flex",alignItems:isMobile?"flex-end":"center",justifyContent:"center",padding:isMobile?0:20}}>
           <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:isMobile?"18px 18px 0 0":16,width:"100%",maxWidth:isMobile?undefined:500,padding:isMobile?"20px 18px 28px":"24px 28px",boxShadow:"0 24px 64px rgba(0,0,0,.25)",maxHeight:"92vh",overflowY:"auto"}}>
-            {!dupScopeTarget?(
+            {(
               <>
                 <div style={{fontWeight:800,color:"#0f172a",fontSize:"1.05rem",marginBottom:6}}>⚠️ Looks like a duplicate</div>
                 <div style={{fontSize:".8rem",color:"#64748b",marginBottom:16}}>We found a similar project already in the pipeline for <strong>{dupPrompt.newData.client}</strong>. Is this a brand-new separate project, or a scope addition to an existing one?</div>
@@ -13142,48 +13144,19 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{m.client}{m.product?` — ${m.product}`:""}</div>
                     <div style={{fontSize:".74rem",color:"#64748b",marginTop:2}}>{[m.ceNo,m.stage].filter(Boolean).join(" · ")}</div>
                     <button onClick={()=>{
-                      if(HAS_ADDENDA_PAGE.includes(role)){
-                        setDupPrompt(null);setDupScopeTarget(null);
-                        if(role==="ProjectMover"){setPage("addenda");}
-                        else{setSelProj(m.id);setOpsTab("addenda");setPage("projects");}
-                      } else {
-                        // Roles without an addenda page — expand inline form here
-                        setDupScopeTarget({dealId:m.id,dealName:m.client+(m.product?` — ${m.product}`:"")});
-                        setDupScopeForm({title:dupPrompt.newData.product||dupPrompt.newData.contact||"",desc:"",value:String(dupPrompt.newData.value||"")});
-                      }
-                    }} style={{marginTop:8,background:"#fef3c7",border:"1.5px solid #fbbf24",borderRadius:7,padding:"6px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:"#92400e",cursor:"pointer"}}>➕ Add as Scope Change to this project</button>
+                      // A scope change is a linked child deal: save this new deal
+                      // tagged to the existing project (parentDealId). It keeps its
+                      // own billing and rolls into that project's Total Contract.
+                      const d={...dupPrompt.newData,parentDealId:m.id};
+                      setDupPrompt(null);setDupScopeTarget(null);
+                      saveDeal(d,true);
+                      toastEmit&&toastEmit(`Saved as a linked addendum of ${m.client} — it has its own billing and rolls into that project's Total Contract.`,"success",7000);
+                    }} style={{marginTop:8,background:"#fef3c7",border:"1.5px solid #fbbf24",borderRadius:7,padding:"6px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:"#92400e",cursor:"pointer"}}>🔗 Add as a linked addendum of this project</button>
                   </div>
                 ))}
                 <div style={{display:"flex",gap:10,marginTop:16}}>
                   <button onClick={()=>{const d=dupPrompt.newData;setDupPrompt(null);saveDeal(d,true);}} style={{flex:1,background:"#1e293b",border:"none",borderRadius:9,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#fff",cursor:"pointer"}}>✅ Save as New Project</button>
                   <button onClick={()=>{setDupPrompt(null);setDupScopeTarget(null);}} style={{flex:1,background:"#f1f5f9",border:"none",borderRadius:9,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#64748b",cursor:"pointer"}}>↩ Cancel</button>
-                </div>
-              </>
-            ):(
-              <>
-                <div style={{fontWeight:800,color:"#0f172a",fontSize:"1.05rem",marginBottom:4}}>⚠️ Log Scope Change</div>
-                <div style={{fontSize:".78rem",color:"#64748b",marginBottom:14}}>Adding to: <strong>{dupScopeTarget.dealName}</strong></div>
-                <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                  <div>
-                    <div style={{fontSize:".72rem",fontWeight:700,color:"#92400e",marginBottom:3}}>Title <span style={{color:"#ef4444"}}>*</span></div>
-                    <input value={dupScopeForm.title} onChange={e=>setDupScopeForm(f=>({...f,title:e.target.value}))} placeholder="Scope change description" style={{width:"100%",border:"1.5px solid #fbbf24",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".84rem",outline:"none",boxSizing:"border-box",background:"#fffbeb"}}/>
-                  </div>
-                  <div>
-                    <div style={{fontSize:".72rem",fontWeight:700,color:"#92400e",marginBottom:3}}>Description</div>
-                    <textarea value={dupScopeForm.desc} onChange={e=>setDupScopeForm(f=>({...f,desc:e.target.value}))} rows={2} placeholder="What changed, why, impact…" style={{width:"100%",border:"1.5px solid #fed7aa",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",outline:"none",resize:"vertical",boxSizing:"border-box",background:"#fffbeb"}}/>
-                  </div>
-                  <div>
-                    <div style={{fontSize:".72rem",fontWeight:700,color:"#92400e",marginBottom:3}}>Value (₱)</div>
-                    <input type="number" value={dupScopeForm.value} onChange={e=>setDupScopeForm(f=>({...f,value:e.target.value}))} placeholder="e.g. 25000" style={{width:"100%",border:"1.5px solid #fed7aa",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",outline:"none",boxSizing:"border-box",background:"#fffbeb"}}/>
-                  </div>
-                </div>
-                <div style={{display:"flex",gap:10,marginTop:16}}>
-                  <button onClick={()=>{
-                    if(!dupScopeForm.title.trim()) return;
-                    addAddendum2({...dupScopeForm,value:dupScopeForm.value?Number(dupScopeForm.value):0,dealId:dupScopeTarget.dealId,projectName:dupScopeTarget.dealName,status:"Discovered",salesNotified:false,clientApproved:false,receiptType:"OR",withholding:false,discoveredBy:session?.name||""});
-                    setDupPrompt(null);setDupScopeTarget(null);setDupScopeForm({title:"",desc:"",value:""});
-                  }} style={{flex:1,background:"#c2410c",border:"none",borderRadius:9,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#fff",cursor:"pointer"}}>✓ Log Scope Change</button>
-                  <button onClick={()=>setDupScopeTarget(null)} style={{background:"#f1f5f9",border:"none",borderRadius:9,padding:"10px 16px",fontFamily:"inherit",fontWeight:600,fontSize:".85rem",color:"#64748b",cursor:"pointer"}}>← Back</button>
                 </div>
               </>
             )}
@@ -17101,7 +17074,10 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
     </Wrap>
   );
 
-  const tabs=[["progress","📊 Progress"],["team","👥 Team"],["materials","📦 Materials"],["swatches","🛒 Swatchboard"],["costs","💰 Costs"],["updates","📝 PM Updates"],["addenda","⚠️ Addenda"],["closeout","✅ Close-Out"]];
+  // Scope changes / addenda are owned by Sales (a linked child deal via
+  // "+ Add New Deal -> Link to Parent Deal"), not Operations — so Ops has no
+  // Addenda tab. The single parent project card carries the added scope.
+  const tabs=[["progress","📊 Progress"],["team","👥 Team"],["materials","📦 Materials"],["swatches","🛒 Swatchboard"],["costs","💰 Costs"],["updates","📝 PM Updates"],["closeout","✅ Close-Out"]];
   return(
     <Wrap>
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
@@ -17411,163 +17387,6 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
         </div>
       )}
 
-      {/* ADDENDA TAB — full workflow */}
-      {opsTab==="addenda"&&(()=>{
-        // Addenda are tagged to their project via dealId (see addAddendum2 below + Project HQ),
-        // so filter by dealId — not projectId, which addendum records never carry.
-        const projAddenda=(addenda||[]).filter(a=>a.dealId===selProj);
-        const[showAF,setShowAF]=useState(false);
-        const[af,setAf]=useState({title:"",desc:"",value:"",ceNo:"",receiptType:"OR",withholding:false,discoveredBy:session?.name||"",notes:""});
-        const faf=(k,v)=>setAf(p=>({...p,[k]:v}));
-        return(
-          <div>
-            {/* Header summary — original contract + addenda with the correct revised total */}
-            <div style={{marginBottom:14}}>
-              <ContractBreakdown deal={projDeal} addenda={addenda} deals={deals}/>
-            </div>
-
-            <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:".8rem",color:"#92400e"}}>
-              ⚠️ <strong>Addendum Protocol:</strong> Operations logs scope changes → Sales is notified to coordinate with client → Client approves → Separate billing created. Each addendum may have its own CE number depending on size.
-            </div>
-
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-              <div style={{fontWeight:700,color:"#0f172a",fontSize:".9rem"}}>{projAddenda.length} Addendum{projAddenda.length!==1?"a":""}</div>
-              <Btn small onClick={()=>setShowAF(s=>!s)}>+ Log Scope Change</Btn>
-            </div>
-
-            {/* Add form */}
-            {showAF&&(
-              <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:12,padding:16,marginBottom:14}}>
-                <div style={{fontWeight:700,color:"#92400e",marginBottom:12}}>New Scope Change / Addendum</div>
-                <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:12}}>
-                  <div style={{gridColumn:"1/-1"}}>
-                    <Fld label="Title / Scope Change" required>
-                      <Inp value={af.title} onChange={e=>faf("title",e.target.value)} placeholder="e.g. Additional glass shelving Unit 3B — client requested during site visit"/>
-                    </Fld>
-                  </div>
-                  <div style={{gridColumn:"1/-1"}}>
-                    <Fld label="Description / Impact">
-                      <Inp rows={3} value={af.desc} onChange={e=>faf("desc",e.target.value)} placeholder="What changed, why it changed, impact on timeline and cost…"/>
-                    </Fld>
-                  </div>
-                  <Fld label="Addendum Value (₱)" hint="Estimated cost of this scope change">
-                    <Inp type="number" value={af.value} onChange={e=>faf("value",e.target.value)} placeholder="0.00"/>
-                  </Fld>
-                  <Fld label="CE Number" hint="Assign if large enough to warrant separate CE">
-                    <Inp value={af.ceNo} onChange={e=>faf("ceNo",e.target.value)} placeholder="e.g. CE-2026-001-A (optional)"/>
-                  </Fld>
-                  <Fld label="Receipt Type">
-                    <Sel value={af.receiptType} onChange={e=>faf("receiptType",e.target.value)}>
-                      <option value="OR">🧾 OR (with VAT)</option>
-                      <option value="AR">📄 AR (no VAT)</option>
-                    </Sel>
-                  </Fld>
-                  <Fld label="Withholding Tax (EWT 2%)">
-                    <Sel value={af.withholding?"YES":"NO"} onChange={e=>faf("withholding",e.target.value==="YES")}>
-                      <option value="NO">No withholding</option>
-                      <option value="YES">Yes — client withholds 2%</option>
-                    </Sel>
-                  </Fld>
-                  <Fld label="Discovered By">
-                    <Inp value={af.discoveredBy} onChange={e=>faf("discoveredBy",e.target.value)} placeholder={session?.name||""}/>
-                  </Fld>
-                  <div style={{gridColumn:"1/-1"}}>
-                    <Fld label="Notes">
-                      <Inp rows={2} value={af.notes} onChange={e=>faf("notes",e.target.value)} placeholder="Supporting details, client conversation notes, photos in Drive…"/>
-                    </Fld>
-                  </div>
-                </div>
-                <div style={{display:"flex",gap:8,marginTop:12}}>
-                  <Btn onClick={()=>{
-                    if(!af.title) return;
-                    addAddendum2({...af,dealId:selProj,projectName:projDeal?.client||"",status:"Discovered",salesNotified:false,clientApproved:false});
-                    setAf({title:"",desc:"",value:"",ceNo:"",receiptType:"OR",withholding:false,discoveredBy:session?.name||"",notes:""});
-                    setShowAF(false);
-                  }}>Log Scope Change</Btn>
-                  <Btn variant="ghost" onClick={()=>setShowAF(false)}>Cancel</Btn>
-                </div>
-              </div>
-            )}
-
-            {projAddenda.length===0&&!showAF&&<EmptyState icon="📋" msg="No addenda logged. When Operations discovers a scope change, log it here — Sales gets notified automatically."/>}
-
-            {/* Addenda list */}
-            <div style={{display:"flex",flexDirection:"column",gap:8}}>
-              {projAddenda.map(a=>{
-                const tx=calcTax(a.value||0,a.receiptType||"OR",a.withholding||false);
-                const statusClr=ADDENDUM_STATUS_CLR[a.status]||"#94a3b8";return(
-                  <div key={a.id} style={{background:"#fff",borderRadius:12,border:`1.5px solid ${statusClr}44`,padding:"14px 18px"}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
-                      <div style={{flex:1}}>
-                        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:6}}>
-                          <span style={{fontWeight:700,color:"#0f172a"}}>{a.title}</span>
-                          <span style={{fontSize:".7rem",background:statusClr+"22",color:statusClr,border:`1px solid ${statusClr}55`,borderRadius:20,padding:"1px 9px",fontWeight:700}}>{a.status}</span>
-                          {a.ceNo&&<span style={{fontSize:".7rem",color:"#64748b",background:"#f1f5f9",padding:"1px 8px",borderRadius:5}}>{a.ceNo}</span>}
-                        </div>
-                        {a.desc&&<div style={{fontSize:".8rem",color:"#475569",lineHeight:1.6,marginBottom:8}}>{a.desc}</div>}
-
-                        {/* Value breakdown */}
-                        {Number(a.value)>0&&(
-                          <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 12px",display:"flex",gap:16,flexWrap:"wrap",marginBottom:8,fontSize:".75rem"}}>
-                            <div><span style={{color:"#94a3b8"}}>Base: </span><strong>₱{Number(a.value).toLocaleString("en-PH")}</strong></div>
-                            <div><span style={{color:"#94a3b8"}}>{a.receiptType==="OR"?"VAT 12%":"No VAT"}: </span><strong style={{color:"#f59e0b"}}>₱{tx.vat.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></div>
-                            {a.withholding&&<div><span style={{color:"#94a3b8"}}>EWT 2%: </span><strong style={{color:"#ef4444"}}>-₱{tx.ewt.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></div>}
-                            <div><span style={{color:"#94a3b8"}}>Net Receivable: </span><strong style={{color:"#059669"}}>₱{tx.netReceivable.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></div>
-                          </div>
-                        )}
-
-                        {/* Workflow status flags */}
-                        <div style={{display:"flex",gap:8,flexWrap:"wrap",fontSize:".72rem"}}>
-                          <span style={{color:a.salesNotified?"#059669":"#f59e0b",fontWeight:600,background:a.salesNotified?"#f0fdf4":"#fffbeb",padding:"2px 9px",borderRadius:20,border:`1px solid ${a.salesNotified?"#6ee7b7":"#fde68a"}`}}>
-                            {a.salesNotified?"✓ Sales notified":"⚠ Sales not yet notified"}
-                          </span>
-                          <span style={{color:a.clientApproved?"#059669":"#94a3b8",fontWeight:600,background:a.clientApproved?"#f0fdf4":"#f8fafc",padding:"2px 9px",borderRadius:20,border:`1px solid ${a.clientApproved?"#6ee7b7":"#e2e8f0"}`}}>
-                            {a.clientApproved?"✓ Client approved":"Pending client approval"}
-                          </span>
-                          <span style={{fontSize:".68rem",color:"#94a3b8"}}>By {a.discoveredBy} · {a.createdDate}</span>
-                        </div>
-                      </div>
-
-                      {/* Actions */}
-                      <div style={{display:"flex",flexDirection:"column",gap:6,flexShrink:0,minWidth:160}}>
-                        <select value={a.status} onChange={e=>updateAddendum(a.id,{status:e.target.value})}
-                          style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:".78rem",color:"#0f172a",background:"#fff",cursor:"pointer",width:"100%"}}>
-                          {ADDENDUM_STATUSES.map(s=><option key={s}>{s}</option>)}
-                        </select>
-                        <div style={{display:"flex",gap:6}}>
-                          <button onClick={()=>updateAddendum(a.id,{salesNotified:true})}
-                            disabled={a.salesNotified}
-                            style={{flex:1,background:a.salesNotified?"#f0fdf4":"#fffbeb",border:`1.5px solid ${a.salesNotified?"#6ee7b7":"#fde68a"}`,borderRadius:7,padding:"5px 8px",fontSize:".68rem",color:a.salesNotified?"#059669":"#92400e",cursor:a.salesNotified?"default":"pointer",fontWeight:600,fontFamily:"inherit"}}>
-                            {a.salesNotified?"Notified":"Notify Sales"}
-                          </button>
-                          <button onClick={()=>updateAddendum(a.id,{clientApproved:true,status:"Approved"})}
-                            disabled={a.clientApproved}
-                            style={{flex:1,background:a.clientApproved?"#f0fdf4":"#f8fafc",border:`1.5px solid ${a.clientApproved?"#6ee7b7":"#e2e8f0"}`,borderRadius:7,padding:"5px 8px",fontSize:".68rem",color:a.clientApproved?"#059669":"#64748b",cursor:a.clientApproved?"default":"pointer",fontWeight:600,fontFamily:"inherit"}}>
-                            {a.clientApproved?"Approved":"Mark Approved"}
-                          </button>
-                        </div>
-                        {["Approved","Billed","Collected"].includes(a.status)&&(
-                          <div>
-                            <label style={{fontSize:".62rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:2}}>Awarded date <span style={{fontWeight:400,color:"#94a3b8"}}>(counts as sales this month)</span></label>
-                            <input type="date" value={a.awardedDate||""} max={new Date().toISOString().slice(0,10)}
-                              onChange={e=>updateAddendum(a.id,{awardedDate:e.target.value||null})}
-                              title="The month this change order's value is credited to the AE on the Sales Value report. Defaults to the approval date; set it to the date this scope was actually awarded."
-                              style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 8px",fontFamily:"inherit",fontSize:".74rem",color:"#0f172a",background:"#fff",boxSizing:"border-box"}}/>
-                          </div>
-                        )}
-                        <button onClick={async ()=>{if((await uiConfirm("Delete this addendum?")))deleteAddendum(a.id);}}
-                          style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:7,padding:"5px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })()}
       {opsTab==="closeout"&&(()=>{
         const warranty=proj?.warranty||{active:false,type:"30",startDate:"",endDate:"",notes:""};
         const reports=proj?.reports||[];
@@ -25994,41 +25813,9 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                     <span style={{fontSize:".8rem",fontWeight:700,color:"#059669"}}>🎉 All departments complete! Use the buttons above to close out or complete this project.</span>
                   </div>
                 )}
-                <div style={{marginTop:10,display:"flex",justifyContent:"flex-end",gap:8}}>
-                  {addAddendum2&&<button onClick={()=>{setScopeForm({title:"",desc:"",value:"",ceNo:""});setShowScopeForm(true);}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",color:"#c2410c",cursor:"pointer",fontWeight:700}}>➕ Scope Change</button>}
-                </div>
-                {showScopeForm&&addAddendum2&&(
-                  <div style={{marginTop:12,background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:12,padding:"14px 16px"}}>
-                    <div style={{fontWeight:700,color:"#92400e",fontSize:".82rem",marginBottom:10}}>⚠️ Log Scope Change / Addendum</div>
-                    <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10,marginBottom:10}}>
-                      <div style={{gridColumn:"1/-1"}}>
-                        <div style={{fontSize:".72rem",fontWeight:700,color:"#92400e",marginBottom:3}}>Title <span style={{color:"#ef4444"}}>*</span></div>
-                        <input value={scopeForm.title} onChange={e=>fsc("title",e.target.value)} placeholder="e.g. Additional glass shelving Unit 3B" style={{width:"100%",border:"1.5px solid #fbbf24",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",outline:"none",boxSizing:"border-box",background:"#fffbeb"}}/>
-                      </div>
-                      <div style={{gridColumn:"1/-1"}}>
-                        <div style={{fontSize:".72rem",fontWeight:700,color:"#92400e",marginBottom:3}}>Description / Impact</div>
-                        <textarea value={scopeForm.desc} onChange={e=>fsc("desc",e.target.value)} rows={2} placeholder="What changed, why, impact on timeline…" style={{width:"100%",border:"1.5px solid #fed7aa",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",outline:"none",resize:"vertical",boxSizing:"border-box",background:"#fffbeb"}}/>
-                      </div>
-                      <div>
-                        <div style={{fontSize:".72rem",fontWeight:700,color:"#92400e",marginBottom:3}}>Value (₱)</div>
-                        <input type="number" value={scopeForm.value} onChange={e=>fsc("value",e.target.value)} placeholder="e.g. 25000" style={{width:"100%",border:"1.5px solid #fed7aa",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",outline:"none",boxSizing:"border-box",background:"#fffbeb"}}/>
-                      </div>
-                      <div>
-                        <div style={{fontSize:".72rem",fontWeight:700,color:"#92400e",marginBottom:3}}>CE No. (if applicable)</div>
-                        <input value={scopeForm.ceNo} onChange={e=>fsc("ceNo",e.target.value)} placeholder="e.g. CE-2025-002A" style={{width:"100%",border:"1.5px solid #fed7aa",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",outline:"none",boxSizing:"border-box",background:"#fffbeb"}}/>
-                      </div>
-                    </div>
-                    <div style={{display:"flex",gap:8}}>
-                      <button onClick={()=>{
-                        if(!scopeForm.title.trim()) return;
-                        addAddendum2({...scopeForm,value:scopeForm.value?Number(scopeForm.value):0,dealId:selDeal,projectName:deal?.client||"",status:"Discovered",salesNotified:false,clientApproved:false,receiptType:"OR",withholding:false,discoveredBy:session?.name||""});
-                        setShowScopeForm(false);
-                        setScopeForm({title:"",desc:"",value:"",ceNo:""});
-                      }} style={{flex:1,background:"#c2410c",border:"none",borderRadius:8,padding:"8px",fontFamily:"inherit",fontSize:".82rem",color:"#fff",cursor:"pointer",fontWeight:700}}>✓ Log Scope Change</button>
-                      <button onClick={()=>setShowScopeForm(false)} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"8px 14px",fontFamily:"inherit",fontSize:".82rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>Cancel</button>
-                    </div>
-                  </div>
-                )}
+                {/* Scope changes are logged by Sales as a linked deal
+                    (+ Add New Deal -> Link to Parent Deal), not from the project
+                    card, so there is no "Log Scope Change" form here. */}
               </div>
 
               {/* ── Project Team ── */}
@@ -26454,7 +26241,11 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 )}
               </div>
 
-              {/* ── Scope Changes ── */}
+              {/* ── Scope Changes (Total Contract roll-up) ──
+                  Finance-facing: shows Initial + Addendums = Total. Hidden from
+                  Operations/PM/Design — they maintain the single project card and
+                  don't need the contract total; scope changes are Sales-owned. */}
+              {!["Operations","ProjectMover","Design"].includes(role)&&(
               <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:projAddenda.length>0?10:0}}>
                   <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>⚠️ Scope Changes{projAddenda.length>0&&<span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:400,marginLeft:5}}>({projAddenda.length})</span>}</div>
@@ -26475,6 +26266,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 })}
                 {projAddenda.length>3&&<div style={{fontSize:".72rem",color:"#94a3b8",marginTop:4}}>+{projAddenda.length-3} more — see Scope Changes page</div>}
               </div>
+              )}
 
 
               {/* ── Finance Snapshot ── */}
