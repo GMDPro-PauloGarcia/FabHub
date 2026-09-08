@@ -1567,8 +1567,8 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
     <Modal open={open} onClose={onClose} title={editId?"Edit Deal":"Add New Deal"} wide key={formKey}>
 
       {/* Contract breakdown (original + addenda) — shown when this deal has change orders */}
-      {editId&&(addenda||[]).some(a=>a.dealId===editId&&a.status!=="Rejected")&&(
-        <div style={{marginBottom:16}}><ContractBreakdown deal={deals.find(d=>d.id===editId)} addenda={addenda}/></div>
+      {editId&&((addenda||[]).some(a=>a.dealId===editId&&a.status!=="Rejected")||(deals||[]).some(d=>d.parentDealId===editId&&!isLostStage(d.stage)))&&(
+        <div style={{marginBottom:16}}><ContractBreakdown deal={deals.find(d=>d.id===editId)} addenda={addenda} deals={deals}/></div>
       )}
 
       {/* ── SECTION 1: DEAL ESSENTIALS ─────────────────────────────────── */}
@@ -2620,24 +2620,25 @@ function AddendaPageContent({role,wonDeals,deals,jos,session,addenda,upAddenda,u
   const setScopeRow=(i,ch)=>setScopeItems(r=>r.map((it,j)=>j===i?{...it,...ch}:it));
   const delScopeRow=(i)=>setScopeItems(r=>r.filter((_,j)=>j!==i));
 
-  // Unconverted linked child deals are change orders in waiting: surface them in
-  // the log alongside real addenda so it's a complete ledger of every change
-  // order — pending or approved. Converted children are DELETED on conversion
-  // (see convertChildToCO → delDeal), so there is no double-count; the only
-  // children still present are the not-yet-converted ones. They're normalized
-  // into an addendum-like shape and flagged _pendingChild so they render as
-  // "not converted" rather than posing as approved COs.
-  const childEntries=(deals||[]).filter(d=>d.parentDealId).map(d=>{
+  // Linked child deals ARE the addendums (parentDealId set). They stay their own
+  // live deals — created by Sales via "+ Add New Deal → Link to Parent Deal",
+  // awarded and billed on their own — and roll into the parent's Total Contract
+  // as a display line. Surface them here alongside legacy CO records so the log
+  // is a complete ledger of every change order. A child in a won stage is an
+  // approved addendum; otherwise it reflects its pipeline stage. They're
+  // read-only in this log (managed from the Pipeline), flagged _linkedDeal.
+  const childEntries=(deals||[]).filter(d=>d.parentDealId&&!isLostStage(d.stage)).map(d=>{
     const par=(deals||[]).find(p=>p.id===d.parentDealId);
+    const won=WON_STAGES.includes(d.stage);
     return{
       id:d.id,dealId:d.parentDealId,
-      title:d.contact||d.client||"Linked deal",
-      description:d.notes||"Linked deal — not yet converted to a change order.",
+      title:d.contact||d.client||"Addendum",
+      description:d.notes||"Addendum — linked deal with its own billing.",
       kind:"Additive",value:Math.abs(Number(d.value)||0),
-      status:"Linked — not converted",
+      status:won?"Approved":(d.stage||"In pipeline"),
       discoveredBy:d.salesOwner||"",salesOwner:d.salesOwner||"",
       subAccount:(d.client&&par&&d.client!==par.client)?d.client:"",
-      ceNo:d.ceNo||"",_pendingChild:true,
+      ceNo:d.ceNo||"",_linkedDeal:true,_won:won,
     };
   });
   const allEntries=[...addenda,...childEntries];
@@ -2693,10 +2694,10 @@ function AddendaPageContent({role,wonDeals,deals,jos,session,addenda,upAddenda,u
                           {a.description&&<div style={{fontSize:".75rem",color:"#64748b",marginTop:2,lineHeight:1.4}}>{a.description}</div>}
                         </div>
                         <div style={{display:"flex",alignItems:"center",gap:6,marginLeft:8,flexShrink:0}}>
-                          {!a._pendingChild&&canCreate&&onOpenCoBoq&&<button onClick={()=>onOpenCoBoq(a.id)} title="Build this change order's BOQ (sections, rate card, markup)" style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:6,padding:"3px 9px",fontSize:".66rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>🧮 BOQ{(a.coBoqData?.items?.length)?` (${a.coBoqData.items.length})`:""}</button>}
-                          {!a._pendingChild&&!canCreate&&onOpenCoBoq&&(a.coBoqData?.items?.length)>0&&<button onClick={()=>onOpenCoBoq(a.id,true)} title="View & print this change order's BOQ to send to the client" style={{background:"#f5f3ff",border:"1.5px solid #ddd6fe",borderRadius:6,padding:"3px 9px",fontSize:".66rem",fontWeight:700,color:"#7c3aed",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>📄 Print BOQ</button>}
-                          {a._pendingChild&&<span title="This is a linked child deal in the pipeline. Convert it to a Change Order (⇄ CO) to roll its scope and value into the parent project." style={{fontSize:".62rem",fontWeight:700,color:"#b45309",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:6,padding:"2px 7px",whiteSpace:"nowrap"}}>⇄ needs conversion</span>}
-                          {canApprove&&!a._pendingChild
+                          {!a._linkedDeal&&canCreate&&onOpenCoBoq&&<button onClick={()=>onOpenCoBoq(a.id)} title="Build this change order's BOQ (sections, rate card, markup)" style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:6,padding:"3px 9px",fontSize:".66rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>🧮 BOQ{(a.coBoqData?.items?.length)?` (${a.coBoqData.items.length})`:""}</button>}
+                          {!a._linkedDeal&&!canCreate&&onOpenCoBoq&&(a.coBoqData?.items?.length)>0&&<button onClick={()=>onOpenCoBoq(a.id,true)} title="View & print this change order's BOQ to send to the client" style={{background:"#f5f3ff",border:"1.5px solid #ddd6fe",borderRadius:6,padding:"3px 9px",fontSize:".66rem",fontWeight:700,color:"#7c3aed",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>📄 Print BOQ</button>}
+                          {a._linkedDeal&&<span title="This addendum is a linked deal, managed from the Sales Pipeline. It has its own billing and rolls into the parent's Total Contract when awarded." style={{fontSize:".62rem",fontWeight:700,color:"#0369a1",background:"#f0f9ff",border:"1px solid #bae6fd",borderRadius:6,padding:"2px 7px",whiteSpace:"nowrap"}}>🔗 linked deal</span>}
+                          {canApprove&&!a._linkedDeal
                             ? <select value={a.status} title="Advance this change order's status. Set to Approved once the client agrees — it rolls into the contract and creates its billing claim."
                                 onChange={e=>{const v=e.target.value;updateAddendum(a.id,v==="Approved"?{status:v,clientApproved:true}:{status:v});}}
                                 style={{fontSize:".68rem",fontWeight:700,color:statusClr[a.status]||"#64748b",background:(statusClr[a.status]||"#64748b")+"18",border:`1px solid ${(statusClr[a.status]||"#64748b")}55`,borderRadius:20,padding:"2px 8px",fontFamily:"inherit",cursor:"pointer",whiteSpace:"nowrap"}}>
@@ -2705,7 +2706,7 @@ function AddendaPageContent({role,wonDeals,deals,jos,session,addenda,upAddenda,u
                             : <span style={{fontSize:".68rem",fontWeight:700,color:statusClr[a.status]||"#64748b",background:(statusClr[a.status]||"#64748b")+"18",borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap"}}>{a.status}</span>}
                         </div>
                       </div>
-                      {Number(a.value)>0&&<div style={{fontSize:".75rem",color:a.kind==="Deductive"?"#dc2626":"#059669",marginTop:3,fontWeight:600}}>{fmtSigned(coSignedValue(a))} {a._pendingChild?"pending conversion":a.kind==="Deductive"?"deducted":"additional"}{Array.isArray(a.scopeItems)&&a.scopeItems.length?` · ${a.scopeItems.length} BOQ item${a.scopeItems.length>1?"s":""}`:""}</div>}
+                      {Number(a.value)>0&&<div style={{fontSize:".75rem",color:a.kind==="Deductive"?"#dc2626":"#059669",marginTop:3,fontWeight:600}}>{fmtSigned(coSignedValue(a))} {a._linkedDeal?(a._won?"additional (own billing)":"additional — pending award"):a.kind==="Deductive"?"deducted":"additional"}{Array.isArray(a.scopeItems)&&a.scopeItems.length?` · ${a.scopeItems.length} BOQ item${a.scopeItems.length>1?"s":""}`:""}</div>}
                     </div>
                   ))}
                 </div>
@@ -3885,11 +3886,6 @@ export default function App(){
   // role; the server-side RLS in migration 033 mirrors this exact allow-list.
   const DEAL_DELETE_USERS=["jena","wyn","paolo"];
   const canDeleteDeal=role==="Manager"||DEAL_DELETE_USERS.includes(session?.username);
-  // Converting a linked child deal into a Change Order is a Sales action, not an
-  // Ops/PM one: allow anyone who can delete deals, plus the Sales / SalesOpsAdmin
-  // AE who owns the child deal, to convert (and approve) their own addendum so it
-  // is recognized as sales without waiting on another team.
-  const canConvertChild=(d)=>canDeleteDeal||((role==="Sales"||role==="SalesOpsAdmin")&&!!d?.salesOwner&&d.salesOwner===session?.name);
   const[deals,    setDeals]   = useState([]);
   const[projs,    setProjs]   = useState({});
   const[exps,     setExps]    = useState([]);
@@ -6755,8 +6751,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const projsKeyCount=Object.keys(projs).length;
   useEffect(()=>{
     // Standby PO umbrellas have no production of their own (their jobs do),
-    // so don't spin up an empty ₱0 project shell for them.
-    const missing=wonDeals.filter(d=>!projs[d.id]&&!d.standbyPO);
+    // so don't spin up an empty ₱0 project shell for them. Child/addendum deals
+    // (parentDealId) never get their own project card either — Ops maintains the
+    // single parent card even when the project has addendums.
+    const missing=wonDeals.filter(d=>!projs[d.id]&&!d.standbyPO&&!d.parentDealId);
     if(missing.length>0){
       const patch={};
       missing.forEach(d=>{patch[d.id]=emptyProject();});
@@ -7211,7 +7209,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     };
     // Only trigger award logic for NEW deals entering won stages — never on edit
     const wasAlreadyAwarded = editDeal && WON_STAGES.includes(deals.find(d=>d.id===editDeal)?.stage);
-    if(WON_STAGES.includes(data.stage) && !editDeal) upProjs(ps=>ps[rec.id]?ps:{...ps,[rec.id]:emptyProject()});
+    // Child/addendum deals (parentDealId set) never get their own project card —
+    // Ops keeps the single parent project card. Only parent deals do.
+    if(WON_STAGES.includes(data.stage) && !editDeal && !rec.parentDealId) upProjs(ps=>ps[rec.id]?ps:{...ps,[rec.id]:emptyProject()});
     upDeals(ds=>editDeal?ds.map(d=>d.id===editDeal?rec:d):[...ds,rec]);
     // Await the deal's own write before firing the DRF auto-create below, which
     // references rec.id by foreign key — firing it unawaited let the design
@@ -7318,10 +7318,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             `\nAwarded by: ${session?.name||"Manager"}`
           );
           logActivity(rec.id,"Project Awarded",`${rec.client} moved to awarded stage by ${session?.name}`,session?.name);
-          // A linked child deal (addendum) awarded via the edit modal is auto-
-          // converted into an approved Change Order on its parent — same behavior
-          // as the pipeline quick-stage control — so it never lingers as a deal.
-          if(rec.parentDealId) convertChildToCO(rec,{silent:true,approve:true,system:true});
+          // A linked child deal (addendum) stays its own deal — it is awarded and
+          // billed on its own, and rolls into the parent's Total Contract as a
+          // display-only addendum line (see ContractBreakdown). It is never
+          // converted or retired, and never spawns a second project card.
         }
         // Fire notification when stage moves back out of awarded (e.g. cancelled)
         if(!WON_STAGES.includes(rec.stage)&&WON_STAGES.includes(prevStage)&&rec.stage==="Cancelled"){
@@ -7415,89 +7415,24 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     }
   };
 
-  // Convert a linked "child" deal (parentDealId set) into a real Change Order on
-  // its parent, then retire the child so its value isn't double-counted. Child
-  // deals have no additive/deductive concept, so we default to Additive; the CO
-  // enters as "Discovered" (the normal entry point) for Ops to approve on the
-  // Scope Changes page, at which point it rolls into the parent contract.
-  const convertChildToCO=(child,opts={})=>{
-    // approve — immediately push the new CO to "Approved" so it rolls into the
-    //   parent contract and is credited as sales (award date stamped to today).
-    // system — internal/automated call (e.g. auto-convert on award); skips the
-    //   interactive permission gate since the triggering action was itself gated.
-    const {silent=false,approve=false,system=false}=opts;
-    if(!child?.parentDealId){if(!silent)toastEmit("This deal has no parent to attach a change order to.","error");return false;}
-    if(!system&&!canConvertChild(child)){if(!silent)toastEmit("You don't have permission to convert this deal.","error");return false;}
-    const parent=deals.find(d=>d.id===child.parentDealId);
-    if(!parent){if(!silent)toastEmit("Parent project not found.","error");return false;}
-    const title=(child.contact||child.product||child.client||"Scope Change").trim();
-    // Carry any BOQ line items over as the change order's scope items so approval
-    // flows them into the parent BOQ; otherwise fall back to a single lump value.
-    // The child's FULL BOQ (sections, markup, VAT…) is carried as coBoqData so the
-    // change order opens in the BOQ Builder exactly as it was built on the deal.
-    const boqItems=Array.isArray(child.boqData?.items)?child.boqData.items:[];
-    const scopeItems=boqItems.filter(it=>(it.description||"").trim()).map(it=>({description:(it.description||"").trim(),qty:Number(it.qty)||0,unit:it.unit||"lot",rate:Number(it.unitCost!=null?it.unitCost:it.rate)||0}));
-    const rec={
-      id:"add"+Date.now()+Math.floor(Math.random()*1000),dealId:parent.id,
-      title,description:(child.notes||`Converted from linked deal "${title}".`).trim(),
-      kind:"Additive",value:Math.abs(Number(child.value)||0),scopeItems,
-      coBoqData:child.boqData||null,
-      ceNo:parent.ceNo||child.ceNo||"",
-      receiptType:parent.receiptType||"OR",
-      withholding:parent.withholding||false,
-      // Sales attribution: credit the child's AE; the child's own brand becomes
-      // the sub-account when it differs from the parent's client. For an umbrella
-      // sub-project the child deal is the source of truth — the CO must inherit
-      // the child's own award date (project-card award date, else its intake
-      // date), NOT today, so it books into the month it was actually awarded.
-      // Only if the child carries no date at all does approval fall back to today.
-      salesOwner:child.salesOwner||parent.salesOwner||"",
-      awardedDate:pcards[child.id]?.awardDate||child.dateAcquired||null,
-      subAccount:(child.client&&child.client!==parent.client)?child.client:"",
-      status:"Discovered",salesNotified:true,
-      discoveredBy:session?.name||role,
-      convertedFromDealId:child.id,
-    };
-    upAddenda(as=>[...as,rec]);
-    if(isSupabaseReady()) sbSyncOne("addenda",rec,toSbAddendum);
-    // Optionally approve right away — updateAddendum stamps the award date, rolls
-    // the value into the parent contract and flows the scope into the BOQ, so the
-    // CO is recognized as sales immediately instead of sitting as "Discovered".
-    if(approve) updateAddendum(rec.id,{status:"Approved"});
-    logActivity(parent.id,"Change Order Created",`${session?.name||role} converted linked deal "${title}" (₱${Number(rec.value).toLocaleString("en-PH")}) into an additive change order${approve?" and approved it — now credited as sales.":" — pending approval."}`);
-    // Retire the now-redundant child deal (cascade handled by delDeal).
-    delDeal(child.id);
-    if(!silent)toastEmit(approve?"Converted & approved — now recognized as sales.":"Converted to Change Order — review & approve on Scope Changes.","success");
-    return true;
-  };
-  // Bulk: convert every linked child deal of a parent into a change order in one
-  // action. Keeps the per-deal ⇄ CO button; this just fans it out across all
-  // children of the given parent and reports a single summary toast.
-  const convertAllChildrenToCO=(parent)=>{
-    if(!parent){toastEmit("Parent project not found.","error");return;}
-    if(!canDeleteDeal){toastEmit("You don't have permission to convert these deals.","error");return;}
-    const children=deals.filter(d=>d.parentDealId===parent.id);
-    if(!children.length){toastEmit("No linked deals to convert on this project.","info");return;}
-    let n=0;
-    children.forEach(c=>{if(convertChildToCO(c,{silent:true}))n++;});
-    toastEmit(`Converted ${n} linked deal${n===1?"":"s"} on ${parent.client||"this project"} into change orders — review & approve on Scope Changes.`,"success");
-  };
+  // NOTE: Change orders are modeled as linked child deals (parentDealId set) that
+  // stay their own live deals — created by Sales via "+ Add New Deal → Link to
+  // Parent Deal", awarded and billed on their own. They are NEVER converted into
+  // a CO record or retired, and never spawn a second project card; they roll into
+  // the parent's Total Contract as a display-only line (see ContractBreakdown).
+  // The old convertChildToCO / convertAllChildrenToCO helpers were removed with
+  // that model change.
 
   const updatePayment=(id,key,val)=>upDeals(ds=>ds.map(d=>d.id===id?{...d,[key]:val}:d));
 
   const stageQ=(id,st)=>{
-    // A linked child deal (addendum) that reaches an awarded stage should not sit
-    // in the pipeline: auto-convert it into an approved Change Order on its parent
-    // so it is recognized as sales in the month it was awarded, then retire it.
+    // A linked child deal (addendum) stays its own live deal — it is NEVER
+    // converted or retired. It counts as sales/billing on its own, but it must
+    // NOT spawn a second project card: Operations maintains the ONE parent
+    // project card even when the project has addendums, so only parent deals
+    // (no parentDealId) get a projs entry on award.
     const staging=deals.find(x=>x.id===id);
-    if(staging?.parentDealId&&WON_STAGES.includes(st)){
-      if(convertChildToCO(staging,{silent:true,approve:true,system:true})){
-        toastEmit(`"${staging.contact||staging.client}" awarded — auto-converted into an approved Change Order on its parent project.`,"success");
-        return;
-      }
-      // Conversion failed (e.g. missing parent) — fall through to a normal stage move.
-    }
-    if(WON_STAGES.includes(st)) upProjs(ps=>ps[id]?ps:{...ps,[id]:emptyProject()});
+    if(WON_STAGES.includes(st)&&!staging?.parentDealId) upProjs(ps=>ps[id]?ps:{...ps,[id]:emptyProject()});
     if(st==="14 · Completed"){
       const d=deals.find(x=>x.id===id);
       // Standby PO umbrellas have no contract value/payments of their own.
@@ -7618,8 +7553,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       if(awardSynced) toastUpdate(savingToastId,`✅ ${awardModal.client} awarded and saved to server`,"success",3000);
       else toastUpdate(savingToastId,`⚠️ ${awardModal.client} awarded on this device only — didn't reach the server yet. Keep this browser/tab around so it can sync.`,"warning",12000);
     }
-    // Create project record
-    if(!projs[id]) upProjs(ps=>ps[id]?ps:{...ps,[id]:emptyProject()});
+    // Create project record — but never for a child/addendum deal, which shares
+    // its parent's single project card.
+    if(!projs[id]&&!awardedDeal.parentDealId) upProjs(ps=>ps[id]?ps:{...ps,[id]:emptyProject()});
     // Build PM list
     const pms=[form.pm1,form.pm2,form.pm3].filter(Boolean);
     const pmDisplay=pms.join(", ")||"TBA";
@@ -8400,7 +8336,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // scope belongs to the parent project. Steer it to the change-order flow.
     if(d?.parentDealId){
       const par=deals.find(x=>x.id===d.parentDealId);
-      toastEmit(`"${d.contact||d.client}" is an addendum of ${par?.client||"another project"}${par?.ceNo?` (${par.ceNo})`:""}. Don't issue a Job Order for it — convert it to a Change Order (⇄ CO) so the scope rolls into the parent project.`,"error",9000);
+      toastEmit(`"${d.contact||d.client}" is an addendum of ${par?.client||"another project"}${par?.ceNo?` (${par.ceNo})`:""}. Don't issue a separate Job Order for it — the added scope runs under the parent project's Job Order.`,"error",9000);
       return;
     }
     const matT=(p?.materials||[]).reduce((s,m)=>s+m.cost,0);
@@ -8487,7 +8423,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     ProjectMover:[
       {group:"Overview", items:[{id:"home",l:"My Projects"},{id:"calendar",l:"Calendar"}]},
-      {group:"Updates",  items:[{id:"pmupdates",l:"PM Updates"},{id:"addenda",l:"Scope Changes"}]},
+      // Scope changes are Sales-owned (a linked deal). A PM who spots one reports
+      // it via PM Updates; Sales picks it up and logs the linked addendum.
+      {group:"Updates",  items:[{id:"pmupdates",l:"PM Updates"}]},
       {group:"Work",     items:[{id:"projects",l:"Project Cards"}]},
     ],
     Warehouse:[
@@ -12906,9 +12844,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       <td style={{padding:cpA,verticalAlign:"middle",display:"flex",gap:4,alignItems:"center"}}>
                         <button onClick={e=>{e.stopPropagation();openEditDeal(d);}} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
                         {(role==="Manager"||role==="QS"||role==="Sales"||role==="SalesOpsAdmin")&&<button onClick={e=>{e.stopPropagation();setBoqCoId(null);setBoqStandaloneId(null);setBoqDealId(d.id);setPage("boq");}} title={isChild?"Open BOQ Builder for this addendum":"Open BOQ Builder for this project"} style={{background:"#0ea5e9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>🧮</button>}
-                        <button onClick={e=>{e.stopPropagation();setJumpDeal(d.id);setPage("projects");}} title="Open Project Card" style={{background:"#eff6ff",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#2563eb",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>📋</button>
-                        {isChild&&canConvertChild(d)&&<button onClick={async e=>{e.stopPropagation();if((await uiConfirm(`Convert "${d.contact||d.client}" into an approved additive Change Order on the parent project and retire this linked deal? It will be credited as sales for this month.`)))convertChildToCO(d,{approve:true});}} title="Convert this linked deal into an approved Change Order (credited as sales) and retire it" style={{background:"#fef3c7",border:"1px solid #f59e0b",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#92400e",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>⇄ CO</button>}
-                        {!isChild&&canDeleteDeal&&(()=>{const kids=deals.filter(x=>x.parentDealId===d.id);if(!kids.length)return null;return<button onClick={async e=>{e.stopPropagation();if((await uiConfirm(`Convert all ${kids.length} linked deal${kids.length===1?"":"s"} on "${d.client||d.contact}" into additive Change Orders and retire them?`)))convertAllChildrenToCO(d);}} title={`Convert all ${kids.length} linked deal(s) into Change Orders`} style={{background:"#fef3c7",border:"1px solid #f59e0b",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#92400e",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>⇄ All→CO ({kids.length})</button>;})()}
+                        <button onClick={e=>{e.stopPropagation();setJumpDeal(isChild?(d.parentDealId||d.id):d.id);setPage("projects");}} title={isChild?"Open the parent project card":"Open Project Card"} style={{background:"#eff6ff",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#2563eb",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>📋</button>
                       </td>
                     </tr>
                   );
@@ -13199,7 +13135,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {dupPrompt&&(
         <div onClick={()=>{setDupPrompt(null);setDupScopeTarget(null);setDupScopeForm({title:"",desc:"",value:"",});}} style={{position:"fixed",inset:0,background:"rgba(15,23,42,.65)",zIndex:1200,display:"flex",alignItems:isMobile?"flex-end":"center",justifyContent:"center",padding:isMobile?0:20}}>
           <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:isMobile?"18px 18px 0 0":16,width:"100%",maxWidth:isMobile?undefined:500,padding:isMobile?"20px 18px 28px":"24px 28px",boxShadow:"0 24px 64px rgba(0,0,0,.25)",maxHeight:"92vh",overflowY:"auto"}}>
-            {!dupScopeTarget?(
+            {(
               <>
                 <div style={{fontWeight:800,color:"#0f172a",fontSize:"1.05rem",marginBottom:6}}>⚠️ Looks like a duplicate</div>
                 <div style={{fontSize:".8rem",color:"#64748b",marginBottom:16}}>We found a similar project already in the pipeline for <strong>{dupPrompt.newData.client}</strong>. Is this a brand-new separate project, or a scope addition to an existing one?</div>
@@ -13208,48 +13144,19 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{m.client}{m.product?` — ${m.product}`:""}</div>
                     <div style={{fontSize:".74rem",color:"#64748b",marginTop:2}}>{[m.ceNo,m.stage].filter(Boolean).join(" · ")}</div>
                     <button onClick={()=>{
-                      if(HAS_ADDENDA_PAGE.includes(role)){
-                        setDupPrompt(null);setDupScopeTarget(null);
-                        if(role==="ProjectMover"){setPage("addenda");}
-                        else{setSelProj(m.id);setOpsTab("addenda");setPage("projects");}
-                      } else {
-                        // Roles without an addenda page — expand inline form here
-                        setDupScopeTarget({dealId:m.id,dealName:m.client+(m.product?` — ${m.product}`:"")});
-                        setDupScopeForm({title:dupPrompt.newData.product||dupPrompt.newData.contact||"",desc:"",value:String(dupPrompt.newData.value||"")});
-                      }
-                    }} style={{marginTop:8,background:"#fef3c7",border:"1.5px solid #fbbf24",borderRadius:7,padding:"6px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:"#92400e",cursor:"pointer"}}>➕ Add as Scope Change to this project</button>
+                      // A scope change is a linked child deal: save this new deal
+                      // tagged to the existing project (parentDealId). It keeps its
+                      // own billing and rolls into that project's Total Contract.
+                      const d={...dupPrompt.newData,parentDealId:m.id};
+                      setDupPrompt(null);setDupScopeTarget(null);
+                      saveDeal(d,true);
+                      toastEmit&&toastEmit(`Saved as a linked addendum of ${m.client} — it has its own billing and rolls into that project's Total Contract.`,"success",7000);
+                    }} style={{marginTop:8,background:"#fef3c7",border:"1.5px solid #fbbf24",borderRadius:7,padding:"6px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:"#92400e",cursor:"pointer"}}>🔗 Add as a linked addendum of this project</button>
                   </div>
                 ))}
                 <div style={{display:"flex",gap:10,marginTop:16}}>
                   <button onClick={()=>{const d=dupPrompt.newData;setDupPrompt(null);saveDeal(d,true);}} style={{flex:1,background:"#1e293b",border:"none",borderRadius:9,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#fff",cursor:"pointer"}}>✅ Save as New Project</button>
                   <button onClick={()=>{setDupPrompt(null);setDupScopeTarget(null);}} style={{flex:1,background:"#f1f5f9",border:"none",borderRadius:9,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#64748b",cursor:"pointer"}}>↩ Cancel</button>
-                </div>
-              </>
-            ):(
-              <>
-                <div style={{fontWeight:800,color:"#0f172a",fontSize:"1.05rem",marginBottom:4}}>⚠️ Log Scope Change</div>
-                <div style={{fontSize:".78rem",color:"#64748b",marginBottom:14}}>Adding to: <strong>{dupScopeTarget.dealName}</strong></div>
-                <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                  <div>
-                    <div style={{fontSize:".72rem",fontWeight:700,color:"#92400e",marginBottom:3}}>Title <span style={{color:"#ef4444"}}>*</span></div>
-                    <input value={dupScopeForm.title} onChange={e=>setDupScopeForm(f=>({...f,title:e.target.value}))} placeholder="Scope change description" style={{width:"100%",border:"1.5px solid #fbbf24",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".84rem",outline:"none",boxSizing:"border-box",background:"#fffbeb"}}/>
-                  </div>
-                  <div>
-                    <div style={{fontSize:".72rem",fontWeight:700,color:"#92400e",marginBottom:3}}>Description</div>
-                    <textarea value={dupScopeForm.desc} onChange={e=>setDupScopeForm(f=>({...f,desc:e.target.value}))} rows={2} placeholder="What changed, why, impact…" style={{width:"100%",border:"1.5px solid #fed7aa",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",outline:"none",resize:"vertical",boxSizing:"border-box",background:"#fffbeb"}}/>
-                  </div>
-                  <div>
-                    <div style={{fontSize:".72rem",fontWeight:700,color:"#92400e",marginBottom:3}}>Value (₱)</div>
-                    <input type="number" value={dupScopeForm.value} onChange={e=>setDupScopeForm(f=>({...f,value:e.target.value}))} placeholder="e.g. 25000" style={{width:"100%",border:"1.5px solid #fed7aa",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",outline:"none",boxSizing:"border-box",background:"#fffbeb"}}/>
-                  </div>
-                </div>
-                <div style={{display:"flex",gap:10,marginTop:16}}>
-                  <button onClick={()=>{
-                    if(!dupScopeForm.title.trim()) return;
-                    addAddendum2({...dupScopeForm,value:dupScopeForm.value?Number(dupScopeForm.value):0,dealId:dupScopeTarget.dealId,projectName:dupScopeTarget.dealName,status:"Discovered",salesNotified:false,clientApproved:false,receiptType:"OR",withholding:false,discoveredBy:session?.name||""});
-                    setDupPrompt(null);setDupScopeTarget(null);setDupScopeForm({title:"",desc:"",value:""});
-                  }} style={{flex:1,background:"#c2410c",border:"none",borderRadius:9,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#fff",cursor:"pointer"}}>✓ Log Scope Change</button>
-                  <button onClick={()=>setDupScopeTarget(null)} style={{background:"#f1f5f9",border:"none",borderRadius:9,padding:"10px 16px",fontFamily:"inherit",fontWeight:600,fontSize:".85rem",color:"#64748b",cursor:"pointer"}}>← Back</button>
                 </div>
               </>
             )}
@@ -15606,7 +15513,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     if(rec._exists){
                       upDeals(ds=>ds.map(d=>d.id===rec._existingId?rec:d));
                       if(isSupabaseReady()) sbSyncOne("deals",rec,toSbDeal);
-                      if(WON_STAGES.includes(rec.stage)){
+                      if(WON_STAGES.includes(rec.stage)&&!rec.parentDealId){
                         upProjs(ps=>({...ps,[rec.id]:ps[rec.id]||emptyProject()}));
                         upPcards(ps=>({...ps,[rec.id]:ps[rec.id]||emptyProjectCard(rec.id,rec)}));
                       }
@@ -15614,7 +15521,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     } else {
                       upDeals(ds=>[...ds,rec]);
                       if(isSupabaseReady()) sbSyncOne("deals",rec,toSbDeal);
-                      if(WON_STAGES.includes(rec.stage)){
+                      if(WON_STAGES.includes(rec.stage)&&!rec.parentDealId){
                         upProjs(ps=>({...ps,[rec.id]:emptyProject()}));
                         upPcards(ps=>({...ps,[rec.id]:emptyProjectCard(rec.id,rec)}));
                         const newJo={
@@ -17032,17 +16939,34 @@ function OpsUpdateForm({selProj,selProjName,session,addPmUpdate,logActivity,open
 // so the original base is derived as (current value − rolled addenda) — correct
 // even after a reload, and never double-counting. Reused across Project Cards,
 // Billing, Sales, and Pipeline so every team sees the same numbers.
-function ContractBreakdown({deal,addenda,compact}){
+function ContractBreakdown({deal,addenda,deals,compact}){
   if(!deal) return null;
   const ROLLED=s=>["Approved","Billed","Collected"].includes(s);
   const peso=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:0});
-  const items=(addenda||[]).filter(a=>(a.dealId||a.projectId)===deal.id&&a.status!=="Rejected");
+  // Two kinds of addendum feed the breakdown:
+  //  1. Legacy CO records (addenda) — value was folded into deal.value via
+  //     rollDealContract, so the original base is (value − rolled COs).
+  //  2. Child deals (parentDealId set) — the current model. These are their OWN
+  //     deals and are NEVER rolled into the parent's value; they add on top.
+  //     A child in a won stage is an approved addendum; otherwise it's pending.
+  const coItems=(addenda||[]).filter(a=>(a.dealId||a.projectId)===deal.id&&a.status!=="Rejected");
+  const childItems=(deals||[]).filter(d=>d.parentDealId===deal.id&&!isLostStage(d.stage)).map(d=>({
+    id:d.id,title:d.contact||d.client||"Addendum",ceNo:d.ceNo||"",
+    value:Math.abs(Number(d.value)||0),
+    status:WON_STAGES.includes(d.stage)?"Approved":d.stage,
+    _child:true,_won:WON_STAGES.includes(d.stage),
+  }));
+  const items=[...coItems,...childItems];
   if(compact&&!items.length) return null;
-  const rolledSum=items.filter(a=>ROLLED(a.status)).reduce((s,a)=>s+(Number(a.value)||0),0);
-  const current=Number(deal.value)||0;
-  const original=Math.round((current-rolledSum)*100)/100;
-  const pendingSum=items.filter(a=>!ROLLED(a.status)).reduce((s,a)=>s+(Number(a.value)||0),0);
-  const approvedCount=items.filter(a=>ROLLED(a.status)).length;
+  // Legacy COs are already inside deal.value; child deals are additive on top.
+  const rolledCoSum=coItems.filter(a=>ROLLED(a.status)).reduce((s,a)=>s+(Number(a.value)||0),0);
+  const childApprovedSum=childItems.filter(a=>a._won).reduce((s,a)=>s+(Number(a.value)||0),0);
+  const dealVal=Number(deal.value)||0;
+  const original=Math.round((dealVal-rolledCoSum)*100)/100;
+  const current=Math.round((dealVal+childApprovedSum)*100)/100;
+  const isRolled=a=>a._child?a._won:ROLLED(a.status);
+  const pendingSum=items.filter(a=>!isRolled(a)).reduce((s,a)=>s+(Number(a.value)||0),0);
+  const approvedCount=items.filter(a=>isRolled(a)).length;
   const row=(key,label,sub,amt,clr,strong)=>(
     <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:10,padding:"5px 0",borderTop:strong?"1.5px solid #e2e8f0":"1px solid #f1f5f9"}}>
       <div style={{minWidth:0}}>
@@ -17055,9 +16979,9 @@ function ContractBreakdown({deal,addenda,compact}){
   return(
     <div style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 14px"}}>
       <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",fontWeight:700,marginBottom:2}}>Contract Breakdown</div>
-      {row("orig","Original Contract"+(deal.ceNo?" · "+deal.ceNo:""),null,peso(original),"#0f172a",false)}
-      {items.map(a=>row(a.id,(ROLLED(a.status)?"":"⏳ ")+(a.title||"Addendum"),(a.ceNo?a.ceNo+" · ":"")+(a.status||"")+(ROLLED(a.status)?"":" — not yet in contract"),peso(Number(a.value)||0),ROLLED(a.status)?"#059669":"#d97706",false))}
-      {row("cur","Current Contract",rolledSum>0?`original + ${approvedCount} approved addend${approvedCount===1?"um":"a"}`:null,peso(current),"#10b981",true)}
+      {row("orig","Initial Contract"+(deal.ceNo?" · "+deal.ceNo:""),null,peso(original),"#0f172a",false)}
+      {items.map(a=>row(a.id,(isRolled(a)?"":"⏳ ")+(a._child?"Addendum · ":"")+(a.title||"Addendum"),(a.ceNo?a.ceNo+" · ":"")+(a.status||"")+(isRolled(a)?"":" — not yet in contract"),peso(Number(a.value)||0),isRolled(a)?"#059669":"#d97706",false))}
+      {row("cur","Total Contract",approvedCount>0?`initial + ${approvedCount} approved addend${approvedCount===1?"um":"a"}`:null,peso(current),"#10b981",true)}
       {pendingSum>0&&row("pot","If pending approved","+"+peso(pendingSum)+" awaiting client approval",peso(current+pendingSum),"#d97706",false)}
     </div>
   );
@@ -17150,7 +17074,10 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
     </Wrap>
   );
 
-  const tabs=[["progress","📊 Progress"],["team","👥 Team"],["materials","📦 Materials"],["swatches","🛒 Swatchboard"],["costs","💰 Costs"],["updates","📝 PM Updates"],["addenda","⚠️ Addenda"],["closeout","✅ Close-Out"]];
+  // Scope changes / addenda are owned by Sales (a linked child deal via
+  // "+ Add New Deal -> Link to Parent Deal"), not Operations — so Ops has no
+  // Addenda tab. The single parent project card carries the added scope.
+  const tabs=[["progress","📊 Progress"],["team","👥 Team"],["materials","📦 Materials"],["swatches","🛒 Swatchboard"],["costs","💰 Costs"],["updates","📝 PM Updates"],["closeout","✅ Close-Out"]];
   return(
     <Wrap>
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
@@ -17460,163 +17387,6 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
         </div>
       )}
 
-      {/* ADDENDA TAB — full workflow */}
-      {opsTab==="addenda"&&(()=>{
-        // Addenda are tagged to their project via dealId (see addAddendum2 below + Project HQ),
-        // so filter by dealId — not projectId, which addendum records never carry.
-        const projAddenda=(addenda||[]).filter(a=>a.dealId===selProj);
-        const[showAF,setShowAF]=useState(false);
-        const[af,setAf]=useState({title:"",desc:"",value:"",ceNo:"",receiptType:"OR",withholding:false,discoveredBy:session?.name||"",notes:""});
-        const faf=(k,v)=>setAf(p=>({...p,[k]:v}));
-        return(
-          <div>
-            {/* Header summary — original contract + addenda with the correct revised total */}
-            <div style={{marginBottom:14}}>
-              <ContractBreakdown deal={projDeal} addenda={addenda}/>
-            </div>
-
-            <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:".8rem",color:"#92400e"}}>
-              ⚠️ <strong>Addendum Protocol:</strong> Operations logs scope changes → Sales is notified to coordinate with client → Client approves → Separate billing created. Each addendum may have its own CE number depending on size.
-            </div>
-
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-              <div style={{fontWeight:700,color:"#0f172a",fontSize:".9rem"}}>{projAddenda.length} Addendum{projAddenda.length!==1?"a":""}</div>
-              <Btn small onClick={()=>setShowAF(s=>!s)}>+ Log Scope Change</Btn>
-            </div>
-
-            {/* Add form */}
-            {showAF&&(
-              <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:12,padding:16,marginBottom:14}}>
-                <div style={{fontWeight:700,color:"#92400e",marginBottom:12}}>New Scope Change / Addendum</div>
-                <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:12}}>
-                  <div style={{gridColumn:"1/-1"}}>
-                    <Fld label="Title / Scope Change" required>
-                      <Inp value={af.title} onChange={e=>faf("title",e.target.value)} placeholder="e.g. Additional glass shelving Unit 3B — client requested during site visit"/>
-                    </Fld>
-                  </div>
-                  <div style={{gridColumn:"1/-1"}}>
-                    <Fld label="Description / Impact">
-                      <Inp rows={3} value={af.desc} onChange={e=>faf("desc",e.target.value)} placeholder="What changed, why it changed, impact on timeline and cost…"/>
-                    </Fld>
-                  </div>
-                  <Fld label="Addendum Value (₱)" hint="Estimated cost of this scope change">
-                    <Inp type="number" value={af.value} onChange={e=>faf("value",e.target.value)} placeholder="0.00"/>
-                  </Fld>
-                  <Fld label="CE Number" hint="Assign if large enough to warrant separate CE">
-                    <Inp value={af.ceNo} onChange={e=>faf("ceNo",e.target.value)} placeholder="e.g. CE-2026-001-A (optional)"/>
-                  </Fld>
-                  <Fld label="Receipt Type">
-                    <Sel value={af.receiptType} onChange={e=>faf("receiptType",e.target.value)}>
-                      <option value="OR">🧾 OR (with VAT)</option>
-                      <option value="AR">📄 AR (no VAT)</option>
-                    </Sel>
-                  </Fld>
-                  <Fld label="Withholding Tax (EWT 2%)">
-                    <Sel value={af.withholding?"YES":"NO"} onChange={e=>faf("withholding",e.target.value==="YES")}>
-                      <option value="NO">No withholding</option>
-                      <option value="YES">Yes — client withholds 2%</option>
-                    </Sel>
-                  </Fld>
-                  <Fld label="Discovered By">
-                    <Inp value={af.discoveredBy} onChange={e=>faf("discoveredBy",e.target.value)} placeholder={session?.name||""}/>
-                  </Fld>
-                  <div style={{gridColumn:"1/-1"}}>
-                    <Fld label="Notes">
-                      <Inp rows={2} value={af.notes} onChange={e=>faf("notes",e.target.value)} placeholder="Supporting details, client conversation notes, photos in Drive…"/>
-                    </Fld>
-                  </div>
-                </div>
-                <div style={{display:"flex",gap:8,marginTop:12}}>
-                  <Btn onClick={()=>{
-                    if(!af.title) return;
-                    addAddendum2({...af,dealId:selProj,projectName:projDeal?.client||"",status:"Discovered",salesNotified:false,clientApproved:false});
-                    setAf({title:"",desc:"",value:"",ceNo:"",receiptType:"OR",withholding:false,discoveredBy:session?.name||"",notes:""});
-                    setShowAF(false);
-                  }}>Log Scope Change</Btn>
-                  <Btn variant="ghost" onClick={()=>setShowAF(false)}>Cancel</Btn>
-                </div>
-              </div>
-            )}
-
-            {projAddenda.length===0&&!showAF&&<EmptyState icon="📋" msg="No addenda logged. When Operations discovers a scope change, log it here — Sales gets notified automatically."/>}
-
-            {/* Addenda list */}
-            <div style={{display:"flex",flexDirection:"column",gap:8}}>
-              {projAddenda.map(a=>{
-                const tx=calcTax(a.value||0,a.receiptType||"OR",a.withholding||false);
-                const statusClr=ADDENDUM_STATUS_CLR[a.status]||"#94a3b8";return(
-                  <div key={a.id} style={{background:"#fff",borderRadius:12,border:`1.5px solid ${statusClr}44`,padding:"14px 18px"}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
-                      <div style={{flex:1}}>
-                        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:6}}>
-                          <span style={{fontWeight:700,color:"#0f172a"}}>{a.title}</span>
-                          <span style={{fontSize:".7rem",background:statusClr+"22",color:statusClr,border:`1px solid ${statusClr}55`,borderRadius:20,padding:"1px 9px",fontWeight:700}}>{a.status}</span>
-                          {a.ceNo&&<span style={{fontSize:".7rem",color:"#64748b",background:"#f1f5f9",padding:"1px 8px",borderRadius:5}}>{a.ceNo}</span>}
-                        </div>
-                        {a.desc&&<div style={{fontSize:".8rem",color:"#475569",lineHeight:1.6,marginBottom:8}}>{a.desc}</div>}
-
-                        {/* Value breakdown */}
-                        {Number(a.value)>0&&(
-                          <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 12px",display:"flex",gap:16,flexWrap:"wrap",marginBottom:8,fontSize:".75rem"}}>
-                            <div><span style={{color:"#94a3b8"}}>Base: </span><strong>₱{Number(a.value).toLocaleString("en-PH")}</strong></div>
-                            <div><span style={{color:"#94a3b8"}}>{a.receiptType==="OR"?"VAT 12%":"No VAT"}: </span><strong style={{color:"#f59e0b"}}>₱{tx.vat.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></div>
-                            {a.withholding&&<div><span style={{color:"#94a3b8"}}>EWT 2%: </span><strong style={{color:"#ef4444"}}>-₱{tx.ewt.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></div>}
-                            <div><span style={{color:"#94a3b8"}}>Net Receivable: </span><strong style={{color:"#059669"}}>₱{tx.netReceivable.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></div>
-                          </div>
-                        )}
-
-                        {/* Workflow status flags */}
-                        <div style={{display:"flex",gap:8,flexWrap:"wrap",fontSize:".72rem"}}>
-                          <span style={{color:a.salesNotified?"#059669":"#f59e0b",fontWeight:600,background:a.salesNotified?"#f0fdf4":"#fffbeb",padding:"2px 9px",borderRadius:20,border:`1px solid ${a.salesNotified?"#6ee7b7":"#fde68a"}`}}>
-                            {a.salesNotified?"✓ Sales notified":"⚠ Sales not yet notified"}
-                          </span>
-                          <span style={{color:a.clientApproved?"#059669":"#94a3b8",fontWeight:600,background:a.clientApproved?"#f0fdf4":"#f8fafc",padding:"2px 9px",borderRadius:20,border:`1px solid ${a.clientApproved?"#6ee7b7":"#e2e8f0"}`}}>
-                            {a.clientApproved?"✓ Client approved":"Pending client approval"}
-                          </span>
-                          <span style={{fontSize:".68rem",color:"#94a3b8"}}>By {a.discoveredBy} · {a.createdDate}</span>
-                        </div>
-                      </div>
-
-                      {/* Actions */}
-                      <div style={{display:"flex",flexDirection:"column",gap:6,flexShrink:0,minWidth:160}}>
-                        <select value={a.status} onChange={e=>updateAddendum(a.id,{status:e.target.value})}
-                          style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:".78rem",color:"#0f172a",background:"#fff",cursor:"pointer",width:"100%"}}>
-                          {ADDENDUM_STATUSES.map(s=><option key={s}>{s}</option>)}
-                        </select>
-                        <div style={{display:"flex",gap:6}}>
-                          <button onClick={()=>updateAddendum(a.id,{salesNotified:true})}
-                            disabled={a.salesNotified}
-                            style={{flex:1,background:a.salesNotified?"#f0fdf4":"#fffbeb",border:`1.5px solid ${a.salesNotified?"#6ee7b7":"#fde68a"}`,borderRadius:7,padding:"5px 8px",fontSize:".68rem",color:a.salesNotified?"#059669":"#92400e",cursor:a.salesNotified?"default":"pointer",fontWeight:600,fontFamily:"inherit"}}>
-                            {a.salesNotified?"Notified":"Notify Sales"}
-                          </button>
-                          <button onClick={()=>updateAddendum(a.id,{clientApproved:true,status:"Approved"})}
-                            disabled={a.clientApproved}
-                            style={{flex:1,background:a.clientApproved?"#f0fdf4":"#f8fafc",border:`1.5px solid ${a.clientApproved?"#6ee7b7":"#e2e8f0"}`,borderRadius:7,padding:"5px 8px",fontSize:".68rem",color:a.clientApproved?"#059669":"#64748b",cursor:a.clientApproved?"default":"pointer",fontWeight:600,fontFamily:"inherit"}}>
-                            {a.clientApproved?"Approved":"Mark Approved"}
-                          </button>
-                        </div>
-                        {["Approved","Billed","Collected"].includes(a.status)&&(
-                          <div>
-                            <label style={{fontSize:".62rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:2}}>Awarded date <span style={{fontWeight:400,color:"#94a3b8"}}>(counts as sales this month)</span></label>
-                            <input type="date" value={a.awardedDate||""} max={new Date().toISOString().slice(0,10)}
-                              onChange={e=>updateAddendum(a.id,{awardedDate:e.target.value||null})}
-                              title="The month this change order's value is credited to the AE on the Sales Value report. Defaults to the approval date; set it to the date this scope was actually awarded."
-                              style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 8px",fontFamily:"inherit",fontSize:".74rem",color:"#0f172a",background:"#fff",boxSizing:"border-box"}}/>
-                          </div>
-                        )}
-                        <button onClick={async ()=>{if((await uiConfirm("Delete this addendum?")))deleteAddendum(a.id);}}
-                          style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:7,padding:"5px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })()}
       {opsTab==="closeout"&&(()=>{
         const warranty=proj?.warranty||{active:false,type:"30",startDate:"",endDate:"",notes:""};
         const reports=proj?.reports||[];
@@ -18468,13 +18238,12 @@ function JOView({deals,wonDeals,projs,jos,joStep,setJoStep,joSel,setJoSel,joExtr
       <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:16}}>
         <div>
           <SecHead title="Job Order Builder" sub="Select a Won deal to generate a job order"/>
-          {/* Addenda / linked deals are excluded — added scope belongs to the
-              parent project's Job Order, not its own. They're converted to Change
-              Orders (⇄ CO) instead. */}
+          {/* Addenda / linked deals are excluded — added scope runs under the
+              parent project's Job Order, so they never get their own. */}
           {(()=>{const joEligible=wonDeals.filter(d=>!d.parentDealId),joAddenda=wonDeals.filter(d=>d.parentDealId);return(<>
           {joAddenda.length>0&&(
             <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"9px 13px",marginBottom:10,fontSize:".76rem",color:"#92400e"}}>
-              ⚠️ {joAddenda.length} linked deal{joAddenda.length!==1?"s":""} (addend{joAddenda.length!==1?"a":"um"}) hidden — these belong to a parent project. Convert them to a <strong>Change Order (⇄ CO)</strong> in the Pipeline instead of issuing a separate Job Order.
+              ⚠️ {joAddenda.length} linked deal{joAddenda.length!==1?"s":""} (addend{joAddenda.length!==1?"a":"um"}) hidden — these are addendums that run under their parent project's Job Order, not a separate one.
             </div>
           )}
           {joEligible.map(d=>{const p=projs[d.id];return(
@@ -24702,7 +24471,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
           })()}
 
           {/* Contract breakdown (original + addenda) — shown when this project has change orders */}
-          {(addenda||[]).some(a=>a.dealId===selDeal&&a.status!=="Rejected")&&<div style={{marginBottom:12}}><ContractBreakdown deal={deal} addenda={addenda}/></div>}
+          {((addenda||[]).some(a=>a.dealId===selDeal&&a.status!=="Rejected")||(deals||[]).some(d=>d.parentDealId===selDeal&&!isLostStage(d.stage)))&&<div style={{marginBottom:12}}><ContractBreakdown deal={deal} addenda={addenda} deals={deals}/></div>}
 
           {/* COC-to-Finance notification banner */}
           {(()=>{
@@ -26044,41 +25813,9 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                     <span style={{fontSize:".8rem",fontWeight:700,color:"#059669"}}>🎉 All departments complete! Use the buttons above to close out or complete this project.</span>
                   </div>
                 )}
-                <div style={{marginTop:10,display:"flex",justifyContent:"flex-end",gap:8}}>
-                  {addAddendum2&&<button onClick={()=>{setScopeForm({title:"",desc:"",value:"",ceNo:""});setShowScopeForm(true);}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",color:"#c2410c",cursor:"pointer",fontWeight:700}}>➕ Scope Change</button>}
-                </div>
-                {showScopeForm&&addAddendum2&&(
-                  <div style={{marginTop:12,background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:12,padding:"14px 16px"}}>
-                    <div style={{fontWeight:700,color:"#92400e",fontSize:".82rem",marginBottom:10}}>⚠️ Log Scope Change / Addendum</div>
-                    <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10,marginBottom:10}}>
-                      <div style={{gridColumn:"1/-1"}}>
-                        <div style={{fontSize:".72rem",fontWeight:700,color:"#92400e",marginBottom:3}}>Title <span style={{color:"#ef4444"}}>*</span></div>
-                        <input value={scopeForm.title} onChange={e=>fsc("title",e.target.value)} placeholder="e.g. Additional glass shelving Unit 3B" style={{width:"100%",border:"1.5px solid #fbbf24",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",outline:"none",boxSizing:"border-box",background:"#fffbeb"}}/>
-                      </div>
-                      <div style={{gridColumn:"1/-1"}}>
-                        <div style={{fontSize:".72rem",fontWeight:700,color:"#92400e",marginBottom:3}}>Description / Impact</div>
-                        <textarea value={scopeForm.desc} onChange={e=>fsc("desc",e.target.value)} rows={2} placeholder="What changed, why, impact on timeline…" style={{width:"100%",border:"1.5px solid #fed7aa",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",outline:"none",resize:"vertical",boxSizing:"border-box",background:"#fffbeb"}}/>
-                      </div>
-                      <div>
-                        <div style={{fontSize:".72rem",fontWeight:700,color:"#92400e",marginBottom:3}}>Value (₱)</div>
-                        <input type="number" value={scopeForm.value} onChange={e=>fsc("value",e.target.value)} placeholder="e.g. 25000" style={{width:"100%",border:"1.5px solid #fed7aa",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",outline:"none",boxSizing:"border-box",background:"#fffbeb"}}/>
-                      </div>
-                      <div>
-                        <div style={{fontSize:".72rem",fontWeight:700,color:"#92400e",marginBottom:3}}>CE No. (if applicable)</div>
-                        <input value={scopeForm.ceNo} onChange={e=>fsc("ceNo",e.target.value)} placeholder="e.g. CE-2025-002A" style={{width:"100%",border:"1.5px solid #fed7aa",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",outline:"none",boxSizing:"border-box",background:"#fffbeb"}}/>
-                      </div>
-                    </div>
-                    <div style={{display:"flex",gap:8}}>
-                      <button onClick={()=>{
-                        if(!scopeForm.title.trim()) return;
-                        addAddendum2({...scopeForm,value:scopeForm.value?Number(scopeForm.value):0,dealId:selDeal,projectName:deal?.client||"",status:"Discovered",salesNotified:false,clientApproved:false,receiptType:"OR",withholding:false,discoveredBy:session?.name||""});
-                        setShowScopeForm(false);
-                        setScopeForm({title:"",desc:"",value:"",ceNo:""});
-                      }} style={{flex:1,background:"#c2410c",border:"none",borderRadius:8,padding:"8px",fontFamily:"inherit",fontSize:".82rem",color:"#fff",cursor:"pointer",fontWeight:700}}>✓ Log Scope Change</button>
-                      <button onClick={()=>setShowScopeForm(false)} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"8px 14px",fontFamily:"inherit",fontSize:".82rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>Cancel</button>
-                    </div>
-                  </div>
-                )}
+                {/* Scope changes are logged by Sales as a linked deal
+                    (+ Add New Deal -> Link to Parent Deal), not from the project
+                    card, so there is no "Log Scope Change" form here. */}
               </div>
 
               {/* ── Project Team ── */}
@@ -26504,13 +26241,17 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 )}
               </div>
 
-              {/* ── Scope Changes ── */}
+              {/* ── Scope Changes (Total Contract roll-up) ──
+                  Finance-facing: shows Initial + Addendums = Total. Hidden from
+                  Operations/PM/Design — they maintain the single project card and
+                  don't need the contract total; scope changes are Sales-owned. */}
+              {!["Operations","ProjectMover","Design"].includes(role)&&(
               <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:projAddenda.length>0?10:0}}>
                   <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>⚠️ Scope Changes{projAddenda.length>0&&<span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:400,marginLeft:5}}>({projAddenda.length})</span>}</div>
                 </div>
-                {projAddenda.length>0&&<div style={{marginBottom:10}}><ContractBreakdown deal={deal} addenda={addenda}/></div>}
-                {projAddenda.length===0&&<div style={{fontSize:".78rem",color:"#94a3b8"}}>No scope changes for this project.</div>}
+                {(projAddenda.length>0||(deals||[]).some(d=>d.parentDealId===deal.id&&!isLostStage(d.stage)))&&<div style={{marginBottom:10}}><ContractBreakdown deal={deal} addenda={addenda} deals={deals}/></div>}
+                {projAddenda.length===0&&!(deals||[]).some(d=>d.parentDealId===deal.id&&!isLostStage(d.stage))&&<div style={{fontSize:".78rem",color:"#94a3b8"}}>No scope changes for this project.</div>}
                 {projAddenda.slice(0,3).map(a=>{
                   const sc={"Discovered":"#94a3b8","Sales Notified":"#f59e0b","Client Coordinating":"#3b82f6","Approved":"#059669","Billed":"#8b5cf6","Collected":"#10b981","Rejected":"#ef4444"}[a.status]||"#94a3b8";
                   return(
@@ -26525,6 +26266,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 })}
                 {projAddenda.length>3&&<div style={{fontSize:".72rem",color:"#94a3b8",marginTop:4}}>+{projAddenda.length-3} more — see Scope Changes page</div>}
               </div>
+              )}
 
 
               {/* ── Finance Snapshot ── */}
