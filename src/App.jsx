@@ -2595,8 +2595,12 @@ function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logAc
 
 // ─── ADDENDA PAGE CONTENT ─────────────────────────────────────────────────────
 // Extracted from App IIFE to fix React hooks #310 — hooks must be at top level
-function AddendaPageContent({role,wonDeals,deals,jos,session,addenda,upAddenda,logActivity,onOpenCoBoq}){
+function AddendaPageContent({role,wonDeals,deals,jos,session,addenda,upAddenda,updateAddendum,logActivity,onOpenCoBoq}){
   const canCreate=!["Sales","Finance"].includes(role);
+  // Who may advance a change order's status (Discovered → … → Approved) from this
+  // page. Sales, Ops and Management all speak to clients directly, so all three
+  // can approve. (Server-side RLS must allow the same set — see migration 054.)
+  const canApprove=["Manager","Sales","Operations","ProjectMover","SalesOpsAdmin"].includes(role)&&typeof updateAddendum==="function";
   const myName=session?.name||"";
   const myProjects=wonDeals.filter(d=>{
     const jo=jos.find(j=>j.dealId===d.id);
@@ -2692,7 +2696,13 @@ function AddendaPageContent({role,wonDeals,deals,jos,session,addenda,upAddenda,l
                           {!a._pendingChild&&canCreate&&onOpenCoBoq&&<button onClick={()=>onOpenCoBoq(a.id)} title="Build this change order's BOQ (sections, rate card, markup)" style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:6,padding:"3px 9px",fontSize:".66rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>🧮 BOQ{(a.coBoqData?.items?.length)?` (${a.coBoqData.items.length})`:""}</button>}
                           {!a._pendingChild&&!canCreate&&onOpenCoBoq&&(a.coBoqData?.items?.length)>0&&<button onClick={()=>onOpenCoBoq(a.id,true)} title="View & print this change order's BOQ to send to the client" style={{background:"#f5f3ff",border:"1.5px solid #ddd6fe",borderRadius:6,padding:"3px 9px",fontSize:".66rem",fontWeight:700,color:"#7c3aed",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>📄 Print BOQ</button>}
                           {a._pendingChild&&<span title="This is a linked child deal in the pipeline. Convert it to a Change Order (⇄ CO) to roll its scope and value into the parent project." style={{fontSize:".62rem",fontWeight:700,color:"#b45309",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:6,padding:"2px 7px",whiteSpace:"nowrap"}}>⇄ needs conversion</span>}
-                          <span style={{fontSize:".68rem",fontWeight:700,color:statusClr[a.status]||"#64748b",background:(statusClr[a.status]||"#64748b")+"18",borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap"}}>{a.status}</span>
+                          {canApprove&&!a._pendingChild
+                            ? <select value={a.status} title="Advance this change order's status. Set to Approved once the client agrees — it rolls into the contract and creates its billing claim."
+                                onChange={e=>{const v=e.target.value;updateAddendum(a.id,v==="Approved"?{status:v,clientApproved:true}:{status:v});}}
+                                style={{fontSize:".68rem",fontWeight:700,color:statusClr[a.status]||"#64748b",background:(statusClr[a.status]||"#64748b")+"18",border:`1px solid ${(statusClr[a.status]||"#64748b")}55`,borderRadius:20,padding:"2px 8px",fontFamily:"inherit",cursor:"pointer",whiteSpace:"nowrap"}}>
+                                {ADDENDUM_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
+                              </select>
+                            : <span style={{fontSize:".68rem",fontWeight:700,color:statusClr[a.status]||"#64748b",background:(statusClr[a.status]||"#64748b")+"18",borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap"}}>{a.status}</span>}
                         </div>
                       </div>
                       {Number(a.value)>0&&<div style={{fontSize:".75rem",color:a.kind==="Deductive"?"#dc2626":"#059669",marginTop:3,fontWeight:600}}>{fmtSigned(coSignedValue(a))} {a._pendingChild?"pending conversion":a.kind==="Deductive"?"deducted":"additional"}{Array.isArray(a.scopeItems)&&a.scopeItems.length?` · ${a.scopeItems.length} BOQ item${a.scopeItems.length>1?"s":""}`:""}</div>}
@@ -15317,7 +15327,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   if(page==="addenda") return(
     <Wrap>
       <SecHead title="⚠️ Scope Changes" sub={["Sales","Finance"].includes(role)?"View all scope changes across active projects":"Flag addenda discovered on site — AE and Paolo will be notified"}/>
-      <AddendaPageContent role={role} wonDeals={wonDeals} deals={deals} jos={jos} session={session} addenda={addenda} upAddenda={upAddenda} logActivity={logActivity} onOpenCoBoq={(id,readOnly=false)=>{setBoqDealId(null);setBoqStandaloneId(null);setBoqCoReadOnly(!!readOnly);setBoqCoId(id);setPage("boq");}}/>
+      <AddendaPageContent role={role} wonDeals={wonDeals} deals={deals} jos={jos} session={session} addenda={addenda} upAddenda={upAddenda} updateAddendum={updateAddendum} logActivity={logActivity} onOpenCoBoq={(id,readOnly=false)=>{setBoqDealId(null);setBoqStandaloneId(null);setBoqCoReadOnly(!!readOnly);setBoqCoId(id);setPage("boq");}}/>
     </Wrap>
   );
 
