@@ -3513,7 +3513,10 @@ function OfficeTVDashboard({deals=[],wonDeals=[],checklists=[],announcements=[],
 
   // ── Awarded / won projects ────────────────────────────────────────────────
   const awarded=React.useMemo(()=>{
-    const rows=(wonDeals||[]).map(d=>({id:d.id,client:d.client||"—",name:d.contact||d.product||d.client||"Project",value:Number(d.value||0),stage:d.stage||"",date:d.awardDate||d.awardedDate||d.dateAcquired||"",owner:d.salesOwner||"",location:d.location||""}));
+    // Award date is the real awarded date only (project_cards.award_date) — no fallback to
+    // dateAcquired. A won deal with no award date set shows blank and is excluded from the
+    // "awarded this month" tally, rather than silently borrowing the lead-acquisition date.
+    const rows=(wonDeals||[]).map(d=>({id:d.id,client:d.client||"—",name:d.contact||d.product||d.client||"Project",value:Number(d.value||0),stage:d.stage||"",date:d.awardDate||d.awardedDate||"",owner:d.salesOwner||"",location:d.location||""}));
     rows.sort((a,b)=>(b.date||"").localeCompare(a.date||""));
     return rows;
   },[wonDeals]);
@@ -4204,12 +4207,21 @@ export default function App(){
     // login: appLogin mints the role token, restoreAppToken rehydrates it on boot.)
   },[]);
 
+  // Tables whose dropped writes are derived/log/rollup state, not something a person
+  // typed as a form — they get a dedicated, non-alarming drop toast (below) and must NOT
+  // also trip the scary red "redo it or contact support" banner. Defined here (module-ish
+  // scope for this component) so BOTH the error handler and the drop handler can read it.
+  const LOW_STAKES_DROP_TABLES=useRef(new Set(["activity_log","project_card_dept_tasks","project_card_dept_status"])).current;
   // App-wide sync-failure warning: when ANY Supabase write fails (offline, RLS,
   // network), warn the user once (throttled) that changes are local-only — instead
   // of the 160+ silent .catch() sites that hid sync failures from the user.
   useEffect(()=>{
     let last=0;
     setSbErrorHandler((op,table,msg,kind)=>{
+      // Low-stakes tables own their own gentle drop toast (setSbDropHandler below).
+      // Firing the red "bad data — redo it or contact support" banner for them too
+      // produced two contradictory toasts for one event ("redo it" vs "nothing lost").
+      if(LOW_STAKES_DROP_TABLES.has(table)) return;
       const n=Date.now();
       if(n-last>30000){
         last=n;
@@ -4235,7 +4247,7 @@ export default function App(){
   // work vanished. A dropped write here should read as low-stakes, not as a
   // wall of identical "NOT SAVED, please redo it" errors (which is exactly
   // what a burst of same-cause drops used to produce, one toast per item).
-  const LOW_STAKES_DROP_TABLES=useRef(new Set(["activity_log","project_card_dept_tasks","project_card_dept_status"])).current;
+  // (LOW_STAKES_DROP_TABLES is defined above so the red-banner handler shares it.)
   const dropBufferRef=useRef([]);
   const dropTimerRef=useRef(null);
   useEffect(()=>{
@@ -4258,8 +4270,15 @@ export default function App(){
           // the local record up first via the Data Backup → "Push All Data to
           // Cloud" button, which recreates the parent so the queued edit lands.
           const orphan=!low && /no row matched/i.test(msg||"");
+          // Department task/status rows are real completion state a person toggled — not a
+          // log — but they're a rollup that lives on the device and re-derives from the
+          // checklist, so the honest message is "saved here, not on the server yet," not the
+          // "nothing you did is lost" line that's true only for the activity_log feed.
+          const deptTable=table==="project_card_dept_tasks"||table==="project_card_dept_status";
           const text=low
-            ? `ℹ️ ${count} history/audit ${count===1?"entry":"entries"} for ${table} couldn't be saved — this is internal log data, not something you entered, so nothing you did is lost.`
+            ? deptTable
+              ? `⚠️ ${count} department progress update${count===1?"":"s"} couldn't reach the server yet — ${count===1?"it's":"they're"} saved on this device. This usually means the project card isn't on the server yet: open 💾 Data Backup and tap "☁ Push All Data to Cloud", then retry sync.`
+              : `ℹ️ ${count} history/audit ${count===1?"entry":"entries"} for ${table} couldn't be saved — this is internal log data, not something you entered, so nothing you did is lost.`
             : orphan
             ? `❌ ${count} change${count===1?"":"s"} to ${table} couldn't sync — the record ${count===1?"it belongs":"they belong"} to isn't on the server yet. Your change is still saved on this device. Open 💾 Data Backup and tap "☁ Push All Data to Cloud" to fix it, then retry sync.`
             : `❌ ${count} change${count===1?"":"s"} to ${table} could not be saved after several attempts — ${count===1?"it":"they"} were NOT saved. Please redo ${count===1?"it":"them"}. ${msg?`(${msg})`:""}`;
@@ -5269,7 +5288,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       // failing an FK check that sync retry then permanently drops (a
       // constraint violation is a "data" error, never retried, only dropped —
       // this silently lost individual checklist tasks in production).
-      const cardSynced=await sbUpsert('project_cards',{id:card.id,deal_id:dealId,client:dealData?.client||"",ce_no:dealData?.ceNo||"",value:Number(dealData?.value)||0,award_date:dealData?.awardDate||dealData?.dateAcquired||today,created_at:card.createdAt,ae_assigned:card.aeAssigned||"",pm1:card.pm1||"",pm2:card.pm2||"",pm3:card.pm3||"",designer:card.designer||"",coordinator:card.coordinator||"",...(card.targetEndDate?{target_end_date:card.targetEndDate}:{}),...(card.targetDays!=null?{target_days:card.targetDays}:{})},'deal_id');
+      const cardSynced=await sbUpsert('project_cards',{id:card.id,deal_id:dealId,client:dealData?.client||"",ce_no:dealData?.ceNo||"",value:Number(dealData?.value)||0,award_date:dealData?.awardDate||today,created_at:card.createdAt,ae_assigned:card.aeAssigned||"",pm1:card.pm1||"",pm2:card.pm2||"",pm3:card.pm3||"",designer:card.designer||"",coordinator:card.coordinator||"",...(card.targetEndDate?{target_end_date:card.targetEndDate}:{}),...(card.targetDays!=null?{target_days:card.targetDays}:{})},'deal_id');
       if(cardSynced){
         DEPT_ORDER.forEach(dept=>{
           (card.departments?.[dept]?.tasks||[]).forEach((t,i)=>{
@@ -5734,8 +5753,26 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       });
     });
 
+    // Standalone BOQs had NO realtime subscription — they were fetched once at
+    // boot only, so a BOQ created or edited by anyone else (or by you on another
+    // device) never appeared until a hard refresh re-ran the boot fetch. Subscribe
+    // and merge per id (server is authoritative for BOQs) so they stream in live.
+    const rowToBoq=r=>({id:r.id,title:r.title||"",location:r.location||"",quotationNo:r.quotation_no||"",boqDate:r.boq_date||"",items:Array.isArray(r.items)?r.items:[],sections:Array.isArray(r.sections)?r.sections:[],vatEnabled:r.vat_enabled!==false,discount:r.discount||"",markupPct:r.markup_pct||"",createdBy:r.created_by||"",createdAt:r.created_at||"",updatedAt:r.updated_at||""});
+    const boqSub = !wantsRT('standalone_boqs')?null:sbSubscribe('standalone-boqs-rt','standalone_boqs',payload=>{
+      const{eventType,new:rec,old}=payload;
+      setStandaloneBoqs(prev=>{
+        let next;
+        if(eventType==='DELETE'){const id=old?.id;if(!id)return prev;next=prev.filter(b=>b.id!==id);}
+        else{ if(!rec||!rec.id) return prev; const rb=rowToBoq(rec); next=prev.some(b=>b.id===rb.id)?prev.map(b=>b.id===rb.id?rb:b):[...prev,rb]; }
+        localStorage.setItem("gmdv5:standaloneBoqs",JSON.stringify(next));
+        idbSetMany([["gmdv5:standaloneBoqs",next]]).catch(()=>{});
+        return next;
+      });
+    });
+
     return ()=>{
       dealsSub?.unsubscribe?.();
+      boqSub?.unsubscribe?.();
       pcardSub?.unsubscribe?.();
       billSub?.unsubscribe?.();
       addSub?.unsubscribe?.();
@@ -7037,6 +7074,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[dnwExpanded,  setDnwExpanded]  = useState(false);  // did-not-win accordion (under closed-out)
   const[pipeType,     setPipeType]     = useState("all");  // awarded-project type filter
   const[pipeAE,       setPipeAE]       = useState("all");  // AE/salesperson filter
+  const[pipeNoAward,  setPipeNoAward]  = useState(false);  // awarded tab: show only won projects with no award date set
   const[showActChat,  setShowActChat]  = useState(false); // pipeline activity pop-up
   const[rowMenu,      setRowMenu]      = useState(null);   // {deal,x,y} — pipeline row overflow menu
   const[priceModal,   setPriceModal]   = useState(null);   // {deal} — QS set price modal
@@ -10755,7 +10793,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const now=new Date();
         const months=[];
         for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);months.push({yr:d.getFullYear(),mo:d.getMonth(),label:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()]});}
-        const awardedMonth=d=>{const aw=pcards[d.id]?.awardDate||d.dateAcquired;return aw?new Date(aw):null;};
+        // Awarded month is driven ONLY by the real award date (project_cards.award_date).
+        // No fallback to dateAcquired: a won deal with no award date set is undated and drops
+        // out of the monthly awarded buckets until a real date is entered, instead of landing
+        // in the wrong month on the lead-acquisition date.
+        const awardedMonth=d=>{const aw=pcards[d.id]?.awardDate;return aw?new Date(aw):null;};
         const salesData=months.map(({yr,mo})=>deals.filter(d=>{if(!WON_STAGES.includes(d.stage))return false;const dt=awardedMonth(d);return dt&&dt.getFullYear()===yr&&dt.getMonth()===mo;}).reduce((s,d)=>s+Number(d.value||0),0));
         const expData=months.map(({yr,mo})=>exps.filter(e=>{const ds=e.date||(e.year!=null&&e.month!=null?`${e.year}-${String(e.month+1).padStart(2,"0")}-01`:null);if(!ds)return false;const d=new Date(ds);return d.getFullYear()===yr&&d.getMonth()===mo;}).reduce((s,e)=>s+Number(e.amount||0),0));
         const collData=months.map(({yr,mo})=>{let sum=0;billings.forEach(b=>{(b.payments||[]).forEach(p=>{if(!p.date)return;const d=new Date(p.date);if(d.getFullYear()===yr&&d.getMonth()===mo)sum+=Number(p.amount||0);});});return sum;});
@@ -10830,7 +10872,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
         const monLabel=`${MON[cmo]} ${cyr}`;
         const inThisMonth=dt=>dt&&dt.getFullYear()===cyr&&dt.getMonth()===cmo;
-        const awardedMonth=d=>{const aw=pcards[d.id]?.awardDate||d.dateAcquired;return aw?new Date(aw):null;};
+        // Awarded month is driven ONLY by the real award date (project_cards.award_date).
+        // No fallback to dateAcquired: a won deal with no award date set is undated and drops
+        // out of the monthly awarded buckets until a real date is entered, instead of landing
+        // in the wrong month on the lead-acquisition date.
+        const awardedMonth=d=>{const aw=pcards[d.id]?.awardDate;return aw?new Date(aw):null;};
         // Build the row list for the clicked widget
         let rows=[];
         if(key==="sales"||key==="awarded"){
@@ -11048,11 +11094,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const aeCode=(name)=>{if(!name)return"—";const skip=new Set(["de","del","ng","la","the"]);return name.split(" ").filter(w=>w&&!skip.has(w.toLowerCase())).map(w=>w[0].toUpperCase()).join("");};
     const getPCount=()=>repPeriod==="monthly"?12:repPeriod==="quarterly"?4:1;
     const getPLabel=(i)=>repPeriod==="monthly"?MONTHS[i]:repPeriod==="quarterly"?`Q${i+1}`:`${CY}`;
-    // acqDate: for WON deals, the actual award date (set on the project card at award
-    // time) is the correct "when it happened" timestamp — dateAcquired is just the
-    // original lead-intake date and is a poor stand-in once a deal is won. Fall back
-    // to dateAcquired only when no award date has been recorded yet.
+    // acqDate: the acquisition/win-RATE anchor. For WON deals it prefers the award date,
+    // falling back to the lead-intake date so a won-but-undated deal STILL counts in its
+    // acquisition cohort (dropping it would silently understate the win-rate denominator).
+    // Use this ONLY for period/win-rate bucketing, never for "awarded this month" value.
     const acqDate=(d)=>(WON_STAGES.includes(d.stage)?pcards[d.id]?.awardDate:null)||d.dateAcquired||null;
+    // awardOnly: the true awarded date with NO fallback — matches the TV and Sales Value
+    // reports. An undated won deal is excluded from the awarded-value/count metrics rather
+    // than being credited to the wrong (lead-intake) month.
+    const awardOnly=(d)=>pcards[d.id]?.awardDate||null;
     const getDealPeriod=(d)=>{const ds=acqDate(d);if(!ds)return -1;const dt=new Date(ds);if(dt.getFullYear()!==CY)return -1;return repPeriod==="monthly"?dt.getMonth():repPeriod==="quarterly"?Math.floor(dt.getMonth()/3):0;};
     const getFinPeriod=(dateStr)=>{if(!dateStr)return -1;const d=new Date(dateStr);if(d.getFullYear()!==CY)return -1;return repPeriod==="monthly"?d.getMonth():repPeriod==="quarterly"?Math.floor(d.getMonth()/3):0;};
     const n=getPCount();
@@ -11068,7 +11118,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const CO_APPROVED=a=>["Approved","Billed","Collected"].includes(a.status);
     const coTax=a=>{const t=calcTax(Math.abs(Number(a.value||0)),a.receiptType||"OR",a.withholding||false);const sign=a.kind==="Deductive"?-1:1;return {gross:sign*t.gross,base:sign*t.base,vat:sign*t.vat};};
     const coInPeriod=(a,i)=>{const ds=a.awardedDate;if(!ds)return false;const dt=new Date(ds);if(dt.getFullYear()!==CY)return false;const p=repPeriod==="monthly"?dt.getMonth():repPeriod==="quarterly"?Math.floor(dt.getMonth()/3):0;return p===i;};
-    const monthWon=deals.filter(d=>{if(!WON_STAGES.includes(d.stage))return false;const dt=acqDate(d);return dt&&new Date(dt).getFullYear()===CY&&new Date(dt).getMonth()===CM;});
+    // "Won this month" credits by the true award date (awardOnly) so AE credit and sales
+    // value land in the month the deal was actually awarded — consistent with the TV and
+    // Sales Value reports. Undated won deals are surfaced in dataFlags below, not mis-dated.
+    const monthWon=deals.filter(d=>{if(!WON_STAGES.includes(d.stage))return false;const dt=awardOnly(d);return dt&&new Date(dt).getFullYear()===CY&&new Date(dt).getMonth()===CM;});
     const monthCancelled=deals.filter(d=>{if(d.stage!=="Cancelled")return false;const dt=acqDate(d);return dt&&new Date(dt).getFullYear()===CY&&new Date(dt).getMonth()===CM;});
     // Change orders approved in the selected month (CM) — credited as sales value.
     const monthCO=addenda.filter(a=>{if(!CO_APPROVED(a)||!a.awardedDate)return false;const dt=new Date(a.awardedDate);return dt.getFullYear()===CY&&dt.getMonth()===CM;});
@@ -11093,6 +11146,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(zeroWon.length)dataFlags.push({n:dataFlags.length+1,issue:"Won deal with no value",detail:zeroWon.map(d=>`${d.client} — ${d.product||"(no project)"}`).join("; "),stake:"unknown"});
     const noCE=monthWon.filter(d=>!d.ceNo);
     if(noCE.length)dataFlags.push({n:dataFlags.length+1,issue:"Missing CE# on won deal",detail:noCE.map(d=>d.client).join(", "),stake:"—"});
+    // Won deals with no award date drop out of every awarded-value/count report (they can't
+    // be bucketed to a month). Surface them here so the award date gets set and the numbers
+    // reconcile, instead of the deal silently vanishing from the awarded totals.
+    const noAward=deals.filter(d=>WON_STAGES.includes(d.stage)&&!d.parentDealId&&!awardOnly(d));
+    if(noAward.length)dataFlags.push({n:dataFlags.length+1,issue:"Won project — no award date (excluded from awarded reports)",detail:noAward.map(d=>d.client+(d.ceNo?` (${d.ceNo})`:"")).join(", "),stake:fmt(noAward.reduce((s,d)=>s+Number(d.value||0),0))});
     const ceCounts={};deals.filter(d=>d.ceNo).forEach(d=>{ceCounts[d.ceNo]=(ceCounts[d.ceNo]||0)+1;});
     const dupCE=Object.entries(ceCounts).filter(([,c])=>c>1);
     if(dupCE.length)dataFlags.push({n:dataFlags.length+1,issue:"Duplicate CE numbers",detail:dupCE.map(([ce,c])=>`${ce} (${c}x)`).join(", "),stake:"—"});
@@ -12703,7 +12761,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 // Project cards are the parent deals (no parentDealId); bucket them by their own stage.
                 // Respect the AE chip filter (pipeAE) like the Hot/Cold pipeline does — addenda
                 // still nest under their parent below, so they follow the parent's AE automatically.
-                const wonParents=wonDeals.filter(d=>!d.parentDealId&&(pipeAE==="all"||d.salesOwner===pipeAE)&&(pipeType==="all"||(d.ceType||"Other")===pipeType));
+                const wonParents=wonDeals.filter(d=>!d.parentDealId&&(pipeAE==="all"||d.salesOwner===pipeAE)&&(pipeType==="all"||(d.ceType||"Other")===pipeType)&&(!pipeNoAward||!pcards[d.id]?.awardDate));
                 const activeWonBase=wonParents.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed"&&matchSearch(d));
                 const doneWonBase  =wonParents.filter(d=>(d.stage==="12 · Close-Out"||d.stage==="14 · Completed")&&matchSearch(d));
                 // Addenda nest under their parent's card, following the PARENT's bucket
@@ -12911,6 +12969,20 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:10,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                     🏆 Awarded Projects
                     <span style={{fontWeight:400,color:"#94a3b8",fontSize:".72rem"}}>({activeWon.filter(d=>!d.parentDealId).length} active)</span>
+                    {(()=>{
+                      // Count of active won parents still missing an award date — these are the
+                      // deals excluded from the awarded/sales-value reports until dated. The chip
+                      // toggles the awarded list down to exactly those, so they can be found and fixed.
+                      const missing=wonDeals.filter(d=>!d.parentDealId&&(pipeAE==="all"||d.salesOwner===pipeAE)&&d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed"&&!pcards[d.id]?.awardDate).length;
+                      if(!missing&&!pipeNoAward) return null;
+                      return(
+                        <button onClick={()=>setPipeNoAward(v=>!v)}
+                          title="Show only awarded projects that have no award date set"
+                          style={{padding:"3px 10px",borderRadius:20,border:`1.5px solid ${pipeNoAward?"#b45309":"#fbbf24"}`,background:pipeNoAward?"#b45309":"#fffbeb",color:pipeNoAward?"#fff":"#b45309",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer",whiteSpace:"nowrap"}}>
+                          ⚠️ No award date ({missing}){pipeNoAward?" ✕":""}
+                        </button>
+                      );
+                    })()}
                     {grandTotal>0&&<span style={{marginLeft:"auto",fontFamily:"'IBM Plex Mono',monospace",fontWeight:700,color:"#10b981",fontSize:".82rem"}}>₱{grandTotal.toLocaleString("en-PH")}</span>}
                   </div>
                   {typeList.length>1&&(
@@ -25744,6 +25816,16 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                     upDeals(ds=>ds.map(d=>d.id===selDeal?{...d,stage:st}:d));
                     if(isSupabaseReady()) sbUpdate('deals',selDeal,{stage:st}).catch(()=>{});
                     logActivity(selDeal,"Stage Change",`Stage → ${st}`,session?.name);
+                    // Auto-stamp the award date the first time a deal enters a WON stage so the
+                    // awarded / sales-value reports never silently miss it. Only stamps when the
+                    // project card has no award date yet — an existing (possibly hand-corrected)
+                    // date is never overwritten, and non-won stages don't touch it.
+                    if(WON_STAGES.includes(st)&&!pcards[selDeal]?.awardDate){
+                      const awDate=today;
+                      upPcards(ps=>({...ps,[selDeal]:{...(ps[selDeal]||emptyProjectCard(selDeal,deal)),awardDate:awDate}}));
+                      if(isSupabaseReady()) sbUpsert('project_cards',{deal_id:selDeal,award_date:awDate},'deal_id').catch(()=>{});
+                      logActivity(selDeal,"Award date set",`${deal.contact||deal.client} — award date auto-set to ${awDate} on entering ${st}`,session?.name);
+                    }
                     const msg=`📌 <b>Project Stage Updated</b>\nClient: <b>${deal.client}</b>${deal.ceNo?`\nCE: ${deal.ceNo}`:""}${deal.contact?`\nProject: ${deal.contact}`:""}\nStage: ${st}\nBy: ${session?.name}`;
                     ["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,msg));
                     if(st==="12 · Close-Out"){
@@ -27710,22 +27792,30 @@ function BOQHomeView({standaloneBoqs=[],deals=[],session,role,today,onOpenStanda
           {all.length===0&&<button onClick={()=>{setDq("");setPicking(true);}} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>＋ New BOQ</button>}
         </div>
       ):(
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:12}}>
-          {filtered.map(e=>(
+        <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+          {/* Column header — list view (replaces the old card grid) */}
+          <div style={{display:"flex",alignItems:"center",gap:12,padding:"8px 14px",background:"#f8fafc",borderBottom:"1px solid #e2e8f0",fontSize:".62rem",fontWeight:800,textTransform:"uppercase",letterSpacing:".5px",color:"#94a3b8"}}>
+            <span style={{width:30,flexShrink:0}}>Type</span>
+            <span style={{flex:1,minWidth:0}}>BOQ / Client</span>
+            <span style={{width:96,textAlign:"right",flexShrink:0}}>Date</span>
+            <span style={{width:120,textAlign:"right",flexShrink:0}}>Total</span>
+            <span style={{width:22,flexShrink:0}}/>
+          </div>
+          {filtered.map((e,i)=>(
             <div key={e.kind+e.id} onClick={()=>e.kind==="standalone"?onOpenStandalone(e.id):onOpenDeal(e.id)}
-              style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 16px",cursor:"pointer",transition:"border-color .15s,box-shadow .15s",position:"relative"}}
-              onMouseEnter={ev=>{ev.currentTarget.style.borderColor="#94a3b8";ev.currentTarget.style.boxShadow="0 6px 18px rgba(15,23,42,.08)";}}
-              onMouseLeave={ev=>{ev.currentTarget.style.borderColor="#e2e8f0";ev.currentTarget.style.boxShadow="none";}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:8}}>
-                <span style={{fontSize:".6rem",fontWeight:800,textTransform:"uppercase",letterSpacing:".5px",padding:"2px 8px",borderRadius:20,background:e.kind==="standalone"?"#f5f3ff":"#eff6ff",color:e.kind==="standalone"?"#7c3aed":"#1d4ed8",border:`1px solid ${e.kind==="standalone"?"#ddd6fe":"#bfdbfe"}`}}>{e.kind==="standalone"?"📄 Standalone":"🔗 Pipeline"}</span>
-                {e.kind==="standalone"&&canDelete&&<button onClick={async ev=>{ev.stopPropagation();if((await uiConfirm("Delete this BOQ? This cannot be undone.")))onDeleteStandalone(e.id);}} title="Delete BOQ" style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".8rem",opacity:.5,padding:0}} onMouseEnter={ev=>ev.currentTarget.style.opacity=1} onMouseLeave={ev=>ev.currentTarget.style.opacity=.5}>🗑</button>}
+              style={{display:"flex",alignItems:"center",gap:12,padding:"11px 14px",cursor:"pointer",borderTop:i===0?"none":"1px solid #f1f5f9",transition:"background .12s"}}
+              onMouseEnter={ev=>ev.currentTarget.style.background="#f8fafc"}
+              onMouseLeave={ev=>ev.currentTarget.style.background="#fff"}>
+              <span title={e.kind==="standalone"?"Standalone":"Pipeline-linked"} style={{width:30,flexShrink:0,textAlign:"center",fontSize:".6rem",fontWeight:800,padding:"2px 0",borderRadius:20,background:e.kind==="standalone"?"#f5f3ff":"#eff6ff",color:e.kind==="standalone"?"#7c3aed":"#1d4ed8",border:`1px solid ${e.kind==="standalone"?"#ddd6fe":"#bfdbfe"}`}}>{e.kind==="standalone"?"📄":"🔗"}</span>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.title||"Untitled BOQ"}</div>
+                <div style={{fontSize:".72rem",color:"#94a3b8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.sub||"—"}</div>
               </div>
-              <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.title||"Untitled BOQ"}</div>
-              <div style={{fontSize:".72rem",color:"#94a3b8",marginBottom:10,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.sub||"—"}</div>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <span style={{fontWeight:800,color:"#059669",fontSize:"1rem",fontFamily:"'Barlow Condensed',sans-serif"}}>{peso(e.total)}</span>
-                <span style={{fontSize:".68rem",color:"#94a3b8"}}>{fmtDate(e.date)}</span>
-              </div>
+              <span style={{width:96,textAlign:"right",flexShrink:0,fontSize:".68rem",color:"#94a3b8"}}>{fmtDate(e.date)}</span>
+              <span style={{width:120,textAlign:"right",flexShrink:0,fontWeight:800,color:"#059669",fontSize:".95rem",fontFamily:"'Barlow Condensed',sans-serif"}}>{peso(e.total)}</span>
+              {e.kind==="standalone"&&canDelete
+                ? <button onClick={async ev=>{ev.stopPropagation();if((await uiConfirm("Delete this BOQ? This cannot be undone.")))onDeleteStandalone(e.id);}} title="Delete BOQ" style={{width:22,flexShrink:0,background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".8rem",opacity:.5,padding:0}} onMouseEnter={ev=>ev.currentTarget.style.opacity=1} onMouseLeave={ev=>ev.currentTarget.style.opacity=.5}>🗑</button>
+                : <span style={{width:22,flexShrink:0}}/>}
             </div>
           ))}
         </div>
