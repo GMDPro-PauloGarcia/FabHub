@@ -6,7 +6,7 @@ import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, buildStandbyParentIds, recognizedSalesValue, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -3513,10 +3513,13 @@ function OfficeTVDashboard({deals=[],wonDeals=[],checklists=[],announcements=[],
 
   // ── Awarded / won projects ────────────────────────────────────────────────
   const awarded=React.useMemo(()=>{
-    const rows=(wonDeals||[]).map(d=>({id:d.id,client:d.client||"—",name:d.contact||d.product||d.client||"Project",value:Number(d.value||0),stage:d.stage||"",date:d.awardDate||d.awardedDate||d.dateAcquired||"",owner:d.salesOwner||"",location:d.location||""}));
+    const spids=buildStandbyParentIds(deals);
+    const rows=(wonDeals||[])
+      .filter(d=>!(d.parentDealId&&spids.has(d.parentDealId)))   // drawdowns book ₱0 — shown under their umbrella's PO, not as separate awards
+      .map(d=>({id:d.id,client:d.client||"—",name:d.contact||d.product||d.client||"Project",value:recognizedSalesValue(d,spids),stage:d.stage||"",date:d.awardDate||d.awardedDate||d.dateAcquired||"",owner:d.salesOwner||"",location:d.location||""}));
     rows.sort((a,b)=>(b.date||"").localeCompare(a.date||""));
     return rows;
-  },[wonDeals]);
+  },[wonDeals,deals]);
   const awardTotal=React.useMemo(()=>awarded.reduce((s,d)=>s+d.value,0),[awarded]);
   const monthKey=today?.slice(0,7)||"";
   const awardedThisMonth=React.useMemo(()=>awarded.filter(d=>(d.date||"").slice(0,7)===monthKey),[awarded,monthKey]);
@@ -9066,7 +9069,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const myPipe=myDeals.filter(d=>isActivePipeline(d.stage));
         const myUnpriced=myPipe.filter(d=>!d.standbyPO&&(!Number(d.value)||Number(d.value)===0));
         const myColl=myWon.reduce((s,d)=>s+dealCollected(d),0);
-        const myRev=myWon.reduce((s,d)=>s+Number(d.value||0),0);
+        const _spids=buildStandbyParentIds(deals);
+        const myRev=myWon.reduce((s,d)=>s+recognizedSalesValue(d,_spids),0);
         const myOut=Math.max(0,myWon.reduce((s,d)=>s+Number(d.invoiced||0)-dealCollected(d),0));
         const pendingAddenda=addenda.filter(a=>!a.salesNotified&&a.status!=="Rejected"&&myWon.some(d=>d.id===a.dealId));
         const fmtK=v=>v>=1000000?"₱"+Math.round(v/1000000*10)/10+"M":"₱"+Math.round(v/1000)+"K";
@@ -10310,7 +10314,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:12}}>
             {[
               {l:"Pipeline Value",      v:"₱"+Math.round(totalPipeVal/1000000)+"M", c:"#8b5cf6", icon:"📊"},
-              {l:"Awarded Projects",    v:wonDeals.length,                           c:"#0f172a",  icon:"🏆"},
+              {l:"Awarded Projects",    v:(()=>{const sp=buildStandbyParentIds(deals);return wonDeals.filter(d=>!(d.parentDealId&&sp.has(d.parentDealId))).length;})(), c:"#0f172a",  icon:"🏆"},
               {l:"No Billing Setup",    v:noBilling.length,                          c:"#f59e0b",  icon:"⚠️", click:()=>setPage("billing")},
               {l:"Projects Complete",   v:wonDeals.filter(d=>Object.values(pcards[d.id]?.departments||{}).every(dept=>dept.done)).length, c:"#059669", icon:"🎉"},
             ].map(({l,v,c,icon,click})=>(
@@ -10565,7 +10569,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const today2=new Date();
         const activePipe=deals.filter(d=>isActivePipeline(d.stage));
         const totalPipeVal=activePipe.reduce((s,d)=>s+Number(d.value||0),0);
-        const awardedVal=wonDeals.reduce((s,d)=>s+Number(d.value||0),0);
+        const _spids=buildStandbyParentIds(deals);
+        const awardedVal=wonDeals.reduce((s,d)=>s+recognizedSalesValue(d,_spids),0);
         const thisMonth=new Date().toISOString().slice(0,7);
         const newThisMonth=deals.filter(d=>d.dateAcquired?.slice(0,7)===thisMonth);
         const allMs=billings;
@@ -10581,7 +10586,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const aeStats=aeNames.map(ae=>({
           name:ae.split(" ")[0]+(ae.includes("Gail")?" (Gail)":""),
           deals:deals.filter(d=>d.salesOwner===ae).length,
-          awarded:wonDeals.filter(d=>d.salesOwner===ae).length,
+          awarded:wonDeals.filter(d=>d.salesOwner===ae&&!(d.parentDealId&&_spids.has(d.parentDealId))).length,
         })).filter(a=>a.deals>0);
 
         return(<div style={{display:"flex",flexDirection:"column",gap:16}}>
@@ -10755,10 +10760,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const months=[];
         for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);months.push({yr:d.getFullYear(),mo:d.getMonth(),label:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()]});}
         const awardedMonth=d=>{const aw=pcards[d.id]?.awardDate||d.dateAcquired;return aw?new Date(aw):null;};
-        const salesData=months.map(({yr,mo})=>deals.filter(d=>{if(!WON_STAGES.includes(d.stage))return false;const dt=awardedMonth(d);return dt&&dt.getFullYear()===yr&&dt.getMonth()===mo;}).reduce((s,d)=>s+Number(d.value||0),0));
+        // Sales recognition: standby-PO umbrella books its PO ceiling; its drawdown
+        // children book ₱0 (already inside the PO). Exclude drawdowns from both the
+        // value total and the awarded-project count so nothing double-counts.
+        const _spids=buildStandbyParentIds(deals);
+        const _isDrawdown=d=>d.parentDealId&&_spids.has(d.parentDealId);
+        const salesData=months.map(({yr,mo})=>deals.filter(d=>{if(!WON_STAGES.includes(d.stage))return false;const dt=awardedMonth(d);return dt&&dt.getFullYear()===yr&&dt.getMonth()===mo;}).reduce((s,d)=>s+recognizedSalesValue(d,_spids),0));
         const expData=months.map(({yr,mo})=>exps.filter(e=>{const ds=e.date||(e.year!=null&&e.month!=null?`${e.year}-${String(e.month+1).padStart(2,"0")}-01`:null);if(!ds)return false;const d=new Date(ds);return d.getFullYear()===yr&&d.getMonth()===mo;}).reduce((s,e)=>s+Number(e.amount||0),0));
         const collData=months.map(({yr,mo})=>{let sum=0;billings.forEach(b=>{(b.payments||[]).forEach(p=>{if(!p.date)return;const d=new Date(p.date);if(d.getFullYear()===yr&&d.getMonth()===mo)sum+=Number(p.amount||0);});});return sum;});
-        const awardData=months.map(({yr,mo})=>deals.filter(d=>{if(!WON_STAGES.includes(d.stage))return false;const dt=awardedMonth(d);return dt&&dt.getFullYear()===yr&&dt.getMonth()===mo;}).length);
+        const awardData=months.map(({yr,mo})=>deals.filter(d=>{if(!WON_STAGES.includes(d.stage))return false;if(_isDrawdown(d))return false;const dt=awardedMonth(d);return dt&&dt.getFullYear()===yr&&dt.getMonth()===mo;}).length);
         const fmtM=v=>v>=1000000?"₱"+Math.round(v/100000)/10+"M":v>=1000?"₱"+Math.round(v/1000)+"K":v>0?"₱"+v:"₱0";
         const BarChart=({data,color,labels})=>{
           const max=Math.max(...data,1);
@@ -10789,7 +10799,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const D=now.getDate();
         const cyr=now.getFullYear(),cmo=now.getMonth();
         const pm=new Date(cyr,cmo-1,1),pyr=pm.getFullYear(),pmo=pm.getMonth();
-        const salesRec=deals.filter(d=>WON_STAGES.includes(d.stage)).map(d=>({dt:awardedMonth(d),v:Number(d.value||0)}));
+        const salesRec=deals.filter(d=>WON_STAGES.includes(d.stage)&&!_isDrawdown(d)).map(d=>({dt:awardedMonth(d),v:recognizedSalesValue(d,_spids)}));
         const expRec=exps.map(e=>{const ds=e.date||(e.year!=null&&e.month!=null?`${e.year}-${String(e.month+1).padStart(2,"0")}-01`:null);return{dt:ds?new Date(ds):null,v:Number(e.amount||0)};});
         const collRec=[];billings.forEach(b=>(b.payments||[]).forEach(p=>{if(p.date)collRec.push({dt:new Date(p.date),v:Number(p.amount||0)});}));
         const pace=(rec,yr,mo,maxDay,count)=>rec.filter(x=>x.dt&&x.dt.getFullYear()===yr&&x.dt.getMonth()===mo&&x.dt.getDate()<=maxDay).reduce((s,x)=>s+(count?1:x.v),0);
@@ -10833,8 +10843,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         // Build the row list for the clicked widget
         let rows=[];
         if(key==="sales"||key==="awarded"){
-          rows=deals.filter(d=>WON_STAGES.includes(d.stage)&&inThisMonth(awardedMonth(d)))
-            .map(d=>({name:d.contact||d.client||"Untitled deal",sub:d.ceNo||"No CE",amt:Number(d.value||0),dt:awardedMonth(d),id:d.id}))
+          const _spids=buildStandbyParentIds(deals);
+          rows=deals.filter(d=>WON_STAGES.includes(d.stage)&&!(d.parentDealId&&_spids.has(d.parentDealId))&&inThisMonth(awardedMonth(d)))
+            .map(d=>({name:d.contact||d.client||"Untitled deal",sub:d.ceNo||"No CE",amt:recognizedSalesValue(d,_spids),dt:awardedMonth(d),id:d.id}))
             .sort((a,b)=>b.dt-a.dt);
         }else if(key==="expenses"){
           rows=exps.map(e=>{const ds=e.date||(e.year!=null&&e.month!=null?`${e.year}-${String(e.month+1).padStart(2,"0")}-01`:null);return{...e,_dt:ds?new Date(ds):null};})
@@ -11059,7 +11070,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // change orders are counted separately below, in their own awarded month and
     // under their own AE — so using the base here prevents double-counting a CO
     // that rollDealContract already folded into the parent's `value`.
-    const dealBase=(d)=>d.originalValue!=null?Number(d.originalValue)||0:Number(d.value||0);
+    // A standby-PO umbrella is recognized at its full PO ceiling (GMD policy:
+    // an issued client PO is a booked sale). Every other deal counts at its base
+    // contract (before change orders, which are added separately).
+    const dealBase=(d)=>(d.standbyPO&&!d.parentDealId)?(Number(d.poBudget)||0):(d.originalValue!=null?Number(d.originalValue)||0:Number(d.value||0));
     const dealTax=(d)=>calcTax(dealBase(d),d.receiptType||"OR",d.withholding||false);
     // Approved change orders are sales in their own right. They land in the month
     // they were Approved (awardedDate) and are credited to the CO's salesOwner.
@@ -11067,7 +11081,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const CO_APPROVED=a=>["Approved","Billed","Collected"].includes(a.status);
     const coTax=a=>{const t=calcTax(Math.abs(Number(a.value||0)),a.receiptType||"OR",a.withholding||false);const sign=a.kind==="Deductive"?-1:1;return {gross:sign*t.gross,base:sign*t.base,vat:sign*t.vat};};
     const coInPeriod=(a,i)=>{const ds=a.awardedDate;if(!ds)return false;const dt=new Date(ds);if(dt.getFullYear()!==CY)return false;const p=repPeriod==="monthly"?dt.getMonth():repPeriod==="quarterly"?Math.floor(dt.getMonth()/3):0;return p===i;};
-    const monthWon=deals.filter(d=>{if(!WON_STAGES.includes(d.stage))return false;const dt=acqDate(d);return dt&&new Date(dt).getFullYear()===CY&&new Date(dt).getMonth()===CM;});
+    const _spidsM=buildStandbyParentIds(deals);
+    const monthWon=deals.filter(d=>{if(!WON_STAGES.includes(d.stage))return false;if(d.parentDealId&&_spidsM.has(d.parentDealId))return false;const dt=acqDate(d);return dt&&new Date(dt).getFullYear()===CY&&new Date(dt).getMonth()===CM;});
     const monthCancelled=deals.filter(d=>{if(d.stage!=="Cancelled")return false;const dt=acqDate(d);return dt&&new Date(dt).getFullYear()===CY&&new Date(dt).getMonth()===CM;});
     // Change orders approved in the selected month (CM) — credited as sales value.
     const monthCO=addenda.filter(a=>{if(!CO_APPROVED(a)||!a.awardedDate)return false;const dt=new Date(a.awardedDate);return dt.getFullYear()===CY&&dt.getMonth()===CM;});
@@ -11101,18 +11116,26 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(noClient.length)dataFlags.push({n:dataFlags.length+1,issue:"Pipeline deals missing client name",detail:`${noClient.length} deal(s) with no client`,stake:"—"});
     const noVal=openPipeline.filter(d=>!Number(d.value)&&!d.standbyPO);
     if(noVal.length)dataFlags.push({n:dataFlags.length+1,issue:"Pipeline deals with no value",detail:`${noVal.length} deal(s) have ₱0 value — pipeline understated`,stake:"unknown"});
-    const yearDeals=deals.filter(d=>{const dt=acqDate(d);return dt&&new Date(dt).getFullYear()===CY;});
+    // Standby-PO drawdown children book ₱0 (their value is already inside the
+    // umbrella's PO ceiling) — drop them from the deal-level rollups so they
+    // don't double-count as separate wins/values. The umbrella itself stays and
+    // is recognized at its PO ceiling via recWon() below.
+    const _spids=buildStandbyParentIds(deals);
+    const yearDeals=deals.filter(d=>{if(d.parentDealId&&_spids.has(d.parentDealId))return false;const dt=acqDate(d);return dt&&new Date(dt).getFullYear()===CY;});
     const yearWon=yearDeals.filter(d=>WON_STAGES.includes(d.stage));
+    // Recognized won value: a standby-PO umbrella books its full PO ceiling; all
+    // other deals book their base contract (change orders are added separately).
+    const recWon=(d)=>(d.standbyPO&&!d.parentDealId)?(Number(d.poBudget)||0):dealBase(d);
     // Approved change orders awarded this year, for the yearly period / AE rollups.
     // Counted at their raw signed value (deductive subtracts) to match the deal
     // value sums, and attributed to the period of their awardedDate.
     const yearCO=addenda.filter(a=>CO_APPROVED(a)&&a.awardedDate&&new Date(a.awardedDate).getFullYear()===CY);
     const coRawSigned=a=>(a.kind==="Deductive"?-1:1)*Math.abs(Number(a.value||0));
-    const salesPeriods=Array.from({length:n},(_,i)=>{const pd=yearDeals.filter(d=>getDealPeriod(d)===i);const pw=pd.filter(d=>WON_STAGES.includes(d.stage));const pco=yearCO.filter(a=>coInPeriod(a,i));return{label:getPLabel(i),acquired:pd.length,won:pw.length,winRate:pd.length>0?Math.round(pw.length/pd.length*100):0,pipelineValue:pd.reduce((s,d)=>s+Number(d.value||0),0),wonValue:pw.reduce((s,d)=>s+dealBase(d),0)+pco.reduce((s,a)=>s+coRawSigned(a),0)};});
-    const ownerMap={};yearDeals.forEach(d=>{const o=d.salesOwner||"Unassigned";if(!ownerMap[o])ownerMap[o]={owner:o,acquired:0,won:0,value:0};ownerMap[o].acquired++;if(WON_STAGES.includes(d.stage)){ownerMap[o].won++;ownerMap[o].value+=dealBase(d);}});
+    const salesPeriods=Array.from({length:n},(_,i)=>{const pd=yearDeals.filter(d=>getDealPeriod(d)===i);const pw=pd.filter(d=>WON_STAGES.includes(d.stage));const pco=yearCO.filter(a=>coInPeriod(a,i));return{label:getPLabel(i),acquired:pd.length,won:pw.length,winRate:pd.length>0?Math.round(pw.length/pd.length*100):0,pipelineValue:pd.reduce((s,d)=>s+Number(d.value||0),0),wonValue:pw.reduce((s,d)=>s+recWon(d),0)+pco.reduce((s,a)=>s+coRawSigned(a),0)};});
+    const ownerMap={};yearDeals.forEach(d=>{const o=d.salesOwner||"Unassigned";if(!ownerMap[o])ownerMap[o]={owner:o,acquired:0,won:0,value:0};ownerMap[o].acquired++;if(WON_STAGES.includes(d.stage)){ownerMap[o].won++;ownerMap[o].value+=recWon(d);}});
     yearCO.forEach(a=>{const o=a.salesOwner||"Unassigned";if(!ownerMap[o])ownerMap[o]={owner:o,acquired:0,won:0,value:0};ownerMap[o].value+=coRawSigned(a);});
     const ownerRows=Object.values(ownerMap).sort((a,b)=>b.value-a.value);
-    const ceMap={};yearDeals.forEach(d=>{const t=d.ceType||"Other";if(!ceMap[t])ceMap[t]={type:t,acquired:0,won:0,value:0};ceMap[t].acquired++;if(WON_STAGES.includes(d.stage)){ceMap[t].won++;ceMap[t].value+=dealBase(d);}});
+    const ceMap={};yearDeals.forEach(d=>{const t=d.ceType||"Other";if(!ceMap[t])ceMap[t]={type:t,acquired:0,won:0,value:0};ceMap[t].acquired++;if(WON_STAGES.includes(d.stage)){ceMap[t].won++;ceMap[t].value+=recWon(d);}});
     const ceRows=Object.values(ceMap).sort((a,b)=>b.value-a.value);
     const revArr=Array(n).fill(0);billings.forEach(b=>{if(b.status==="Cancelled")return;const p=getFinPeriod(b.invoiceDate||b.dueDate);if(p>=0)revArr[p]+=Number(b.amount||0);});
     const collArr=Array(n).fill(0);billings.forEach(b=>{(b.payments||[]).forEach(pay=>{const p=getFinPeriod(pay.date);if(p>=0)collArr[p]+=Number(pay.amount||0);});});
@@ -11155,7 +11178,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(flagData),"Data Flags");
         window.XLSX.writeFile(wb,`GMD-Sales-MonthEnd-${MONTHS[CM]}${CY}.xlsx`);
       } else {
-        const sh1=[["Period","Acquired","Won","Win Rate %","Pipeline ₱","Won Value ₱"],...salesPeriods.map(p=>[p.label,p.acquired,p.won,p.winRate,p.pipelineValue,p.wonValue]),["TOTAL",yearDeals.length,yearWon.length,yearDeals.length>0?Math.round(yearWon.length/yearDeals.length*100):0,yearDeals.reduce((s,d)=>s+Number(d.value||0),0),yearWon.reduce((s,d)=>s+Number(d.value||0),0)]];
+        const sh1=[["Period","Acquired","Won","Win Rate %","Pipeline ₱","Won Value ₱"],...salesPeriods.map(p=>[p.label,p.acquired,p.won,p.winRate,p.pipelineValue,p.wonValue]),["TOTAL",yearDeals.length,yearWon.length,yearDeals.length>0?Math.round(yearWon.length/yearDeals.length*100):0,yearDeals.reduce((s,d)=>s+Number(d.value||0),0),yearWon.reduce((s,d)=>s+dealBase(d),0)]];
         window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(sh1),"Sales");
         if(!salesOnly){
           const sh2=[["Period","Revenue ₱","Collections ₱","Outstanding ₱","Expenses ₱","Net Profit ₱"],...finPeriods.map(p=>[p.label,p.revenue,p.collections,p.outstanding,p.expenses,p.net]),["TOTAL",finTot.revenue,finTot.collections,finTot.outstanding,finTot.expenses,finTot.net]];
@@ -11478,7 +11501,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 <KPI label="Deals Won"      value={yearWon.length}  color="#10b981"/>
                 <KPI label="Win Rate"       value={(yearDeals.length>0?Math.round(yearWon.length/yearDeals.length*100):0)+"%"} color="#f59e0b"/>
                 <KPI label="Pipeline Value" value={fmtK(yearDeals.reduce((s,d)=>s+Number(d.value||0),0))} color="#6366f1"/>
-                <KPI label="Won Value"      value={fmtK(yearWon.reduce((s,d)=>s+Number(d.value||0),0))} color="#059669"/>
+                <KPI label="Won Value"      value={fmtK(yearWon.reduce((s,d)=>s+dealBase(d),0))} color="#059669"/>
               </div>
               <Card>
                 <div style={{fontWeight:700,color:"#0f172a",marginBottom:12,fontSize:".95rem"}}>{repPeriod==="quarterly"?"Quarterly":"Yearly"} Breakdown — {CY}</div>
@@ -12397,9 +12420,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:24}}>
           {[
             {l:"Total Pipeline",    v:fmt(deals.filter(d=>isActivePipeline(d.stage)).reduce((s,d)=>s+Number(d.value||0),0)), c:"#3b82f6"},
-            {l:"Awarded Value",     v:fmt(wonDeals.reduce((s,d)=>s+Number(d.value||0),0)),   c:"#059669"},
+            {l:"Awarded Value",     v:fmt(wonDeals.reduce((s,d)=>s+recognizedSalesValue(d,buildStandbyParentIds(deals)),0)),   c:"#059669"},
             {l:"Active Deals",      v:deals.filter(d=>isActivePipeline(d.stage)).length, c:"#f59e0b"},
-            {l:"Awarded Projects",  v:wonDeals.length, c:"#8b5cf6"},
+            {l:"Awarded Projects",  v:(()=>{const sp=buildStandbyParentIds(deals);return wonDeals.filter(d=>!(d.parentDealId&&sp.has(d.parentDealId))).length;})(), c:"#8b5cf6"},
           ].map(({l,v,c,sub})=>(
             <div key={l} style={{background:"#fff",borderRadius:12,padding:"15px 16px",border:"1.5px solid #e2e8f0",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
               <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.4rem",color:c,lineHeight:1}}>{v}</div>
@@ -12814,13 +12837,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                         </div>
                       </td>
                       <td style={{padding:cp,verticalAlign:"middle",whiteSpace:"nowrap"}} onClick={e=>e.stopPropagation()}>
-                        {isStandby?(
-                          <span title="Standby-PO umbrella earns ₱0 itself — set award dates on its sub-projects below, not here" style={{color:"#94a3b8",fontSize:".64rem",fontStyle:"italic"}}>on sub-projects ↓</span>
-                        ):canEditAward?(
+                        {canEditAward?(
                           <input type="date" value={pc?.awardDate||""} max={new Date().toISOString().slice(0,10)}
                             onClick={e=>e.stopPropagation()}
                             onChange={e=>setCardAwardDate(e.target.value)}
-                            title="Award date — sets the month this deal counts toward on the Sales Value report"
+                            title={isStandby?"PO / award date — books the full PO ceiling as sales in this month (GMD policy: an issued PO is a booked sale)":"Award date — sets the month this deal counts toward on the Sales Value report"}
                             style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".66rem",fontWeight:700,color:pc?.awardDate?"#6366f1":"#94a3b8",border:"1px solid #e2e8f0",borderRadius:5,padding:"2px 5px",background:"#fff",cursor:"pointer",fontVariantNumeric:"tabular-nums"}}/>
                         ):(
                           pc?.awardDate

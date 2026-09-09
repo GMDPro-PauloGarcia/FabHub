@@ -78,6 +78,28 @@ export const LOST_STAGES   = ["Cancelled","Did Not Win"];
 export const isLostStage      = (stage)=>LOST_STAGES.includes(stage);
 export const isActivePipeline = (stage)=>!WON_STAGES.includes(stage)&&!isLostStage(stage);
 
+// ── Sales recognition (GMD policy) ──────────────────────────────────────────
+// Per Finance: the moment GMD is awarded or issued a client PO, that value is a
+// booked sale. A standby-PO umbrella therefore recognizes its FULL PO ceiling
+// (poBudget) as sales — credited to its own AE, on its award/PO date. Its child
+// jobs (drawdowns, parentDealId → a standby umbrella) are execution against an
+// already-booked PO, so they recognize ₱0 sales; counting them too would
+// double-count the PO (see migration 051). A normal deal recognizes its own
+// contract value, unchanged.
+//
+// IMPORTANT: this is a SALES-REPORTING figure only. A drawdown job still keeps
+// its own `value` for production load, budgets, billing, WIP and costing — do
+// NOT route those operational totals through here.
+export const buildStandbyParentIds = (deals=[]) =>
+  new Set((deals||[]).filter(d=>d&&d.standbyPO&&!d.parentDealId).map(d=>d.id));
+
+export const recognizedSalesValue = (d, standbyParentIds) => {
+  if(!d) return 0;
+  if(d.standbyPO && !d.parentDealId) return Number(d.poBudget)||0;                 // umbrella books the PO ceiling
+  if(d.parentDealId && standbyParentIds && standbyParentIds.has(d.parentDealId)) return 0; // drawdown already inside the PO
+  return Number(d.value)||0;
+};
+
 export const PAULO_GATE    = ["05 · For Approval","06 · Kickoff"];
 
 export const CE_TYPES      = ["Fabrication / General","Construction","Retail Fit-Out","Kiosk","Signage","Event / Activation","Repair / Refurbishment","Other"];
