@@ -3513,7 +3513,10 @@ function OfficeTVDashboard({deals=[],wonDeals=[],checklists=[],announcements=[],
 
   // ── Awarded / won projects ────────────────────────────────────────────────
   const awarded=React.useMemo(()=>{
-    const rows=(wonDeals||[]).map(d=>({id:d.id,client:d.client||"—",name:d.contact||d.product||d.client||"Project",value:Number(d.value||0),stage:d.stage||"",date:d.awardDate||d.awardedDate||d.dateAcquired||"",owner:d.salesOwner||"",location:d.location||""}));
+    // Award date is the real awarded date only (project_cards.award_date) — no fallback to
+    // dateAcquired. A won deal with no award date set shows blank and is excluded from the
+    // "awarded this month" tally, rather than silently borrowing the lead-acquisition date.
+    const rows=(wonDeals||[]).map(d=>({id:d.id,client:d.client||"—",name:d.contact||d.product||d.client||"Project",value:Number(d.value||0),stage:d.stage||"",date:d.awardDate||d.awardedDate||"",owner:d.salesOwner||"",location:d.location||""}));
     rows.sort((a,b)=>(b.date||"").localeCompare(a.date||""));
     return rows;
   },[wonDeals]);
@@ -10754,7 +10757,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const now=new Date();
         const months=[];
         for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);months.push({yr:d.getFullYear(),mo:d.getMonth(),label:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()]});}
-        const awardedMonth=d=>{const aw=pcards[d.id]?.awardDate||d.dateAcquired;return aw?new Date(aw):null;};
+        // Awarded month is driven ONLY by the real award date (project_cards.award_date).
+        // No fallback to dateAcquired: a won deal with no award date set is undated and drops
+        // out of the monthly awarded buckets until a real date is entered, instead of landing
+        // in the wrong month on the lead-acquisition date.
+        const awardedMonth=d=>{const aw=pcards[d.id]?.awardDate;return aw?new Date(aw):null;};
         const salesData=months.map(({yr,mo})=>deals.filter(d=>{if(!WON_STAGES.includes(d.stage))return false;const dt=awardedMonth(d);return dt&&dt.getFullYear()===yr&&dt.getMonth()===mo;}).reduce((s,d)=>s+Number(d.value||0),0));
         const expData=months.map(({yr,mo})=>exps.filter(e=>{const ds=e.date||(e.year!=null&&e.month!=null?`${e.year}-${String(e.month+1).padStart(2,"0")}-01`:null);if(!ds)return false;const d=new Date(ds);return d.getFullYear()===yr&&d.getMonth()===mo;}).reduce((s,e)=>s+Number(e.amount||0),0));
         const collData=months.map(({yr,mo})=>{let sum=0;billings.forEach(b=>{(b.payments||[]).forEach(p=>{if(!p.date)return;const d=new Date(p.date);if(d.getFullYear()===yr&&d.getMonth()===mo)sum+=Number(p.amount||0);});});return sum;});
@@ -10829,7 +10836,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
         const monLabel=`${MON[cmo]} ${cyr}`;
         const inThisMonth=dt=>dt&&dt.getFullYear()===cyr&&dt.getMonth()===cmo;
-        const awardedMonth=d=>{const aw=pcards[d.id]?.awardDate||d.dateAcquired;return aw?new Date(aw):null;};
+        // Awarded month is driven ONLY by the real award date (project_cards.award_date).
+        // No fallback to dateAcquired: a won deal with no award date set is undated and drops
+        // out of the monthly awarded buckets until a real date is entered, instead of landing
+        // in the wrong month on the lead-acquisition date.
+        const awardedMonth=d=>{const aw=pcards[d.id]?.awardDate;return aw?new Date(aw):null;};
         // Build the row list for the clicked widget
         let rows=[];
         if(key==="sales"||key==="awarded"){
@@ -25743,6 +25754,16 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                     upDeals(ds=>ds.map(d=>d.id===selDeal?{...d,stage:st}:d));
                     if(isSupabaseReady()) sbUpdate('deals',selDeal,{stage:st}).catch(()=>{});
                     logActivity(selDeal,"Stage Change",`Stage → ${st}`,session?.name);
+                    // Auto-stamp the award date the first time a deal enters a WON stage so the
+                    // awarded / sales-value reports never silently miss it. Only stamps when the
+                    // project card has no award date yet — an existing (possibly hand-corrected)
+                    // date is never overwritten, and non-won stages don't touch it.
+                    if(WON_STAGES.includes(st)&&!pcards[selDeal]?.awardDate){
+                      const awDate=today;
+                      upPcards(ps=>({...ps,[selDeal]:{...(ps[selDeal]||emptyProjectCard(selDeal,deal)),awardDate:awDate}}));
+                      if(isSupabaseReady()) sbUpsert('project_cards',{deal_id:selDeal,award_date:awDate},'deal_id').catch(()=>{});
+                      logActivity(selDeal,"Award date set",`${deal.contact||deal.client} — award date auto-set to ${awDate} on entering ${st}`,session?.name);
+                    }
                     const msg=`📌 <b>Project Stage Updated</b>\nClient: <b>${deal.client}</b>${deal.ceNo?`\nCE: ${deal.ceNo}`:""}${deal.contact?`\nProject: ${deal.contact}`:""}\nStage: ${st}\nBy: ${session?.name}`;
                     ["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,msg));
                     if(st==="12 · Close-Out"){
