@@ -8476,6 +8476,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Billing",    items:[{id:"billing",l:"Billing"}]},
       {group:"Finance",    items:[{id:"financecal",l:"Finance Calendar"}]},
       {group:"Operations", items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
+      {group:"Design",     items:[{id:"drf",l:"Design Requests"}]},
     ],
     FinanceAssistant:[
       {group:"Overview",   items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
