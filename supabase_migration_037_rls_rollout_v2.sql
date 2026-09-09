@@ -89,7 +89,7 @@ declare
     {"t":"deals","sel":["Manager","ProjectMover","Sales","Finance","FinanceAssistant","Procurement","QS","Design","SalesOpsAdmin"],"ins":["Manager","Sales","SalesOpsAdmin"],"upd":["Manager","Sales","SalesOpsAdmin","QS"]},
     {"t":"job_orders","sel":"AUTH","ins":["Manager","ProjectMover"],"upd":["Manager","ProjectMover"],"del":["Manager"]},
     {"t":"projects","sel":"AUTH","ins":["Manager","ProjectMover"],"upd":["Manager","ProjectMover"],"del":["Manager"]},
-    {"t":"project_cards","sel":"AUTH","ins":["Manager","ProjectMover","Finance"],"upd":["Manager","ProjectMover","Finance"],"del":["Manager"]},
+    {"t":"project_cards","sel":"AUTH","ins":["Manager","ProjectMover","Finance","Sales","SalesOpsAdmin"],"upd":["Manager","ProjectMover","Finance","Sales","SalesOpsAdmin"],"del":["Manager"]},
     {"t":"project_card_dept_tasks","sel":"AUTH","ins":["Manager","ProjectMover","Finance"],"upd":["Manager","ProjectMover","Finance"],"del":["Manager"]},
     {"t":"project_card_dept_status","sel":"AUTH","ins":["Manager","ProjectMover","Finance"],"upd":["Manager","ProjectMover","Finance"],"del":["Manager"]},
     {"t":"daily_logs","sel":["Manager","ProjectMover","Sales"],"ins":["Manager","ProjectMover"],"upd":["Manager","ProjectMover"],"del":["Manager"]},

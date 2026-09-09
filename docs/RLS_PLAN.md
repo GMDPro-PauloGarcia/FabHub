@@ -57,7 +57,8 @@ Manager-only wherever the matrix marks a financial/deal record (Decision #3).
 | Table | SELECT | INSERT | UPDATE | DELETE |
 |---|---|---|---|---|
 | `deals` | Mgr,Sales,Fin,Proc,QS,Design | Mgr,Sales | Mgr,Sales | **Mgr** |
-| `project_cards` / `project_card_dept_*` | auth | Mgr,PM,Fin | Mgr,PM,Fin | **Mgr** |
+| `project_cards` | auth | Mgr,PM,Fin,Sales,SalesOpsAdmin | Mgr,PM,Fin,Sales,SalesOpsAdmin | **Mgr** |
+| `project_card_dept_*` | auth | Mgr,PM,Fin | Mgr,PM,Fin | **Mgr** |
 | `daily_logs` | Mgr,PM,Sales | Mgr,PM | Mgr,PM | Mgr, or own row |
 | `addenda` | Mgr,PM,Sales,Fin,Proc,Design | Mgr,PM,Proc,Design | Mgr | **Mgr** |
 | `design_requests` / `design_request_forms` | Mgr,PM,Sales,Fin,Design | Mgr,Sales,Design | Mgr,Design | **Mgr** |
