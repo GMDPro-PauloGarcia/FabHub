@@ -4207,12 +4207,21 @@ export default function App(){
     // login: appLogin mints the role token, restoreAppToken rehydrates it on boot.)
   },[]);
 
+  // Tables whose dropped writes are derived/log/rollup state, not something a person
+  // typed as a form — they get a dedicated, non-alarming drop toast (below) and must NOT
+  // also trip the scary red "redo it or contact support" banner. Defined here (module-ish
+  // scope for this component) so BOTH the error handler and the drop handler can read it.
+  const LOW_STAKES_DROP_TABLES=useRef(new Set(["activity_log","project_card_dept_tasks","project_card_dept_status"])).current;
   // App-wide sync-failure warning: when ANY Supabase write fails (offline, RLS,
   // network), warn the user once (throttled) that changes are local-only — instead
   // of the 160+ silent .catch() sites that hid sync failures from the user.
   useEffect(()=>{
     let last=0;
     setSbErrorHandler((op,table,msg,kind)=>{
+      // Low-stakes tables own their own gentle drop toast (setSbDropHandler below).
+      // Firing the red "bad data — redo it or contact support" banner for them too
+      // produced two contradictory toasts for one event ("redo it" vs "nothing lost").
+      if(LOW_STAKES_DROP_TABLES.has(table)) return;
       const n=Date.now();
       if(n-last>30000){
         last=n;
@@ -4238,7 +4247,7 @@ export default function App(){
   // work vanished. A dropped write here should read as low-stakes, not as a
   // wall of identical "NOT SAVED, please redo it" errors (which is exactly
   // what a burst of same-cause drops used to produce, one toast per item).
-  const LOW_STAKES_DROP_TABLES=useRef(new Set(["activity_log","project_card_dept_tasks","project_card_dept_status"])).current;
+  // (LOW_STAKES_DROP_TABLES is defined above so the red-banner handler shares it.)
   const dropBufferRef=useRef([]);
   const dropTimerRef=useRef(null);
   useEffect(()=>{
@@ -4261,8 +4270,15 @@ export default function App(){
           // the local record up first via the Data Backup → "Push All Data to
           // Cloud" button, which recreates the parent so the queued edit lands.
           const orphan=!low && /no row matched/i.test(msg||"");
+          // Department task/status rows are real completion state a person toggled — not a
+          // log — but they're a rollup that lives on the device and re-derives from the
+          // checklist, so the honest message is "saved here, not on the server yet," not the
+          // "nothing you did is lost" line that's true only for the activity_log feed.
+          const deptTable=table==="project_card_dept_tasks"||table==="project_card_dept_status";
           const text=low
-            ? `ℹ️ ${count} history/audit ${count===1?"entry":"entries"} for ${table} couldn't be saved — this is internal log data, not something you entered, so nothing you did is lost.`
+            ? deptTable
+              ? `⚠️ ${count} department progress update${count===1?"":"s"} couldn't reach the server yet — ${count===1?"it's":"they're"} saved on this device. This usually means the project card isn't on the server yet: open 💾 Data Backup and tap "☁ Push All Data to Cloud", then retry sync.`
+              : `ℹ️ ${count} history/audit ${count===1?"entry":"entries"} for ${table} couldn't be saved — this is internal log data, not something you entered, so nothing you did is lost.`
             : orphan
             ? `❌ ${count} change${count===1?"":"s"} to ${table} couldn't sync — the record ${count===1?"it belongs":"they belong"} to isn't on the server yet. Your change is still saved on this device. Open 💾 Data Backup and tap "☁ Push All Data to Cloud" to fix it, then retry sync.`
             : `❌ ${count} change${count===1?"":"s"} to ${table} could not be saved after several attempts — ${count===1?"it":"they"} were NOT saved. Please redo ${count===1?"it":"them"}. ${msg?`(${msg})`:""}`;
@@ -7040,6 +7056,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[dnwExpanded,  setDnwExpanded]  = useState(false);  // did-not-win accordion (under closed-out)
   const[pipeType,     setPipeType]     = useState("all");  // awarded-project type filter
   const[pipeAE,       setPipeAE]       = useState("all");  // AE/salesperson filter
+  const[pipeNoAward,  setPipeNoAward]  = useState(false);  // awarded tab: show only won projects with no award date set
   const[showActChat,  setShowActChat]  = useState(false); // pipeline activity pop-up
   const[rowMenu,      setRowMenu]      = useState(null);   // {deal,x,y} — pipeline row overflow menu
   const[priceModal,   setPriceModal]   = useState(null);   // {deal} — QS set price modal
@@ -12725,7 +12742,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 // Project cards are the parent deals (no parentDealId); bucket them by their own stage.
                 // Respect the AE chip filter (pipeAE) like the Hot/Cold pipeline does — addenda
                 // still nest under their parent below, so they follow the parent's AE automatically.
-                const wonParents=wonDeals.filter(d=>!d.parentDealId&&(pipeAE==="all"||d.salesOwner===pipeAE)&&(pipeType==="all"||(d.ceType||"Other")===pipeType));
+                const wonParents=wonDeals.filter(d=>!d.parentDealId&&(pipeAE==="all"||d.salesOwner===pipeAE)&&(pipeType==="all"||(d.ceType||"Other")===pipeType)&&(!pipeNoAward||!pcards[d.id]?.awardDate));
                 const activeWonBase=wonParents.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed"&&matchSearch(d));
                 const doneWonBase  =wonParents.filter(d=>(d.stage==="12 · Close-Out"||d.stage==="14 · Completed")&&matchSearch(d));
                 // Addenda nest under their parent's card, following the PARENT's bucket
@@ -12933,6 +12950,20 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:10,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                     🏆 Awarded Projects
                     <span style={{fontWeight:400,color:"#94a3b8",fontSize:".72rem"}}>({activeWon.filter(d=>!d.parentDealId).length} active)</span>
+                    {(()=>{
+                      // Count of active won parents still missing an award date — these are the
+                      // deals excluded from the awarded/sales-value reports until dated. The chip
+                      // toggles the awarded list down to exactly those, so they can be found and fixed.
+                      const missing=wonDeals.filter(d=>!d.parentDealId&&(pipeAE==="all"||d.salesOwner===pipeAE)&&d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed"&&!pcards[d.id]?.awardDate).length;
+                      if(!missing&&!pipeNoAward) return null;
+                      return(
+                        <button onClick={()=>setPipeNoAward(v=>!v)}
+                          title="Show only awarded projects that have no award date set"
+                          style={{padding:"3px 10px",borderRadius:20,border:`1.5px solid ${pipeNoAward?"#b45309":"#fbbf24"}`,background:pipeNoAward?"#b45309":"#fffbeb",color:pipeNoAward?"#fff":"#b45309",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer",whiteSpace:"nowrap"}}>
+                          ⚠️ No award date ({missing}){pipeNoAward?" ✕":""}
+                        </button>
+                      );
+                    })()}
                     {grandTotal>0&&<span style={{marginLeft:"auto",fontFamily:"'IBM Plex Mono',monospace",fontWeight:700,color:"#10b981",fontSize:".82rem"}}>₱{grandTotal.toLocaleString("en-PH")}</span>}
                   </div>
                   {typeList.length>1&&(
