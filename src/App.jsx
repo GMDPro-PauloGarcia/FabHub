@@ -5753,8 +5753,26 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       });
     });
 
+    // Standalone BOQs had NO realtime subscription — they were fetched once at
+    // boot only, so a BOQ created or edited by anyone else (or by you on another
+    // device) never appeared until a hard refresh re-ran the boot fetch. Subscribe
+    // and merge per id (server is authoritative for BOQs) so they stream in live.
+    const rowToBoq=r=>({id:r.id,title:r.title||"",location:r.location||"",quotationNo:r.quotation_no||"",boqDate:r.boq_date||"",items:Array.isArray(r.items)?r.items:[],sections:Array.isArray(r.sections)?r.sections:[],vatEnabled:r.vat_enabled!==false,discount:r.discount||"",markupPct:r.markup_pct||"",createdBy:r.created_by||"",createdAt:r.created_at||"",updatedAt:r.updated_at||""});
+    const boqSub = !wantsRT('standalone_boqs')?null:sbSubscribe('standalone-boqs-rt','standalone_boqs',payload=>{
+      const{eventType,new:rec,old}=payload;
+      setStandaloneBoqs(prev=>{
+        let next;
+        if(eventType==='DELETE'){const id=old?.id;if(!id)return prev;next=prev.filter(b=>b.id!==id);}
+        else{ if(!rec||!rec.id) return prev; const rb=rowToBoq(rec); next=prev.some(b=>b.id===rb.id)?prev.map(b=>b.id===rb.id?rb:b):[...prev,rb]; }
+        localStorage.setItem("gmdv5:standaloneBoqs",JSON.stringify(next));
+        idbSetMany([["gmdv5:standaloneBoqs",next]]).catch(()=>{});
+        return next;
+      });
+    });
+
     return ()=>{
       dealsSub?.unsubscribe?.();
+      boqSub?.unsubscribe?.();
       pcardSub?.unsubscribe?.();
       billSub?.unsubscribe?.();
       addSub?.unsubscribe?.();
@@ -27773,22 +27791,30 @@ function BOQHomeView({standaloneBoqs=[],deals=[],session,role,today,onOpenStanda
           {all.length===0&&<button onClick={()=>{setDq("");setPicking(true);}} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>＋ New BOQ</button>}
         </div>
       ):(
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:12}}>
-          {filtered.map(e=>(
+        <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+          {/* Column header — list view (replaces the old card grid) */}
+          <div style={{display:"flex",alignItems:"center",gap:12,padding:"8px 14px",background:"#f8fafc",borderBottom:"1px solid #e2e8f0",fontSize:".62rem",fontWeight:800,textTransform:"uppercase",letterSpacing:".5px",color:"#94a3b8"}}>
+            <span style={{width:30,flexShrink:0}}>Type</span>
+            <span style={{flex:1,minWidth:0}}>BOQ / Client</span>
+            <span style={{width:96,textAlign:"right",flexShrink:0}}>Date</span>
+            <span style={{width:120,textAlign:"right",flexShrink:0}}>Total</span>
+            <span style={{width:22,flexShrink:0}}/>
+          </div>
+          {filtered.map((e,i)=>(
             <div key={e.kind+e.id} onClick={()=>e.kind==="standalone"?onOpenStandalone(e.id):onOpenDeal(e.id)}
-              style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 16px",cursor:"pointer",transition:"border-color .15s,box-shadow .15s",position:"relative"}}
-              onMouseEnter={ev=>{ev.currentTarget.style.borderColor="#94a3b8";ev.currentTarget.style.boxShadow="0 6px 18px rgba(15,23,42,.08)";}}
-              onMouseLeave={ev=>{ev.currentTarget.style.borderColor="#e2e8f0";ev.currentTarget.style.boxShadow="none";}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:8}}>
-                <span style={{fontSize:".6rem",fontWeight:800,textTransform:"uppercase",letterSpacing:".5px",padding:"2px 8px",borderRadius:20,background:e.kind==="standalone"?"#f5f3ff":"#eff6ff",color:e.kind==="standalone"?"#7c3aed":"#1d4ed8",border:`1px solid ${e.kind==="standalone"?"#ddd6fe":"#bfdbfe"}`}}>{e.kind==="standalone"?"📄 Standalone":"🔗 Pipeline"}</span>
-                {e.kind==="standalone"&&canDelete&&<button onClick={async ev=>{ev.stopPropagation();if((await uiConfirm("Delete this BOQ? This cannot be undone.")))onDeleteStandalone(e.id);}} title="Delete BOQ" style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".8rem",opacity:.5,padding:0}} onMouseEnter={ev=>ev.currentTarget.style.opacity=1} onMouseLeave={ev=>ev.currentTarget.style.opacity=.5}>🗑</button>}
+              style={{display:"flex",alignItems:"center",gap:12,padding:"11px 14px",cursor:"pointer",borderTop:i===0?"none":"1px solid #f1f5f9",transition:"background .12s"}}
+              onMouseEnter={ev=>ev.currentTarget.style.background="#f8fafc"}
+              onMouseLeave={ev=>ev.currentTarget.style.background="#fff"}>
+              <span title={e.kind==="standalone"?"Standalone":"Pipeline-linked"} style={{width:30,flexShrink:0,textAlign:"center",fontSize:".6rem",fontWeight:800,padding:"2px 0",borderRadius:20,background:e.kind==="standalone"?"#f5f3ff":"#eff6ff",color:e.kind==="standalone"?"#7c3aed":"#1d4ed8",border:`1px solid ${e.kind==="standalone"?"#ddd6fe":"#bfdbfe"}`}}>{e.kind==="standalone"?"📄":"🔗"}</span>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.title||"Untitled BOQ"}</div>
+                <div style={{fontSize:".72rem",color:"#94a3b8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.sub||"—"}</div>
               </div>
-              <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.title||"Untitled BOQ"}</div>
-              <div style={{fontSize:".72rem",color:"#94a3b8",marginBottom:10,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.sub||"—"}</div>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <span style={{fontWeight:800,color:"#059669",fontSize:"1rem",fontFamily:"'Barlow Condensed',sans-serif"}}>{peso(e.total)}</span>
-                <span style={{fontSize:".68rem",color:"#94a3b8"}}>{fmtDate(e.date)}</span>
-              </div>
+              <span style={{width:96,textAlign:"right",flexShrink:0,fontSize:".68rem",color:"#94a3b8"}}>{fmtDate(e.date)}</span>
+              <span style={{width:120,textAlign:"right",flexShrink:0,fontWeight:800,color:"#059669",fontSize:".95rem",fontFamily:"'Barlow Condensed',sans-serif"}}>{peso(e.total)}</span>
+              {e.kind==="standalone"&&canDelete
+                ? <button onClick={async ev=>{ev.stopPropagation();if((await uiConfirm("Delete this BOQ? This cannot be undone.")))onDeleteStandalone(e.id);}} title="Delete BOQ" style={{width:22,flexShrink:0,background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".8rem",opacity:.5,padding:0}} onMouseEnter={ev=>ev.currentTarget.style.opacity=1} onMouseLeave={ev=>ev.currentTarget.style.opacity=.5}>🗑</button>
+                : <span style={{width:22,flexShrink:0}}/>}
             </div>
           ))}
         </div>
