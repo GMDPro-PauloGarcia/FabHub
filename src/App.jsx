@@ -5272,7 +5272,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       // failing an FK check that sync retry then permanently drops (a
       // constraint violation is a "data" error, never retried, only dropped —
       // this silently lost individual checklist tasks in production).
-      const cardSynced=await sbUpsert('project_cards',{id:card.id,deal_id:dealId,client:dealData?.client||"",ce_no:dealData?.ceNo||"",value:Number(dealData?.value)||0,award_date:dealData?.awardDate||dealData?.dateAcquired||today,created_at:card.createdAt,ae_assigned:card.aeAssigned||"",pm1:card.pm1||"",pm2:card.pm2||"",pm3:card.pm3||"",designer:card.designer||"",coordinator:card.coordinator||"",...(card.targetEndDate?{target_end_date:card.targetEndDate}:{}),...(card.targetDays!=null?{target_days:card.targetDays}:{})},'deal_id');
+      const cardSynced=await sbUpsert('project_cards',{id:card.id,deal_id:dealId,client:dealData?.client||"",ce_no:dealData?.ceNo||"",value:Number(dealData?.value)||0,award_date:dealData?.awardDate||today,created_at:card.createdAt,ae_assigned:card.aeAssigned||"",pm1:card.pm1||"",pm2:card.pm2||"",pm3:card.pm3||"",designer:card.designer||"",coordinator:card.coordinator||"",...(card.targetEndDate?{target_end_date:card.targetEndDate}:{}),...(card.targetDays!=null?{target_days:card.targetDays}:{})},'deal_id');
       if(cardSynced){
         DEPT_ORDER.forEach(dept=>{
           (card.departments?.[dept]?.tasks||[]).forEach((t,i)=>{
@@ -11058,11 +11058,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const aeCode=(name)=>{if(!name)return"—";const skip=new Set(["de","del","ng","la","the"]);return name.split(" ").filter(w=>w&&!skip.has(w.toLowerCase())).map(w=>w[0].toUpperCase()).join("");};
     const getPCount=()=>repPeriod==="monthly"?12:repPeriod==="quarterly"?4:1;
     const getPLabel=(i)=>repPeriod==="monthly"?MONTHS[i]:repPeriod==="quarterly"?`Q${i+1}`:`${CY}`;
-    // acqDate: for WON deals, the actual award date (set on the project card at award
-    // time) is the correct "when it happened" timestamp — dateAcquired is just the
-    // original lead-intake date and is a poor stand-in once a deal is won. Fall back
-    // to dateAcquired only when no award date has been recorded yet.
+    // acqDate: the acquisition/win-RATE anchor. For WON deals it prefers the award date,
+    // falling back to the lead-intake date so a won-but-undated deal STILL counts in its
+    // acquisition cohort (dropping it would silently understate the win-rate denominator).
+    // Use this ONLY for period/win-rate bucketing, never for "awarded this month" value.
     const acqDate=(d)=>(WON_STAGES.includes(d.stage)?pcards[d.id]?.awardDate:null)||d.dateAcquired||null;
+    // awardOnly: the true awarded date with NO fallback — matches the TV and Sales Value
+    // reports. An undated won deal is excluded from the awarded-value/count metrics rather
+    // than being credited to the wrong (lead-intake) month.
+    const awardOnly=(d)=>pcards[d.id]?.awardDate||null;
     const getDealPeriod=(d)=>{const ds=acqDate(d);if(!ds)return -1;const dt=new Date(ds);if(dt.getFullYear()!==CY)return -1;return repPeriod==="monthly"?dt.getMonth():repPeriod==="quarterly"?Math.floor(dt.getMonth()/3):0;};
     const getFinPeriod=(dateStr)=>{if(!dateStr)return -1;const d=new Date(dateStr);if(d.getFullYear()!==CY)return -1;return repPeriod==="monthly"?d.getMonth():repPeriod==="quarterly"?Math.floor(d.getMonth()/3):0;};
     const n=getPCount();
@@ -11078,7 +11082,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const CO_APPROVED=a=>["Approved","Billed","Collected"].includes(a.status);
     const coTax=a=>{const t=calcTax(Math.abs(Number(a.value||0)),a.receiptType||"OR",a.withholding||false);const sign=a.kind==="Deductive"?-1:1;return {gross:sign*t.gross,base:sign*t.base,vat:sign*t.vat};};
     const coInPeriod=(a,i)=>{const ds=a.awardedDate;if(!ds)return false;const dt=new Date(ds);if(dt.getFullYear()!==CY)return false;const p=repPeriod==="monthly"?dt.getMonth():repPeriod==="quarterly"?Math.floor(dt.getMonth()/3):0;return p===i;};
-    const monthWon=deals.filter(d=>{if(!WON_STAGES.includes(d.stage))return false;const dt=acqDate(d);return dt&&new Date(dt).getFullYear()===CY&&new Date(dt).getMonth()===CM;});
+    // "Won this month" credits by the true award date (awardOnly) so AE credit and sales
+    // value land in the month the deal was actually awarded — consistent with the TV and
+    // Sales Value reports. Undated won deals are surfaced in dataFlags below, not mis-dated.
+    const monthWon=deals.filter(d=>{if(!WON_STAGES.includes(d.stage))return false;const dt=awardOnly(d);return dt&&new Date(dt).getFullYear()===CY&&new Date(dt).getMonth()===CM;});
     const monthCancelled=deals.filter(d=>{if(d.stage!=="Cancelled")return false;const dt=acqDate(d);return dt&&new Date(dt).getFullYear()===CY&&new Date(dt).getMonth()===CM;});
     // Change orders approved in the selected month (CM) — credited as sales value.
     const monthCO=addenda.filter(a=>{if(!CO_APPROVED(a)||!a.awardedDate)return false;const dt=new Date(a.awardedDate);return dt.getFullYear()===CY&&dt.getMonth()===CM;});
@@ -11103,6 +11110,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(zeroWon.length)dataFlags.push({n:dataFlags.length+1,issue:"Won deal with no value",detail:zeroWon.map(d=>`${d.client} — ${d.product||"(no project)"}`).join("; "),stake:"unknown"});
     const noCE=monthWon.filter(d=>!d.ceNo);
     if(noCE.length)dataFlags.push({n:dataFlags.length+1,issue:"Missing CE# on won deal",detail:noCE.map(d=>d.client).join(", "),stake:"—"});
+    // Won deals with no award date drop out of every awarded-value/count report (they can't
+    // be bucketed to a month). Surface them here so the award date gets set and the numbers
+    // reconcile, instead of the deal silently vanishing from the awarded totals.
+    const noAward=deals.filter(d=>WON_STAGES.includes(d.stage)&&!d.parentDealId&&!awardOnly(d));
+    if(noAward.length)dataFlags.push({n:dataFlags.length+1,issue:"Won project — no award date (excluded from awarded reports)",detail:noAward.map(d=>d.client+(d.ceNo?` (${d.ceNo})`:"")).join(", "),stake:fmt(noAward.reduce((s,d)=>s+Number(d.value||0),0))});
     const ceCounts={};deals.filter(d=>d.ceNo).forEach(d=>{ceCounts[d.ceNo]=(ceCounts[d.ceNo]||0)+1;});
     const dupCE=Object.entries(ceCounts).filter(([,c])=>c>1);
     if(dupCE.length)dataFlags.push({n:dataFlags.length+1,issue:"Duplicate CE numbers",detail:dupCE.map(([ce,c])=>`${ce} (${c}x)`).join(", "),stake:"—"});
