@@ -145,6 +145,7 @@ CREATE TABLE IF NOT EXISTS purchase_requests (
   created_at       TIMESTAMPTZ DEFAULT NOW(),
   po_number        TEXT DEFAULT '',
   po_date          DATE,
+  payment_terms    TEXT DEFAULT '',       -- COD / 7 / 15 / 30 / 60 / 90 / 120 days (migration 061)
   delivery_note    TEXT DEFAULT '',
   requested_by     TEXT DEFAULT '',
   approved_by      TEXT DEFAULT '',
