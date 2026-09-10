@@ -21619,6 +21619,11 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
     const grandTotal=subtotal-poDisc;
     const vatAmt=withVat?grandTotal*0.12:0;
     const totalWithVat=grandTotal+vatAmt;
+    // Effective terms for the printed PO: the PO's own term wins; if left on
+    // "supplier default" (blank), fall back to the supplier's terms so the
+    // supplier reads the terms that actually apply, not a dash.
+    const supTermsPrint=(suppliers||[]).find(s=>(s.companyName||s.company_name||"").toLowerCase()===(supplierName||"").toLowerCase())?.paymentTerms||"";
+    const effTermsPrint=items[0]?.paymentTerms||supTermsPrint;
     const preparedBy=items[0]?.requestedBy||items[0]?.createdBy||"";
     const approvedBy="Marian Prile";
     const receivedBy=supplierName||"";
@@ -21662,7 +21667,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
   <div class="meta-item"><label>Supplier</label><span>${supplierName||"—"}</span></div>
   <div class="meta-item"><label>PO Number</label><span>${poNo}</span></div>
   <div class="meta-item"><label>Date Issued</label><span>${poD||"—"}</span></div>
-  <div class="meta-item"><label>Payment Terms</label><span>${items[0]?.paymentTerms||"—"}</span></div>
+  <div class="meta-item"><label>Payment Terms</label><span>${effTermsPrint||"—"}</span></div>
 </div>
 <div class="meta-proj"><label>Project(s)</label><span>${projectList}</span></div>
 <table>
