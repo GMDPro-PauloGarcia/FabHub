@@ -4719,6 +4719,29 @@ export default function App(){
     if(!isSupabaseReady()||!id) return;
     sbDelete(table,id).catch(e=>console.error("FabHub sbDelete "+table+":",e.message));
   };
+  // Persist a partial project_cards change keyed on deal_id — but ALWAYS make
+  // sure the parent deal exists on the server first. A project_cards row
+  // references deals(id) by foreign key (project_cards_deal_id_fkey). Upserting
+  // a card for a deal that hasn't reached the server yet — its own insert still
+  // sitting in the offline queue, dropped, or never synced from this device —
+  // turns the upsert into an INSERT that violates that FK. That's a
+  // non-retryable "data" error, so the sync queue drops it for good and the user
+  // gets the alarming red "1 change to project_cards could not be saved … it
+  // were NOT saved" toast (the recurring failure reported from the pipeline).
+  // The Award flow already prevents this by upserting the whole deal before its
+  // child writes; this helper applies the SAME parent-before-child ordering to
+  // every other project-card write (award date, TAT/turnover, PM/AE assignment,
+  // manual progress) so none of them can strand a card against a missing deal.
+  // sbSyncOne is an idempotent full-record deal upsert: for a role that can't
+  // insert deals it no-ops (that role never created the deal, so whoever did has
+  // already synced it), and for the deal's owner it re-materialises the parent
+  // if it somehow went missing — exactly the self-heal we want.
+  const syncProjectCard=async(dealId,patch)=>{
+    if(!isSupabaseReady()||!dealId) return false;
+    const deal=deals.find(d=>d.id===dealId);
+    if(deal) await sbSyncOne("deals",deal,toSbDeal);
+    return sbUpsert('project_cards',{deal_id:dealId,...patch},'deal_id').catch(()=>false);
+  };
 
   // ── PERSIST — updates the save indicator; Supabase is the write target ──
   // ── PERSIST — updates save indicator; Supabase is the write target ──
@@ -5288,6 +5311,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       // failing an FK check that sync retry then permanently drops (a
       // constraint violation is a "data" error, never retried, only dropped —
       // this silently lost individual checklist tasks in production).
+      // Guarantee the parent deal exists on the server before the card's own FK
+      // to deals(id) is evaluated — createProjectCard is reachable from the
+      // manual "create card" path too, where the deal may still be local-only.
+      const parentDeal=deals.find(d=>d.id===dealId);
+      if(parentDeal) await sbSyncOne("deals",parentDeal,toSbDeal);
       const cardSynced=await sbUpsert('project_cards',{id:card.id,deal_id:dealId,client:dealData?.client||"",ce_no:dealData?.ceNo||"",value:Number(dealData?.value)||0,award_date:dealData?.awardDate||today,created_at:card.createdAt,ae_assigned:card.aeAssigned||"",pm1:card.pm1||"",pm2:card.pm2||"",pm3:card.pm3||"",designer:card.designer||"",coordinator:card.coordinator||"",...(card.targetEndDate?{target_end_date:card.targetEndDate}:{}),...(card.targetDays!=null?{target_days:card.targetDays}:{})},'deal_id');
       if(cardSynced){
         DEPT_ORDER.forEach(dept=>{
@@ -5346,7 +5374,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       tatSetAt:new Date().toISOString(),
     }}));
     if(isSupabaseReady()){
-      sbUpsert('project_cards',{deal_id:dealId,target_days:targetDays,target_end_date:dateStr,tat_category:category||"",tat_set_by:session?.name,tat_set_at:new Date().toISOString()},'deal_id').catch(()=>{});
+      syncProjectCard(dealId,{target_days:targetDays,target_end_date:dateStr,tat_category:category||"",tat_set_by:session?.name,tat_set_at:new Date().toISOString()});
     }
     toastEmit("Turnover date set — Due "+dateStr,"success");
     logActivity(dealId,"TAT Set",`Target: ${targetDays} days → Due ${dateStr}`,session?.name);
@@ -10154,7 +10182,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       addOpsEvent={data=>{const rec={...data,id:uid(),dept:"Operations",createdDate:today,createdBy:session?.name||role};upChecklist(cs=>[...cs,rec]);if(isSupabaseReady())sbInsert('checklists',toSbChecklist(rec)).catch(err=>{console.error("Calendar item sync:",err);toastEmit&&toastEmit("Calendar item saved locally only — tap 🔄 sync to push it to the server.","warning",8000);});const proj=wonDeals.find(d=>d.id===rec.projectId);const msg=`📅 <b>Calendar Item Added</b>\n<b>${rec.type||"Event"}</b>: ${rec.title||""}\nDate: ${rec.dueDate||"—"}${proj?`\nProject: ${proj.client}${proj.ceNo?" ("+proj.ceNo+")":""}`:""}\nBy: ${rec.createdBy||"—"}`;const _t=(rec.type||"").toLowerCase();if(_t==="turnover"){sendTelegramNotification("ops",msg);sendTelegramNotification("sales",msg);sendTelegramNotification("management",msg);}else if(_t==="po delivery"){sendTelegramNotification("procurement",msg);sendTelegramNotification("warehouse",msg);}else if(_t.includes("billing")){sendTelegramNotification("financialcontrol",msg);sendTelegramNotification("management",msg);}else if(_t.includes("drf")||_t.includes("design")){sendTelegramNotification("design",msg);}else if(_t==="inspection"){sendTelegramNotification("ops",msg);sendTelegramNotification("management",msg);}else if(_t==="maintenance"){sendTelegramNotification("ops",msg);}else{sendTelegramNotification("ops",msg);sendTelegramNotification("sales",msg);}}}
       updateOpsEvent={(id,ch)=>{upChecklist(cs=>cs.map(c=>c.id===id?{...c,...ch}:c));if(isSupabaseReady())sbUpdate('checklists',id,toSbChecklist({...checklist.find(c=>c.id===id),...ch})).catch(()=>{});}}
       deleteOpsEvent={delOpsEvent}
-      updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())sbUpsert('project_cards',{deal_id:dealId,target_end_date:date},'deal_id').catch(()=>{});}}
+      updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())syncProjectCard(dealId,{target_end_date:date});}}
     />
   );
 
@@ -10292,7 +10320,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       })()}
 
       {/* PM Update Modal (also accessible from home) */}
-      {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate} updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())sbUpsert('project_cards',{deal_id:dealId,target_end_date:date},'deal_id').catch(()=>{});}}/>}
+      {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate} updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())syncProjectCard(dealId,{target_end_date:date});}}/>}
     </Wrap>
   );
 
@@ -11076,7 +11104,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       addOpsEvent={data=>{const rec={...data,id:uid(),dept:"Operations",createdDate:today,createdBy:session?.name||role};upChecklist(cs=>[...cs,rec]);if(isSupabaseReady())sbInsert('checklists',toSbChecklist(rec)).catch(err=>{console.error("Calendar item sync:",err);toastEmit&&toastEmit("Calendar item saved locally only — tap 🔄 sync to push it to the server.","warning",8000);});const proj=wonDeals.find(d=>d.id===rec.projectId);const msg=`📅 <b>Calendar Item Added</b>\n<b>${rec.type||"Event"}</b>: ${rec.title||""}\nDate: ${rec.dueDate||"—"}${proj?`\nProject: ${proj.client}${proj.ceNo?" ("+proj.ceNo+")":""}`:""}\nBy: ${rec.createdBy||"—"}`;const _t=(rec.type||"").toLowerCase();if(_t==="turnover"){sendTelegramNotification("ops",msg);sendTelegramNotification("sales",msg);sendTelegramNotification("management",msg);}else if(_t==="po delivery"){sendTelegramNotification("procurement",msg);sendTelegramNotification("warehouse",msg);}else if(_t.includes("billing")){sendTelegramNotification("financialcontrol",msg);sendTelegramNotification("management",msg);}else if(_t.includes("drf")||_t.includes("design")){sendTelegramNotification("design",msg);}else if(_t==="inspection"){sendTelegramNotification("ops",msg);sendTelegramNotification("management",msg);}else if(_t==="maintenance"){sendTelegramNotification("ops",msg);}else{sendTelegramNotification("ops",msg);sendTelegramNotification("sales",msg);}}}
       updateOpsEvent={(id,ch)=>{upChecklist(cs=>cs.map(c=>c.id===id?{...c,...ch}:c));if(isSupabaseReady())sbUpdate('checklists',id,toSbChecklist({...checklist.find(c=>c.id===id),...ch})).catch(()=>{});}}
       deleteOpsEvent={delOpsEvent}
-      updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())sbUpsert('project_cards',{deal_id:dealId,target_end_date:date},'deal_id').catch(()=>{});}}
+      updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())syncProjectCard(dealId,{target_end_date:date});}}
     />
   );
 
@@ -12792,7 +12820,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   const setCardAwardDate=(date)=>{
                     if(!date) return;
                     upPcards(ps=>({...ps,[d.id]:{...(ps[d.id]||emptyProjectCard(d.id,d)),awardDate:date}}));
-                    if(isSupabaseReady()) sbUpsert('project_cards',{deal_id:d.id,award_date:date},'deal_id').catch(()=>{});
+                    if(isSupabaseReady()) syncProjectCard(d.id,{award_date:date});
                     logActivity(d.id,"Award date set",`${d.contact||d.client} — award date set to ${date} by ${session?.name}`,session?.name);
                     toastEmit("Award date updated.");
                   };
@@ -15308,7 +15336,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
       {/* PM Update Modal */}
       {/* PM Update Modal */}
-      {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate} updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())sbUpsert('project_cards',{deal_id:dealId,target_end_date:date},'deal_id').catch(()=>{});}}/>}
+      {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate} updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())syncProjectCard(dealId,{target_end_date:date});}}/>}
     </Wrap>
   );
 
@@ -25823,7 +25851,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                     if(WON_STAGES.includes(st)&&!pcards[selDeal]?.awardDate){
                       const awDate=today;
                       upPcards(ps=>({...ps,[selDeal]:{...(ps[selDeal]||emptyProjectCard(selDeal,deal)),awardDate:awDate}}));
-                      if(isSupabaseReady()) sbUpsert('project_cards',{deal_id:selDeal,award_date:awDate},'deal_id').catch(()=>{});
+                      if(isSupabaseReady()) syncProjectCard(selDeal,{award_date:awDate});
                       logActivity(selDeal,"Award date set",`${deal.contact||deal.client} — award date auto-set to ${awDate} on entering ${st}`,session?.name);
                     }
                     const msg=`📌 <b>Project Stage Updated</b>\nClient: <b>${deal.client}</b>${deal.ceNo?`\nCE: ${deal.ceNo}`:""}${deal.contact?`\nProject: ${deal.contact}`:""}\nStage: ${st}\nBy: ${session?.name}`;
@@ -25947,7 +25975,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                         // next load sbLoadAll fills in the default department structure.
                         if(upPcards) upPcards(ps=>({...ps,[selDeal]:{...(ps[selDeal]||{deal_id:selDeal,dealId:selDeal}),aeAssigned:tf.ae,pm1:tf.pm1,pm2:tf.pm2,pm3:tf.pm3,designer:tf.designer,coordinator:tf.coordinator,warehouseOnly:tf.warehouseOnly||false}}));
                         if(isSupabaseReady()){
-                          sbUpsert('project_cards',{deal_id:selDeal,ae_assigned:tf.ae,pm1:tf.pm1,pm2:tf.pm2,pm3:tf.pm3,designer:tf.designer,coordinator:tf.coordinator,warehouse_only:tf.warehouseOnly||false},'deal_id').catch(()=>{});
+                          syncProjectCard(selDeal,{ae_assigned:tf.ae,pm1:tf.pm1,pm2:tf.pm2,pm3:tf.pm3,designer:tf.designer,coordinator:tf.coordinator,warehouse_only:tf.warehouseOnly||false});
                         }
                         if(jo&&updateJO) updateJO(jo.id,{aeAssigned:tf.ae,pm1:tf.pm1,pm2:tf.pm2,pm3:tf.pm3,designer:tf.designer,coordinator:tf.coordinator});
                         logActivity(selDeal,"Team Updated",`AE: ${tf.ae||"—"}, PM: ${[tf.pm1,tf.pm2,tf.pm3].filter(Boolean).join(", ")||"—"}, Designer: ${tf.designer||"—"}`,session?.name);
@@ -26027,7 +26055,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                         const newDays=dateForm.targetEndDate?Math.max(1,Math.ceil((new Date(dateForm.targetEndDate)-new Date(dateForm.awardDate))/86400000)):card?.targetDays;
                         upPcards(ps=>({...ps,[selDeal]:{...(ps[selDeal]||{deal_id:selDeal,dealId:selDeal}),awardDate:dateForm.awardDate,targetEndDate:dateForm.targetEndDate||ps[selDeal]?.targetEndDate,targetDays:newDays||ps[selDeal]?.targetDays}}));
                         if(isSupabaseReady()){
-                          sbUpsert('project_cards',{deal_id:selDeal,award_date:dateForm.awardDate,...(dateForm.targetEndDate?{target_end_date:dateForm.targetEndDate,target_days:newDays}:{})},'deal_id').catch(()=>{});
+                          syncProjectCard(selDeal,{award_date:dateForm.awardDate,...(dateForm.targetEndDate?{target_end_date:dateForm.targetEndDate,target_days:newDays}:{})});
                         }
                         // Location & CE Type live on the deal, not the card
                         if(upDeals&&(dateForm.location!==(deal?.location||"")||dateForm.ceType!==(deal?.ceType||""))){
@@ -26087,7 +26115,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 const canEditManual=role==="Manager"||role==="Operations"||role==="SalesOpsAdmin";
                 const setManual=(val)=>{
                   upPcards(ps=>({...ps,[selDeal]:{...ps[selDeal],manualProgress:val}}));
-                  if(isSupabaseReady()) sbUpsert('project_cards',{deal_id:selDeal,manual_progress:val},'deal_id').catch(()=>{});
+                  if(isSupabaseReady()) syncProjectCard(selDeal,{manual_progress:val});
                 };
                 return(
                 <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
@@ -26404,7 +26432,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
         })()
       )}
     </div>
-    {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate} updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())sbUpsert('project_cards',{deal_id:dealId,target_end_date:date},'deal_id').catch(()=>{});}}/>}
+    {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate} updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())syncProjectCard(dealId,{target_end_date:date});}}/>}
     </>
   );
 }
