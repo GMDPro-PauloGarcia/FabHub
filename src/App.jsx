@@ -5238,7 +5238,7 @@ export default function App(){
   .notes-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px;font-size:11px;color:#475569;margin-top:8px}
   @media print{body{padding:10px}}
 </style></head><body>
-<div class="logo-area"><div><div class="co-name">GMD Pro Solutions</div><div class="co-sub">Interior Design & Fabrication · info@gmdpro.com.ph</div></div></div>
+<div class="logo-area"><div><div class="co-name">GMD PRODUCTIONS INC</div><div class="co-sub">Interior Design & Fabrication · info@gmdpro.com.ph</div></div></div>
 <div class="doc-title">GOODS RECEIVING NOTE</div>
 <div class="meta-grid">
   <div class="meta-row"><span class="meta-label">GRN / DR No.:</span><span class="meta-val"><strong>${drNo||"— (none)"}</strong></span></div>
@@ -5269,7 +5269,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   <div class="sig-box"><div class="sig-line"><span class="sig-name">&nbsp;</span></div>Supplier Representative</div>
 </div>
 <div style="margin-top:20px;font-size:9px;color:#94a3b8;text-align:center;border-top:1px solid #f1f5f9;padding-top:8px">
-  This document serves as official receiving record. Any discrepancies must be reported within 24 hours. · GMD Pro Solutions · ${recvDate}
+  This document serves as official receiving record. Any discrepancies must be reported within 24 hours. · GMD PRODUCTIONS INC · ${recvDate}
 </div>
 </body></html>`;
     const w=window.open("","_blank","width=800,height=600");
@@ -20888,7 +20888,7 @@ function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,subc
   @media print{body{padding:20px}}
 </style></head><body>
 <div class="hdr">
-  <div><div class="co">GMD Pro</div><div class="co-sub">Fabrication &amp; Project Management</div></div>
+  <div><div class="co">GMD PRODUCTIONS INC</div><div class="co-sub">Fabrication &amp; Project Management</div></div>
   <div style="text-align:right"><div class="doc-title">SUBCON WORK ORDER</div><div class="doc-sub">${esc(w.woNumber)} · ${esc(w.woDate)||""}</div></div>
 </div>
 <div class="meta">
@@ -21358,7 +21358,7 @@ function PoDocumentationQueue({prs,swos,updatePR,updateSWO,wonDeals,session,role
   @media print{body{padding:20px}}
 </style></head><body>
 <div class="hdr">
-  <div><div class="co">GMD Pro</div><div class="co-sub">Fabrication &amp; Project Management</div></div>
+  <div><div class="co">GMD PRODUCTIONS INC</div><div class="co-sub">Fabrication &amp; Project Management</div></div>
   <div style="text-align:right"><div class="doc-title">PAYMENT ORDER</div><div class="doc-sub">${esc(d.number)} · ${esc(a.paymentOrderedAt)||today}</div></div>
 </div>
 <table>
@@ -21625,7 +21625,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
     const supTermsPrint=(suppliers||[]).find(s=>(s.companyName||s.company_name||"").toLowerCase()===(supplierName||"").toLowerCase())?.paymentTerms||"";
     const effTermsPrint=items[0]?.paymentTerms||supTermsPrint;
     const preparedBy=items[0]?.requestedBy||items[0]?.createdBy||"";
-    const approvedBy="Marian Prile";
+    const approvedBy=items[0]?.approvedBy||"";
     const receivedBy=supplierName||"";
     const allProjDeals=[...activeDeals,...(wonDeals||[])];
     const projectList=[...new Set(items.map(i=>{if(i.projectId==="__gmd_stocks__"||i.projectName==="GMD Stocks")return"GMD Stocks";const d=allProjDeals.find(x=>x.id===i.projectId);return d?projDisplayName(d):(i.projectName||"");}).filter(Boolean))].join(" / ")||"—";
@@ -21644,7 +21644,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
   .co-sub{font-size:11px;color:#64748b;margin-top:2px}
   .po-title{font-size:20px;font-weight:800;color:#1e293b}
   .po-sub{font-size:11px;color:#64748b;margin-top:3px}
-  .meta{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:8px;background:#f8fafc;padding:14px 16px;border-radius:8px 8px 0 0;border:1px solid #e2e8f0;border-bottom:none}
+  .meta{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:8px;background:#f8fafc;padding:14px 16px;border-radius:8px 8px 0 0;border:1px solid #e2e8f0;border-bottom:none}
   .meta-item label{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:#94a3b8;margin-bottom:3px}
   .meta-item span{font-weight:700;font-size:13px}
   .meta-proj{background:#f8fafc;padding:10px 16px 14px;border-radius:0 0 8px 8px;border:1px solid #e2e8f0;margin-bottom:20px;border-top:1px dashed #e2e8f0}
@@ -21660,7 +21660,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
   @media print{body{padding:20px}}
 </style></head><body>
 <div class="hdr">
-  <div><div class="co">GMD Pro</div><div class="co-sub">Fabrication & Project Management</div></div>
+  <div><div class="co">GMD PRODUCTIONS INC</div><div class="co-sub">Fabrication & Project Management</div></div>
   <div style="text-align:right"><div class="po-title">PURCHASE ORDER</div><div class="po-sub">${poNo} · ${poD||""}</div></div>
 </div>
 <div class="meta">
@@ -21676,7 +21676,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
   ${poDisc>0?`<tr style="background:#f0fdf4"><td colspan="6" style="text-align:right;font-size:11px;color:#059669">PO-Level Discount (${poDiscType==="pct"?poDiscVal+"%":"Fixed"})</td><td style="text-align:right;color:#059669;font-weight:700">−${fmt(poDisc)}</td></tr>`:""}
   ${withVat?`<tr style="background:#f8fafc"><td colspan="6" style="text-align:right;font-size:11px;color:#64748b">Ex-VAT Amount</td><td style="text-align:right;color:#64748b">${fmt(grandTotal)}</td></tr><tr style="background:#fffbeb"><td colspan="6" style="text-align:right;font-size:11px;color:#b45309;font-weight:700">VAT 12% (OR)</td><td style="text-align:right;color:#b45309;font-weight:700">+${fmt(vatAmt)}</td></tr>`:""}
   <tr class="total-row"><td colspan="6" style="text-align:right">${withVat?"TOTAL (VAT Inclusive)":"Grand Total"}</td><td style="text-align:right">${fmt(totalWithVat)}</td></tr>
-  ${withVat?`<tr><td colspan="7" style="font-size:9px;color:#94a3b8;text-align:right;padding-top:4px">Official Receipt (OR) — VAT Registered Supplier · TIN of GMD Pro Solutions applies</td></tr>`:""}
+  ${withVat?`<tr><td colspan="7" style="font-size:9px;color:#94a3b8;text-align:right;padding-top:4px">Official Receipt (OR) — VAT Registered Supplier · TIN of GMD PRODUCTIONS INC applies</td></tr>`:""}
 </table>
 <div class="sig">
   <div class="sig-box">Prepared by<br><br><br><div style="border-top:1px solid #94a3b8;padding-top:6px;margin-top:4px"><strong style="font-size:11px;color:#0f172a">${preparedBy||"&nbsp;"}</strong><br>Procurement</div></div>
