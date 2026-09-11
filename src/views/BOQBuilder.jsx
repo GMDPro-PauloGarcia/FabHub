@@ -183,6 +183,10 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   const[discount,setDiscount]=useState("");   // peso amount subtracted from subtotal before VAT
   const[suggest,setSuggest]=useState({id:null,matches:[]});
   const[draftSaved,setDraftSaved]=useState(false);
+  // Real cloud-sync state for the sync badge: "idle" | "saving" | "synced" | "local".
+  // "local" means the write reached this device but NOT the server, so the user
+  // knows the BOQ is not safe yet — distinct from the old optimistic "✓ saved".
+  const[syncState,setSyncState]=useState("idle");
   const draftTimerRef=useRef(null);
   // ── Document status & last-edited stamp ────────────────────────────────────
   // Draft  = in progress, freely editable.
@@ -632,10 +636,21 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
     if(!selDeal&&!hasContent) return;
     setDraftSaved(false);
     clearTimeout(draftTimerRef.current);
-    draftTimerRef.current=setTimeout(()=>{
+    draftTimerRef.current=setTimeout(async()=>{
+      // ── WIPE GUARD (fix for "CE removed") ────────────────────────────────
+      // Never let an EMPTY autosave overwrite a deal's stored BOQ. A blank BOQ
+      // reaches the server ONLY through a deliberate edit (userEditedRef — set
+      // whenever a row/section is added, changed or removed) or the explicit
+      // "Clear Draft" button. Root cause of the wipe: opening a deal whose
+      // boqData had not hydrated into local state yet fell to the load effect's
+      // else-branch, which seeded a blank header from the deal; this autosave
+      // then persisted {items:[],sections:[],boqTitle:"…(CE-xxxx)",…} straight
+      // over the real Bill of Quantities. deals.boq_data is a whole-column blob
+      // write (last-write-wins), so the good BOQ was gone with no error.
+      const hasNow=items.length>0||sections.length>0;
+      if(!hasNow&&!userEditedRef.current){ setDraftSaved(true); setSyncState("idle"); return; }
       const boqData={items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount,markupPct,...buildStamp()};
       saveDraft(selDeal||BOQ_SCRATCH_KEY,boqData);
-      if(selDeal&&isSupabaseReady()) sbUpdate('deals',selDeal,{boq_data:boqData}).catch(()=>{});
       // Reflect the saved BOQ in the shared deals state immediately so surfaces
       // that read deal.boqData (BOQ list "has BOQ", print, contract breakdown)
       // update without waiting for the realtime echo / a manual refresh.
@@ -652,6 +667,16 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
         if(cur===0&&net>0) onBoqValue(selDeal,net);
       }
       setDraftSaved(true);
+      // Honest cloud-sync state for the badge: await the actual write. sbUpdate
+      // resolves false (never throws) on a dropped/failed write, so the badge can
+      // say "saved on this device only" instead of the old optimistic green tick.
+      if(selDeal&&isSupabaseReady()){
+        setSyncState("saving");
+        const ok=await sbUpdate('deals',selDeal,{boq_data:boqData});
+        setSyncState(ok?"synced":"local");
+      } else {
+        setSyncState(selDeal?"local":"idle");
+      }
     },1200);
     return()=>clearTimeout(draftTimerRef.current);
   },[coId,standaloneId,selDeal,items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount,markupPct,boqStatus]);
@@ -953,7 +978,16 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
           {items.length>0&&<button onClick={printBOQ} style={{background:"#f0fdf4",border:"1.5px solid #86efac",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#166534",cursor:"pointer"}}>🖨 Preview / Print</button>}
           {items.length>0&&<button onClick={exportCSV} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>}
           {!ro&&(selDeal||items.length>0||sections.length>0)&&<button onClick={()=>{deleteDraft(selDeal||BOQ_SCRATCH_KEY);if(selDeal&&isSupabaseReady())sbUpdate('deals',selDeal,{boq_data:null}).catch(()=>{});setItems(BLANK_ITEMS());setSections([]);setBoqTitle("");setLocation(deal?.location||"");setQuotationNo(deal?.ceNo||"");setBoqDate(today);setVatEnabled(null);setDiscount("");setMarkupPct("");setDraftSaved(false);}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#c2410c",cursor:"pointer"}} title="Clear saved draft and reset">✕ Clear Draft</button>}
-          {!ro&&draftSaved&&(items.length>0||sections.length>0)&&<span style={{fontSize:".72rem",color:"#16a34a",fontWeight:600,display:"flex",alignItems:"center",gap:4}}>✓ {selDeal?"Draft saved":"Saved (no project yet)"}</span>}
+          {!ro&&(items.length>0||sections.length>0)&&(()=>{
+            // Sync badge — reflects the REAL cloud-save state, not just the local draft.
+            // Amber "device only" is the important one: it tells the user the BOQ is not
+            // safe on the server yet (offline, RLS, or a dropped write) so they can retry.
+            if(!draftSaved||syncState==="saving") return <span style={{fontSize:".72rem",color:"#6b7280",fontWeight:600,display:"flex",alignItems:"center",gap:4}}>⟳ Saving…</span>;
+            if(!selDeal) return <span style={{fontSize:".72rem",color:"#16a34a",fontWeight:600,display:"flex",alignItems:"center",gap:4}}>✓ Saved (no project yet)</span>;
+            if(syncState==="local") return <span title="Saved on this device but NOT on the server yet. Check your connection, then use the 🔄 sync button. Do not close without confirming it turns green." style={{fontSize:".72rem",color:"#b45309",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:6,padding:"2px 8px",fontWeight:700,display:"flex",alignItems:"center",gap:4}}>⚠ Saved on this device only — not synced</span>;
+            if(syncState==="synced") return <span style={{fontSize:".72rem",color:"#16a34a",fontWeight:600,display:"flex",alignItems:"center",gap:4}}>✓ Synced to cloud</span>;
+            return <span style={{fontSize:".72rem",color:"#16a34a",fontWeight:600,display:"flex",alignItems:"center",gap:4}}>✓ Draft saved</span>;
+          })()}
         </div>
       </div>
 
