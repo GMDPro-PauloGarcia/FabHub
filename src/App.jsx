@@ -4061,7 +4061,7 @@ export default function App(){
             const _budgets=Object.keys(data.budgets||{}).length?Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}])):null;
             if(_budgets){setBudgets(prev=>mergeLocalOnlyObj(_budgets,prev));idbE.push([KEYS.budgets,_budgets]);}
             if(data.inflows!=null){setInfs(data.inflows);idbE.push([KEYS.inflows,data.inflows]);}
-            const _payables=data.payables!=null?data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0,accountCode:p.account_code||"",verified:p.verified!==false,verifiedBy:p.verified_by||"",verifiedAt:p.verified_at||"",verificationPct:p.verification_pct!=null?Number(p.verification_pct):100,payBank:p.pay_bank||"",payMethod:p.pay_method||"",payRef:p.pay_ref||"",vatable:!!p.vatable,inputVat:Number(p.input_vat)||0,netAmount:Number(p.net_amount)||0,ewtRate:Number(p.ewt_rate)||0,ewtAmount:Number(p.ewt_amount)||0,tin:p.tin||""})):null;
+            const _payables=data.payables!=null?data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0,accountCode:p.account_code||"",verified:p.verified!==false,verifiedBy:p.verified_by||"",verifiedAt:p.verified_at||"",verificationPct:p.verification_pct!=null?Number(p.verification_pct):100,payBank:p.pay_bank||"",payMethod:p.pay_method||"",payRef:p.pay_ref||"",vatable:!!p.vatable,inputVat:Number(p.input_vat)||0,netAmount:Number(p.net_amount)||0,ewtRate:Number(p.ewt_rate)||0,ewtAmount:Number(p.ewt_amount)||0,tin:p.tin||"",approvalStatus:p.approval_status||"Approved",approvedBy:p.approved_by||"",approvedAt:p.approved_at||null})):null;
             if(_payables!=null){setPayables(prev=>mergeLocalOnly(_payables,prev));idbE.push(["gmdv5:payables",_payables]);}
             const _loans=data.loans!=null?data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]})):null;
             if(_loans!=null){setLoans(prev=>mergeLocalOnly(_loans,prev));idbE.push(["gmdv5:loans",_loans]);}
@@ -4374,7 +4374,7 @@ export default function App(){
     }
     if(Object.keys(data.budgets||{}).length){const bg=Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}]));setBudgets(prev=>mergeLocalOnlyObj(bg,prev));idbE.push([KEYS.budgets,bg]);}
     if(data.users?.length){const us=data.users.map(u=>{const fallbackHash=DEFAULT_USERS.find(d=>d.username===(u.username||""))?.passwordHash||"";return{id:u.id,username:u.username||"",name:u.name||u.full_name||"",role:u.role||"Sales",title:u.title||u.role||"",status:u.status||"active",passwordHash:u.password_hash||fallbackHash,createdAt:u.created_at||""};});setUsers(prev=>mergeLocalOnly(us,prev));idbE.push([KEYS.users,us]);}
-    if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0,accountCode:p.account_code||"",verified:p.verified!==false,verifiedBy:p.verified_by||"",verifiedAt:p.verified_at||"",verificationPct:p.verification_pct!=null?Number(p.verification_pct):100,payBank:p.pay_bank||"",payMethod:p.pay_method||"",payRef:p.pay_ref||"",vatable:!!p.vatable,inputVat:Number(p.input_vat)||0,netAmount:Number(p.net_amount)||0,ewtRate:Number(p.ewt_rate)||0,ewtAmount:Number(p.ewt_amount)||0,tin:p.tin||""}));setPayables(prev=>mergeLocalOnly(ps,prev));idbE.push(["gmdv5:payables",ps]);}
+    if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0,accountCode:p.account_code||"",verified:p.verified!==false,verifiedBy:p.verified_by||"",verifiedAt:p.verified_at||"",verificationPct:p.verification_pct!=null?Number(p.verification_pct):100,payBank:p.pay_bank||"",payMethod:p.pay_method||"",payRef:p.pay_ref||"",vatable:!!p.vatable,inputVat:Number(p.input_vat)||0,netAmount:Number(p.net_amount)||0,ewtRate:Number(p.ewt_rate)||0,ewtAmount:Number(p.ewt_amount)||0,tin:p.tin||"",approvalStatus:p.approval_status||"Approved",approvedBy:p.approved_by||"",approvedAt:p.approved_at||null}));setPayables(prev=>mergeLocalOnly(ps,prev));idbE.push(["gmdv5:payables",ps]);}
     if(data.loans?.length){const ls=data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]}));setLoans(prev=>mergeLocalOnly(ls,prev));idbE.push(["gmdv5:loans",ls]);}
     if(data.dailyLogs?.length){const dl=data.dailyLogs.map(l=>({...l,dealId:l.deal_id,date:l.log_date,workDone:l.work_done,progressNote:l.progress_note,loggedBy:l.logged_by,createdAt:l.created_at}));setDailyLogs(prev=>mergeLocalOnly(dl,prev));idbE.push([KEYS.dailylogs,dl]);}
     if(data.ceReqs?.length){const cr=data.ceReqs.map(ceReqFromSb);setCeReqs(prev=>mergeLocalOnly(cr,prev));idbE.push([KEYS.ceReqs,cr]);}
@@ -8192,7 +8192,18 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const inputVat=vatable?Math.round((amount-netAmount)*100)/100:0;
     const ewtRate=Number(data.ewtRate)||0;
     const ewtAmount=ewtRate>0?Math.round(netAmount*ewtRate/100*100)/100:0;
-    const rec={...data,amount,paidAmount,vatable,netAmount,inputVat,ewtRate,ewtAmount,tin:data.tin||"",
+    // Approval gate: a new payable enters as Pending and cannot be paid until a
+    // Manager or Finance Manager approves it. Editing preserves the existing
+    // decision — UNLESS the amount changed after approval, which resets it to
+    // Pending so a larger amount can't ride an old approval.
+    let approvalStatus="Pending",approvedBy="",approvedAt=null;
+    if(editPayId){
+      const prev=payables.find(p=>p.id===editPayId);
+      const amtChanged=prev&&Math.round((Number(prev.amount)||0)*100)/100!==Math.round(amount*100)/100;
+      if(prev&&prev.approvalStatus==="Approved"&&amtChanged){approvalStatus="Pending";approvedBy="";approvedAt=null;}
+      else{approvalStatus=prev?.approvalStatus||"Pending";approvedBy=prev?.approvedBy||"";approvedAt=prev?.approvedAt||null;}
+    }
+    const rec={...data,amount,paidAmount,vatable,netAmount,inputVat,ewtRate,ewtAmount,tin:data.tin||"",approvalStatus,approvedBy,approvedAt,
       apNumber:data.apNumber||(editPayId?"":nextApNumber()),
       id:editPayId||uid(),status:editPayId?derived:(paidAmount>0?derived:"Unpaid"),
       paidDate:derived==="Paid"?(data.paidDate||today):(data.paidDate||""),
@@ -8228,6 +8239,37 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     upPayables(ps=>ps.map(x=>x.id===id?upd:x));
     if(isSupabaseReady()&&isUUID(id)) sbUpsert("payables",payableToSb(upd),"id").catch(()=>{});
     toastEmit(payIsSubcon(p)?`Verified ${pct}% (Operations) — now payable.`:"Warehouse receipt verified — now payable.","success");
+  };
+  // ── Expense/payable approval gate ────────────────────────────────────────
+  // Only a Manager or the Finance Manager (Finance role) may approve a payable
+  // for payment. Approval is separate from receiving-verification: verification
+  // confirms goods/work arrived; approval authorizes the spend. A payable must
+  // be Approved before it can be paid or routed to a check voucher.
+  const canApprovePayables=["Manager","Finance"].includes(role);
+  const payApproved=p=>((p?.approvalStatus)||"Approved")==="Approved"; // legacy rows (no field) treated as approved
+  const approvePayable=async(id)=>{
+    const p=payables.find(x=>x.id===id); if(!p) return;
+    if(!canApprovePayables){toastEmit("Only a Manager or the Finance Manager can approve a payable.","error");return;}
+    // Block self-approval — the person who entered it can't clear it (Manager may override).
+    const nm=s=>String(s||"").trim().toLowerCase();
+    if(role!=="Manager"&&nm(p.createdBy)===nm(session?.name)&&nm(p.createdBy)!==""){
+      toastEmit("You entered this payable — another Manager or Finance approver must review it.","error",7000);return;
+    }
+    if(!(await uiConfirm(`Approve ${p.vendor||"this payable"}${p.apNumber?` (${p.apNumber})`:""} for ₱${Number(p.amount||0).toLocaleString("en-PH",{minimumFractionDigits:2})}? This clears it for payment.`))) return;
+    const upd={...p,approvalStatus:"Approved",approvedBy:session?.name||role,approvedAt:today};
+    upPayables(ps=>ps.map(x=>x.id===id?upd:x));
+    if(isSupabaseReady()&&isUUID(id)) sbUpsert("payables",payableToSb(upd),"id").catch(()=>{toastEmit("⚠️ Approval saved locally but NOT synced — do not close this tab!","warning",9000);});
+    toastEmit(`✅ Approved — ${p.vendor||"payable"} is now cleared for payment.`,"success");
+  };
+  const rejectPayable=async(id)=>{
+    const p=payables.find(x=>x.id===id); if(!p) return;
+    if(!canApprovePayables){toastEmit("Only a Manager or the Finance Manager can reject a payable.","error");return;}
+    const reason=await uiPrompt("Reason for rejecting this payable (kept on record):","");
+    if(reason==null) return;
+    const upd={...p,approvalStatus:"Rejected",approvedBy:session?.name||role,approvedAt:today,notes:(p.notes?p.notes+" · ":"")+"REJECTED: "+(reason||"(no reason given)")};
+    upPayables(ps=>ps.map(x=>x.id===id?upd:x));
+    if(isSupabaseReady()&&isUUID(id)) sbUpsert("payables",payableToSb(upd),"id").catch(()=>{toastEmit("⚠️ Rejection saved locally but NOT synced — do not close this tab!","warning",9000);});
+    toastEmit("Payable rejected — it can be edited and re-submitted.","info");
   };
   // Record a payment against a payable (full or partial). Advances paidAmount and
   // flips Unpaid → Partial → Paid as the running balance closes — the "Pay" action
@@ -13845,7 +13887,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           const projName=id=>{const d=wonDeals.find(x=>x.id===id)||completedDeals.find(x=>x.id===id);return d?(d.contact||d.client):"";};
           const apQ=apLogSearch.trim().toLowerCase();
           const apVisible=apRows.filter(p=>(apFilter==="All"?true:apFilter==="Paid"?isSettled(p):apFilter==="Partial"?p.status==="Partial":(p.status==="Unpaid"||p.status==="Check Issued"))
-            &&(!apQ||[p.apNumber,p.poNumber,p.vendor,p.invoiceNumber,p.invoiceRef,p.accountCode,projName(p.projectId)].some(v=>String(v||"").toLowerCase().includes(apQ))));
+            &&(!apQ||[p.apNumber,p.poNumber,p.vendor,p.invoiceNumber,p.invoiceRef,p.accountCode,projName(p.projectId)].some(v=>String(v||"").toLowerCase().includes(apQ))))
+            // Float payables awaiting approval to the top so nothing sits forgotten in Pending.
+            .sort((a,b)=>((a.approvalStatus==="Pending"&&!isSettled(a))?0:1)-((b.approvalStatus==="Pending"&&!isSettled(b))?0:1));
           const PAY_CATS=["Supplier","Subcontractor","Utility","Rent","Labor","Government","Other"];
           return(
             <div>
@@ -13963,7 +14007,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                               <td style={{...erpTdNum,fontWeight:700,color:ERP.navy,whiteSpace:"nowrap"}}>{fmtM(p.amount)}</td>
                               <td style={{...erpTdNum,color:ERP.ok,whiteSpace:"nowrap"}}>{paidAmt>0?<>{fmtM(paidAmt)}{Number(p.amount)>0&&<div style={{fontSize:11,color:ERP.muted}}>{Math.round(paidAmt/Number(p.amount)*100)}%</div>}</>:"—"}</td>
                               <td style={{...erpTdNum,fontWeight:700,color:balance>0?ERP.danger:ERP.muted,whiteSpace:"nowrap"}}>{fmtM(balance)}</td>
-                              <td style={{...erpTd,whiteSpace:"nowrap"}}><ErpBadge kind={erpStatusKind(stTxt)}>{stTxt}</ErpBadge></td>
+                              <td style={{...erpTd,whiteSpace:"nowrap"}}><ErpBadge kind={erpStatusKind(stTxt)}>{stTxt}</ErpBadge>{!settled&&p.approvalStatus==="Pending"&&<div style={{fontSize:10.5,fontWeight:800,color:"#b45309",marginTop:2}}>⏳ For approval</div>}{p.approvalStatus==="Rejected"&&<div style={{fontSize:10.5,fontWeight:800,color:ERP.danger,marginTop:2}}>✕ Rejected</div>}{p.approvalStatus==="Approved"&&p.approvedBy&&<div style={{fontSize:10,color:ERP.muted,marginTop:2}} title={`Approved by ${p.approvedBy}${p.approvedAt?" · "+p.approvedAt:""}`}>✓ {p.approvedBy}</div>}</td>
                               {(()=>{
                                 const needV=payNeedsVerify(p),isSub=payIsSubcon(p);
                                 return(
@@ -13978,9 +14022,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                               })()}
                               <td style={{...erpTd,whiteSpace:"nowrap"}}>
                                 <div style={{display:"flex",gap:4,justifyContent:"flex-end",alignItems:"center"}}>
+                                  {!settled&&p.approvalStatus==="Pending"&&(canApprovePayables
+                                    ? <><button onClick={()=>approvePayable(p.id)} title="Approve for payment (Manager / Finance)" style={{background:ERP.ok||"#16a34a",border:"none",borderRadius:6,padding:"4px 10px",fontSize:".7rem",color:"#fff",cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>✓ Approve</button>
+                                        <button onClick={()=>rejectPayable(p.id)} title="Reject" style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>Reject</button></>
+                                    : <span title="Awaiting Manager / Finance approval" style={{fontSize:11,fontWeight:700,color:"#b45309",whiteSpace:"nowrap"}}>⏳ For approval</span>)}
+                                  {!settled&&p.approvalStatus==="Rejected"&&<span title={p.notes||"Rejected"} style={{fontSize:11,fontWeight:700,color:ERP.danger,whiteSpace:"nowrap"}}>✕ Rejected</span>}
                                   {!settled&&payNeedsVerify(p)&&!p.verified&&<button onClick={()=>verifyPayable(p.id)} title={payIsSubcon(p)?"Operations: verify % complete":"Warehouse: verify receipt"} style={{background:ERP.gold,border:"none",borderRadius:6,padding:"4px 10px",fontSize:".7rem",color:ERP.navy,cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>✓ Verify</button>}
-                                  {!settled&&balance>0&&(!payNeedsVerify(p)||p.verified)&&<button onClick={()=>openPayModal(p)} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"4px 12px",fontSize:".7rem",color:"#fff",cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>Pay</button>}
-                                  {!settled&&(!payNeedsVerify(p)||p.verified)&&!(p.cvId||p.status==="Check Issued")&&<button onClick={()=>payableToCheck(p.id)} title="Route to Check Voucher" style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#2563eb",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🖊 CV</button>}
+                                  {!settled&&balance>0&&payApproved(p)&&(!payNeedsVerify(p)||p.verified)&&<button onClick={()=>openPayModal(p)} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"4px 12px",fontSize:".7rem",color:"#fff",cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>Pay</button>}
+                                  {!settled&&payApproved(p)&&(!payNeedsVerify(p)||p.verified)&&!(p.cvId||p.status==="Check Issued")&&<button onClick={()=>payableToCheck(p.id)} title="Route to Check Voucher" style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#2563eb",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🖊 CV</button>}
                                   <button onClick={()=>{setPayForm({...p});setEditPayId(p.id);setPayModal(true);}} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
                                   <button onClick={()=>delPayable(p.id)} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
                                 </div>
