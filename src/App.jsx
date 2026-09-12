@@ -27310,102 +27310,98 @@ function MasterListsView({suppliers,addSupplier,updateSupplier,deleteSupplier,su
 const COA_TYPES=["Asset","Liability","Equity","Income","COGS","Expense"];
 const COA_TYPE_CLR={Asset:"#0ea5e9",Liability:"#f97316",Equity:"#8b5cf6",Income:"#10b981",COGS:"#f59e0b",Expense:"#ef4444"};
 // Default chart tailored to a PH fabrication / construction company (GMD Productions)
-// Standard chart of accounts, adopted from the finance team's (Aerwin's) ERP so
-// FabHub and the ERP classify costs identically. Aerwin's taxonomy uses
-// Revenue/Expense; we map Revenue→Income and Expense codes 5000-5999→COGS (Cost
-// of Sales) so FabHub's existing type-based report/filter logic keeps working —
-// the codes, names and structure are Aerwin's verbatim.
-// GMD standard chart of accounts — PH retail fabrication & construction.
-// Numbering: 1xxx Assets · 2xxx Liabilities · 3xxx Equity · 4xxx Income ·
-// 5xxx Cost of Sales (direct/project) · 6xxx Operating Expenses.
-// Existing codes are kept STABLE so previously-tagged transactions never
-// re-map; new construction/fabrication + BIR accounts fill the gaps.
+// GMD Production Inc. — actual chart of accounts, translated 1:1 from the
+// company's own management FS (Income Statement / Balance Sheet / Source Data,
+// Jan–Aug 2026 pack). Names mirror the finance team's real pivot categories so
+// FabHub reproduces that exact statement; codes and types are added here.
+// Mapping of the FS "Classification" tag → FabHub type:
+//   COGS → COGS · OPEX → Expense · (revenue) → Income · balance-sheet → Asset/
+//   Liability/Equity. Loan proceeds/repayment & dividends are financing/equity
+//   movements, not P&L, so they are NOT expense/income accounts here.
+// Obvious source typos are corrected (Ammortization→Amortization,
+// Occular→Ocular); everything else is kept verbatim for clean reconciliation.
 const DEFAULT_COA=[
-  // ── 1xxx ASSETS ──────────────────────────────────────────
+  // ── 1xxx ASSETS (Balance Sheet) ──────────────────────────
   {code:"1000",name:"Cash on Hand",type:"Asset"},
-  {code:"1010",name:"Cash in Bank - BDO",type:"Asset"},
-  {code:"1011",name:"Cash in Bank - BPI",type:"Asset"},
-  {code:"1012",name:"Cash in Bank - Metrobank",type:"Asset"},
-  {code:"1013",name:"Cash in Bank - Chinabank",type:"Asset"},
-  {code:"1014",name:"Cash in Bank - Security Bank",type:"Asset"},
-  {code:"1015",name:"Cash in Bank - UnionBank",type:"Asset"},
-  {code:"1100",name:"Accounts Receivable - Trade",type:"Asset"},
-  {code:"1110",name:"Retention Receivable",type:"Asset"},            // client-held retention (release on final acceptance)
-  {code:"1120",name:"Advances to Employees",type:"Asset"},           // cash advances awaiting liquidation
-  {code:"1130",name:"Advances to Suppliers / Downpayments",type:"Asset"}, // supplier DPs before delivery
-  {code:"1200",name:"Input VAT",type:"Asset"},
-  {code:"1210",name:"Creditable Withholding Tax (CWT) - Form 2307",type:"Asset"}, // tax clients withheld from us
-  {code:"1300",name:"Inventory - Raw Materials",type:"Asset"},
-  {code:"1305",name:"Inventory - Work in Process",type:"Asset"},
-  {code:"1310",name:"Inventory - Finished Goods",type:"Asset"},
-  {code:"1400",name:"Prepaid Expenses",type:"Asset"},
-  {code:"1500",name:"Property, Plant & Equipment",type:"Asset"},
-  {code:"1505",name:"Tools & Shop Equipment",type:"Asset"},
-  {code:"1510",name:"Accumulated Depreciation",type:"Asset"},
-  // ── 2xxx LIABILITIES ─────────────────────────────────────
-  {code:"2000",name:"Accounts Payable - Trade",type:"Liability"},
-  {code:"2010",name:"Accrued Expenses",type:"Liability"},
-  {code:"2050",name:"Customer Deposits / Advances (Downpayments)",type:"Liability"}, // collected before revenue earned
-  {code:"2060",name:"Retention Payable - Subcontractors",type:"Liability"},          // retention we hold on subs
-  {code:"2100",name:"Output VAT Payable",type:"Liability"},
-  {code:"2200",name:"Withholding Tax Payable",type:"Liability"},     // EWT we withheld on suppliers (remit via 0619E/1601EQ)
-  {code:"2210",name:"Withholding Tax Payable - Compensation",type:"Liability"}, // 1601C on payroll
-  {code:"2300",name:"SSS / PhilHealth / Pag-IBIG Payable",type:"Liability"},
-  {code:"2350",name:"13th Month Pay Payable",type:"Liability"},
-  {code:"2400",name:"Loans Payable - Bank",type:"Liability"},
-  {code:"2500",name:"Loans Payable - Related Party",type:"Liability"},
-  {code:"2600",name:"Income Tax Payable",type:"Liability"},
+  {code:"1100",name:"Accounts Receivable",type:"Asset"},
+  {code:"1110",name:"Accounts Receivable - Credit",type:"Asset"},      // memo item per BS Note 1
+  {code:"1200",name:"Advances to Employees",type:"Asset"},             // liquidated via "Return From Advances"
+  {code:"1210",name:"Advances - Mobilization",type:"Asset"},           // recovered via "Return From Mobilization"
+  {code:"1500",name:"Office Equipment (PPE)",type:"Asset"},
+  {code:"1510",name:"Production Equipment (PPE)",type:"Asset"},
+  {code:"1520",name:"Vehicle",type:"Asset"},
+  {code:"1590",name:"Accumulated Depreciation",type:"Asset"},
+  // ── 2xxx LIABILITIES (Balance Sheet) ─────────────────────
+  {code:"2000",name:"Accounts Payable",type:"Liability"},
+  {code:"2100",name:"Short-Term Loan",type:"Liability"},
+  {code:"2110",name:"Short-Term Interest Payable",type:"Liability"},
+  {code:"2200",name:"Long-Term Loan",type:"Liability"},
+  {code:"2210",name:"Long-Term Interest Payable",type:"Liability"},
+  {code:"2300",name:"Vehicle Loan",type:"Liability"},
   // ── 3xxx EQUITY ──────────────────────────────────────────
-  {code:"3000",name:"Owner's Capital",type:"Equity"},
+  {code:"3000",name:"Capital",type:"Equity"},
   {code:"3100",name:"Retained Earnings",type:"Equity"},
   // ── 4xxx INCOME ──────────────────────────────────────────
-  {code:"4000",name:"Sales - Construction & Fit-out",type:"Income"},
-  {code:"4010",name:"Sales - Signage",type:"Income"},
-  {code:"4020",name:"Sales - POP Displays",type:"Income"},
-  {code:"4030",name:"Sales - Fabrication / Millwork",type:"Income"},
-  {code:"4040",name:"Sales - Installation & Services",type:"Income"},
-  {code:"4900",name:"Other Income - Scrap Sales",type:"Income"},
-  {code:"4910",name:"Interest & Other Income",type:"Income"},
-  // ── 5xxx COST OF SALES (direct / project) ────────────────
-  {code:"5000",name:"Cost of Materials - Construction",type:"COGS"},
-  {code:"5010",name:"Cost of Materials - Signage",type:"COGS"},
-  {code:"5020",name:"Cost of Materials - POP Displays",type:"COGS"},
-  {code:"5030",name:"Special Materials",type:"COGS"},
-  {code:"5040",name:"Cost of Materials - Fabrication / Millwork",type:"COGS"},
-  {code:"5100",name:"Direct Labor - Production",type:"COGS"},
-  {code:"5110",name:"Direct Labor - Site Installation",type:"COGS"},
-  {code:"5120",name:"Site Meals & Worker Allowances",type:"COGS"},
-  {code:"5200",name:"Subcontractor Costs",type:"COGS"},
-  {code:"5300",name:"Freight & Handling",type:"COGS"},
-  {code:"5310",name:"Equipment Rental (scaffold / lift / genset)",type:"COGS"},
-  {code:"5320",name:"Site Facilities & Temporary Works",type:"COGS"},
-  {code:"5330",name:"Consumables & Shop Supplies (rods, discs, etc.)",type:"COGS"},
-  {code:"5340",name:"Project Permits & Site Fees",type:"COGS"},
-  // ── 6xxx OPERATING EXPENSES ──────────────────────────────
-  {code:"6000",name:"Salaries & Wages - Office",type:"Expense"},
-  {code:"6010",name:"Salaries & Wages - Production",type:"Expense"},
-  {code:"6020",name:"13th Month Pay & Bonuses",type:"Expense"},
-  {code:"6030",name:"SSS / PhilHealth / Pag-IBIG - Employer Share",type:"Expense"},
-  {code:"6040",name:"Employee Benefits & Welfare",type:"Expense"},
-  {code:"6100",name:"Rent Expense",type:"Expense"},
-  {code:"6110",name:"Association / Building Dues",type:"Expense"},
-  {code:"6200",name:"Utilities Expense",type:"Expense"},
-  {code:"6210",name:"Communication, Internet & Telephone",type:"Expense"},
-  {code:"6300",name:"Office Supplies",type:"Expense"},
-  {code:"6400",name:"Repairs & Maintenance",type:"Expense"},
-  {code:"6500",name:"Fuel & Transportation",type:"Expense"},
-  {code:"6510",name:"Travel & Accommodation",type:"Expense"},
-  {code:"6600",name:"Professional Fees",type:"Expense"},
-  {code:"6610",name:"Taxes, Licenses & Permits (business)",type:"Expense"},
-  {code:"6620",name:"Insurance & Bonds (CGL / surety / performance)",type:"Expense"},
-  {code:"6630",name:"Representation & Entertainment",type:"Expense"},
-  {code:"6640",name:"Advertising & Marketing",type:"Expense"},
-  {code:"6650",name:"Software & Subscriptions",type:"Expense"},
-  {code:"6660",name:"Training & Seminars",type:"Expense"},
-  {code:"6700",name:"Depreciation Expense",type:"Expense"},
-  {code:"6710",name:"Bank Charges",type:"Expense"},
-  {code:"6720",name:"Interest Expense - Loans",type:"Expense"},
-  {code:"6800",name:"Miscellaneous Expense",type:"Expense"},
+  {code:"4000",name:"Sales Revenue (Contract Price)",type:"Income"},
+  {code:"4100",name:"Other Income",type:"Income"},                     // "Other Collection"
+  {code:"4900",name:"Interest Income (Bank Interest)",type:"Income"},
+  // ── 5xxx COST OF SALES (FS "COGS" — direct / project) ────
+  {code:"5000",name:"Warehouse Rental",type:"COGS"},
+  {code:"5010",name:"Warehouse Improvement",type:"COGS"},
+  {code:"5020",name:"Production Supplies",type:"COGS"},
+  {code:"5030",name:"Production Payroll",type:"COGS"},
+  {code:"5040",name:"Production Payroll - Overtime",type:"COGS"},
+  {code:"5050",name:"Production Equipment",type:"COGS"},
+  {code:"5060",name:"Production - Tools",type:"COGS"},
+  {code:"5070",name:"Production - Subcon",type:"COGS"},
+  {code:"5080",name:"Production - Signage",type:"COGS"},
+  {code:"5090",name:"Production - Printing",type:"COGS"},
+  {code:"5100",name:"Sub-Con Prof Fee",type:"COGS"},
+  {code:"5110",name:"Freight Charges",type:"COGS"},
+  {code:"5120",name:"Mobilization - Repair",type:"COGS"},
+  {code:"5130",name:"Mobilization - Pullout",type:"COGS"},
+  {code:"5140",name:"Mobilization - Ocular",type:"COGS"},
+  {code:"5150",name:"Mobilization - Installation",type:"COGS"},
+  {code:"5160",name:"Repair And Maintenance",type:"COGS"},
+  {code:"5170",name:"Logistic",type:"COGS"},
+  {code:"5180",name:"Delivery Fee",type:"COGS"},
+  {code:"5190",name:"OT Meal Allowance",type:"COGS"},
+  {code:"5200",name:"Load Allowance",type:"COGS"},
+  {code:"5210",name:"Insurance - Project",type:"COGS"},
+  {code:"5220",name:"Toll Fee",type:"COGS"},
+  // ── 6xxx OPERATING EXPENSES (FS "OPEX" — G&A) ────────────
+  {code:"6000",name:"Office Salaries Expense",type:"Expense"},
+  {code:"6010",name:"Sales Commission",type:"Expense"},
+  {code:"6020",name:"Employee Benefit",type:"Expense"},
+  {code:"6030",name:"Employee Benefit Expense (Other)",type:"Expense"},
+  {code:"6040",name:"Insurance - Employee",type:"Expense"},
+  {code:"6050",name:"Government Dues",type:"Expense"},
+  {code:"6060",name:"Employees Seminars",type:"Expense"},
+  {code:"6070",name:"Last Pay",type:"Expense"},
+  {code:"6100",name:"Utilities",type:"Expense"},
+  {code:"6110",name:"Other Rental",type:"Expense"},
+  {code:"6120",name:"Office Supplies Expense",type:"Expense"},
+  {code:"6130",name:"Office Services Expense",type:"Expense"},
+  {code:"6140",name:"Office Event",type:"Expense"},
+  {code:"6150",name:"Office-Improvement",type:"Expense"},
+  {code:"6160",name:"Office Equipment",type:"Expense"},
+  {code:"6170",name:"Courier Expense",type:"Expense"},
+  {code:"6200",name:"Travel Expense",type:"Expense"},
+  {code:"6210",name:"Transportation",type:"Expense"},
+  {code:"6220",name:"Parking Fee",type:"Expense"},
+  {code:"6230",name:"Gas - Expense",type:"Expense"},
+  {code:"6250",name:"Meal Allowance",type:"Expense"},
+  {code:"6300",name:"Taxes",type:"Expense"},
+  {code:"6310",name:"Business And Lic Permit",type:"Expense"},
+  {code:"6320",name:"Car Registration",type:"Expense"},
+  {code:"6330",name:"Professional Fee",type:"Expense"},
+  {code:"6400",name:"Marketing Collateral",type:"Expense"},
+  {code:"6500",name:"Bank Services",type:"Expense"},
+  {code:"6510",name:"Bank Charge",type:"Expense"},
+  {code:"6520",name:"Amortization",type:"Expense"},
+  {code:"6900",name:"Other Expense",type:"Expense"},
+  {code:"6910",name:"Miscellaneous Expense",type:"Expense"},
+  {code:"6950",name:"Interest Expense",type:"Expense"},                // shown under Other Income (Expense) on the FS
 ];
 
 // Finance Daily Digest — self-contained snapshot (Collections/AR · Cash Position
