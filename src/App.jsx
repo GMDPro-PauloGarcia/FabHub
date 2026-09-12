@@ -2452,7 +2452,7 @@ function MyAccountPage({session,users,setUsers,upUsers:upUsersExt,setSession:set
                       🔑 Change Password
                     </button>
                     <div style={{fontSize:".78rem",color:"#94a3b8",textAlign:"center"}}>
-                      Forgot your password? Ask Paulo or Mar to reset it in the Manager → Accounts panel.
+                      Forgot your password? Ask a Manager to reset it in the Manager → Accounts panel.
                     </div>
                   </div>
                 )}
@@ -8418,7 +8418,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
       {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"BOQ"}]},
       {group:"Warehousing", items:[{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"}]},
-      {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"audit",l:"Audit"},{id:"botsettings",l:"Bot Settings"},{id:"activity",l:"Team Activity"}]},
+      {group:"Admin",       items:[{id:"audit",l:"Audit"},{id:"botsettings",l:"Bot Settings"},{id:"activity",l:"Team Activity"}]},
     ],
     Audit:[
       {group:"Overview", items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
@@ -8428,7 +8428,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     HRAdmin:[
       {group:"Overview", items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
       {group:"Audit",    items:[{id:"audit",l:"Audit"}]},
-      {group:"Admin",    items:[{id:"accounts",l:"Accounts"},{id:"activity",l:"Team Activity"}]},
+      {group:"Admin",    items:[{id:"activity",l:"Team Activity"}]},
     ],
     Accounting:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"acctdash",l:"Accounting"}]},
@@ -14333,7 +14333,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       </Wrap>
     );
     const ROLES=['Manager', 'Sales', 'Finance', 'Procurement', 'QS', 'Operations', 'Design', 'ProjectMover', 'Warehouse', 'SalesOpsAdmin', 'FinanceAssistant'];
-    if(page==="accounts"&&(role==="Manager"||role==="Finance")) return(
+    if(page==="accounts"&&role==="Manager") return(
       <Wrap>
         <AccountsManager users={users} session={session} onApprove={approveUser} onReject={rejectUser} onDeactivate={deactivateUser} onDelete={deleteUser} onResetPw={resetPw} onCreateUser={createUser} ROLES={ROLES}/>
         {/* Role Permissions reference (Manager only) — who can view/create/edit/
