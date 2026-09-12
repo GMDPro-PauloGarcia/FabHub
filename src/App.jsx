@@ -4061,7 +4061,7 @@ export default function App(){
             const _budgets=Object.keys(data.budgets||{}).length?Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}])):null;
             if(_budgets){setBudgets(prev=>mergeLocalOnlyObj(_budgets,prev));idbE.push([KEYS.budgets,_budgets]);}
             if(data.inflows!=null){setInfs(data.inflows);idbE.push([KEYS.inflows,data.inflows]);}
-            const _payables=data.payables!=null?data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0,accountCode:p.account_code||"",verified:p.verified!==false,verifiedBy:p.verified_by||"",verifiedAt:p.verified_at||"",verificationPct:p.verification_pct!=null?Number(p.verification_pct):100,payBank:p.pay_bank||"",payMethod:p.pay_method||"",payRef:p.pay_ref||"",vatable:!!p.vatable,inputVat:Number(p.input_vat)||0,netAmount:Number(p.net_amount)||0,ewtRate:Number(p.ewt_rate)||0,ewtAmount:Number(p.ewt_amount)||0,tin:p.tin||""})):null;
+            const _payables=data.payables!=null?data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0,accountCode:p.account_code||"",verified:p.verified!==false,verifiedBy:p.verified_by||"",verifiedAt:p.verified_at||"",verificationPct:p.verification_pct!=null?Number(p.verification_pct):100,payBank:p.pay_bank||"",payMethod:p.pay_method||"",payRef:p.pay_ref||"",vatable:!!p.vatable,inputVat:Number(p.input_vat)||0,netAmount:Number(p.net_amount)||0,ewtRate:Number(p.ewt_rate)||0,ewtAmount:Number(p.ewt_amount)||0,tin:p.tin||"",approvalStatus:p.approval_status||"Approved",approvedBy:p.approved_by||"",approvedAt:p.approved_at||null})):null;
             if(_payables!=null){setPayables(prev=>mergeLocalOnly(_payables,prev));idbE.push(["gmdv5:payables",_payables]);}
             const _loans=data.loans!=null?data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]})):null;
             if(_loans!=null){setLoans(prev=>mergeLocalOnly(_loans,prev));idbE.push(["gmdv5:loans",_loans]);}
@@ -4374,7 +4374,7 @@ export default function App(){
     }
     if(Object.keys(data.budgets||{}).length){const bg=Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}]));setBudgets(prev=>mergeLocalOnlyObj(bg,prev));idbE.push([KEYS.budgets,bg]);}
     if(data.users?.length){const us=data.users.map(u=>{const fallbackHash=DEFAULT_USERS.find(d=>d.username===(u.username||""))?.passwordHash||"";return{id:u.id,username:u.username||"",name:u.name||u.full_name||"",role:u.role||"Sales",title:u.title||u.role||"",status:u.status||"active",passwordHash:u.password_hash||fallbackHash,createdAt:u.created_at||""};});setUsers(prev=>mergeLocalOnly(us,prev));idbE.push([KEYS.users,us]);}
-    if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0,accountCode:p.account_code||"",verified:p.verified!==false,verifiedBy:p.verified_by||"",verifiedAt:p.verified_at||"",verificationPct:p.verification_pct!=null?Number(p.verification_pct):100,payBank:p.pay_bank||"",payMethod:p.pay_method||"",payRef:p.pay_ref||"",vatable:!!p.vatable,inputVat:Number(p.input_vat)||0,netAmount:Number(p.net_amount)||0,ewtRate:Number(p.ewt_rate)||0,ewtAmount:Number(p.ewt_amount)||0,tin:p.tin||""}));setPayables(prev=>mergeLocalOnly(ps,prev));idbE.push(["gmdv5:payables",ps]);}
+    if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0,accountCode:p.account_code||"",verified:p.verified!==false,verifiedBy:p.verified_by||"",verifiedAt:p.verified_at||"",verificationPct:p.verification_pct!=null?Number(p.verification_pct):100,payBank:p.pay_bank||"",payMethod:p.pay_method||"",payRef:p.pay_ref||"",vatable:!!p.vatable,inputVat:Number(p.input_vat)||0,netAmount:Number(p.net_amount)||0,ewtRate:Number(p.ewt_rate)||0,ewtAmount:Number(p.ewt_amount)||0,tin:p.tin||"",approvalStatus:p.approval_status||"Approved",approvedBy:p.approved_by||"",approvedAt:p.approved_at||null}));setPayables(prev=>mergeLocalOnly(ps,prev));idbE.push(["gmdv5:payables",ps]);}
     if(data.loans?.length){const ls=data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]}));setLoans(prev=>mergeLocalOnly(ls,prev));idbE.push(["gmdv5:loans",ls]);}
     if(data.dailyLogs?.length){const dl=data.dailyLogs.map(l=>({...l,dealId:l.deal_id,date:l.log_date,workDone:l.work_done,progressNote:l.progress_note,loggedBy:l.logged_by,createdAt:l.created_at}));setDailyLogs(prev=>mergeLocalOnly(dl,prev));idbE.push([KEYS.dailylogs,dl]);}
     if(data.ceReqs?.length){const cr=data.ceReqs.map(ceReqFromSb);setCeReqs(prev=>mergeLocalOnly(cr,prev));idbE.push([KEYS.ceReqs,cr]);}
@@ -8147,6 +8147,34 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const savePayable=async(data)=>{
     if(!data.vendor||!data.amount) return;
     if(!String(data.accountCode||"").trim()){toastEmit("Select a Chart-of-Accounts code before saving — it drives the financial statements.","error");return;}
+    // Duplicate guard (new payables only) — the AP ledger has no unique key, so the
+    // same supplier invoice can be entered twice and double-paid. Warn before saving
+    // a likely repeat: same vendor + same amount, matched on invoice number when both
+    // sides have one (strong signal) or on invoice date when neither does (soft).
+    // Bypassable, because genuine identical recurring bills do occur.
+    if(!editPayId){
+      const norm=s=>String(s||"").trim().toLowerCase().replace(/\s+/g," ");
+      const dupAmt=Math.round((Number(data.amount)||0)*100)/100;
+      const inv=norm(data.invoiceNumber);
+      const dup=payables.find(p=>{
+        if(norm(p.vendor)!==norm(data.vendor)) return false;
+        if(Math.round((Number(p.amount)||0)*100)/100!==dupAmt) return false;
+        const pInv=norm(p.invoiceNumber);
+        if(inv&&pInv) return pInv===inv;                                  // both have invoice # → match on it
+        if(!inv&&!pInv) return (p.invoiceDate||"")===(data.invoiceDate||""); // neither → match on invoice date
+        return false;                                                     // one has #, the other doesn't → not a match
+      });
+      if(dup){
+        const peso=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+        const ok=await uiConfirm({title:"Possible duplicate payable",tone:"warning",confirmLabel:"Save anyway",cancelLabel:"Go back",
+          message:`A payable for ${data.vendor||"this vendor"} of ${peso(dupAmt)} already exists`+
+            (dup.invoiceNumber?` (Invoice ${dup.invoiceNumber})`:"")+
+            (dup.apNumber?` · ${dup.apNumber}`:"")+
+            (dup.createdAt?` · entered ${dup.createdAt}`:"")+
+            `.\n\nThis looks like the same bill entered twice — entering it again would double the amount owed. Save it anyway?`});
+        if(!ok) return;
+      }
+    }
     // Due date drives the cash-flow forecast — nudge (don't hard-block) if missing.
     if(!String(data.dueDate||"").trim()){
       const ok=await uiConfirm({title:"No due date set",tone:"warning",confirmLabel:"Save without due date",cancelLabel:"Go back & set it",
@@ -8164,7 +8192,18 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const inputVat=vatable?Math.round((amount-netAmount)*100)/100:0;
     const ewtRate=Number(data.ewtRate)||0;
     const ewtAmount=ewtRate>0?Math.round(netAmount*ewtRate/100*100)/100:0;
-    const rec={...data,amount,paidAmount,vatable,netAmount,inputVat,ewtRate,ewtAmount,tin:data.tin||"",
+    // Approval gate: a new payable enters as Pending and cannot be paid until a
+    // Manager or Finance Manager approves it. Editing preserves the existing
+    // decision — UNLESS the amount changed after approval, which resets it to
+    // Pending so a larger amount can't ride an old approval.
+    let approvalStatus="Pending",approvedBy="",approvedAt=null;
+    if(editPayId){
+      const prev=payables.find(p=>p.id===editPayId);
+      const amtChanged=prev&&Math.round((Number(prev.amount)||0)*100)/100!==Math.round(amount*100)/100;
+      if(prev&&prev.approvalStatus==="Approved"&&amtChanged){approvalStatus="Pending";approvedBy="";approvedAt=null;}
+      else{approvalStatus=prev?.approvalStatus||"Pending";approvedBy=prev?.approvedBy||"";approvedAt=prev?.approvedAt||null;}
+    }
+    const rec={...data,amount,paidAmount,vatable,netAmount,inputVat,ewtRate,ewtAmount,tin:data.tin||"",approvalStatus,approvedBy,approvedAt,
       apNumber:data.apNumber||(editPayId?"":nextApNumber()),
       id:editPayId||uid(),status:editPayId?derived:(paidAmount>0?derived:"Unpaid"),
       paidDate:derived==="Paid"?(data.paidDate||today):(data.paidDate||""),
@@ -8200,6 +8239,37 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     upPayables(ps=>ps.map(x=>x.id===id?upd:x));
     if(isSupabaseReady()&&isUUID(id)) sbUpsert("payables",payableToSb(upd),"id").catch(()=>{});
     toastEmit(payIsSubcon(p)?`Verified ${pct}% (Operations) — now payable.`:"Warehouse receipt verified — now payable.","success");
+  };
+  // ── Expense/payable approval gate ────────────────────────────────────────
+  // Only a Manager or the Finance Manager (Finance role) may approve a payable
+  // for payment. Approval is separate from receiving-verification: verification
+  // confirms goods/work arrived; approval authorizes the spend. A payable must
+  // be Approved before it can be paid or routed to a check voucher.
+  const canApprovePayables=["Manager","Finance"].includes(role);
+  const payApproved=p=>((p?.approvalStatus)||"Approved")==="Approved"; // legacy rows (no field) treated as approved
+  const approvePayable=async(id)=>{
+    const p=payables.find(x=>x.id===id); if(!p) return;
+    if(!canApprovePayables){toastEmit("Only a Manager or the Finance Manager can approve a payable.","error");return;}
+    // Block self-approval — the person who entered it can't clear it (Manager may override).
+    const nm=s=>String(s||"").trim().toLowerCase();
+    if(role!=="Manager"&&nm(p.createdBy)===nm(session?.name)&&nm(p.createdBy)!==""){
+      toastEmit("You entered this payable — another Manager or Finance approver must review it.","error",7000);return;
+    }
+    if(!(await uiConfirm(`Approve ${p.vendor||"this payable"}${p.apNumber?` (${p.apNumber})`:""} for ₱${Number(p.amount||0).toLocaleString("en-PH",{minimumFractionDigits:2})}? This clears it for payment.`))) return;
+    const upd={...p,approvalStatus:"Approved",approvedBy:session?.name||role,approvedAt:today};
+    upPayables(ps=>ps.map(x=>x.id===id?upd:x));
+    if(isSupabaseReady()&&isUUID(id)) sbUpsert("payables",payableToSb(upd),"id").catch(()=>{toastEmit("⚠️ Approval saved locally but NOT synced — do not close this tab!","warning",9000);});
+    toastEmit(`✅ Approved — ${p.vendor||"payable"} is now cleared for payment.`,"success");
+  };
+  const rejectPayable=async(id)=>{
+    const p=payables.find(x=>x.id===id); if(!p) return;
+    if(!canApprovePayables){toastEmit("Only a Manager or the Finance Manager can reject a payable.","error");return;}
+    const reason=await uiPrompt("Reason for rejecting this payable (kept on record):","");
+    if(reason==null) return;
+    const upd={...p,approvalStatus:"Rejected",approvedBy:session?.name||role,approvedAt:today,notes:(p.notes?p.notes+" · ":"")+"REJECTED: "+(reason||"(no reason given)")};
+    upPayables(ps=>ps.map(x=>x.id===id?upd:x));
+    if(isSupabaseReady()&&isUUID(id)) sbUpsert("payables",payableToSb(upd),"id").catch(()=>{toastEmit("⚠️ Rejection saved locally but NOT synced — do not close this tab!","warning",9000);});
+    toastEmit("Payable rejected — it can be edited and re-submitted.","info");
   };
   // Record a payment against a payable (full or partial). Advances paidAmount and
   // flips Unpaid → Partial → Paid as the running balance closes — the "Pay" action
@@ -13817,7 +13887,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           const projName=id=>{const d=wonDeals.find(x=>x.id===id)||completedDeals.find(x=>x.id===id);return d?(d.contact||d.client):"";};
           const apQ=apLogSearch.trim().toLowerCase();
           const apVisible=apRows.filter(p=>(apFilter==="All"?true:apFilter==="Paid"?isSettled(p):apFilter==="Partial"?p.status==="Partial":(p.status==="Unpaid"||p.status==="Check Issued"))
-            &&(!apQ||[p.apNumber,p.poNumber,p.vendor,p.invoiceNumber,p.invoiceRef,p.accountCode,projName(p.projectId)].some(v=>String(v||"").toLowerCase().includes(apQ))));
+            &&(!apQ||[p.apNumber,p.poNumber,p.vendor,p.invoiceNumber,p.invoiceRef,p.accountCode,projName(p.projectId)].some(v=>String(v||"").toLowerCase().includes(apQ))))
+            // Float payables awaiting approval to the top so nothing sits forgotten in Pending.
+            .sort((a,b)=>((a.approvalStatus==="Pending"&&!isSettled(a))?0:1)-((b.approvalStatus==="Pending"&&!isSettled(b))?0:1));
           const PAY_CATS=["Supplier","Subcontractor","Utility","Rent","Labor","Government","Other"];
           return(
             <div>
@@ -13935,7 +14007,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                               <td style={{...erpTdNum,fontWeight:700,color:ERP.navy,whiteSpace:"nowrap"}}>{fmtM(p.amount)}</td>
                               <td style={{...erpTdNum,color:ERP.ok,whiteSpace:"nowrap"}}>{paidAmt>0?<>{fmtM(paidAmt)}{Number(p.amount)>0&&<div style={{fontSize:11,color:ERP.muted}}>{Math.round(paidAmt/Number(p.amount)*100)}%</div>}</>:"—"}</td>
                               <td style={{...erpTdNum,fontWeight:700,color:balance>0?ERP.danger:ERP.muted,whiteSpace:"nowrap"}}>{fmtM(balance)}</td>
-                              <td style={{...erpTd,whiteSpace:"nowrap"}}><ErpBadge kind={erpStatusKind(stTxt)}>{stTxt}</ErpBadge></td>
+                              <td style={{...erpTd,whiteSpace:"nowrap"}}><ErpBadge kind={erpStatusKind(stTxt)}>{stTxt}</ErpBadge>{!settled&&p.approvalStatus==="Pending"&&<div style={{fontSize:10.5,fontWeight:800,color:"#b45309",marginTop:2}}>⏳ For approval</div>}{p.approvalStatus==="Rejected"&&<div style={{fontSize:10.5,fontWeight:800,color:ERP.danger,marginTop:2}}>✕ Rejected</div>}{p.approvalStatus==="Approved"&&p.approvedBy&&<div style={{fontSize:10,color:ERP.muted,marginTop:2}} title={`Approved by ${p.approvedBy}${p.approvedAt?" · "+p.approvedAt:""}`}>✓ {p.approvedBy}</div>}</td>
                               {(()=>{
                                 const needV=payNeedsVerify(p),isSub=payIsSubcon(p);
                                 return(
@@ -13950,9 +14022,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                               })()}
                               <td style={{...erpTd,whiteSpace:"nowrap"}}>
                                 <div style={{display:"flex",gap:4,justifyContent:"flex-end",alignItems:"center"}}>
+                                  {!settled&&p.approvalStatus==="Pending"&&(canApprovePayables
+                                    ? <><button onClick={()=>approvePayable(p.id)} title="Approve for payment (Manager / Finance)" style={{background:ERP.ok||"#16a34a",border:"none",borderRadius:6,padding:"4px 10px",fontSize:".7rem",color:"#fff",cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>✓ Approve</button>
+                                        <button onClick={()=>rejectPayable(p.id)} title="Reject" style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>Reject</button></>
+                                    : <span title="Awaiting Manager / Finance approval" style={{fontSize:11,fontWeight:700,color:"#b45309",whiteSpace:"nowrap"}}>⏳ For approval</span>)}
+                                  {!settled&&p.approvalStatus==="Rejected"&&<span title={p.notes||"Rejected"} style={{fontSize:11,fontWeight:700,color:ERP.danger,whiteSpace:"nowrap"}}>✕ Rejected</span>}
                                   {!settled&&payNeedsVerify(p)&&!p.verified&&<button onClick={()=>verifyPayable(p.id)} title={payIsSubcon(p)?"Operations: verify % complete":"Warehouse: verify receipt"} style={{background:ERP.gold,border:"none",borderRadius:6,padding:"4px 10px",fontSize:".7rem",color:ERP.navy,cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>✓ Verify</button>}
-                                  {!settled&&balance>0&&(!payNeedsVerify(p)||p.verified)&&<button onClick={()=>openPayModal(p)} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"4px 12px",fontSize:".7rem",color:"#fff",cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>Pay</button>}
-                                  {!settled&&(!payNeedsVerify(p)||p.verified)&&!(p.cvId||p.status==="Check Issued")&&<button onClick={()=>payableToCheck(p.id)} title="Route to Check Voucher" style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#2563eb",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🖊 CV</button>}
+                                  {!settled&&balance>0&&payApproved(p)&&(!payNeedsVerify(p)||p.verified)&&<button onClick={()=>openPayModal(p)} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"4px 12px",fontSize:".7rem",color:"#fff",cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>Pay</button>}
+                                  {!settled&&payApproved(p)&&(!payNeedsVerify(p)||p.verified)&&!(p.cvId||p.status==="Check Issued")&&<button onClick={()=>payableToCheck(p.id)} title="Route to Check Voucher" style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#2563eb",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🖊 CV</button>}
                                   <button onClick={()=>{setPayForm({...p});setEditPayId(p.id);setPayModal(true);}} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
                                   <button onClick={()=>delPayable(p.id)} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
                                 </div>
@@ -27310,55 +27387,98 @@ function MasterListsView({suppliers,addSupplier,updateSupplier,deleteSupplier,su
 const COA_TYPES=["Asset","Liability","Equity","Income","COGS","Expense"];
 const COA_TYPE_CLR={Asset:"#0ea5e9",Liability:"#f97316",Equity:"#8b5cf6",Income:"#10b981",COGS:"#f59e0b",Expense:"#ef4444"};
 // Default chart tailored to a PH fabrication / construction company (GMD Productions)
-// Standard chart of accounts, adopted from the finance team's (Aerwin's) ERP so
-// FabHub and the ERP classify costs identically. Aerwin's taxonomy uses
-// Revenue/Expense; we map Revenue→Income and Expense codes 5000-5999→COGS (Cost
-// of Sales) so FabHub's existing type-based report/filter logic keeps working —
-// the codes, names and structure are Aerwin's verbatim.
+// GMD Production Inc. — actual chart of accounts, translated 1:1 from the
+// company's own management FS (Income Statement / Balance Sheet / Source Data,
+// Jan–Aug 2026 pack). Names mirror the finance team's real pivot categories so
+// FabHub reproduces that exact statement; codes and types are added here.
+// Mapping of the FS "Classification" tag → FabHub type:
+//   COGS → COGS · OPEX → Expense · (revenue) → Income · balance-sheet → Asset/
+//   Liability/Equity. Loan proceeds/repayment & dividends are financing/equity
+//   movements, not P&L, so they are NOT expense/income accounts here.
+// Obvious source typos are corrected (Ammortization→Amortization,
+// Occular→Ocular); everything else is kept verbatim for clean reconciliation.
 const DEFAULT_COA=[
+  // ── 1xxx ASSETS (Balance Sheet) ──────────────────────────
   {code:"1000",name:"Cash on Hand",type:"Asset"},
-  {code:"1010",name:"Cash in Bank - BDO",type:"Asset"},
-  {code:"1011",name:"Cash in Bank - BPI",type:"Asset"},
-  {code:"1012",name:"Cash in Bank - Metrobank",type:"Asset"},
-  {code:"1013",name:"Cash in Bank - Chinabank",type:"Asset"},
-  {code:"1014",name:"Cash in Bank - Security Bank",type:"Asset"},
-  {code:"1015",name:"Cash in Bank - UnionBank",type:"Asset"},
-  {code:"1100",name:"Accounts Receivable - Trade",type:"Asset"},
-  {code:"1200",name:"Input VAT",type:"Asset"},
-  {code:"1300",name:"Inventory - Raw Materials",type:"Asset"},
-  {code:"1310",name:"Inventory - Finished Goods",type:"Asset"},
-  {code:"1400",name:"Prepaid Expenses",type:"Asset"},
-  {code:"1500",name:"Property, Plant & Equipment",type:"Asset"},
-  {code:"1510",name:"Accumulated Depreciation",type:"Asset"},
-  {code:"2000",name:"Accounts Payable - Trade",type:"Liability"},
-  {code:"2010",name:"Accrued Expenses",type:"Liability"},
-  {code:"2100",name:"Output VAT Payable",type:"Liability"},
-  {code:"2200",name:"Withholding Tax Payable",type:"Liability"},
-  {code:"2300",name:"SSS / PhilHealth / Pag-IBIG Payable",type:"Liability"},
-  {code:"2400",name:"Loans Payable - Bank",type:"Liability"},
-  {code:"2500",name:"Loans Payable - Related Party",type:"Liability"},
-  {code:"3000",name:"Owner's Capital",type:"Equity"},
+  {code:"1100",name:"Accounts Receivable",type:"Asset"},
+  {code:"1110",name:"Accounts Receivable - Credit",type:"Asset"},      // memo item per BS Note 1
+  {code:"1200",name:"Advances to Employees",type:"Asset"},             // liquidated via "Return From Advances"
+  {code:"1210",name:"Advances - Mobilization",type:"Asset"},           // recovered via "Return From Mobilization"
+  {code:"1500",name:"Office Equipment (PPE)",type:"Asset"},
+  {code:"1510",name:"Production Equipment (PPE)",type:"Asset"},
+  {code:"1520",name:"Vehicle",type:"Asset"},
+  {code:"1590",name:"Accumulated Depreciation",type:"Asset"},
+  // ── 2xxx LIABILITIES (Balance Sheet) ─────────────────────
+  {code:"2000",name:"Accounts Payable",type:"Liability"},
+  {code:"2100",name:"Short-Term Loan",type:"Liability"},
+  {code:"2110",name:"Short-Term Interest Payable",type:"Liability"},
+  {code:"2200",name:"Long-Term Loan",type:"Liability"},
+  {code:"2210",name:"Long-Term Interest Payable",type:"Liability"},
+  {code:"2300",name:"Vehicle Loan",type:"Liability"},
+  // ── 3xxx EQUITY ──────────────────────────────────────────
+  {code:"3000",name:"Capital",type:"Equity"},
   {code:"3100",name:"Retained Earnings",type:"Equity"},
-  {code:"4000",name:"Sales - Construction & Fit-out",type:"Income"},
-  {code:"4010",name:"Sales - Signage",type:"Income"},
-  {code:"4020",name:"Sales - POP Displays",type:"Income"},
-  {code:"5000",name:"Cost of Materials - Construction",type:"COGS"},
-  {code:"5010",name:"Cost of Materials - Signage",type:"COGS"},
-  {code:"5020",name:"Cost of Materials - POP Displays",type:"COGS"},
-  {code:"5030",name:"Special Materials",type:"COGS"},
-  {code:"5100",name:"Direct Labor - Production",type:"COGS"},
-  {code:"5200",name:"Subcontractor Costs",type:"COGS"},
-  {code:"5300",name:"Freight & Handling",type:"COGS"},
-  {code:"6000",name:"Salaries & Wages - Office",type:"Expense"},
-  {code:"6010",name:"Salaries & Wages - Production",type:"Expense"},
-  {code:"6100",name:"Rent Expense",type:"Expense"},
-  {code:"6200",name:"Utilities Expense",type:"Expense"},
-  {code:"6300",name:"Office Supplies",type:"Expense"},
-  {code:"6400",name:"Repairs & Maintenance",type:"Expense"},
-  {code:"6500",name:"Fuel & Transportation",type:"Expense"},
-  {code:"6600",name:"Professional Fees",type:"Expense"},
-  {code:"6700",name:"Depreciation Expense",type:"Expense"},
-  {code:"6800",name:"Miscellaneous Expense",type:"Expense"},
+  // ── 4xxx INCOME ──────────────────────────────────────────
+  {code:"4000",name:"Sales Revenue (Contract Price)",type:"Income"},
+  {code:"4100",name:"Other Income",type:"Income"},                     // "Other Collection"
+  {code:"4900",name:"Interest Income (Bank Interest)",type:"Income"},
+  // ── 5xxx COST OF SALES (FS "COGS" — direct / project) ────
+  {code:"5000",name:"Warehouse Rental",type:"COGS"},
+  {code:"5010",name:"Warehouse Improvement",type:"COGS"},
+  {code:"5020",name:"Production Supplies",type:"COGS"},
+  {code:"5030",name:"Production Payroll",type:"COGS"},
+  {code:"5040",name:"Production Payroll - Overtime",type:"COGS"},
+  {code:"5050",name:"Production Equipment",type:"COGS"},
+  {code:"5060",name:"Production - Tools",type:"COGS"},
+  {code:"5070",name:"Production - Subcon",type:"COGS"},
+  {code:"5080",name:"Production - Signage",type:"COGS"},
+  {code:"5090",name:"Production - Printing",type:"COGS"},
+  {code:"5100",name:"Sub-Con Prof Fee",type:"COGS"},
+  {code:"5110",name:"Freight Charges",type:"COGS"},
+  {code:"5120",name:"Mobilization - Repair",type:"COGS"},
+  {code:"5130",name:"Mobilization - Pullout",type:"COGS"},
+  {code:"5140",name:"Mobilization - Ocular",type:"COGS"},
+  {code:"5150",name:"Mobilization - Installation",type:"COGS"},
+  {code:"5160",name:"Repair And Maintenance",type:"COGS"},
+  {code:"5170",name:"Logistic",type:"COGS"},
+  {code:"5180",name:"Delivery Fee",type:"COGS"},
+  {code:"5190",name:"OT Meal Allowance",type:"COGS"},
+  {code:"5200",name:"Load Allowance",type:"COGS"},
+  {code:"5210",name:"Insurance - Project",type:"COGS"},
+  {code:"5220",name:"Toll Fee",type:"COGS"},
+  // ── 6xxx OPERATING EXPENSES (FS "OPEX" — G&A) ────────────
+  {code:"6000",name:"Office Salaries Expense",type:"Expense"},
+  {code:"6010",name:"Sales Commission",type:"Expense"},
+  {code:"6020",name:"Employee Benefit",type:"Expense"},
+  {code:"6030",name:"Employee Benefit Expense (Other)",type:"Expense"},
+  {code:"6040",name:"Insurance - Employee",type:"Expense"},
+  {code:"6050",name:"Government Dues",type:"Expense"},
+  {code:"6060",name:"Employees Seminars",type:"Expense"},
+  {code:"6070",name:"Last Pay",type:"Expense"},
+  {code:"6100",name:"Utilities",type:"Expense"},
+  {code:"6110",name:"Other Rental",type:"Expense"},
+  {code:"6120",name:"Office Supplies Expense",type:"Expense"},
+  {code:"6130",name:"Office Services Expense",type:"Expense"},
+  {code:"6140",name:"Office Event",type:"Expense"},
+  {code:"6150",name:"Office-Improvement",type:"Expense"},
+  {code:"6160",name:"Office Equipment",type:"Expense"},
+  {code:"6170",name:"Courier Expense",type:"Expense"},
+  {code:"6200",name:"Travel Expense",type:"Expense"},
+  {code:"6210",name:"Transportation",type:"Expense"},
+  {code:"6220",name:"Parking Fee",type:"Expense"},
+  {code:"6230",name:"Gas - Expense",type:"Expense"},
+  {code:"6250",name:"Meal Allowance",type:"Expense"},
+  {code:"6300",name:"Taxes",type:"Expense"},
+  {code:"6310",name:"Business And Lic Permit",type:"Expense"},
+  {code:"6320",name:"Car Registration",type:"Expense"},
+  {code:"6330",name:"Professional Fee",type:"Expense"},
+  {code:"6400",name:"Marketing Collateral",type:"Expense"},
+  {code:"6500",name:"Bank Services",type:"Expense"},
+  {code:"6510",name:"Bank Charge",type:"Expense"},
+  {code:"6520",name:"Amortization",type:"Expense"},
+  {code:"6900",name:"Other Expense",type:"Expense"},
+  {code:"6910",name:"Miscellaneous Expense",type:"Expense"},
+  {code:"6950",name:"Interest Expense",type:"Expense"},                // shown under Other Income (Expense) on the FS
 ];
 
 // Finance Daily Digest — self-contained snapshot (Collections/AR · Cash Position
