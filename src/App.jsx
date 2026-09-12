@@ -8147,6 +8147,34 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const savePayable=async(data)=>{
     if(!data.vendor||!data.amount) return;
     if(!String(data.accountCode||"").trim()){toastEmit("Select a Chart-of-Accounts code before saving — it drives the financial statements.","error");return;}
+    // Duplicate guard (new payables only) — the AP ledger has no unique key, so the
+    // same supplier invoice can be entered twice and double-paid. Warn before saving
+    // a likely repeat: same vendor + same amount, matched on invoice number when both
+    // sides have one (strong signal) or on invoice date when neither does (soft).
+    // Bypassable, because genuine identical recurring bills do occur.
+    if(!editPayId){
+      const norm=s=>String(s||"").trim().toLowerCase().replace(/\s+/g," ");
+      const dupAmt=Math.round((Number(data.amount)||0)*100)/100;
+      const inv=norm(data.invoiceNumber);
+      const dup=payables.find(p=>{
+        if(norm(p.vendor)!==norm(data.vendor)) return false;
+        if(Math.round((Number(p.amount)||0)*100)/100!==dupAmt) return false;
+        const pInv=norm(p.invoiceNumber);
+        if(inv&&pInv) return pInv===inv;                                  // both have invoice # → match on it
+        if(!inv&&!pInv) return (p.invoiceDate||"")===(data.invoiceDate||""); // neither → match on invoice date
+        return false;                                                     // one has #, the other doesn't → not a match
+      });
+      if(dup){
+        const peso=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+        const ok=await uiConfirm({title:"Possible duplicate payable",tone:"warning",confirmLabel:"Save anyway",cancelLabel:"Go back",
+          message:`A payable for ${data.vendor||"this vendor"} of ${peso(dupAmt)} already exists`+
+            (dup.invoiceNumber?` (Invoice ${dup.invoiceNumber})`:"")+
+            (dup.apNumber?` · ${dup.apNumber}`:"")+
+            (dup.createdAt?` · entered ${dup.createdAt}`:"")+
+            `.\n\nThis looks like the same bill entered twice — entering it again would double the amount owed. Save it anyway?`});
+        if(!ok) return;
+      }
+    }
     // Due date drives the cash-flow forecast — nudge (don't hard-block) if missing.
     if(!String(data.dueDate||"").trim()){
       const ok=await uiConfirm({title:"No due date set",tone:"warning",confirmLabel:"Save without due date",cancelLabel:"Go back & set it",
