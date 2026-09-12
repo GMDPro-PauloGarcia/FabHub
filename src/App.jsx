@@ -6,7 +6,7 @@ import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -2452,7 +2452,7 @@ function MyAccountPage({session,users,setUsers,upUsers:upUsersExt,setSession:set
                       🔑 Change Password
                     </button>
                     <div style={{fontSize:".78rem",color:"#94a3b8",textAlign:"center"}}>
-                      Forgot your password? Ask Paulo or Mar to reset it in the Manager → Accounts panel.
+                      Forgot your password? Ask a Manager to reset it in the Manager → Accounts panel.
                     </div>
                   </div>
                 )}
@@ -4034,7 +4034,7 @@ export default function App(){
             }
             const _exps=data.exps!=null?data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,projectId:e.deal_id||null,receiptNo:e.receipt_no,bankAccount:e.bank_account||"",expDate:e.date||null,poRef:e.po_ref||"",note:e.note||e.description||"",accountCode:e.account_code||"",month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};}) : null;
             if(_exps!=null){setExps(prev=>mergeLocalOnly(_exps,prev));idbE.push([KEYS.expenses,_exps]);}
-            const _prs=data.prs?.length?data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",fromMrId:p.from_mr_id||null,urgency:p.urgency||"Normal",approvedAt:p.approved_at||null,deliveryHistory:p.delivery_history?(() => { try { return JSON.parse(p.delivery_history); } catch(e) { return []; } })():undefined,acctStatus:p.acct_status||"",acctNotes:p.acct_notes||"",acctCheckedBy:p.acct_checked_by||"",acctCheckedAt:p.acct_checked_at||"",paymentBank:p.payment_bank||"",paymentRef:p.payment_ref||"",paymentOrderedBy:p.payment_ordered_by||"",paymentOrderedAt:p.payment_ordered_at||"",paidRef:p.paid_ref||"",paidDate:p.paid_date||"",paidAmt:p.paid_amt!=null?Number(p.paid_amt):null,paidBy:p.paid_by||"",discType:p.disc_type||"none",discValue:Number(p.disc_value)||0,poDiscType:p.po_discount_type||"none",poDiscValue:Number(p.po_discount_value)||0,withVat:p.with_vat||false,accountCode:p.account_code||""})):null;
+            const _prs=data.prs?.length?data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",paymentTerms:p.payment_terms||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",fromMrId:p.from_mr_id||null,urgency:p.urgency||"Normal",approvedAt:p.approved_at||null,deliveryHistory:p.delivery_history?(() => { try { return JSON.parse(p.delivery_history); } catch(e) { return []; } })():undefined,acctStatus:p.acct_status||"",acctNotes:p.acct_notes||"",acctCheckedBy:p.acct_checked_by||"",acctCheckedAt:p.acct_checked_at||"",paymentBank:p.payment_bank||"",paymentRef:p.payment_ref||"",paymentOrderedBy:p.payment_ordered_by||"",paymentOrderedAt:p.payment_ordered_at||"",paidRef:p.paid_ref||"",paidDate:p.paid_date||"",paidAmt:p.paid_amt!=null?Number(p.paid_amt):null,paidBy:p.paid_by||"",discType:p.disc_type||"none",discValue:Number(p.disc_value)||0,poDiscType:p.po_discount_type||"none",poDiscValue:Number(p.po_discount_value)||0,withVat:p.with_vat||false,accountCode:p.account_code||""})):null;
             if(_prs){setPrs(prev=>{const sbIds=new Set(_prs.map(p=>p.id));const localOnly=prev.filter(p=>!sbIds.has(p.id));return localOnly.length?[..._prs,...localOnly]:_prs;});idbE.push([KEYS.prs,_prs]);}
             const _mreqs=data.mreqs?.length?data.mreqs.map(m=>({...m,dealId:m.deal_id,projectId:m.deal_id,itemName:m.item||"",estimatedCost:Number(m.estimated_cost)||0,estUnitCost:Number(m.estimated_cost)||0,submittedBy:m.submitted_by,requestedBy:m.submitted_by||"",statusChangedAt:m.status_changed_at,urgency:m.urgency||"Normal"})):null;
             if(_mreqs){setMreqs(prev=>mergeLocalOnly(_mreqs,prev));idbE.push([KEYS.mreqs,_mreqs]);}
@@ -4357,7 +4357,7 @@ export default function App(){
     if(data.exps?.length){const mappedExps=data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,createdBy:e.created_by,bankAccount:e.bank_account||"",expDate:e.date||null,poRef:e.po_ref||"",payee:e.supplier||"",vatable:e.vatable??undefined,inputVat:e.input_vat!=null?Number(e.input_vat):undefined,ewtRate:e.ewt_rate!=null?Number(e.ewt_rate):undefined,ewtAmount:e.ewt_amount!=null?Number(e.ewt_amount):undefined,netAmount:e.net_amount!=null?Number(e.net_amount):undefined,month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};});setExps(prev=>mergeLocalOnly(mappedExps,prev));idbE.push([KEYS.expenses,mappedExps]);}
     if(data.swos?.length){const ws=data.swos.map(swoFromSb);setSwos(prev=>mergeLocalOnly(ws,prev));idbE.push([KEYS.swos,ws]);}
     if(data.inflows?.length){const infs=data.inflows.map(i=>({...i,dealId:i.deal_id,refNo:i.ref_no}));setInfs(prev=>mergeLocalOnly(infs,prev));idbE.push([KEYS.inflows,infs]);}
-    if(data.prs?.length){const ps=data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",acctStatus:p.acct_status||"",acctNotes:p.acct_notes||"",acctCheckedBy:p.acct_checked_by||"",acctCheckedAt:p.acct_checked_at||"",paymentBank:p.payment_bank||"",paymentRef:p.payment_ref||"",paymentOrderedBy:p.payment_ordered_by||"",paymentOrderedAt:p.payment_ordered_at||"",paidRef:p.paid_ref||"",paidDate:p.paid_date||"",paidAmt:p.paid_amt!=null?Number(p.paid_amt):null,paidBy:p.paid_by||"",discType:p.disc_type||"none",discValue:Number(p.disc_value)||0,poDiscType:p.po_discount_type||"none",poDiscValue:Number(p.po_discount_value)||0,withVat:p.with_vat||false,accountCode:p.account_code||""}));setPrs(prev=>mergeLocalOnly(ps,prev));idbE.push([KEYS.prs,ps]);}
+    if(data.prs?.length){const ps=data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",paymentTerms:p.payment_terms||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",acctStatus:p.acct_status||"",acctNotes:p.acct_notes||"",acctCheckedBy:p.acct_checked_by||"",acctCheckedAt:p.acct_checked_at||"",paymentBank:p.payment_bank||"",paymentRef:p.payment_ref||"",paymentOrderedBy:p.payment_ordered_by||"",paymentOrderedAt:p.payment_ordered_at||"",paidRef:p.paid_ref||"",paidDate:p.paid_date||"",paidAmt:p.paid_amt!=null?Number(p.paid_amt):null,paidBy:p.paid_by||"",discType:p.disc_type||"none",discValue:Number(p.disc_value)||0,poDiscType:p.po_discount_type||"none",poDiscValue:Number(p.po_discount_value)||0,withVat:p.with_vat||false,accountCode:p.account_code||""}));setPrs(prev=>mergeLocalOnly(ps,prev));idbE.push([KEYS.prs,ps]);}
     if(data.mreqs?.length){const ms=data.mreqs.map(m=>({...m,dealId:m.deal_id,projectId:m.deal_id,itemName:m.item||"",estimatedCost:Number(m.estimated_cost)||0,estUnitCost:Number(m.estimated_cost)||0,submittedBy:m.submitted_by,requestedBy:m.submitted_by||"",statusChangedAt:m.status_changed_at}));setMreqs(prev=>mergeLocalOnly(ms,prev));idbE.push([KEYS.mreqs,ms]);}
     if(data.breqs?.length){const bs2=data.breqs.map(b=>({...b,dealId:b.deal_id,projectId:b.deal_id,dateNeeded:b.date_needed,approvedBy:b.approved_by,submittedBy:b.submitted_by,requestedBy:b.submitted_by||"",releasedBy:b.released_by||"",releasedAt:b.released_at,statusChangedAt:b.status_changed_at}));setBreqs(prev=>mergeLocalOnly(bs2,prev));idbE.push([KEYS.breqs,bs2]);}
     if(data.addenda?.length){const as=data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by,kind:a.kind||"Additive",scopeItems:Array.isArray(a.scope_items)?a.scope_items:[],coBoqData:a.co_boq_data||null,salesOwner:a.sales_owner||"",awardedDate:a.awarded_date||null,subAccount:a.sub_account||null}));setAddenda(prev=>mergeLocalOnly(as,prev));idbE.push([KEYS.addenda,as]);}
@@ -4545,6 +4545,7 @@ export default function App(){
     qty_delivered:Number(r.qtyDelivered)||0, delivery_date:r.deliveryDate||null,
     dr_no:r.drNo||"", notes:r.notes||"", created_by:r.createdBy||r.requestedBy||"",
     po_number:r.poNumber||"", po_date:r.poDate||null,
+    payment_terms:r.paymentTerms||"",
     delivery_note:r.deliveryNote||"", requested_by:r.requestedBy||"",
     approved_by:r.approvedBy||"", project_name:r.projectName||"",
     with_vat:r.withVat||false,
@@ -5260,7 +5261,7 @@ export default function App(){
   .notes-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px;font-size:11px;color:#475569;margin-top:8px}
   @media print{body{padding:10px}}
 </style></head><body>
-<div class="logo-area"><div><div class="co-name">GMD Pro Solutions</div><div class="co-sub">Interior Design & Fabrication · info@gmdpro.com.ph</div></div></div>
+<div class="logo-area"><div><div class="co-name">GMD PRODUCTIONS INC</div><div class="co-sub">Interior Design & Fabrication · info@gmdpro.com.ph</div></div></div>
 <div class="doc-title">GOODS RECEIVING NOTE</div>
 <div class="meta-grid">
   <div class="meta-row"><span class="meta-label">GRN / DR No.:</span><span class="meta-val"><strong>${drNo||"— (none)"}</strong></span></div>
@@ -5291,7 +5292,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   <div class="sig-box"><div class="sig-line"><span class="sig-name">&nbsp;</span></div>Supplier Representative</div>
 </div>
 <div style="margin-top:20px;font-size:9px;color:#94a3b8;text-align:center;border-top:1px solid #f1f5f9;padding-top:8px">
-  This document serves as official receiving record. Any discrepancies must be reported within 24 hours. · GMD Pro Solutions · ${recvDate}
+  This document serves as official receiving record. Any discrepancies must be reported within 24 hours. · GMD PRODUCTIONS INC · ${recvDate}
 </div>
 </body></html>`;
     const w=window.open("","_blank","width=800,height=600");
@@ -5556,7 +5557,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           actualCost:Number(rec.actual_cost)||0,actUnitCost:Number(rec.actual_cost)||0,
           budgetCategory:rec.budget_category,qtyDelivered:Number(rec.qty_delivered)||0,
           deliveryDate:rec.delivery_date,deliveryNote:rec.delivery_note||"",drNo:rec.dr_no,
-          createdBy:rec.created_by,poNumber:rec.po_number||"",poDate:rec.po_date||"",
+          createdBy:rec.created_by,poNumber:rec.po_number||"",poDate:rec.po_date||"",paymentTerms:rec.payment_terms||"",
           requestedBy:rec.requested_by||rec.created_by||"",approvedBy:rec.approved_by||"",
           projectName:rec.project_name||"",fromMrId:rec.from_mr_id||null,urgency:rec.urgency||"Normal",
           approvedAt:rec.approved_at||null,
@@ -8445,7 +8446,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
       {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"BOQ"}]},
       {group:"Warehousing", items:[{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"}]},
-      {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"audit",l:"Audit"},{id:"botsettings",l:"Bot Settings"},{id:"activity",l:"Team Activity"}]},
+      {group:"Admin",       items:[{id:"audit",l:"Audit"},{id:"botsettings",l:"Bot Settings"},{id:"activity",l:"Team Activity"}]},
     ],
     Audit:[
       {group:"Overview", items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
@@ -8455,7 +8456,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     HRAdmin:[
       {group:"Overview", items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
       {group:"Audit",    items:[{id:"audit",l:"Audit"}]},
-      {group:"Admin",    items:[{id:"accounts",l:"Accounts"},{id:"activity",l:"Team Activity"}]},
+      {group:"Admin",    items:[{id:"activity",l:"Team Activity"}]},
     ],
     Accounting:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"acctdash",l:"Accounting"}]},
@@ -14360,7 +14361,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       </Wrap>
     );
     const ROLES=['Manager', 'Sales', 'Finance', 'Procurement', 'QS', 'Operations', 'Design', 'ProjectMover', 'Warehouse', 'SalesOpsAdmin', 'FinanceAssistant'];
-    if(page==="accounts"&&(role==="Manager"||role==="Finance")) return(
+    if(page==="accounts"&&role==="Manager") return(
       <Wrap>
         <AccountsManager users={users} session={session} onApprove={approveUser} onReject={rejectUser} onDeactivate={deactivateUser} onDelete={deleteUser} onResetPw={resetPw} onCreateUser={createUser} ROLES={ROLES}/>
         {/* Role Permissions reference (Manager only) — who can view/create/edit/
@@ -14928,7 +14929,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   if(recvAmt>0&&!isStock&&!alreadyLogged){
                     const expId=uid();
                     const supTerms=(suppliers.find(s=>(s.companyName||"").toLowerCase()===(receivingPr.supplier||"").toLowerCase())||{}).paymentTerms||"";
-                    const due=dueDateFromTerms(supTerms,today);
+                    // PO-level terms (warehouse policy) win over the supplier default — a
+                    // per-PO negotiation (e.g. COD rush from a Net-60 supplier) is honoured.
+                    const effTerms=receivingPr.paymentTerms||supTerms;
+                    const due=dueDateFromTerms(effTerms,today);
                     // Reconcile the PO's existing payable (created when the PO was issued) instead of
                     // creating a duplicate: stamp its due date from the supplier's terms on first
                     // receipt and link this receipt's expense to it. Only fall back to a fresh
@@ -14947,7 +14951,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       payId=uid();
                       // Payment-due tracker: float a payable with a due date computed from the supplier's terms,
                       // so finance can see when it's due. It gets settled later via Check Payable / BizLink.
-                      const payRec={id:payId,vendor:receivingPr.supplier||"—",amount:recvAmt,dueDate:due,projectId:sProjId,category:"Supplier",accountCode:receivingPr.accountCode||"5000",invoiceRef:rxDrNo?`DR ${rxDrNo}`:"",notes:`${receivingPr.itemName||""} · PO ${receivingPr.poNumber||receivingPr.id.slice(-6)}${supTerms?` · Terms: ${supTerms}`:" · No terms on file"}`,status:"Unpaid",poNumber:receivingPr.poNumber||"",poId:receivingPr.id,expenseId:expId,createdAt:today,createdBy:session?.name||""};
+                      const payRec={id:payId,vendor:receivingPr.supplier||"—",amount:recvAmt,dueDate:due,projectId:sProjId,category:"Supplier",accountCode:receivingPr.accountCode||"5000",invoiceRef:rxDrNo?`DR ${rxDrNo}`:"",notes:`${receivingPr.itemName||""} · PO ${receivingPr.poNumber||receivingPr.id.slice(-6)}${effTerms?` · Terms: ${effTerms}${receivingPr.paymentTerms?" (PO)":""}`:" · No terms on file"}`,status:"Unpaid",poNumber:receivingPr.poNumber||"",poId:receivingPr.id,expenseId:expId,createdAt:today,createdBy:session?.name||""};
                       upPayables(ps=>[payRec,...ps]);
                       if(isSupabaseReady()) sbUpsert("payables",payableToSb(payRec),"id").catch(()=>{});
                     }
@@ -20912,7 +20916,7 @@ function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,subc
   @media print{body{padding:20px}}
 </style></head><body>
 <div class="hdr">
-  <div><div class="co">GMD Pro</div><div class="co-sub">Fabrication &amp; Project Management</div></div>
+  <div><div class="co">GMD PRODUCTIONS INC</div><div class="co-sub">Fabrication &amp; Project Management</div></div>
   <div style="text-align:right"><div class="doc-title">SUBCON WORK ORDER</div><div class="doc-sub">${esc(w.woNumber)} · ${esc(w.woDate)||""}</div></div>
 </div>
 <div class="meta">
@@ -21382,7 +21386,7 @@ function PoDocumentationQueue({prs,swos,updatePR,updateSWO,wonDeals,session,role
   @media print{body{padding:20px}}
 </style></head><body>
 <div class="hdr">
-  <div><div class="co">GMD Pro</div><div class="co-sub">Fabrication &amp; Project Management</div></div>
+  <div><div class="co">GMD PRODUCTIONS INC</div><div class="co-sub">Fabrication &amp; Project Management</div></div>
   <div style="text-align:right"><div class="doc-title">PAYMENT ORDER</div><div class="doc-sub">${esc(d.number)} · ${esc(a.paymentOrderedAt)||today}</div></div>
 </div>
 <table>
@@ -21573,6 +21577,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
   const[poLevelDiscValue,setPoLevelDiscValue]=useState("");
   const[poWithVat,setPoWithVat]=useState(false);
   const[poAccountCode,setPoAccountCode]=useState(""); // Chart-of-Accounts code for the PO (flows to the payable)
+  const[poTerms,setPoTerms]=useState(""); // Warehouse payment terms — COD / N days; drives the payable due date on receipt
   const[editingPrIds,setEditingPrIds]=useState(null);
   const[selectedPOs,setSelectedPOs]=useState(()=>new Set()); // groupKeys picked for bulk delete
 
@@ -21603,7 +21608,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
   const openNewPO=()=>{
     setPoSupplier(""); setPoNumber(previewPoNo()); setPoNumberAuto(true); setPoDate(new Date().toISOString().split("T")[0]);
     setPoStatus("PO Issued"); setPoExpectedDelivery(""); setPoItems([emptyPoItem()]);
-    setPoLevelDiscType("none"); setPoLevelDiscValue(""); setPoWithVat(false); setPoAccountCode("");
+    setPoLevelDiscType("none"); setPoLevelDiscValue(""); setPoWithVat(false); setPoAccountCode(""); setPoTerms("");
     setEditingPrIds(null); setMode("newpo");
   };
 
@@ -21618,6 +21623,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
     setPoLevelDiscValue(String(first.poDiscValue||""));
     setPoWithVat(first.withVat||false);
     setPoAccountCode(first.accountCode||"");
+    setPoTerms(first.paymentTerms||"");
     setPoItems(items.map(pr=>({
       _id:Math.random().toString(36).slice(2),
       _existingId:pr.id,
@@ -21641,8 +21647,13 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
     const grandTotal=subtotal-poDisc;
     const vatAmt=withVat?grandTotal*0.12:0;
     const totalWithVat=grandTotal+vatAmt;
+    // Effective terms for the printed PO: the PO's own term wins; if left on
+    // "supplier default" (blank), fall back to the supplier's terms so the
+    // supplier reads the terms that actually apply, not a dash.
+    const supTermsPrint=(suppliers||[]).find(s=>(s.companyName||s.company_name||"").toLowerCase()===(supplierName||"").toLowerCase())?.paymentTerms||"";
+    const effTermsPrint=items[0]?.paymentTerms||supTermsPrint;
     const preparedBy=items[0]?.requestedBy||items[0]?.createdBy||"";
-    const approvedBy="Marian Prile";
+    const approvedBy=items[0]?.approvedBy||"";
     const receivedBy=supplierName||"";
     const allProjDeals=[...activeDeals,...(wonDeals||[])];
     const projectList=[...new Set(items.map(i=>{if(i.projectId==="__gmd_stocks__"||i.projectName==="GMD Stocks")return"GMD Stocks";const d=allProjDeals.find(x=>x.id===i.projectId);return d?projDisplayName(d):(i.projectName||"");}).filter(Boolean))].join(" / ")||"—";
@@ -21661,7 +21672,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
   .co-sub{font-size:11px;color:#64748b;margin-top:2px}
   .po-title{font-size:20px;font-weight:800;color:#1e293b}
   .po-sub{font-size:11px;color:#64748b;margin-top:3px}
-  .meta{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:8px;background:#f8fafc;padding:14px 16px;border-radius:8px 8px 0 0;border:1px solid #e2e8f0;border-bottom:none}
+  .meta{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:8px;background:#f8fafc;padding:14px 16px;border-radius:8px 8px 0 0;border:1px solid #e2e8f0;border-bottom:none}
   .meta-item label{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:#94a3b8;margin-bottom:3px}
   .meta-item span{font-weight:700;font-size:13px}
   .meta-proj{background:#f8fafc;padding:10px 16px 14px;border-radius:0 0 8px 8px;border:1px solid #e2e8f0;margin-bottom:20px;border-top:1px dashed #e2e8f0}
@@ -21677,13 +21688,14 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
   @media print{body{padding:20px}}
 </style></head><body>
 <div class="hdr">
-  <div><div class="co">GMD Pro</div><div class="co-sub">Fabrication & Project Management</div></div>
+  <div><div class="co">GMD PRODUCTIONS INC</div><div class="co-sub">Fabrication & Project Management</div></div>
   <div style="text-align:right"><div class="po-title">PURCHASE ORDER</div><div class="po-sub">${poNo} · ${poD||""}</div></div>
 </div>
 <div class="meta">
   <div class="meta-item"><label>Supplier</label><span>${supplierName||"—"}</span></div>
   <div class="meta-item"><label>PO Number</label><span>${poNo}</span></div>
   <div class="meta-item"><label>Date Issued</label><span>${poD||"—"}</span></div>
+  <div class="meta-item"><label>Payment Terms</label><span>${effTermsPrint||"—"}</span></div>
 </div>
 <div class="meta-proj"><label>Project(s)</label><span>${projectList}</span></div>
 <table>
@@ -21692,7 +21704,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
   ${poDisc>0?`<tr style="background:#f0fdf4"><td colspan="6" style="text-align:right;font-size:11px;color:#059669">PO-Level Discount (${poDiscType==="pct"?poDiscVal+"%":"Fixed"})</td><td style="text-align:right;color:#059669;font-weight:700">−${fmt(poDisc)}</td></tr>`:""}
   ${withVat?`<tr style="background:#f8fafc"><td colspan="6" style="text-align:right;font-size:11px;color:#64748b">Ex-VAT Amount</td><td style="text-align:right;color:#64748b">${fmt(grandTotal)}</td></tr><tr style="background:#fffbeb"><td colspan="6" style="text-align:right;font-size:11px;color:#b45309;font-weight:700">VAT 12% (OR)</td><td style="text-align:right;color:#b45309;font-weight:700">+${fmt(vatAmt)}</td></tr>`:""}
   <tr class="total-row"><td colspan="6" style="text-align:right">${withVat?"TOTAL (VAT Inclusive)":"Grand Total"}</td><td style="text-align:right">${fmt(totalWithVat)}</td></tr>
-  ${withVat?`<tr><td colspan="7" style="font-size:9px;color:#94a3b8;text-align:right;padding-top:4px">Official Receipt (OR) — VAT Registered Supplier · TIN of GMD Pro Solutions applies</td></tr>`:""}
+  ${withVat?`<tr><td colspan="7" style="font-size:9px;color:#94a3b8;text-align:right;padding-top:4px">Official Receipt (OR) — VAT Registered Supplier · TIN of GMD PRODUCTIONS INC applies</td></tr>`:""}
 </table>
 <div class="sig">
   <div class="sig-box">Prepared by<br><br><br><div style="border-top:1px solid #94a3b8;padding-top:6px;margin-top:4px"><strong style="font-size:11px;color:#0f172a">${preparedBy||"&nbsp;"}</strong><br>Procurement</div></div>
@@ -21733,7 +21745,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
         qty:Number(item.qty)||1,unit:item.unit,estUnitCost:Number(item.estUnitCost)||0,
         discType:"none",discValue:0,
         poDiscType:poLevelDiscType,poDiscValue:poLevelDiscValue,withVat:poWithVat,
-        accountCode:poAccountCode,
+        accountCode:poAccountCode,paymentTerms:poTerms,
         projectId:item.projectId,projectName:deal?.client||item.projectName||"",
         supplier:poSupplier,poNumber:poNo,poDate:poDate,
         status:poStatus,deliveryDate:poExpectedDelivery||""};
@@ -21892,6 +21904,12 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
             <Fld label="Status"><Sel value={editForm.status} onChange={e=>ef("status",e.target.value)}>{PROC_STATUSES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
             <Fld label="PO Number"><Inp value={editForm.poNumber} onChange={e=>ef("poNumber",e.target.value)}/></Fld>
             <Fld label="PO Date"><Inp type="date" value={editForm.poDate} onChange={e=>ef("poDate",e.target.value)}/></Fld>
+            <Fld label="Terms">
+              <Sel value={editForm.paymentTerms||""} onChange={e=>ef("paymentTerms",e.target.value)}>
+                <option value="">— Supplier default —</option>
+                {PO_TERMS.map(t=><option key={t} value={t}>{t}</option>)}
+              </Sel>
+            </Fld>
             <Fld label="Requested By"><Inp value={editForm.requestedBy} onChange={e=>ef("requestedBy",e.target.value)}/></Fld>
             {["PO Issued","Approved"].includes(editForm.status)&&(
               <Fld label="Expected Delivery Date"><Inp type="date" value={editForm.deliveryDate} onChange={e=>ef("deliveryDate",e.target.value)}/></Fld>
@@ -21953,6 +21971,12 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
               <Sel value={poAccountCode} onChange={e=>setPoAccountCode(e.target.value)}>
                 <option value="">— Select account —</option>
                 {[...chartOfAccounts].filter(a=>a.active!==false&&(a.type==="COGS"||a.type==="Expense"||a.type==="Asset")).sort((a,b)=>String(a.code).localeCompare(String(b.code))).map(a=><option key={a.id||a.code} value={a.code}>{a.code} · {a.name}</option>)}
+              </Sel>
+            </Fld>
+            <Fld label="Terms">
+              <Sel value={poTerms} onChange={e=>setPoTerms(e.target.value)}>
+                <option value="">— Supplier default —</option>
+                {PO_TERMS.map(t=><option key={t} value={t}>{t}</option>)}
               </Sel>
             </Fld>
           </div>

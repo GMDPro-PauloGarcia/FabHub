@@ -129,6 +129,10 @@ export const MAT_UNITS       = ["pcs","sheets","meters","kg","sets","rolls","lit
 
 export const PO_UNITS        = ["pcs","sheets","meters","sqm","sqft","lnm","kg","sets","rolls","liters","gallons","bags","boxes","pairs","lengths","bundles","cu.m","lots","units"];
 
+// Warehouse payment-terms policy for POs. COD = due on receipt; the rest are
+// N-day credit terms. dueDateFromTerms() parses these into a payable due date.
+export const PO_TERMS        = ["COD","7 Days","15 Days","30 Days","60 Days","90 Days","120 Days"];
+
 export const EXP_CATS        = ["Materials","Labor","Overhead","Utilities","Rent","Transport","Marketing","Salaries","Subcontractor","Reimbursement","Other"];
 
 export const SWATCH_CATS     = ["Fabric","Paint","Hardware","Wood","Metal","Glass","Laminate","Tile","Lighting","Fixture","Trim","Adhesive","Other"];
@@ -685,7 +689,7 @@ export const emptyPR = () => ({
   id:"", projectId:"", projectName:"",
   itemName:"", category:"Materials", description:"",
   qty:1, unit:"pcs", estUnitCost:0, actUnitCost:0,
-  supplier:"", poNumber:"", poDate:"",
+  supplier:"", poNumber:"", poDate:"", paymentTerms:"",
   qtyDelivered:0, deliveryDate:"", deliveryNote:"",
   status:"Draft", requestedBy:"", approvedBy:"", approvedAt:"",
   budgetCategory:"Materials",  // which budget line this hits
