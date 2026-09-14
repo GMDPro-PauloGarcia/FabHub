@@ -81,7 +81,10 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
     const proj=schedForm.projectId?projById[schedForm.projectId]:null;
     const cat=schedForm.category;
     const title=proj?(projLabel(proj)||proj.client||""):customTitle;
-    const data={type:CAT_LABEL_BY_CODE[cat]||"Repair",category:cat,workDetail:cat==="O"?workDetail:"",location:schedForm.location||"",title,dueDate:schedForm.date,projectId:schedForm.projectId||"",dealId:schedForm.projectId||"",assignedTo:schedForm.assignedTo||"",notes:schedForm.notes||"",status:schedForm.status||"Scheduled",priority:"Normal"};
+    // Preserve the work description on edit for every job type — not just "Others".
+    // Field Board jobs carry their description in workDetail regardless of category,
+    // so blanking it for non-"O" types silently erased it on every save.
+    const data={type:CAT_LABEL_BY_CODE[cat]||"Repair",category:cat,workDetail,location:schedForm.location||"",title,dueDate:schedForm.date,projectId:schedForm.projectId||"",dealId:schedForm.projectId||"",assignedTo:schedForm.assignedTo||"",notes:schedForm.notes||"",status:schedForm.status||"Scheduled",priority:"Normal"};
     if(editSchedId) updateOpsEvent?.(editSchedId,data);
     else addOpsEvent?.(data);
     setSchedModal(false);setEditSchedId(null);
