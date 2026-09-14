@@ -3862,10 +3862,26 @@ function bankCashSummary(cashPositions, today){
 // as-of number, not final profitability; early-stage jobs read optimistically
 // high because their costs haven't been incurred yet. The "% billed" column is
 // shown alongside so the reader can gauge how far along each job actually is.
-function FinancialOverview({deals=[],wonDeals=[],exps=[],payables=[],loans=[],cashPositions={},billings=[],today,setPage,setFinTab,isMobile}){
-  const money=v=>(v<0?"−₱":"₱")+Math.round(Math.abs(Number(v)||0)).toLocaleString("en-PH");
-  const fmtM=v=>{const a=Math.abs(v);const s=v<0?"−":"";return a>=1000000?s+"₱"+(Math.round(a/100000)/10)+"M":a>=1000?s+"₱"+Math.round(a/1000)+"K":s+"₱"+Math.round(a||0);};
+// Per-project margin rows — all won deals, contract value less expenses booked
+// to date. Shared by the dashboard panel (preview) and the full Project Margins
+// page so both compute identically. Sorted worst-margin-first so problems lead.
+function projectMarginRows(wonDeals=[],exps=[],billings=[]){
+  const expByDeal={};(exps||[]).forEach(e=>{const id=e.projectId||e.dealId;if(id)expByDeal[id]=(expByDeal[id]||0)+(Number(String(e.amount).replace(/,/g,""))||0);});
+  const billedByDeal={};(billings||[]).forEach(b=>{if(b.dealId)billedByDeal[b.dealId]=(billedByDeal[b.dealId]||0)+Number(b.amount||0);});
+  return (wonDeals||[]).map(d=>{
+    const contract=Number(d.value||0);
+    const spent=expByDeal[d.id]||0;
+    const profit=contract-spent;
+    const margin=contract>0?Math.round(profit/contract*100):null;
+    const billedPct=contract>0?Math.round((billedByDeal[d.id]||0)/contract*100):0;
+    return {id:d.id,name:d.contact||d.client||d.projName||"Untitled",ceNo:d.ceNo||"",contract,spent,profit,margin,billedPct};
+  }).sort((a,b)=>(a.margin==null?999:a.margin)-(b.margin==null?999:b.margin));
+}
+const _fmtM=v=>{const a=Math.abs(v);const s=v<0?"−":"";return a>=1000000?s+"₱"+(Math.round(a/100000)/10)+"M":a>=1000?s+"₱"+Math.round(a/1000)+"K":s+"₱"+Math.round(a||0);};
+const _money=v=>(v<0?"−₱":"₱")+Math.round(Math.abs(Number(v)||0)).toLocaleString("en-PH");
+const _marginClr=m=>m==null?"#94a3b8":m>=25?"#059669":m>=10?"#f59e0b":"#ef4444";
 
+function FinancialOverview({deals=[],wonDeals=[],exps=[],payables=[],loans=[],cashPositions={},billings=[],today,setPage,setFinTab,onOpenProject,onViewAllMargins,isMobile}){
   const cash=bankCashSummary(cashPositions,today);
   const payTotal=(payables||[]).filter(p=>p.status!=="Paid"&&p.status!=="Cancelled"&&Number(p.amount)>0).reduce((s,p)=>s+Number(p.amount||0),0);
   const payCount=(payables||[]).filter(p=>p.status!=="Paid"&&p.status!=="Cancelled"&&Number(p.amount)>0).length;
@@ -3874,19 +3890,9 @@ function FinancialOverview({deals=[],wonDeals=[],exps=[],payables=[],loans=[],ca
   const loanOutstanding=Math.max(0,loanPrincipal-loanPaid);
   const loanMonthly=(loans||[]).reduce((s,l)=>s+(Number(l.monthlyPayment)||0),0);
 
-  // Per-project margin — all won deals, contract value less expenses booked.
-  const expByDeal={};(exps||[]).forEach(e=>{const id=e.projectId||e.dealId;if(id)expByDeal[id]=(expByDeal[id]||0)+(Number(String(e.amount).replace(/,/g,""))||0);});
-  const billedByDeal={};(billings||[]).forEach(b=>{if(b.dealId)billedByDeal[b.dealId]=(billedByDeal[b.dealId]||0)+Number(b.amount||0);});
-  const rows=(wonDeals||[]).map(d=>{
-    const contract=Number(d.value||0);
-    const spent=expByDeal[d.id]||0;
-    const profit=contract-spent;
-    const margin=contract>0?Math.round(profit/contract*100):null;
-    const billedPct=contract>0?Math.round((billedByDeal[d.id]||0)/contract*100):0;
-    return {id:d.id,name:d.contact||d.client||d.projName||"Untitled",ceNo:d.ceNo||"",contract,spent,profit,margin,billedPct};
-  }).sort((a,b)=>(a.margin==null?999:a.margin)-(b.margin==null?999:b.margin)); // worst margin first — problems surface at top
-
-  const marginClr=m=>m==null?"#94a3b8":m>=25?"#059669":m>=10?"#f59e0b":"#ef4444";
+  const allRows=projectMarginRows(wonDeals,exps,billings);
+  const preview=allRows.slice(0,5); // just the 5 worst — full list lives on its own page
+  const openProj=(id)=>onOpenProject&&onOpenProject(id);
   const card=(bg="#fff")=>({background:bg,borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 16px"});
 
   return(
@@ -3902,7 +3908,7 @@ function FinancialOverview({deals=[],wonDeals=[],exps=[],payables=[],loans=[],ca
       {/* KPI row */}
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:12}}>
         {/* Projects */}
-        <div onClick={()=>setPage&&setPage("pipeline")} style={{...card(),cursor:"pointer",textAlign:"center"}}>
+        <div onClick={()=>onViewAllMargins&&onViewAllMargins()} style={{...card(),cursor:"pointer",textAlign:"center"}}>
           <div style={{fontSize:"1.2rem"}}>🏗</div>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.5rem",color:"#0f172a"}}>{wonDeals.length}</div>
           <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",fontWeight:700}}>Awarded Projects</div>
@@ -3910,7 +3916,7 @@ function FinancialOverview({deals=[],wonDeals=[],exps=[],payables=[],loans=[],ca
         {/* Bank cash */}
         <div onClick={()=>{setFinTab&&setFinTab("cash");setPage&&setPage("finance");}} style={{...card(cash.stale?"#fffbeb":"#fff"),cursor:"pointer",textAlign:"center",borderColor:cash.stale?"#fcd34d":"#e2e8f0"}}>
           <div style={{fontSize:"1.2rem"}}>🏦</div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.5rem",color:cash.total>0?"#059669":"#94a3b8"}}>{fmtM(cash.total)}</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.5rem",color:cash.total>0?"#059669":"#94a3b8"}}>{_fmtM(cash.total)}</div>
           <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",fontWeight:700}}>Cash in Bank</div>
           {cash.stale
             ?<div style={{fontSize:".62rem",color:"#b45309",fontWeight:700,marginTop:3}}>⚠ {cash.latest?`As of ${cash.latest.date} · ${cash.daysOld}d old`:"No entry yet"}</div>
@@ -3919,56 +3925,137 @@ function FinancialOverview({deals=[],wonDeals=[],exps=[],payables=[],loans=[],ca
         {/* Payables */}
         <div onClick={()=>{setFinTab&&setFinTab("payables");setPage&&setPage("finance");}} style={{...card(),cursor:"pointer",textAlign:"center"}}>
           <div style={{fontSize:"1.2rem"}}>📤</div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.5rem",color:payTotal>0?"#ef4444":"#94a3b8"}}>{fmtM(payTotal)}</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.5rem",color:payTotal>0?"#ef4444":"#94a3b8"}}>{_fmtM(payTotal)}</div>
           <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",fontWeight:700}}>Total Payables</div>
           <div style={{fontSize:".62rem",color:"#64748b",fontWeight:600,marginTop:3}}>{payCount} unpaid</div>
         </div>
         {/* Loans */}
         <div onClick={()=>{setFinTab&&setFinTab("loans");setPage&&setPage("finance");}} style={{...card(),cursor:"pointer",textAlign:"center"}}>
           <div style={{fontSize:"1.2rem"}}>💳</div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.5rem",color:loanOutstanding>0?"#7c3aed":"#94a3b8"}}>{fmtM(loanOutstanding)}</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.5rem",color:loanOutstanding>0?"#7c3aed":"#94a3b8"}}>{_fmtM(loanOutstanding)}</div>
           <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",fontWeight:700}}>Loans Outstanding</div>
-          <div style={{fontSize:".62rem",color:"#64748b",fontWeight:600,marginTop:3}}>{fmtM(loanMonthly)}/mo</div>
+          <div style={{fontSize:".62rem",color:"#64748b",fontWeight:600,marginTop:3}}>{_fmtM(loanMonthly)}/mo</div>
         </div>
       </div>
 
-      {/* Per-project margin table */}
+      {/* Margin preview — only the 5 that need attention; full list on its own page */}
       <div style={{background:"#fff",borderRadius:12,overflow:"hidden"}}>
         <div style={{padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid #f1f5f9"}}>
-          <span style={{fontWeight:800,fontSize:".84rem",color:"#0f172a"}}>Profit Margin by Project</span>
-          <span style={{fontSize:".62rem",color:"#94a3b8"}}>Contract − expenses booked (to date)</span>
+          <span style={{fontWeight:800,fontSize:".84rem",color:"#0f172a"}}>⚠ Lowest-Margin Projects</span>
+          <span style={{fontSize:".62rem",color:"#94a3b8"}}>Contract − expenses booked</span>
         </div>
-        {rows.length===0
+        {allRows.length===0
           ?<div style={{padding:"22px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No awarded projects yet.</div>
-          :(<div style={{overflowX:"auto"}}>
-            <table style={{width:"100%",borderCollapse:"collapse",fontSize:".78rem",minWidth:560}}>
-              <thead><tr style={{background:"#f8fafc",color:"#64748b",textAlign:"left"}}>
-                <th style={{padding:"8px 12px",fontWeight:700}}>Project</th>
-                <th style={{padding:"8px 12px",fontWeight:700,textAlign:"right"}}>Contract</th>
-                <th style={{padding:"8px 12px",fontWeight:700,textAlign:"right"}}>Expenses</th>
-                <th style={{padding:"8px 12px",fontWeight:700,textAlign:"right"}}>Profit</th>
-                <th style={{padding:"8px 12px",fontWeight:700,textAlign:"right"}}>Margin</th>
-                <th style={{padding:"8px 12px",fontWeight:700,textAlign:"right"}}>% Billed</th>
-              </tr></thead>
-              <tbody>
-                {rows.map((r,i)=>(
-                  <tr key={r.id} onClick={()=>setPage&&setPage("projects")} style={{borderTop:"1px solid #f1f5f9",cursor:"pointer"}}>
-                    <td style={{padding:"8px 12px",fontWeight:600,color:"#0f172a",maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.name}{r.ceNo?<span style={{color:"#94a3b8",fontWeight:400}}> · {r.ceNo}</span>:null}</td>
-                    <td style={{padding:"8px 12px",textAlign:"right",fontVariantNumeric:"tabular-nums",color:"#475569"}}>{money(r.contract)}</td>
-                    <td style={{padding:"8px 12px",textAlign:"right",fontVariantNumeric:"tabular-nums",color:"#475569"}}>{money(r.spent)}</td>
-                    <td style={{padding:"8px 12px",textAlign:"right",fontVariantNumeric:"tabular-nums",fontWeight:700,color:r.profit>=0?"#059669":"#ef4444"}}>{money(r.profit)}</td>
-                    <td style={{padding:"8px 12px",textAlign:"right",fontWeight:800,color:marginClr(r.margin)}}>{r.margin==null?"—":r.margin+"%"}</td>
-                    <td style={{padding:"8px 12px",textAlign:"right",fontVariantNumeric:"tabular-nums",color:"#94a3b8"}}>{r.billedPct}%</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>)}
-        <div style={{padding:"8px 14px",fontSize:".62rem",color:"#94a3b8",background:"#fafafa",borderTop:"1px solid #f1f5f9"}}>
-          ⚠ Margin uses expenses booked so far, not final cost. Early-stage jobs (low % billed) will read high — cross-check against progress before treating as final profit.
-        </div>
+          :preview.map((r,i)=>(
+            <div key={r.id} onClick={()=>openProj(r.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderTop:i>0?"1px solid #f8fafc":"",cursor:"pointer"}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:".82rem",fontWeight:600,color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.name}{r.ceNo?<span style={{color:"#94a3b8",fontWeight:400}}> · {r.ceNo}</span>:null}</div>
+                <div style={{fontSize:".68rem",color:"#94a3b8"}}>{_money(r.contract)} contract · {r.billedPct}% billed</div>
+              </div>
+              <div style={{textAlign:"right",flexShrink:0}}>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.05rem",color:_marginClr(r.margin)}}>{r.margin==null?"—":r.margin+"%"}</div>
+                <div style={{fontSize:".66rem",fontWeight:600,color:r.profit>=0?"#059669":"#ef4444"}}>{_money(r.profit)}</div>
+              </div>
+              <span style={{fontSize:".8rem",color:"#cbd5e1",flexShrink:0}}>→</span>
+            </div>
+          ))}
+        {allRows.length>0&&(
+          <button onClick={()=>onViewAllMargins&&onViewAllMargins()} style={{width:"100%",border:"none",borderTop:"1px solid #f1f5f9",background:"#f8fafc",padding:"11px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#1e293b",cursor:"pointer"}}>
+            View all {allRows.length} projects →
+          </button>
+        )}
       </div>
     </div>
+  );
+}
+
+// Full owner-only page: every awarded project's margin, click a row to open its
+// project card. Reached from the Financial Overview panel's "View all" button.
+function ProjectMarginsView({wonDeals=[],exps=[],billings=[],today,setPage,onOpenProject,Wrap,isMobile}){
+  const [sortKey,setSortKey]=useState("margin"); // margin | contract | profit | billed | name
+  const [q,setQ]=useState("");
+  let rows=projectMarginRows(wonDeals,exps,billings);
+  if(q.trim()){const t=q.trim().toLowerCase();rows=rows.filter(r=>r.name.toLowerCase().includes(t)||r.ceNo.toLowerCase().includes(t));}
+  const sorters={
+    margin:(a,b)=>(a.margin==null?999:a.margin)-(b.margin==null?999:b.margin),
+    contract:(a,b)=>b.contract-a.contract,
+    profit:(a,b)=>a.profit-b.profit,
+    billed:(a,b)=>a.billedPct-b.billedPct,
+    name:(a,b)=>a.name.localeCompare(b.name),
+  };
+  rows=[...rows].sort(sorters[sortKey]||sorters.margin);
+  const totContract=rows.reduce((s,r)=>s+r.contract,0);
+  const totSpent=rows.reduce((s,r)=>s+r.spent,0);
+  const totProfit=totContract-totSpent;
+  const totMargin=totContract>0?Math.round(totProfit/totContract*100):null;
+
+  const th=(key,label,align="left")=>(
+    <th onClick={()=>setSortKey(key)} style={{padding:"9px 12px",fontWeight:700,textAlign:align,cursor:"pointer",whiteSpace:"nowrap",userSelect:"none",color:sortKey===key?"#1e293b":"#64748b"}}>
+      {label}{sortKey===key?" ↓":""}
+    </th>
+  );
+
+  return(
+    <Wrap>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
+        <div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.5rem",color:"#0f172a"}}>Profit Margin by Project</div>
+          <div style={{fontSize:".8rem",color:"#64748b",marginTop:2}}>All awarded projects · contract value less expenses booked to date</div>
+        </div>
+        <button onClick={()=>setPage&&setPage("home")} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>← Back to Dashboard</button>
+      </div>
+
+      {/* totals strip */}
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:12,marginBottom:14}}>
+        {[
+          {l:"Projects",v:rows.length,c:"#0f172a"},
+          {l:"Total Contract",v:_fmtM(totContract),c:"#6366f1"},
+          {l:"Profit (to date)",v:_money(totProfit),c:totProfit>=0?"#059669":"#ef4444"},
+          {l:"Blended Margin",v:totMargin==null?"—":totMargin+"%",c:_marginClr(totMargin)},
+        ].map(k=>(
+          <div key={k.l} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 16px",textAlign:"center"}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.5rem",color:k.c}}>{k.v}</div>
+            <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",fontWeight:700,marginTop:2}}>{k.l}</div>
+          </div>
+        ))}
+      </div>
+
+      <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search project or CE no…" style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"9px 12px",fontFamily:"inherit",fontSize:".84rem",marginBottom:12}}/>
+
+      <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:".8rem",minWidth:620}}>
+            <thead><tr style={{background:"#f8fafc"}}>
+              {th("name","Project")}
+              {th("contract","Contract","right")}
+              <th style={{padding:"9px 12px",fontWeight:700,textAlign:"right",color:"#64748b"}}>Expenses</th>
+              {th("profit","Profit","right")}
+              {th("margin","Margin","right")}
+              {th("billed","% Billed","right")}
+              <th style={{width:24}}></th>
+            </tr></thead>
+            <tbody>
+              {rows.length===0
+                ?<tr><td colSpan={7} style={{padding:"24px",textAlign:"center",color:"#94a3b8"}}>No matching projects.</td></tr>
+                :rows.map((r,i)=>(
+                  <tr key={r.id} onClick={()=>onOpenProject&&onOpenProject(r.id)} style={{borderTop:"1px solid #f1f5f9",cursor:"pointer"}}>
+                    <td style={{padding:"9px 12px",fontWeight:600,color:"#0f172a",maxWidth:240,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.name}{r.ceNo?<span style={{color:"#94a3b8",fontWeight:400}}> · {r.ceNo}</span>:null}</td>
+                    <td style={{padding:"9px 12px",textAlign:"right",fontVariantNumeric:"tabular-nums",color:"#475569"}}>{_money(r.contract)}</td>
+                    <td style={{padding:"9px 12px",textAlign:"right",fontVariantNumeric:"tabular-nums",color:"#475569"}}>{_money(r.spent)}</td>
+                    <td style={{padding:"9px 12px",textAlign:"right",fontVariantNumeric:"tabular-nums",fontWeight:700,color:r.profit>=0?"#059669":"#ef4444"}}>{_money(r.profit)}</td>
+                    <td style={{padding:"9px 12px",textAlign:"right",fontWeight:800,color:_marginClr(r.margin)}}>{r.margin==null?"—":r.margin+"%"}</td>
+                    <td style={{padding:"9px 12px",textAlign:"right",fontVariantNumeric:"tabular-nums",color:"#94a3b8"}}>{r.billedPct}%</td>
+                    <td style={{padding:"9px 8px",textAlign:"right",color:"#cbd5e1"}}>→</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+        <div style={{padding:"9px 14px",fontSize:".64rem",color:"#94a3b8",background:"#fafafa",borderTop:"1px solid #f1f5f9"}}>
+          ⚠ Margin uses expenses booked so far, not final cost. Early-stage jobs (low % billed) will read high — cross-check against progress before treating as final profit. Tap any column header to re-sort; tap a row to open its project card.
+        </div>
+      </div>
+    </Wrap>
   );
 }
 
@@ -10549,7 +10636,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
       {/* ── FINANCIAL OVERVIEW (owners only) ─────────────────────────── */}
       {(session?.username==="paulo"||session?.username==="mar")&&(
-        <FinancialOverview deals={deals} wonDeals={wonDeals} exps={exps} payables={payables} loans={loans} cashPositions={cashPositions} billings={billings} today={today} setPage={setPage} setFinTab={setFinTab} isMobile={isMobile}/>
+        <FinancialOverview deals={deals} wonDeals={wonDeals} exps={exps} payables={payables} loans={loans} cashPositions={cashPositions} billings={billings} today={today} setPage={setPage} setFinTab={setFinTab} onOpenProject={id=>{setJumpDeal(id);setPage("projects");}} onViewAllMargins={()=>setPage("projectmargins")} isMobile={isMobile}/>
       )}
 
       {(()=>{
@@ -10966,7 +11053,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
       {/* ── FINANCIAL OVERVIEW (owners only) ─────────────────────────── */}
       {(session?.username==="paulo"||session?.username==="mar")&&(
-        <FinancialOverview deals={deals} wonDeals={wonDeals} exps={exps} payables={payables} loans={loans} cashPositions={cashPositions} billings={billings} today={today} setPage={setPage} setFinTab={setFinTab} isMobile={ceoMob}/>
+        <FinancialOverview deals={deals} wonDeals={wonDeals} exps={exps} payables={payables} loans={loans} cashPositions={cashPositions} billings={billings} today={today} setPage={setPage} setFinTab={setFinTab} onOpenProject={id=>{setJumpDeal(id);setPage("projects");}} onViewAllMargins={()=>setPage("projectmargins")} isMobile={ceoMob}/>
       )}
 
       {/* ── ACTION CENTER (what needs attention, promoted to the top) ── */}
@@ -16037,6 +16124,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     <Wrap>
       <AuditView findings={auditFindings} addFinding={addFinding} updateFinding={updateFinding} session={session} role={role}/>
     </Wrap>
+  );
+
+  if(page==="projectmargins"&&(session?.username==="paulo"||session?.username==="mar")) return(
+    <ProjectMarginsView wonDeals={wonDeals} exps={exps} billings={billings} today={today} setPage={setPage} onOpenProject={id=>{setJumpDeal(id);setPage("projects");}} Wrap={Wrap} isMobile={isMobile}/>
   );
 
   if(page==="syshealth"&&role==="Manager") return(
