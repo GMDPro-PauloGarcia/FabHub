@@ -7339,6 +7339,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[rowMenu,      setRowMenu]      = useState(null);   // {deal,x,y} — pipeline row overflow menu
   const[pipeDragId,   setPipeDragId]   = useState(null);   // deal id being dragged between temperature columns
   const[pipeDragOver, setPipeDragOver] = useState(null);   // temperature column currently hovered during drag
+  const pipeGhostRef = useRef(null);                       // floating drag ghost node for mobile touch-drag
   const[coldSweepDismissed,setColdSweepDismissed]=useState(false); // hide stale-cold review banner for this session
   const[priceModal,   setPriceModal]   = useState(null);   // {deal} — QS set price modal
   const[quickAddClientOpen,setQuickAddClientOpen]=useState(false);
@@ -12978,6 +12979,39 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             toastEmit(`${TEMP_META[temp].icon} Moved to ${temp}`);
             setPipeDragId(null);setPipeDragOver(null);
           };
+          // ── Mobile touch-drag ────────────────────────────────────────────────
+          // Native HTML5 drag-and-drop (used on desktop) never fires from a touch,
+          // so on phones we drive the same setTemp via Pointer Events off a grip
+          // handle: a floating ghost follows the finger and we hit-test which
+          // column ([data-temp-col]) is under the release point. Desktop is left on
+          // its native path — these handlers only bind to the mobile row's grip.
+          const colTempAtPoint=(x,y)=>{const el=document.elementFromPoint(x,y);const col=el&&el.closest&&el.closest('[data-temp-col]');return col?col.getAttribute('data-temp-col'):null;};
+          const touchDragStart=(d,e)=>{
+            if(!canSetTemp||d.parentDealId) return;
+            e.preventDefault();e.stopPropagation();
+            setPipeDragId(d.id);
+            const g=document.createElement('div');
+            g.textContent=d.contact||d.client||'Deal';
+            g.style.cssText=`position:fixed;z-index:4000;pointer-events:none;left:${e.clientX}px;top:${e.clientY}px;transform:translate(-50%,-150%);background:#1e293b;color:#fff;padding:6px 12px;border-radius:9px;font-family:inherit;font-weight:700;font-size:.8rem;box-shadow:0 10px 28px rgba(15,23,42,.35);max-width:70vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;`;
+            document.body.appendChild(g);pipeGhostRef.current=g;
+            try{e.currentTarget.setPointerCapture(e.pointerId);}catch(_){}
+          };
+          const touchDragMove=(e)=>{
+            const g=pipeGhostRef.current;if(!g)return;
+            e.preventDefault();
+            g.style.left=e.clientX+'px';g.style.top=e.clientY+'px';
+            const t=colTempAtPoint(e.clientX,e.clientY);
+            setPipeDragOver(prev=>prev===t?prev:t);
+          };
+          const touchDragEnd=(d,e)=>{
+            const g=pipeGhostRef.current;if(!g)return;   // not an active touch-drag
+            g.remove();pipeGhostRef.current=null;
+            const t=colTempAtPoint(e.clientX,e.clientY);
+            const dd=deals.find(x=>x.id===pipeDragId)||d;
+            if(t&&DEAL_TEMPS.includes(t)) setTemp(dd,t);
+            else {setPipeDragId(null);setPipeDragOver(null);}
+          };
+          const touchDragCancel=()=>{const g=pipeGhostRef.current;if(g){g.remove();pipeGhostRef.current=null;}setPipeDragId(null);setPipeDragOver(null);};
           // Stale-Cold review: Cold parent deals idle ≥ COLD_STALE_DAYS. Surfaced for
           // one-click "Did Not Win" — never auto-written (a slow bid isn't a lost bid).
           const staleCold=coldDeals.filter(d=>daysIdle(d)>=COLD_STALE_DAYS).sort((a,b)=>daysIdle(b)-daysIdle(a));
@@ -12999,8 +13033,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           const PipeRow=({d,list,i})=>{
             const border=i<list.length-1?"1px solid #f1f5f9":"none";
             if(isMobile) return(
-              <div style={{padding:"12px 14px",borderBottom:border,background:"#fff"}}>
+              <div style={{padding:"12px 14px",borderBottom:border,background:pipeDragId===d.id?"#eff6ff":"#fff",opacity:pipeDragId===d.id?.5:1}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+                  {canSetTemp&&!d.parentDealId&&<span
+                    onPointerDown={e=>{if(e.pointerType!=='mouse')touchDragStart(d,e);}}
+                    onPointerMove={e=>{if(e.pointerType!=='mouse')touchDragMove(e);}}
+                    onPointerUp={e=>{if(e.pointerType!=='mouse')touchDragEnd(d,e);}}
+                    onPointerCancel={()=>touchDragCancel()}
+                    style={{touchAction:"none",color:"#cbd5e1",fontSize:"1.1rem",lineHeight:1,cursor:"grab",flexShrink:0,padding:"2px 6px 2px 0",alignSelf:"center",userSelect:"none"}}
+                    title="Drag to Hot / Almost Awarded / Cold">⠿</span>}
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap",marginBottom:3}}>
                       <span style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{d.contact||d.client}</span>
@@ -13138,14 +13179,19 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(3,1fr)",gap:14,marginBottom:20}}>
                 {[["Hot",hotDeals],["Almost Awarded",almostDeals],["Cold",coldDeals]].map(([temp,list])=>{
                   const m=TEMP_META[temp];const isOver=pipeDragOver===temp;
+                  // Column total = contract value of the parent deals in this column
+                  // plus their nested children (addenda/linked deals carry value too).
+                  // Hidden for BUDGET_ONLY roles (Design/Ops/PM) so contract value never leaks.
+                  const colTotal=list.reduce((s,d)=>s+Number(d.value||0)+childPipeDeals.filter(c=>c.parentDealId===d.id).reduce((cs,c)=>cs+Number(c.value||0),0),0);
                   return(
-                  <div key={temp}
+                  <div key={temp} data-temp-col={temp}
                     onDragOver={canSetTemp?(e=>{e.preventDefault();if(pipeDragOver!==temp)setPipeDragOver(temp);}):undefined}
                     onDragLeave={canSetTemp?(e=>{if(e.currentTarget===e.target)setPipeDragOver(null);}):undefined}
                     onDrop={canSetTemp?(e=>{e.preventDefault();const dd=deals.find(x=>x.id===pipeDragId);if(dd)setTemp(dd,temp);}):undefined}>
-                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:7,display:"flex",alignItems:"center",gap:6}}>
+                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:7,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                       {m.icon} {temp}
                       <span style={{fontWeight:400,color:"#94a3b8",fontSize:".72rem"}}>({list.length})</span>
+                      {!BUDGET_ONLY.includes(role)&&<span style={{marginLeft:"auto",fontWeight:800,color:m.clr,fontSize:".82rem",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:".02em"}}>{fmt(colTotal)}</span>}
                     </div>
                     <div style={{background:isOver?m.bg:"#fff",borderRadius:12,border:`1.5px solid ${isOver?m.clr:"#e2e8f0"}`,overflow:"hidden",transition:"background .1s,border-color .1s",opacity:list.length||isOver?1:.6}}>
                       <PipeTableHeader/>
