@@ -68,9 +68,33 @@ i.e. the **raw value sum is the correct number** today (₱95,456,523.62 all-tim
 ₱93,956,523.62 for 2026-acquired). Any formula that re-adds rolled addenda on top is
 wrong once `originalValue` is gone.
 
-**Open reconciliation risk (must verify before coding):** if any CO exists BOTH as a
-child deal AND as a rolled addendum on the same parent, raw value already double-counts it.
-Needs a data audit (§6, task 0).
+**Reconciliation risk — AUDITED, confirmed real (see §3b).** A CO does exist as both a
+child deal and a rolled addendum on the same parent, so raw value already double-counts it.
+Data cleanup must precede the code refactor.
+
+## 3b. Audit findings (completed)
+
+Structure is clean: **0** nested deals (child that is also a parent), **0** orphan children,
+**0** child-of-child chains. Child deals are flat, one level under real parents. No child
+deal "became" a parent — a CO child deal is simply a full deal record whose `parentDealId`
+pointer most value math ignores, so it surfaces in lists like a standalone project.
+
+One cross-mechanism duplicate, isolated to a single project:
+
+| Project | Mechanism | Record | Value |
+|---|---|---|---|
+| Kiko Milano Rockwell Store | rolled addendum | "Hanging Light Signage" (CE-2026-1110) | ₱35,000 |
+| Kiko Milano Rockwell Store | child deal | "Kiko Milano (Change Order#1)" (CE-2026-1290) | ₱35,000 |
+
+Same store, same amount → almost certainly one physical CO keyed twice. The ₱35,000 is
+counted twice in the raw value sum (once baked into the parent's rolled value, once as the
+child deal). A second Kiko addendum ("Kiko Rockwell Store", ₱41,850) has no child twin and
+is presumed legitimate. All other 31 child-deal COs sit on parents with no rolled addenda,
+so each is counted exactly once. **Blast radius: one project, ~₱35,000.**
+
+Impact on §3: "raw value sum is the correct number" holds ONLY after this duplicate is
+removed. Until then raw value all-time is overstated by ~₱35,000
+(true ≈ ₱95,421,523.62 vs shown ₱95,456,523.62).
 
 ## 4. Correction owed on the shipped fix (`dd39d6b`)
 
@@ -113,7 +137,8 @@ with calls to these helpers.
 
 | # | Task | Files | Est. |
 |---|---|---|---|
-| 0 | **Data audit** — confirm no CO is both a child deal and a rolled addendum; confirm raw value counts each peso once | SQL only | 0.5d |
+| 0 | **Data audit** — DONE (§3b): found 1 cross-mechanism duplicate on Kiko Milano | SQL only | ✅ |
+| 0b | **Data cleanup** — confirm Kiko "Hanging Light Signage" == "Change Order#1" with the encoder; delete the duplicate (rec: drop the child deal, keep the addendum); add an entry guard against same CO via both mechanisms | data + `src/App.jsx` | 0.5d |
 | 1 | Add + unit-test helpers (`isWonDeal`, `dealValue`, `wonValue`, `pipelineValue`, `wonValueInYear`, one peso formatter) | `src/core.js`, new `src/core.test.*` | 1d |
 | 2 | Route **reports** through helpers; supersede `dd39d6b`'s `+pco` path; keep scope labels | `src/App.jsx` ~11187–11674 | 1d |
 | 3 | Route **Sales Pipeline** cards, dashboards, TV/Sales-Value views, client rollups | `src/App.jsx` (sites in §6a) | 1d |
