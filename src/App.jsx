@@ -3973,25 +3973,34 @@ function FinancialOverview({deals=[],wonDeals=[],exps=[],payables=[],loans=[],ca
 // project card. Reached from the Financial Overview panel's "View all" button.
 function ProjectMarginsView({wonDeals=[],exps=[],billings=[],today,setPage,onOpenProject,Wrap,isMobile}){
   const [sortKey,setSortKey]=useState("margin"); // margin | contract | profit | billed | name
+  const [sortDir,setSortDir]=useState("desc");    // desc = highest first
   const [q,setQ]=useState("");
   let rows=projectMarginRows(wonDeals,exps,billings);
   if(q.trim()){const t=q.trim().toLowerCase();rows=rows.filter(r=>r.name.toLowerCase().includes(t)||r.ceNo.toLowerCase().includes(t));}
-  const sorters={
-    margin:(a,b)=>(a.margin==null?999:a.margin)-(b.margin==null?999:b.margin),
-    contract:(a,b)=>b.contract-a.contract,
+  // Base comparators are ascending (small→large / A→Z); direction flips them.
+  // Null margins always sink to the bottom regardless of direction.
+  const base={
+    margin:(a,b)=>{if(a.margin==null&&b.margin==null)return 0;if(a.margin==null)return 1;if(b.margin==null)return -1;return a.margin-b.margin;},
+    contract:(a,b)=>a.contract-b.contract,
     profit:(a,b)=>a.profit-b.profit,
     billed:(a,b)=>a.billedPct-b.billedPct,
     name:(a,b)=>a.name.localeCompare(b.name),
   };
-  rows=[...rows].sort(sorters[sortKey]||sorters.margin);
+  const cmp=base[sortKey]||base.margin;
+  rows=[...rows].sort((a,b)=>{const r=cmp(a,b);if(r!==0)return sortDir==="asc"?r:-r;return 0;});
+  // Default direction when switching to a new column: text asc, numbers desc.
+  const setSort=(key)=>{
+    if(key===sortKey){setSortDir(d=>d==="asc"?"desc":"asc");}
+    else{setSortKey(key);setSortDir(key==="name"?"asc":"desc");}
+  };
   const totContract=rows.reduce((s,r)=>s+r.contract,0);
   const totSpent=rows.reduce((s,r)=>s+r.spent,0);
   const totProfit=totContract-totSpent;
   const totMargin=totContract>0?Math.round(totProfit/totContract*100):null;
 
   const th=(key,label,align="left")=>(
-    <th onClick={()=>setSortKey(key)} style={{padding:"9px 12px",fontWeight:700,textAlign:align,cursor:"pointer",whiteSpace:"nowrap",userSelect:"none",color:sortKey===key?"#1e293b":"#64748b"}}>
-      {label}{sortKey===key?" ↓":""}
+    <th onClick={()=>setSort(key)} style={{padding:"9px 12px",fontWeight:700,textAlign:align,cursor:"pointer",whiteSpace:"nowrap",userSelect:"none",color:sortKey===key?"#1e293b":"#64748b"}}>
+      {label}{sortKey===key?(sortDir==="asc"?" ↑":" ↓"):""}
     </th>
   );
 
@@ -4052,7 +4061,7 @@ function ProjectMarginsView({wonDeals=[],exps=[],billings=[],today,setPage,onOpe
           </table>
         </div>
         <div style={{padding:"9px 14px",fontSize:".64rem",color:"#94a3b8",background:"#fafafa",borderTop:"1px solid #f1f5f9"}}>
-          ⚠ Margin uses expenses booked so far, not final cost. Early-stage jobs (low % billed) will read high — cross-check against progress before treating as final profit. Tap any column header to re-sort; tap a row to open its project card.
+          ⚠ Margin uses expenses booked so far, not final cost. Early-stage jobs (low % billed) will read high — cross-check against progress before treating as final profit. Tap any column header to sort; tap it again to reverse (highest ↔ lowest). Tap a row to open its project card.
         </div>
       </div>
     </Wrap>
