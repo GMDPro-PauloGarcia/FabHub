@@ -11312,7 +11312,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(flagData),"Data Flags");
         window.XLSX.writeFile(wb,`GMD-Sales-MonthEnd-${MONTHS[CM]}${CY}.xlsx`);
       } else {
-        const sh1=[["Period","Acquired","Won","Win Rate %","Pipeline ₱","Won Value ₱"],...salesPeriods.map(p=>[p.label,p.acquired,p.won,p.winRate,p.pipelineValue,p.wonValue]),["TOTAL",yearDeals.length,yearWon.length,yearDeals.length>0?Math.round(yearWon.length/yearDeals.length*100):0,yearDeals.reduce((s,d)=>s+Number(d.value||0),0),yearWon.reduce((s,d)=>s+Number(d.value||0),0)]];
+        const sh1=[["Period","Acquired","Won","Win Rate %","Pipeline ₱","Won Value ₱ (incl. approved COs)"],...salesPeriods.map(p=>[p.label,p.acquired,p.won,p.winRate,Math.round(p.pipelineValue),Math.round(p.wonValue)]),["TOTAL",yearDeals.length,yearWon.length,yearDeals.length>0?Math.round(yearWon.length/yearDeals.length*100):0,Math.round(salesPeriods.reduce((s,p)=>s+p.pipelineValue,0)),Math.round(salesPeriods.reduce((s,p)=>s+p.wonValue,0))]];
         window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(sh1),"Sales");
         if(!salesOnly){
           const sh2=[["Period","Revenue ₱","Collections ₱","Outstanding ₱","Expenses ₱","Net Profit ₱"],...finPeriods.map(p=>[p.label,p.revenue,p.collections,p.outstanding,p.expenses,p.net]),["TOTAL",finTot.revenue,finTot.collections,finTot.outstanding,finTot.expenses,finTot.net]];
@@ -11635,16 +11635,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 <KPI label="Deals Won"      value={yearWon.length}  color="#10b981"/>
                 <KPI label="Win Rate"       value={(yearDeals.length>0?Math.round(yearWon.length/yearDeals.length*100):0)+"%"} color="#f59e0b"/>
                 <KPI label="Pipeline Value" value={fmtK(yearDeals.reduce((s,d)=>s+Number(d.value||0),0))} color="#6366f1"/>
-                <KPI label="Won Value"      value={fmtK(yearWon.reduce((s,d)=>s+Number(d.value||0),0))} color="#059669"/>
+                <KPI label="Won Value"      value={fmtK(salesPeriods.reduce((s,p)=>s+p.wonValue,0))} color="#059669"/>
               </div>
               <Card>
-                <div style={{fontWeight:700,color:"#0f172a",marginBottom:12,fontSize:".95rem"}}>{repPeriod==="quarterly"?"Quarterly":"Yearly"} Breakdown — {CY}</div>
+                <div style={{fontWeight:700,color:"#0f172a",marginBottom:2,fontSize:".95rem"}}>{repPeriod==="quarterly"?"Quarterly":"Yearly"} Breakdown — {CY}</div>
+                <div style={{fontSize:".72rem",color:"#64748b",marginBottom:12}}>Won Value = base contract + approved change orders, for deals acquired in {CY}. The all-time "Awarded Value" tile on Sales Pipeline uses a wider scope, so the two will differ.</div>
                 <div style={{overflowX:"auto"}}>
                   <table style={{width:"100%",borderCollapse:"collapse"}}>
                     <thead><tr>{[repPeriod==="quarterly"?"Quarter":"Year","Acquired","Won","Win Rate","Pipeline","Won Value"].map((h,i)=>TH(h,i>0))}</tr></thead>
                     <tbody>
-                      {salesPeriods.map((p,i)=>(<tr key={i} style={{background:i%2===0?"#fff":"#f9fafb"}}>{TD(<strong>{p.label}</strong>)}{TD(p.acquired,{right:true})}{TD(p.won,{right:true,color:p.won>0?"#059669":"#94a3b8"})}{TD(p.winRate+"%",{right:true,color:p.winRate>=50?"#059669":p.winRate>=25?"#f59e0b":"#ef4444"})}{TD(p.pipelineValue>0?fmt(p.pipelineValue):"—",{right:true})}{TD(p.wonValue>0?fmt(p.wonValue):"—",{right:true,bold:true,color:"#059669"})}</tr>))}
-                      <tr style={{background:"#eff6ff"}}>{TD(<strong style={{color:"#1e40af"}}>TOTAL</strong>)}{TD(yearDeals.length,{right:true,bold:true,color:"#1e40af"})}{TD(yearWon.length,{right:true,bold:true,color:"#059669"})}{TD((yearDeals.length>0?Math.round(yearWon.length/yearDeals.length*100):0)+"%",{right:true,bold:true,color:"#1e40af"})}{TD(fmt(yearDeals.reduce((s,d)=>s+Number(d.value||0),0)),{right:true,bold:true,color:"#1e40af"})}{TD(fmt(yearWon.reduce((s,d)=>s+Number(d.value||0),0)),{right:true,bold:true,color:"#059669"})}</tr>
+                      {salesPeriods.map((p,i)=>(<tr key={i} style={{background:i%2===0?"#fff":"#f9fafb"}}>{TD(<strong>{p.label}</strong>)}{TD(p.acquired,{right:true})}{TD(p.won,{right:true,color:p.won>0?"#059669":"#94a3b8"})}{TD(p.winRate+"%",{right:true,color:p.winRate>=50?"#059669":p.winRate>=25?"#f59e0b":"#ef4444"})}{TD(p.pipelineValue>0?fmt(Math.round(p.pipelineValue)):"—",{right:true})}{TD(p.wonValue>0?fmt(Math.round(p.wonValue)):"—",{right:true,bold:true,color:"#059669"})}</tr>))}
+                      <tr style={{background:"#eff6ff"}}>{TD(<strong style={{color:"#1e40af"}}>TOTAL</strong>)}{TD(yearDeals.length,{right:true,bold:true,color:"#1e40af"})}{TD(yearWon.length,{right:true,bold:true,color:"#059669"})}{TD((yearDeals.length>0?Math.round(yearWon.length/yearDeals.length*100):0)+"%",{right:true,bold:true,color:"#1e40af"})}{TD(fmt(Math.round(salesPeriods.reduce((s,p)=>s+p.pipelineValue,0))),{right:true,bold:true,color:"#1e40af"})}{TD(fmt(Math.round(salesPeriods.reduce((s,p)=>s+p.wonValue,0))),{right:true,bold:true,color:"#059669"})}</tr>
                     </tbody>
                   </table>
                 </div>
@@ -12553,8 +12554,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         })()}
         <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:24}}>
           {[
-            {l:"Total Pipeline",    v:fmt(deals.filter(d=>isActivePipeline(d.stage)).reduce((s,d)=>s+Number(d.value||0),0)), c:"#3b82f6"},
-            {l:"Awarded Value",     v:fmt(wonDeals.reduce((s,d)=>s+Number(d.value||0),0)),   c:"#059669"},
+            {l:"Total Pipeline",    v:fmt(Math.round(deals.filter(d=>isActivePipeline(d.stage)).reduce((s,d)=>s+Number(d.value||0),0))), c:"#3b82f6", sub:"Active stages"},
+            {l:"Awarded Value",     v:fmt(Math.round(wonDeals.reduce((s,d)=>s+Number(d.value||0),0))),   c:"#059669", sub:"All-time · base contract"},
             {l:"Active Deals",      v:deals.filter(d=>isActivePipeline(d.stage)).length, c:"#f59e0b"},
             {l:"Awarded Projects",  v:wonDeals.length, c:"#8b5cf6"},
           ].map(({l,v,c,sub})=>(
