@@ -456,6 +456,30 @@ export const ADDENDUM_STATUSES = ["Discovered","Sales Notified","Client Coordina
 export const CO_KINDS = ["Additive","Deductive"];
 export const coSignedValue = (x) => ((x && x.kind === "Deductive" ? -1 : 1) * Math.abs(Number(x && x.value) || 0));
 
+// A change order can be recorded two ways in FabHub — as an `addenda` record on a
+// parent deal, OR as a linked child deal (parentDealId set). If the SAME change
+// order is entered via both, its value is double-counted in awarded totals (the
+// Kiko Milano case). Call this before committing a new CO of either kind: given
+// the parent deal id and the CO value, it returns a human-readable warning if a
+// same-value CO of EITHER mechanism already exists on that parent, else null.
+// Matching is by parent + absolute value (COs on one parent rarely share an exact
+// amount by coincidence); callers gate a save on it, they don't hard-block.
+export const findCrossMechanismCO = ({ parentId, value, deals = [], addenda = [], excludeDealId = null, excludeAddendumId = null } = {}) => {
+  const v = Math.abs(Number(value) || 0);
+  if (!parentId || !v) return null;
+  const childDup = deals.find(d =>
+    d && d.id !== excludeDealId && d.parentDealId === parentId &&
+    !isLostStage(d.stage) && Math.abs(Number(d.value) || 0) === v);
+  if (childDup)
+    return `A linked change-order deal for ₱${v.toLocaleString("en-PH")} already exists on this project ("${childDup.contact || childDup.client || childDup.ceNo || "CO"}"). Recording it again would double-count it in awarded value.`;
+  const addDup = addenda.find(a =>
+    a && a.id !== excludeAddendumId && (a.dealId === parentId || a.projectId === parentId) &&
+    a.status !== "Rejected" && Math.abs(Number(a.value) || 0) === v);
+  if (addDup)
+    return `A change-order addendum for ₱${v.toLocaleString("en-PH")} already exists on this project ("${addDup.title || addDup.ceNo || "CO"}"). Recording it again would double-count it in awarded value.`;
+  return null;
+};
+
 export const ADDENDUM_STATUS_CLR = {
   "Discovered":"#94a3b8",
   "Sales Notified":"#f59e0b",
