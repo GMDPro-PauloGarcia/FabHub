@@ -138,7 +138,13 @@ with calls to these helpers.
 | # | Task | Files | Est. |
 |---|---|---|---|
 | 0 | **Data audit** — DONE (§3b): found 1 cross-mechanism duplicate on Kiko Milano | SQL only | ✅ |
-| 0b | **Data cleanup** — confirm Kiko "Hanging Light Signage" == "Change Order#1" with the encoder; delete the duplicate (rec: drop the child deal, keep the addendum); add an entry guard against same CO via both mechanisms | data + `src/App.jsx` | 0.5d |
+| 0b | **Data cleanup** — billing audit (below) shows the CHILD deal is the live/billed record and the two addenda are empty approved shells. Rec: keep child "Change Order#1", set the two Kiko addenda to Rejected (drops the ₱76,850 phantom; reversible). Confirm with encoder first: (a) is "Hanging Light Signage" the same work as the child, (b) is the ₱41,850 addendum real WIP or abandoned. Entry guard: DONE (`findCrossMechanismCO`, `src/core.js`, wired into all 3 CO paths). | data + `src/App.jsx` | 0.5d |
+
+Billing evidence (Kiko Milano Rockwell Store): child "Change Order#1" ₱35,000 has
+two Draft/unpaid milestones (INV-1709/1710); both addenda (₱35,000 + ₱41,850,
+Approved) have NO billing milestones; the parent's own 50/40/10 schedule on
+₱502,040.30 has no "Change Order —" lines, so the addenda were never billed into
+it. This reverses the earlier "keep the addendum, drop the child" note.
 | 1 | Add + unit-test helpers (`isWonDeal`, `dealValue`, `wonValue`, `pipelineValue`, `wonValueInYear`, one peso formatter) | `src/core.js`, new `src/core.test.*` | 1d |
 | 2 | Route **reports** through helpers; supersede `dd39d6b`'s `+pco` path; keep scope labels | `src/App.jsx` ~11187–11674 | 1d |
 | 3 | Route **Sales Pipeline** cards, dashboards, TV/Sales-Value views, client rollups | `src/App.jsx` (sites in §6a) | 1d |
