@@ -78,6 +78,31 @@ export const LOST_STAGES   = ["Cancelled","Did Not Win"];
 export const isLostStage      = (stage)=>LOST_STAGES.includes(stage);
 export const isActivePipeline = (stage)=>!WON_STAGES.includes(stage)&&!isLostStage(stage);
 
+// ── Pipeline temperature (Hot / Almost Awarded / Cold) ───────────────────────
+// A MANUAL classification a salesperson sets by dragging a deal between the three
+// board columns — it is the sales team's read on how likely/close a deal is,
+// independent of the workflow stage (a deal can be "Hot" at stage 02 or "Cold"
+// at stage 04). Stored on deal.temperature. When unset (legacy deals, fresh
+// imports) we DERIVE a sensible default so the board is never empty:
+//   • award requested OR at "05 · For Approval"  → "Almost Awarded"
+//   • acquired ≤15 days ago                       → "Hot"
+//   • otherwise                                   → "Cold"
+// The derived value is only a fallback; once a human drags a card, the explicit
+// deal.temperature wins and age no longer moves it.
+export const DEAL_TEMPS = ["Hot","Almost Awarded","Cold"];
+export const TEMP_META = {
+  "Hot":            {icon:"🔥",clr:"#ef4444",bg:"#fef2f2",border:"#fecaca",blurb:"Active & likely to close"},
+  "Almost Awarded": {icon:"🏆",clr:"#f59e0b",bg:"#fffbeb",border:"#fde68a",blurb:"In final approval / award pending"},
+  "Cold":           {icon:"🧊",clr:"#3b82f6",bg:"#eff6ff",border:"#bfdbfe",blurb:"Gone quiet — needs a nudge"},
+};
+export const HOT_AGE_DAYS = 15;   // acquired within this window defaults to Hot
+export const COLD_STALE_DAYS = 45; // Cold with no activity this long → suggest Did Not Win
+export const deriveTemp = (deal, daysSinceAcquired)=>{
+  if(DEAL_TEMPS.includes(deal&&deal.temperature)) return deal.temperature;
+  if(deal&&(deal.awardRequestData||deal.stage==="05 · For Approval")) return "Almost Awarded";
+  return (Number(daysSinceAcquired)||0)<=HOT_AGE_DAYS ? "Hot" : "Cold";
+};
+
 export const PAULO_GATE    = ["05 · For Approval","06 · Kickoff"];
 
 export const CE_TYPES      = ["Fabrication / General","Construction","Retail Fit-Out","Kiosk","Signage","Event / Activation","Repair / Refurbishment","Other"];
@@ -730,7 +755,7 @@ export const emptyDeal={
   invoiced:"",amountPaid:"",paymentStatus:"Unpaid",dueDate:"",discount:0,
   progressBilled:0,progressPaid:0,finalBilled:0,finalPaid:0,
   // GMD fields
-  ceNo:"",ceType:"Fabrication / General",salesOwner:"",dateAcquired:today,
+  ceNo:"",ceType:"Fabrication / General",salesOwner:"",dateAcquired:today,temperature:null,
   assignedAE:"",bizDevSource:"",leadOrigin:DEFAULT_LEAD_ORIGIN,location:"",
   // File links (Drive + FabHub)
   salesRepoLink:"",proposalFolderLink:"",salesRepoNote:"",
