@@ -6,7 +6,7 @@ import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -4675,6 +4675,7 @@ export default function App(){
     ce_type:r.ceType, product:r.product, stage:r.stage,
     priority:r.priority||"Normal", sales_owner:r.salesOwner||"",
     biz_dev_source:r.bizDevSource||"", lead_origin:leadOriginOf(r), date_acquired:r.dateAcquired||null,
+    temperature:r.temperature||null,
     due_date:r.dueDate||null, follow_up:r.followUp||null,
     value:Number(r.value)||0,
     invoiced:Number(r.invoiced)||0, amount_paid:Number(r.amountPaid)||0,
@@ -7336,6 +7337,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[pipeNoAward,  setPipeNoAward]  = useState(false);  // awarded tab: show only won projects with no award date set
   const[showActChat,  setShowActChat]  = useState(false); // pipeline activity pop-up
   const[rowMenu,      setRowMenu]      = useState(null);   // {deal,x,y} — pipeline row overflow menu
+  const[pipeDragId,   setPipeDragId]   = useState(null);   // deal id being dragged between temperature columns
+  const[pipeDragOver, setPipeDragOver] = useState(null);   // temperature column currently hovered during drag
+  const[coldSweepDismissed,setColdSweepDismissed]=useState(false); // hide stale-cold review banner for this session
   const[priceModal,   setPriceModal]   = useState(null);   // {deal} — QS set price modal
   const[quickAddClientOpen,setQuickAddClientOpen]=useState(false);
   const[quickAddClientForm,setQuickAddClientForm]=useState({name:"",contactPerson:"",email:"",phone:"",mobile:"",website:"",billingAddress:"",city:"",province:"",zipCode:"",country:"Philippines",tin:"",paymentTerms:"Due on receipt",notes:""});
@@ -12942,11 +12946,49 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             (!pipeSearch||[d.client,d.contact,d.ceNo,d.salesOwner,d.product].join(" ").toLowerCase().includes(pipeSearch.toLowerCase()))&&
             (pipeAE==="all"||d.salesOwner===pipeAE)
           ).sort((a,b)=>new Date(b.dateAcquired||0)-new Date(a.dateAcquired||0));
-          const hotDeals=allActive.filter(d=>!d.parentDealId&&daysSince(d.dateAcquired)<=15);
-          const coldDeals=allActive.filter(d=>!d.parentDealId&&daysSince(d.dateAcquired)>15);
           const childPipeDeals=allActive.filter(d=>d.parentDealId);
           const parentActive=allActive.filter(d=>!d.parentDealId);
           const overdueFollowUps=parentActive.filter(d=>d.followUp&&d.followUp<today).sort((a,b)=>new Date(a.followUp)-new Date(b.followUp));
+
+          // ── Pipeline temperature board (Hot / Almost Awarded / Cold) ──────────
+          // Buckets are MANUAL (deal.temperature), dragged between columns. When a
+          // deal has no explicit temperature we derive one so the board is never
+          // empty (see deriveTemp in core.js). tempOf resolves the effective bucket.
+          const tempOf=d=>deriveTemp(d,daysSince(d.dateAcquired));
+          const hotDeals   =parentActive.filter(d=>tempOf(d)==="Hot");
+          const almostDeals=parentActive.filter(d=>tempOf(d)==="Almost Awarded");
+          const coldDeals  =parentActive.filter(d=>tempOf(d)==="Cold");
+          const canSetTemp=(role==="Manager"||role==="Sales"||role==="SalesOpsAdmin");
+          // Last time the deal was touched: newest of dateAcquired and any activity
+          // log entry for it. Used for the stale-Cold review (NOT dateAcquired — an
+          // old-but-active deal isn't dead). followUp is a plan, not activity.
+          const lastActivityOf=d=>{
+            let latest=d.dateAcquired||"";
+            for(const e of actLog){ if(e.dealId===d.id && e.date && e.date>latest) latest=e.date; }
+            return latest;
+          };
+          const daysIdle=d=>{const la=lastActivityOf(d);return la?Math.floor((new Date(today)-new Date(la))/(864e5)):0;};
+          // setTemp — persist the manual bucket (partial column UPDATE, mirroring the
+          // Did Not Win / Cancel pattern so RLS INSERT policies don't clobber it).
+          const setTemp=(d,temp)=>{
+            if(!canSetTemp||!DEAL_TEMPS.includes(temp)||tempOf(d)===temp&&d.temperature===temp){setPipeDragId(null);setPipeDragOver(null);return;}
+            upDeals(ds=>ds.map(x=>x.id===d.id?{...x,temperature:temp}:x));
+            if(isSupabaseReady())sbUpdate('deals',d.id,{temperature:temp,updated_at:new Date().toISOString()}).catch(()=>{});
+            logActivity(d.id,"Temperature",`${d.contact||d.client} → ${TEMP_META[temp].icon} ${temp}`,session?.name);
+            toastEmit(`${TEMP_META[temp].icon} Moved to ${temp}`);
+            setPipeDragId(null);setPipeDragOver(null);
+          };
+          // Stale-Cold review: Cold parent deals idle ≥ COLD_STALE_DAYS. Surfaced for
+          // one-click "Did Not Win" — never auto-written (a slow bid isn't a lost bid).
+          const staleCold=coldDeals.filter(d=>daysIdle(d)>=COLD_STALE_DAYS).sort((a,b)=>daysIdle(b)-daysIdle(a));
+          const sweepDidNotWin=(d)=>{
+            const stamp=new Date().toISOString().slice(0,10);
+            upDeals(ds=>ds.map(x=>{if(x.id!==d.id)return x;const notes=(x.notes||"")+`\n[DID NOT WIN ${stamp}]: auto-flagged — Cold ${daysIdle(d)}d with no activity, confirmed by ${session?.name||"Sales"}`;
+              if(isSupabaseReady())sbUpdate('deals',x.id,{stage:"Did Not Win",probability:0,notes,updated_at:new Date().toISOString()}).catch(()=>{});
+              return{...x,stage:"Did Not Win",probability:0,notes};}));
+            logActivity(d.id,"Did Not Win",`${d.client} — stale Cold (${daysIdle(d)}d idle), marked Did Not Win`,session?.name);
+            toastEmit("Moved to Did Not Win.");
+          };
 
           // Helpers: hide contract value from Ops/Design/PM — show QS budget instead
           const BUDGET_ONLY=["Design","Operations","ProjectMover"];
@@ -12992,9 +13034,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               </div>
             );
             return(
-            <div style={{display:"flex",gap:8,padding:"7px 12px",borderBottom:i<list.length-1?"1px solid #f1f5f9":"none",alignItems:"center",background:"#fff",transition:"background .1s"}}
-              onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
-              onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
+            <div draggable={canSetTemp&&!d.parentDealId}
+              onDragStart={canSetTemp&&!d.parentDealId?(e=>{setPipeDragId(d.id);e.dataTransfer.effectAllowed="move";}):undefined}
+              onDragEnd={()=>{setPipeDragId(null);setPipeDragOver(null);}}
+              style={{display:"flex",gap:8,padding:"7px 12px",borderBottom:i<list.length-1?"1px solid #f1f5f9":"none",alignItems:"center",background:pipeDragId===d.id?"#eff6ff":"#fff",opacity:pipeDragId===d.id?.5:1,cursor:canSetTemp&&!d.parentDealId?"grab":"default",transition:"background .1s"}}
+              onMouseEnter={e=>{if(pipeDragId!==d.id)e.currentTarget.style.background="#f8fafc";}}
+              onMouseLeave={e=>{if(pipeDragId!==d.id)e.currentTarget.style.background="#fff";}}>
+              {canSetTemp&&!d.parentDealId&&<span style={{color:"#cbd5e1",fontSize:".85rem",cursor:"grab",flexShrink:0}} title="Drag to Hot / Almost Awarded / Cold">⠿</span>}
               <div style={{flex:1,minWidth:0}}>
                 <div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap"}}>
                   <span style={{fontWeight:700,color:"#0f172a",fontSize:".8rem"}}>{d.contact||d.client}</span>
@@ -13058,42 +13104,62 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 </div>
               )}
 
-              {/* 🔥 Hot + 🧊 Cold — side by side on desktop, stacked on mobile */}
-              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:14,marginBottom:20}}>
-                {/* Hot */}
-                <div>
-                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:7,display:"flex",alignItems:"center",gap:6}}>
-                    🔥 Hot Pipeline
-                    <span style={{fontWeight:400,color:"#94a3b8",fontSize:".72rem"}}>({hotDeals.length} · ≤15 days)</span>
-                  </div>
-                  <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-                    <PipeTableHeader/>
-                    <div style={{maxHeight:300,overflowY:"auto"}}>
-                      {hotDeals.length===0&&<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".78rem"}}>{pipeSearch?"No match.":"No new deals this period."}</div>}
-                      {hotDeals.map((d,i)=>{
-                        const children=childPipeDeals.filter(c=>c.parentDealId===d.id);
-                        return(<React.Fragment key={d.id}><PipeRow d={d} list={hotDeals} i={i}/>{children.map(c=><div key={c.id} style={{paddingLeft:24,borderLeft:"3px solid #f59e0b",marginLeft:12,background:"#fffbeb"}}><PipeRow d={c} list={children} i={0}/></div>)}</React.Fragment>);
-                      })}
+              {/* ⚠ Stale-Cold review — Cold deals idle ≥45 days, one-click Did Not Win.
+                  Never auto-written: a slow bid isn't a lost bid, so a human confirms. */}
+              {canSetTemp&&!coldSweepDismissed&&staleCold.length>0&&(
+                <div style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:12,padding:"12px 16px",marginBottom:14}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,flexWrap:"wrap"}}>
+                    <div style={{minWidth:0}}>
+                      <div style={{fontWeight:700,color:"#1d4ed8",fontSize:".85rem"}}>🧊 {staleCold.length} cold deal{staleCold.length>1?"s":""} look dead — mark Did Not Win?</div>
+                      <div style={{fontSize:".73rem",color:"#2563eb",opacity:.85,marginTop:3}}>No activity for {COLD_STALE_DAYS}+ days. Confirm each individually — nothing changes until you click ✗.</div>
                     </div>
+                    <button onClick={()=>setColdSweepDismissed(true)} style={{background:"transparent",border:"none",color:"#3b82f6",cursor:"pointer",fontSize:".76rem",fontWeight:700,flexShrink:0}}>Dismiss</button>
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",gap:6,marginTop:10}}>
+                    {staleCold.slice(0,8).map(d=>(
+                      <div key={d.id} style={{display:"flex",alignItems:"center",gap:10,background:"#fff",border:"1px solid #dbeafe",borderRadius:8,padding:"7px 11px",flexWrap:"wrap"}}>
+                        <div style={{flex:1,minWidth:0}}>
+                          <span style={{fontWeight:700,color:"#0f172a",fontSize:".8rem"}}>{d.contact||d.client}</span>
+                          {d.ceNo&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".62rem",fontWeight:600,color:"#6366f1",marginLeft:6}}>{d.ceNo}</span>}
+                          <span style={{fontSize:".68rem",color:"#94a3b8",marginLeft:6}}>· {daysIdle(d)}d idle · {d.salesOwner?.split(" ")[0]||"—"}</span>
+                        </div>
+                        <button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"5px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>Keep · Edit</button>
+                        <button onClick={async()=>{if(await uiConfirm(`Mark "${d.contact||d.client}" as Did Not Win?\n\nCold for ${daysIdle(d)} days with no activity. This removes it from the active pipeline and its commission projection. Reversible from the deal's edit screen.`))sweepDidNotWin(d);}} style={{background:"#64748b",border:"none",borderRadius:6,padding:"5px 10px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>✗ Did Not Win</button>
+                      </div>
+                    ))}
+                    {staleCold.length>8&&<div style={{fontSize:".7rem",color:"#2563eb",opacity:.7}}>+{staleCold.length-8} more</div>}
                   </div>
                 </div>
-                {/* Cold */}
-                <div>
-                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:7,display:"flex",alignItems:"center",gap:6}}>
-                    🧊 Cold Pipeline
-                    <span style={{fontWeight:400,color:"#94a3b8",fontSize:".72rem"}}>({coldDeals.length} · &gt;15 days)</span>
-                  </div>
-                  <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",opacity:coldDeals.length?1:0.6}}>
-                    <PipeTableHeader/>
-                    <div style={{maxHeight:300,overflowY:"auto"}}>
-                      {coldDeals.length===0&&<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".78rem"}}>{pipeSearch?"No match.":"All deals active — great work!"}</div>}
-                      {coldDeals.map((d,i)=>{
-                        const children=childPipeDeals.filter(c=>c.parentDealId===d.id);
-                        return(<React.Fragment key={d.id}><PipeRow d={d} list={coldDeals} i={i}/>{children.map(c=><div key={c.id} style={{paddingLeft:24,borderLeft:"3px solid #f59e0b",marginLeft:12,background:"#fffbeb"}}><PipeRow d={c} list={children} i={0}/></div>)}</React.Fragment>);
-                      })}
+              )}
+
+              {/* 🔥 Hot · 🏆 Almost Awarded · 🧊 Cold — drag cards between columns.
+                  Buckets are manual (deal.temperature); unset deals fall back to an
+                  age/stage-derived default. Three columns on desktop, stacked on mobile. */}
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(3,1fr)",gap:14,marginBottom:20}}>
+                {[["Hot",hotDeals],["Almost Awarded",almostDeals],["Cold",coldDeals]].map(([temp,list])=>{
+                  const m=TEMP_META[temp];const isOver=pipeDragOver===temp;
+                  return(
+                  <div key={temp}
+                    onDragOver={canSetTemp?(e=>{e.preventDefault();if(pipeDragOver!==temp)setPipeDragOver(temp);}):undefined}
+                    onDragLeave={canSetTemp?(e=>{if(e.currentTarget===e.target)setPipeDragOver(null);}):undefined}
+                    onDrop={canSetTemp?(e=>{e.preventDefault();const dd=deals.find(x=>x.id===pipeDragId);if(dd)setTemp(dd,temp);}):undefined}>
+                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:7,display:"flex",alignItems:"center",gap:6}}>
+                      {m.icon} {temp}
+                      <span style={{fontWeight:400,color:"#94a3b8",fontSize:".72rem"}}>({list.length})</span>
+                    </div>
+                    <div style={{background:isOver?m.bg:"#fff",borderRadius:12,border:`1.5px solid ${isOver?m.clr:"#e2e8f0"}`,overflow:"hidden",transition:"background .1s,border-color .1s",opacity:list.length||isOver?1:.6}}>
+                      <PipeTableHeader/>
+                      <div style={{maxHeight:340,overflowY:"auto",minHeight:isOver?90:0}}>
+                        {list.length===0&&<div style={{padding:"16px",textAlign:"center",color:isOver?m.clr:"#94a3b8",fontSize:".78rem"}}>{isOver?`Drop here → ${temp}`:pipeSearch?"No match.":`No deals. ${m.blurb}.`}</div>}
+                        {list.map((d,i)=>{
+                          const children=childPipeDeals.filter(c=>c.parentDealId===d.id);
+                          return(<React.Fragment key={d.id}><PipeRow d={d} list={list} i={i}/>{children.map(c=><div key={c.id} style={{paddingLeft:24,borderLeft:"3px solid #f59e0b",marginLeft:12,background:"#fffbeb"}}><PipeRow d={c} list={children} i={0}/></div>)}</React.Fragment>);
+                        })}
+                      </div>
                     </div>
                   </div>
-                </div>
+                  );
+                })}
               </div>
 
               {/* Awarded Projects — active only (stages 06–11) */}
@@ -13466,6 +13532,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const d=rowMenu.deal;
         const items=[];
         const isWonDeal=WON_STAGES.includes(d.stage);
+        // Move between temperature columns without dragging (mobile / quick action).
+        // Only for active-pipeline parent deals — the board only buckets those.
+        if((role==="Manager"||role==="Sales"||role==="SalesOpsAdmin")&&isActivePipeline(d.stage)&&!d.parentDealId){
+          const cur=deriveTemp(d,d.dateAcquired?Math.floor((new Date(today)-new Date(d.dateAcquired))/(864e5)):0);
+          DEAL_TEMPS.filter(t=>t!==cur).forEach(t=>{const m=TEMP_META[t];items.push({icon:m.icon,label:`Move to ${t}`,color:m.clr,onClick:()=>{
+            upDeals(ds=>ds.map(x=>x.id===d.id?{...x,temperature:t}:x));
+            if(isSupabaseReady())sbUpdate('deals',d.id,{temperature:t,updated_at:new Date().toISOString()}).catch(()=>{});
+            logActivity(d.id,"Temperature",`${d.contact||d.client} → ${m.icon} ${t}`,session?.name);
+            toastEmit(`${m.icon} Moved to ${t}`);setRowMenu(null);
+          }});});
+        }
         if((role==="Manager"||role==="Sales")&&!isWonDeal) items.push({icon:"✗",label:"Mark Did Not Win",color:"#64748b",onClick:async ()=>{const reason=(await uiPrompt("Reason for not winning (optional):"));if(reason===null)return;const stamp=new Date().toISOString().slice(0,10);upDeals(ds=>ds.map(x=>{if(x.id!==d.id)return x;const notes=(x.notes||"")+(reason?"\n[DID NOT WIN "+stamp+"]: "+reason:"\n[DID NOT WIN "+stamp+"]");
           // Persist as a partial column UPDATE (like stageQ / payQ), NOT a full-row
           // upsert. An upsert routes through the RLS INSERT/WITH CHECK policy and was
