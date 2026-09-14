@@ -8721,7 +8721,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Reports"}]},
       {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"BOQ"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"finance-reports",l:"Reports"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},...((session?.username==="paulo"||session?.username==="mar")?[{id:"projectmargins",l:"Project Margins"}]:[]),{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"finance-reports",l:"Reports"}]},
       {group:"Accounting",  items:[{id:"coa",l:"Chart of Accounts"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
       {group:"Design",      items:[{id:"designboard",l:"Design Board"},{id:"drf",l:"Design Requests"}]},
@@ -8816,7 +8816,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const Nav=useStableComponent(()=>{
     const NAV_ICONS={
       home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   cashposition:"🏦",   cashflow:"📈",   payables:"📤",   billing:"🧾",
-      reports:"📈", "sales-reports":"📈", "finance-reports":"📈", acctdash:"📒", executive:"🎯", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
+      reports:"📈", "sales-reports":"📈", "finance-reports":"📈", projectmargins:"🪙", acctdash:"📒", executive:"🎯", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅", financecal:"📅",
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
       masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆", audit:"🔎", syshealth:"🩺", tvboard:"📺",
@@ -8967,7 +8967,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const allItems=groups.flatMap(g=>g.items||[]);
     const NAV_ICONS={
       home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   cashposition:"🏦",   cashflow:"📈",   payables:"📤",   billing:"🧾",
-      reports:"📈", "sales-reports":"📈", "finance-reports":"📈", acctdash:"📒", executive:"🎯", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
+      reports:"📈", "sales-reports":"📈", "finance-reports":"📈", projectmargins:"🪙", acctdash:"📒", executive:"🎯", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅", financecal:"📅",
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
       masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆", audit:"🔎", syshealth:"🩺", tvboard:"📺",
