@@ -13179,14 +13179,19 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(3,1fr)",gap:14,marginBottom:20}}>
                 {[["Hot",hotDeals],["Almost Awarded",almostDeals],["Cold",coldDeals]].map(([temp,list])=>{
                   const m=TEMP_META[temp];const isOver=pipeDragOver===temp;
+                  // Column total = contract value of the parent deals in this column
+                  // plus their nested children (addenda/linked deals carry value too).
+                  // Hidden for BUDGET_ONLY roles (Design/Ops/PM) so contract value never leaks.
+                  const colTotal=list.reduce((s,d)=>s+Number(d.value||0)+childPipeDeals.filter(c=>c.parentDealId===d.id).reduce((cs,c)=>cs+Number(c.value||0),0),0);
                   return(
                   <div key={temp} data-temp-col={temp}
                     onDragOver={canSetTemp?(e=>{e.preventDefault();if(pipeDragOver!==temp)setPipeDragOver(temp);}):undefined}
                     onDragLeave={canSetTemp?(e=>{if(e.currentTarget===e.target)setPipeDragOver(null);}):undefined}
                     onDrop={canSetTemp?(e=>{e.preventDefault();const dd=deals.find(x=>x.id===pipeDragId);if(dd)setTemp(dd,temp);}):undefined}>
-                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:7,display:"flex",alignItems:"center",gap:6}}>
+                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:7,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                       {m.icon} {temp}
                       <span style={{fontWeight:400,color:"#94a3b8",fontSize:".72rem"}}>({list.length})</span>
+                      {!BUDGET_ONLY.includes(role)&&<span style={{marginLeft:"auto",fontWeight:800,color:m.clr,fontSize:".82rem",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:".02em"}}>{fmt(colTotal)}</span>}
                     </div>
                     <div style={{background:isOver?m.bg:"#fff",borderRadius:12,border:`1.5px solid ${isOver?m.clr:"#e2e8f0"}`,overflow:"hidden",transition:"background .1s,border-color .1s",opacity:list.length||isOver?1:.6}}>
                       <PipeTableHeader/>
