@@ -6,7 +6,7 @@ import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -2795,6 +2795,8 @@ function AddendaPageContent({role,wonDeals,deals,jos,session,addenda,upAddenda,u
               const deal=wonDeals.find(d=>d.id===selDealId);
               const cleanItems=scopeItems.filter(it=>(it.description||"").trim()).map(it=>({description:(it.description||"").trim(),qty:Number(it.qty)||0,unit:it.unit||"lot",rate:Number(it.rate)||0}));
               const magnitude=cleanItems.length?cleanItems.reduce((s,it)=>s+it.qty*it.rate,0):Math.abs(Number(value)||0);
+              const coDup=findCrossMechanismCO({parentId:selDealId,value:magnitude,deals,addenda});
+              if(coDup && !window.confirm(coDup+"\n\nLog this change order anyway?")) return;
               const newAdd={
                 id:"add"+Date.now(),dealId:selDealId,
                 title:title.trim(),description:desc.trim(),
@@ -6466,6 +6468,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     return'INV-'+String(next).padStart(4,'0');
   };
   const addAddendum2=(adm)=>{
+    // Guard: warn if a same-value change order already exists on this parent as a
+    // linked child deal or another addendum (prevents double-counting).
+    const coDup=findCrossMechanismCO({parentId:adm.dealId,value:adm.value,deals,addenda,excludeAddendumId:adm.id});
+    if(coDup && !window.confirm(coDup+"\n\nLog this addendum anyway?")) return;
     const rec={...adm,id:uid(),createdDate:today,status:"Discovered"};
     upAddenda(as=>[rec,...as]);
     if(isSupabaseReady()) sbSyncOne("addenda",rec,toSbAddendum);
@@ -7561,6 +7567,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       addedBy:editDeal?(data.addedBy||""):(session?.name||""),
       addedAt:editDeal?(data.addedAt||today):today,
     };
+    // Guard: block the same change order being recorded as BOTH a linked child
+    // deal AND an addendum on the same parent (double-counts awarded value).
+    if(!editDeal && !skipDupCheck && rec.parentDealId){
+      const coDup=findCrossMechanismCO({parentId:rec.parentDealId,value:rec.value,deals,addenda,excludeDealId:rec.id});
+      if(coDup && !window.confirm(coDup+"\n\nSave this change-order deal anyway?")) return;
+    }
     // Only trigger award logic for NEW deals entering won stages — never on edit
     const wasAlreadyAwarded = editDeal && WON_STAGES.includes(deals.find(d=>d.id===editDeal)?.stage);
     // Child/addendum deals (parentDealId set) never get their own project card —
@@ -11612,7 +11624,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(flagData),"Data Flags");
         window.XLSX.writeFile(wb,`GMD-Sales-MonthEnd-${MONTHS[CM]}${CY}.xlsx`);
       } else {
-        const sh1=[["Period","Acquired","Won","Win Rate %","Pipeline ₱","Won Value ₱"],...salesPeriods.map(p=>[p.label,p.acquired,p.won,p.winRate,p.pipelineValue,p.wonValue]),["TOTAL",yearDeals.length,yearWon.length,yearDeals.length>0?Math.round(yearWon.length/yearDeals.length*100):0,yearDeals.reduce((s,d)=>s+Number(d.value||0),0),yearWon.reduce((s,d)=>s+Number(d.value||0),0)]];
+        const sh1=[["Period","Acquired","Won","Win Rate %","Pipeline ₱","Won Value ₱ (incl. approved COs)"],...salesPeriods.map(p=>[p.label,p.acquired,p.won,p.winRate,Math.round(p.pipelineValue),Math.round(p.wonValue)]),["TOTAL",yearDeals.length,yearWon.length,yearDeals.length>0?Math.round(yearWon.length/yearDeals.length*100):0,Math.round(salesPeriods.reduce((s,p)=>s+p.pipelineValue,0)),Math.round(salesPeriods.reduce((s,p)=>s+p.wonValue,0))]];
         window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(sh1),"Sales");
         if(!salesOnly){
           const sh2=[["Period","Revenue ₱","Collections ₱","Outstanding ₱","Expenses ₱","Net Profit ₱"],...finPeriods.map(p=>[p.label,p.revenue,p.collections,p.outstanding,p.expenses,p.net]),["TOTAL",finTot.revenue,finTot.collections,finTot.outstanding,finTot.expenses,finTot.net]];
@@ -11935,16 +11947,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 <KPI label="Deals Won"      value={yearWon.length}  color="#10b981"/>
                 <KPI label="Win Rate"       value={(yearDeals.length>0?Math.round(yearWon.length/yearDeals.length*100):0)+"%"} color="#f59e0b"/>
                 <KPI label="Pipeline Value" value={fmtK(yearDeals.reduce((s,d)=>s+Number(d.value||0),0))} color="#6366f1"/>
-                <KPI label="Won Value"      value={fmtK(yearWon.reduce((s,d)=>s+Number(d.value||0),0))} color="#059669"/>
+                <KPI label="Won Value"      value={fmtK(salesPeriods.reduce((s,p)=>s+p.wonValue,0))} color="#059669"/>
               </div>
               <Card>
-                <div style={{fontWeight:700,color:"#0f172a",marginBottom:12,fontSize:".95rem"}}>{repPeriod==="quarterly"?"Quarterly":"Yearly"} Breakdown — {CY}</div>
+                <div style={{fontWeight:700,color:"#0f172a",marginBottom:2,fontSize:".95rem"}}>{repPeriod==="quarterly"?"Quarterly":"Yearly"} Breakdown — {CY}</div>
+                <div style={{fontSize:".72rem",color:"#64748b",marginBottom:12}}>Won Value = base contract + approved change orders, for deals acquired in {CY}. The all-time "Awarded Value" tile on Sales Pipeline uses a wider scope, so the two will differ.</div>
                 <div style={{overflowX:"auto"}}>
                   <table style={{width:"100%",borderCollapse:"collapse"}}>
                     <thead><tr>{[repPeriod==="quarterly"?"Quarter":"Year","Acquired","Won","Win Rate","Pipeline","Won Value"].map((h,i)=>TH(h,i>0))}</tr></thead>
                     <tbody>
-                      {salesPeriods.map((p,i)=>(<tr key={i} style={{background:i%2===0?"#fff":"#f9fafb"}}>{TD(<strong>{p.label}</strong>)}{TD(p.acquired,{right:true})}{TD(p.won,{right:true,color:p.won>0?"#059669":"#94a3b8"})}{TD(p.winRate+"%",{right:true,color:p.winRate>=50?"#059669":p.winRate>=25?"#f59e0b":"#ef4444"})}{TD(p.pipelineValue>0?fmt(p.pipelineValue):"—",{right:true})}{TD(p.wonValue>0?fmt(p.wonValue):"—",{right:true,bold:true,color:"#059669"})}</tr>))}
-                      <tr style={{background:"#eff6ff"}}>{TD(<strong style={{color:"#1e40af"}}>TOTAL</strong>)}{TD(yearDeals.length,{right:true,bold:true,color:"#1e40af"})}{TD(yearWon.length,{right:true,bold:true,color:"#059669"})}{TD((yearDeals.length>0?Math.round(yearWon.length/yearDeals.length*100):0)+"%",{right:true,bold:true,color:"#1e40af"})}{TD(fmt(yearDeals.reduce((s,d)=>s+Number(d.value||0),0)),{right:true,bold:true,color:"#1e40af"})}{TD(fmt(yearWon.reduce((s,d)=>s+Number(d.value||0),0)),{right:true,bold:true,color:"#059669"})}</tr>
+                      {salesPeriods.map((p,i)=>(<tr key={i} style={{background:i%2===0?"#fff":"#f9fafb"}}>{TD(<strong>{p.label}</strong>)}{TD(p.acquired,{right:true})}{TD(p.won,{right:true,color:p.won>0?"#059669":"#94a3b8"})}{TD(p.winRate+"%",{right:true,color:p.winRate>=50?"#059669":p.winRate>=25?"#f59e0b":"#ef4444"})}{TD(p.pipelineValue>0?fmt(Math.round(p.pipelineValue)):"—",{right:true})}{TD(p.wonValue>0?fmt(Math.round(p.wonValue)):"—",{right:true,bold:true,color:"#059669"})}</tr>))}
+                      <tr style={{background:"#eff6ff"}}>{TD(<strong style={{color:"#1e40af"}}>TOTAL</strong>)}{TD(yearDeals.length,{right:true,bold:true,color:"#1e40af"})}{TD(yearWon.length,{right:true,bold:true,color:"#059669"})}{TD((yearDeals.length>0?Math.round(yearWon.length/yearDeals.length*100):0)+"%",{right:true,bold:true,color:"#1e40af"})}{TD(fmt(Math.round(salesPeriods.reduce((s,p)=>s+p.pipelineValue,0))),{right:true,bold:true,color:"#1e40af"})}{TD(fmt(Math.round(salesPeriods.reduce((s,p)=>s+p.wonValue,0))),{right:true,bold:true,color:"#059669"})}</tr>
                     </tbody>
                   </table>
                 </div>
@@ -12853,8 +12866,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         })()}
         <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:24}}>
           {[
-            {l:"Total Pipeline",    v:fmt(deals.filter(d=>isActivePipeline(d.stage)).reduce((s,d)=>s+Number(d.value||0),0)), c:"#3b82f6"},
-            {l:"Awarded Value",     v:fmt(wonDeals.reduce((s,d)=>s+Number(d.value||0),0)),   c:"#059669"},
+            {l:"Total Pipeline",    v:fmt(Math.round(deals.filter(d=>isActivePipeline(d.stage)).reduce((s,d)=>s+Number(d.value||0),0))), c:"#3b82f6", sub:"Active stages"},
+            {l:"Awarded Value",     v:fmt(Math.round(wonDeals.reduce((s,d)=>s+Number(d.value||0),0))),   c:"#059669", sub:"All-time · base contract"},
             {l:"Active Deals",      v:deals.filter(d=>isActivePipeline(d.stage)).length, c:"#f59e0b"},
             {l:"Awarded Projects",  v:wonDeals.length, c:"#8b5cf6"},
           ].map(({l,v,c,sub})=>(

@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import UpdateBanner from './UpdateBanner';
 import { logClientError } from './supabaseClient';
 
 class ErrorBoundary extends React.Component {
@@ -45,4 +46,6 @@ if (typeof window !== 'undefined') {
 }
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<ErrorBoundary><App /></ErrorBoundary>);
+// UpdateBanner is a sibling of the ErrorBoundary so it keeps working even if
+// <App/> itself crashes into the fallback screen.
+root.render(<><UpdateBanner /><ErrorBoundary><App /></ErrorBoundary></>);
