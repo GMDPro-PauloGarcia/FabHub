@@ -4876,7 +4876,11 @@ export default function App(){
     set_by:b.setBy||"",
   });
   const toSbActivity = r=>({
-    id:r.id||("act"+Date.now()), deal_id:r.dealId||null,
+    // deal_id is a UUID column: a legacy/ghost deal id (non-UUID local id) would
+    // fail the insert, dropping the whole audit entry. Keep the entry (deal_id is
+    // nullable) by nulling a non-UUID reference instead of losing the log line.
+    // id likewise must be a UUID — fall back to a fresh one, never a text id.
+    id:(r.id&&isUUID(r.id))?r.id:uid(), deal_id:(r.dealId&&isUUID(r.dealId))?r.dealId:null,
     action:r.action||"", detail:r.detail||"",
     by:r.by||"", date:r.date||today, time:r.time||"",
   });
@@ -4992,7 +4996,17 @@ export default function App(){
     if(!isSupabaseReady()||!dealId) return false;
     const deal=deals.find(d=>d.id===dealId);
     if(deal) await sbSyncOne("deals",deal,toSbDeal);
-    return sbUpsert('project_cards',{deal_id:dealId,...patch},'deal_id').catch(()=>false);
+    // Adopt the local card id on the server row. project_card_dept_status/_tasks
+    // reference the card by card_id; if the parent row is created here without an
+    // id, the server assigns its own UUID and every child write orphans (the
+    // "department progress update couldn't reach the server — project card isn't
+    // on the server yet" toast). Sending the local UUID makes an INSERT adopt it
+    // so children match. On an UPDATE (row already exists for this unique
+    // deal_id) the id equals what a prior load set, so this is a no-op — never a
+    // PK change. createProjectCard already does exactly this on first creation.
+    const cardId=pcards[dealId]?.id;
+    const base=(cardId&&isUUID(cardId))?{id:cardId}:{};
+    return sbUpsert('project_cards',{...base,deal_id:dealId,...patch},'deal_id').catch(()=>false);
   };
 
   // ── PERSIST — updates the save indicator; Supabase is the write target ──
@@ -5584,33 +5598,37 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     return true;
   };
   const toggleDeptTask=(dealId,dept,taskId)=>{
-    const existingCard=pcards[dealId];
-    const existingTask=existingCard?.departments?.[dept]?.tasks?.find(t=>t.id===taskId);
+    // Compute the new card OUTSIDE the setState updater. React runs updaters
+    // asynchronously, so the card wouldn't be available to the server writes
+    // below if they lived inside the updater — which is also why the writes used
+    // to sit inside it. Deriving from the current pcards (same closure the
+    // done/nowDone flags already read) lets us fire the writes parent-first.
+    const baseCard=pcards[dealId]||emptyProjectCard(dealId,{});
+    const existingTask=baseCard?.departments?.[dept]?.tasks?.find(t=>t.id===taskId);
     const nowDone=!(existingTask?.done||false);
-    const wasAlreadyDeptDone=existingCard?.departments?.[dept]?.done||false;
-    let deptJustCompleted=false;
-    upPcards(ps=>{
-      const card={...(ps[dealId]||emptyProjectCard(dealId,{}))};
-      const depts=card.departments||{};
-      const deptData={...(depts[dept]||{tasks:[]})};
-      deptData.tasks=(deptData.tasks||[]).map(t=>t.id===taskId?{...t,done:nowDone,doneAt:nowDone?new Date().toISOString():null,doneBy:nowDone?session?.name:null}:t);
-      deptData.done=deptData.tasks.length>0&&deptData.tasks.every(t=>t.done);
-      if(deptData.done&&!wasAlreadyDeptDone){
-        deptData.doneAt=new Date().toISOString();
-        deptData.doneBy=session?.name;
-        deptJustCompleted=true;
-      }
-      card.departments={...depts,[dept]:deptData};
-      if(isSupabaseReady()&&isUUID(taskId)){
-        sbUpdate('project_card_dept_tasks',taskId,{done:nowDone,done_at:nowDone?new Date().toISOString():null,done_by:nowDone?session?.name:null}).catch(()=>{});
-        if(deptData.done&&card.id&&isUUID(card.id)){
-          sbUpsert('project_card_dept_status',{card_id:card.id,department:dept,done:deptData.done,done_at:deptData.doneAt,done_by:deptData.doneBy},'card_id,department').catch(()=>{});
-        }
-      }
-      return{...ps,[dealId]:card};
-    });
-    // logActivity called AFTER setState, not inside it
-    if(deptJustCompleted) logActivity(dealId,"Department Done",`${dept} completed all tasks for ${existingCard?.client}`,session?.name);
+    const wasAlreadyDeptDone=baseCard?.departments?.[dept]?.done||false;
+    const ts=new Date().toISOString();
+    const depts=baseCard.departments||{};
+    const deptData={...(depts[dept]||{tasks:[]})};
+    deptData.tasks=(deptData.tasks||[]).map(t=>t.id===taskId?{...t,done:nowDone,doneAt:nowDone?ts:null,doneBy:nowDone?session?.name:null}:t);
+    deptData.done=deptData.tasks.length>0&&deptData.tasks.every(t=>t.done);
+    const deptJustCompleted=deptData.done&&!wasAlreadyDeptDone;
+    if(deptJustCompleted){deptData.doneAt=ts;deptData.doneBy=session?.name;}
+    const newCard={...baseCard,departments:{...depts,[dept]:deptData}};
+    upPcards(ps=>({...ps,[dealId]:{...(ps[dealId]||newCard),departments:{...((ps[dealId]||newCard).departments||{}),[dept]:deptData}}}));
+    if(isSupabaseReady()&&isUUID(taskId)){
+      sbUpdate('project_card_dept_tasks',taskId,{done:nowDone,done_at:nowDone?ts:null,done_by:nowDone?session?.name:null}).catch(()=>{});
+    }
+    // Parent-first: ensure the project_cards row (with this card's id) exists on
+    // the server before the dept_status child that references it, so it can't
+    // orphan ("progress update couldn't reach the server — card isn't there yet").
+    if(isSupabaseReady()&&deptData.done&&newCard.id&&isUUID(newCard.id)){
+      (async()=>{
+        await syncProjectCard(dealId,{});
+        sbUpsert('project_card_dept_status',{card_id:newCard.id,department:dept,done:deptData.done,done_at:deptData.doneAt,done_by:deptData.doneBy},'card_id,department').catch(()=>{});
+      })();
+    }
+    if(deptJustCompleted) logActivity(dealId,"Department Done",`${dept} completed all tasks for ${baseCard?.client}`,session?.name);
   };
   const setProjectTAT=(dealId,dateStr,category)=>{
     if(!dateStr) return;
@@ -5638,17 +5656,21 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   };
 
   const markDeptDone=(dealId,dept,done)=>{
-    upPcards(ps=>{
-      const card={...(ps[dealId]||emptyProjectCard(dealId,{}))};
-      const depts=card.departments||{};
-      const deptData={...(depts[dept]||{tasks:[]}),done,doneAt:done?new Date().toISOString():null,doneBy:done?session?.name:null};
-      card.departments={...depts,[dept]:deptData};
-      if(done) logActivity(dealId,"Department Done",`${dept} marked complete for ${card.client}`,session?.name);
-      if(isSupabaseReady()&&card.id&&isUUID(card.id)){
-        sbUpsert('project_card_dept_status',{card_id:card.id,department:dept,done,done_at:deptData.doneAt,done_by:deptData.doneBy},'card_id,department').catch(()=>{});
-      }
-      return{...ps,[dealId]:card};
-    });
+    // Same pattern as toggleDeptTask: compute outside the updater so the server
+    // write can run parent-first and can't orphan the dept_status child.
+    const baseCard=pcards[dealId]||emptyProjectCard(dealId,{});
+    const depts=baseCard.departments||{};
+    const ts=new Date().toISOString();
+    const deptData={...(depts[dept]||{tasks:[]}),done,doneAt:done?ts:null,doneBy:done?session?.name:null};
+    const newCard={...baseCard,departments:{...depts,[dept]:deptData}};
+    upPcards(ps=>({...ps,[dealId]:{...(ps[dealId]||newCard),departments:{...((ps[dealId]||newCard).departments||{}),[dept]:deptData}}}));
+    if(done) logActivity(dealId,"Department Done",`${dept} marked complete for ${baseCard.client}`,session?.name);
+    if(isSupabaseReady()&&newCard.id&&isUUID(newCard.id)){
+      (async()=>{
+        await syncProjectCard(dealId,{});
+        sbUpsert('project_card_dept_status',{card_id:newCard.id,department:dept,done,done_at:deptData.doneAt,done_by:deptData.doneBy},'card_id,department').catch(()=>{});
+      })();
+    }
   };
 
   // ── Supabase real-time subscriptions ─────────────────────────────────────────
