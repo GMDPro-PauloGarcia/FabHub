@@ -229,7 +229,7 @@ const DEFAULT_USERS = [
   { id:"u16", name:"Aerwin Del Rosario", username:"aerwin",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"Finance",      status:"active", createdAt:today },
   { id:"u25", name:"Accounting",         username:"accounting",passwordHash:legacyHashPwSync("GMD2026!"),  role:"Accounting",   status:"active", createdAt:today },
   { id:"u17", name:"Marian Prile",       username:"marian",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"Procurement",  status:"active", createdAt:today },
-  { id:"u27", name:"Mark Acejo",         username:"mark",     passwordHash:legacyHashPwSync("GMD2026!"),   role:"Finance",          title:"Finance Manager",            status:"active", createdAt:today },
+  { id:"u27", name:"Mark Acejo",         username:"mark",     passwordHash:legacyHashPwSync("GMD2026!"),   role:"FinanceAssistant", title:"Finance Assistant",          status:"active", createdAt:today },
   { id:"u29", name:"Jerwin Limon",       username:"jerwin",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"FinanceAssistant", title:"Finance Assistant",          status:"active", createdAt:today },
   // ── Sales & Ops Admin ─────────────────────────────────────────────────────
   { id:"u26", name:"Jessica Castro",     username:"jessica",  passwordHash:legacyHashPwSync("GMD2026!"),   role:"SalesOpsAdmin",    title:"Operations & Sales Admin",   status:"active", createdAt:today },
@@ -8480,7 +8480,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // for payment. Approval is separate from receiving-verification: verification
   // confirms goods/work arrived; approval authorizes the spend. A payable must
   // be Approved before it can be paid or routed to a check voucher.
-  const canApprovePayables=["Manager","Finance"].includes(role);
+  // Named individuals granted payable-approval WITHOUT holding the Finance role,
+  // mirroring the by-username deal-delete grantees (migrations 033/034). Keeps a
+  // FinanceAssistant's role intact while lending them Finance-Manager approval
+  // authority — used for Mark Acejo during Aerwin's turnover. Must stay in sync
+  // with the DB gate in supabase_migration_065 (enforce_payable_approval).
+  const PAYABLE_APPROVAL_GRANTEES=["mark"];
+  const canApprovePayables=["Manager","Finance"].includes(role)
+    || PAYABLE_APPROVAL_GRANTEES.includes((session?.username||"").toLowerCase());
   const payApproved=p=>((p?.approvalStatus)||"Approved")==="Approved"; // legacy rows (no field) treated as approved
   const approvePayable=async(id)=>{
     const p=payables.find(x=>x.id===id); if(!p) return;
