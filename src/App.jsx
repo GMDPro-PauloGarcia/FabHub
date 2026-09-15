@@ -4244,7 +4244,27 @@ export default function App(){
           if(data){
             const idbE=[];
             const _deals=data.deals?.length?data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,standbyPO:d.standby_po||false,poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})):null;
-            if(_deals){setDeals(prev=>mergeLocalOnly(_deals,prev));idbE.push([KEYS.deals,_deals]);}
+            if(_deals){
+              // Reconcile legacy non-UUID "ghost" deals against the server.
+              // Before the deals.id → UUID migration, deals were keyed by local
+              // text ids (e.g. "d"+Date.now()). Those old rows still live in some
+              // users' IndexedDB/localStorage caches, and mergeLocalOnly keeps any
+              // local id the server doesn't have — so a device carries BOTH the
+              // real UUID row AND its stale text-id twin. Every write then targets
+              // the ghost: sbUpdate('deals',<textId>) matches 0 server rows (edit
+              // "doesn't update", queues forever) and delDeal skips sbDelete
+              // entirely for non-UUID ids (isUUID gate at delDeal), so a "deleted"
+              // old project reappears from the server on the next hard reset.
+              // ce_no is unique and 100% populated on the server, so drop any local
+              // non-UUID deal whose ce_no already exists on the server: it's the
+              // same project, and the UUID row is the synced truth. Genuinely
+              // local-only deals (offline-created, no server ce_no twin) are still
+              // preserved by mergeLocalOnly. Reported live: Pao's account — old
+              // project edits don't update; deleted old projects come back.
+              const _serverCeNos=new Set(_deals.map(d=>d.ceNo).filter(Boolean));
+              setDeals(prev=>mergeLocalOnly(_deals,(prev||[]).filter(d=>isUUID(d.id)||!(d.ceNo&&_serverCeNos.has(d.ceNo)))));
+              idbE.push([KEYS.deals,_deals]);
+            }
             const _jos=data.jos?.length?data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})):null;
             if(_jos){setJos(prev=>mergeLocalOnly(_jos,prev));idbE.push([KEYS.jos,_jos]);}
             if(Object.keys(data.pcards||{}).length){setPcards(prev=>mergeLocalOnlyObj(data.pcards,prev));idbE.push([KEYS.pcards,data.pcards]);}
