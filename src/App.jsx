@@ -24571,7 +24571,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         <p style="margin-top:3px"><b>METROBANK</b>&nbsp;—&nbsp;382-7-38202059-2</p>
       </div>
       <div class="sig">
-        <div><div class="sl2">Prepared by:</div><div class="sn">Aerwin Del Rosario</div><div class="sc">GMD Productions Inc.</div></div>
+        <div><div class="sl2">Prepared by:</div><div class="sn">${esc(preparedBy)||"&nbsp;"}</div><div class="sc">GMD Productions Inc.</div></div>
         <div><div class="sl2">Approved by:</div><div class="sn">Paulo Garcia</div><div class="sc">GMD Productions Inc.</div></div>
       </div>
     </div>
