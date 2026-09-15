@@ -24122,6 +24122,10 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const[editMs,   setEditMs]   =useState(null);     // milestone id being edited
   const[editMsForm,setEditMsForm]=useState({});
   const[msForm,   setMsForm]   =useState({name:"",description:"",amount:"",invoiceNo:"",invoiceDate:today,dueDate:"",status:"Draft",receiptType:null,withholding:null});
+  // Gross-entry helper for the milestone amount — staff can type the VAT-inclusive
+  // figure and the stored net Amount fills (amount stays net, as the SOA expects).
+  const[msGrossStr,setMsGrossStr]=useState("");
+  const msNetToGross=(v)=>{const x=Number(v)||0;return x?String(Math.round(x*1.12*100)/100):"";};
   const[payForm,  setPayForm]  =useState({amount:"",date:today,refNo:"",note:"",valueDate:"",bank:"",method:"Bank Transfer"});
   const[editPayForm,setEditPayForm]=useState({});
   const[billingSearch,setBillingSearch]=useState("");
@@ -24210,6 +24214,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     }
     addMilestone({...msForm,dealId:selDeal,invoiceNo:msForm.invoiceNo||await claimInv(),createdBy:session?.name||role});
     setMsForm({name:"",description:"",amount:"",invoiceNo:"",invoiceDate:today,dueDate:"",status:"Draft",receiptType:null,withholding:null});
+    setMsGrossStr("");
     setShowForm(false);
   };
   // Turn the WIP under-billed figure into an invoice: bill the work completed
@@ -24240,6 +24245,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       invoiceNo:"",invoiceDate:today,dueDate:"",status:"Draft",
       receiptType:deal.receiptType||null,withholding:deal.withholding??null,
     });
+    setMsGrossStr((deal.receiptType||"OR")==="OR"?msNetToGross(netInvoice):"");
     setShowForm(true);
     toastEmit&&toastEmit(ret?`Claim drafted: ₱${netInvoice.toLocaleString("en-PH")} net (₱${retHeld.toLocaleString("en-PH")} retention held).`:`Claim drafted: ₱${netInvoice.toLocaleString("en-PH")} (review & save).`,"success",6500);
   };
@@ -25184,16 +25190,16 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                     <Fld label="Milestone Name" required hint="e.g. 50% Downpayment, Progress Billing, Final Billing">
                       <Inp value={msForm.name} onChange={e=>fm("name",e.target.value)} placeholder="e.g. 50% Downpayment upon PO"/>
                     </Fld>
-                    <Fld label="Amount (₱)" required>
+                    <Fld label="Amount (₱, Net / VAT-exclusive)" hint={(msForm.receiptType??deal?.receiptType??"OR")==="OR"?"Net (ex-VAT). Prefer entering gross? Use the box below — this fills for you.":undefined} required>
                       <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                        <Inp type="number" value={msForm.amount} onChange={e=>fm("amount",e.target.value)} placeholder="0.00" style={{flex:1}}/>
+                        <Inp type="number" value={msForm.amount} onChange={e=>{fm("amount",e.target.value);setMsGrossStr(msNetToGross(e.target.value));}} placeholder="0.00" style={{flex:1}}/>
                         {selDeal&&(()=>{
                           const d=wonDeals.find(x=>x.id===selDeal)||deals.find(x=>x.id===selDeal);
                           const existingMs=billings.filter(b=>b.dealId===selDeal);
                           const totalMs=existingMs.reduce((s,b)=>s+Number(b.amount||0),0);
                           const remaining=Math.max(0,(Number(d?.value||0)-totalMs));
                           return remaining>0?(
-                            <button type="button" onClick={()=>fm("amount",String(remaining))}
+                            <button type="button" onClick={()=>{fm("amount",String(remaining));setMsGrossStr(msNetToGross(remaining));}}
                               style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"5px 10px",color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit",fontSize:".75rem",fontWeight:700,whiteSpace:"nowrap"}}>
                               Bill Remaining ₱{remaining.toLocaleString()}
                             </button>
@@ -25201,12 +25207,17 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                         })()}
                       </div>
                     </Fld>
+                    {(msForm.receiptType??deal?.receiptType??"OR")==="OR"&&(
+                      <Fld label="Or enter Gross (VAT-inclusive)" hint="Type the gross figure — the net Amount fills automatically.">
+                        <Inp type="number" min={0} value={msGrossStr} onChange={e=>{const g=e.target.value;setMsGrossStr(g);fm("amount",g===""?"":String(Math.round(Math.max(0,Number(g)||0)/1.12*100)/100));}} placeholder="e.g. 560,000 incl. VAT"/>
+                      </Fld>
+                    )}
                     <Fld label="Invoice No." hint="Auto-generated if blank"><Inp value={msForm.invoiceNo} onChange={e=>fm("invoiceNo",e.target.value)} placeholder={nextInvoiceNo()}/></Fld>
                     <Fld label="Invoice Date"><Inp type="date" value={msForm.invoiceDate} onChange={e=>fm("invoiceDate",e.target.value)}/></Fld>
                     <Fld label="Due Date" required hint={!msForm.dueDate?"Recommended — drives the cash-flow forecast.":undefined}><Inp type="date" value={msForm.dueDate} onChange={e=>fm("dueDate",e.target.value)}/></Fld>
                     <Fld label="Status"><Sel value={msForm.status} onChange={e=>fm("status",e.target.value)}>{BILLING_STATUSES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
                     <Fld label="Receipt Type" hint={`Defaults to deal setting (${deal?.receiptType||"OR"})`}>
-                      <Sel value={msForm.receiptType||""} onChange={e=>fm("receiptType",e.target.value||null)}>
+                      <Sel value={msForm.receiptType||""} onChange={e=>{const v=e.target.value||null;fm("receiptType",v);if((v??deal?.receiptType??"OR")==="OR")setMsGrossStr(msNetToGross(msForm.amount));}}>
                         <option value="">— Use Deal Default ({deal?.receiptType||"OR"}) —</option>
                         <option value="OR">OR (Official Receipt)</option>
                         <option value="AR">AR (Acknowledgement Receipt)</option>
@@ -25220,14 +25231,21 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                       </Sel>
                     </Fld>
                     <div style={{gridColumn:"1/-1"}}><Fld label="Description"><Inp value={msForm.description} onChange={e=>fm("description",e.target.value)} placeholder="What this billing covers…"/></Fld></div>
-                    {/* Tax preview */}
+                    {/* Tax preview — reads like the SOA: net sale → +VAT → =gross
+                        billed to client → −EWT withheld → =cash you collect. */}
                     {n(msForm.amount)>0&&deal&&(()=>{
                       const tx=calcTax(msForm.amount,msForm.receiptType??deal.receiptType??"OR",msForm.withholding??deal.withholding??false);
-                      return<div style={{gridColumn:"1/-1",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"8px 12px",display:"flex",gap:16,flexWrap:"wrap",fontSize:".78rem"}}>
-                        <span><span style={{color:"#92400e"}}>Base: </span><strong>₱{n(msForm.amount).toLocaleString("en-PH")}</strong></span>
-                        {tx.vat>0&&<span><span style={{color:"#92400e"}}>VAT: </span><strong style={{color:"#f59e0b"}}>₱{tx.vat.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>}
-                        {tx.ewt>0&&<span><span style={{color:"#92400e"}}>EWT: </span><strong style={{color:"#ef4444"}}>-₱{tx.ewt.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>}
-                        <span><span style={{color:"#92400e"}}>Net: </span><strong style={{color:"#059669",fontSize:".88rem"}}>₱{tx.netReceivable.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>
+                      const f2=v=>Math.abs(Number(v)).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+                      const rows=(msForm.receiptType??deal.receiptType??"OR")==="OR"
+                        ?[["Net Sale (VAT-exclusive)",tx.base,"#0f172a"],["VAT 12%",tx.vat,"#f59e0b"],["Gross — billed to client",tx.gross,"#2563eb"],...(tx.ewt>0?[["EWT 2% (client withholds)",-tx.ewt,"#ef4444"]]:[]),["Net Collectible (cash in)",tx.netReceivable,"#059669"]]
+                        :[["Amount (AR — no VAT)",tx.base,"#0f172a"],["Net Collectible (cash in)",tx.netReceivable,"#059669"]];
+                      return<div style={{gridColumn:"1/-1",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"4px 12px"}}>
+                        {rows.map(([l,v,c],i)=>(
+                          <div key={l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderTop:i===0?"none":"1px dashed #fde68a"}}>
+                            <span style={{fontSize:".74rem",color:"#78716c",fontWeight:i===rows.length-1?700:500}}>{l}</span>
+                            <span style={{fontFamily:"'IBM Plex Mono',monospace",fontWeight:700,fontSize:".82rem",color:c}}>{v<0?"−":""}₱{f2(v)}</span>
+                          </div>
+                        ))}
                       </div>;
                     })()}
                   </div>
@@ -25276,10 +25294,11 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                       </div>
                       {!ms.isRetentionRelease&&<div style={{marginBottom:8}}><LifecycleStrip nodes={msNodes}/></div>}
                       <div style={{display:"flex",gap:14,flexWrap:"wrap",fontSize:".78rem",marginBottom:8}}>
-                        <span><span style={{color:"#94a3b8"}}>Base: </span>₱{n(ms.amount).toLocaleString("en-PH")}</span>
+                        <span><span style={{color:"#94a3b8"}}>Net Sale: </span>₱{n(ms.amount).toLocaleString("en-PH")}</span>
                         {tx.vat>0&&<span><span style={{color:"#94a3b8"}}>VAT 12%: </span><strong style={{color:"#f59e0b"}}>+₱{tx.vat.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>}
+                        {tx.vat>0&&<span><span style={{color:"#94a3b8"}}>Gross billed: </span><strong style={{color:"#2563eb"}}>₱{tx.gross.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>}
                         {tx.ewt>0&&<span><span style={{color:"#94a3b8"}}>EWT 2%: </span><strong style={{color:"#ef4444"}}>−₱{tx.ewt.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>}
-                        <span><span style={{color:"#94a3b8"}}>Net Due: </span><strong style={{color:"#3b82f6"}}>₱{tx.netReceivable.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>
+                        <span><span style={{color:"#94a3b8"}}>Net Collectible: </span><strong style={{color:"#3b82f6"}}>₱{tx.netReceivable.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>
                         <span><span style={{color:"#94a3b8"}}>Paid: </span><strong style={{color:"#059669"}}>₱{paidTotal.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>
                         {balance>0&&<span><span style={{color:"#94a3b8"}}>Balance: </span><strong style={{color:"#ef4444"}}>₱{balance.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>}
                         {ms.dueDate&&<span style={{color:isOverdue?"#ef4444":"#64748b",fontWeight:isOverdue?700:400}}>Due: {ms.dueDate}</span>}
