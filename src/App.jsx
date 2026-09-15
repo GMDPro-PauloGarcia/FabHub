@@ -7484,6 +7484,18 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // Standby PO umbrellas are intentionally ₱0 (their value lives on the
     // drawdown jobs), so exempt them from the awarded-value requirement.
     if(WON_STAGES.includes(data.stage)&&!data.standbyPO&&(!data.value||Number(data.value)<=0)){toastEmit("Contract value is required for awarded projects.","error");return;}
+    // Placeholder / import-artifact guard. A real contract is never ₱1, and a
+    // deal can't carry invoiced/paid amounts with no contract value. Both are the
+    // signature of a re-import where the value column didn't map (deals came in at
+    // ₱1 while invoiced/paid copied over from the source row). Standby PO
+    // umbrellas are legitimately ₱0 — their value lives on the drawdown jobs — so
+    // exempt them. Applies on edit too, so fixing a bad row means entering the
+    // real value, not re-saving the placeholder.
+    if(!data.standbyPO){
+      const v=Number(data.value)||0, inv=Number(data.invoiced)||0, paid=Number(data.amountPaid)||0;
+      if(v===1){toastEmit("Contract value of ₱1 looks like an import placeholder. Enter the real contract value before saving.","error");return;}
+      if(v<=0&&(inv>0||paid>0)){toastEmit("This deal has amounts invoiced/paid but no contract value — check the value field before saving.","error");return;}
+    }
     // Duplicate detection — only on new deals, not edits or forced saves
     if(!editDeal&&!skipDupCheck){
       const clientLower=data.client.toLowerCase();
