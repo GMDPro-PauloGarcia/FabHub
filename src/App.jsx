@@ -2313,7 +2313,7 @@ function ActivityDashboard({actLog,users,session,isMobile}){
 }
 
 // ── MY ACCOUNT PAGE (proper component — fixes focus loss) ─────────────────
-function MyAccountPage({session,users,setUsers,upUsers:upUsersExt,setSession:setSessionExt,logActivity:logActivityExt,checkPw,hashPw,actLog,verifyCurrentPassword}){
+function MyAccountPage({session,users,setUsers,upUsers:upUsersExt,setSession:setSessionExt,logActivity:logActivityExt,checkPw,hashPw,actLog,verifyCurrentPassword,onSetServerPw}){
           const[tab,setTab]=useState("password");
           const[curPw,setCurPw]=useState("");
           const[newPw,setNewPw]=useState("");
@@ -2331,6 +2331,12 @@ function MyAccountPage({session,users,setUsers,upUsers:upUsersExt,setSession:set
             if(newPw.length<6){setMsg({type:"error",text:"New password must be at least 6 characters."});return;}
             if(newPw!==confPw){setMsg({type:"error",text:"New passwords do not match."});return;}
             if(newPw===curPw){setMsg({type:"error",text:"New password must be different from current password."});return;}
+            // Write the authoritative bcrypt hash server-side; keep a local
+            // SHA-256 only for offline login continuity.
+            if(onSetServerPw){
+              const ok=await onSetServerPw(u.id,newPw);
+              if(!ok){setMsg({type:"error",text:"Couldn't reach the server to save your new password. Try again."});return;}
+            }
             const newHash=await sha256Hash(newPw,u.username);
             (upUsersExt||setUsers)(us=>us.map(x=>x.id===u.id?{...x,passwordHash:newHash}:x));
             setCurPw(""); setNewPw(""); setConfPw("");
@@ -4876,11 +4882,25 @@ export default function App(){
     qty:Number(r.qty)||0, unit:r.unit||"pcs",
     category:r.category||null, location:r.location||null,
   });
+  // NOTE: password_hash is deliberately NOT written here. The hash column is
+  // owned by the server: it is set only via the set_password() RPC (bcrypt) and
+  // upgraded in place by verify_login() on login. Syncing it from local state
+  // used to clobber the server's bcrypt hash with a stale client-side SHA-256
+  // one on every ordinary user-row sync (approve / deactivate / profile edit),
+  // which could even revert a changed password to an older value. Omitting the
+  // field means an upsert leaves the existing hash untouched.
   const toSbUser = u=>({
     id:u.id, name:u.name||"", username:u.username||"", role:u.role||"Sales",
-    title:u.title||"", status:u.status||"active", password_hash:u.passwordHash||"",
+    title:u.title||"", status:u.status||"active",
     email:u.email||"", created_at:u.createdAt||null,
   });
+  // Set a user's password server-side (bcrypt, in Postgres). Authorization is
+  // enforced inside the RPC against the caller's JWT (Manager, or self).
+  const setPasswordServer = async(id,pw)=>{
+    if(!isSupabaseReady()) return false;
+    try{ const{error}=await supabase.rpc('set_password',{p_user_id:id,p_new_password:pw}); if(error){console.error('set_password:',error.message);return false;} return true; }
+    catch(e){ console.error('set_password:',e); return false; }
+  };
   const toSbBudget = (dealId,b)=>({
     deal_id:dealId, materials:Number(b.Materials)||0, labor:Number(b.Labor)||0,
     overhead:Number(b.Overhead)||0, subcon:Number(b.Subcon)||0, notes:b.notes||"",
@@ -7030,12 +7050,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(!u) return "Username not found.";
     if(u.status==="pending") return "Your account is pending approval by a Manager.";
     if(u.status==="inactive") return "Your account has been deactivated. Contact Paulo.";
-    // Auto-upgrade legacy btoa hash to SHA-256 on successful login
-    if(needsUpgrade){
+    // Hash upgrade: on the SERVER path this is already done — verify_login()
+    // re-hashes to bcrypt in place on any successful non-bcrypt login. Doing it
+    // again here would overwrite that bcrypt with a client-side SHA-256 hash and
+    // the migration would never stick. So only upgrade locally when we fell back
+    // to the offline/local check (no server involved).
+    if(needsUpgrade && !viaServer){
       const newHash=await sha256Hash(password,u.username);
-      const upgraded={...u,passwordHash:newHash};
-      upUsers(us=>us.map(x=>x.id===u.id?upgraded:x));
-      if(isSupabaseReady()) sbUpsert('user_profiles',toSbUser(upgraded),'id').catch(()=>{});
+      upUsers(us=>us.map(x=>x.id===u.id?{...x,passwordHash:newHash}:x));
     }
     const sess={userId:u.id,username:u.username,name:u.name,role:u.role,title:u.title||u.role};
     setSession(sess); setRole(u.role);
@@ -7085,12 +7107,24 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const rejectUser  =(id)    =>upUsers(us=>us.map(u=>{if(u.id!==id)return u;const n={...u,status:"rejected"};if(isSupabaseReady())sbUpsert('user_profiles',toSbUser(n),'id').catch(()=>{});return n;}));
   const deactivateUser=(id)  =>upUsers(us=>us.map(u=>{if(u.id!==id)return u;const n={...u,status:"inactive"};if(isSupabaseReady())sbUpsert('user_profiles',toSbUser(n),'id').catch(()=>{});return n;}));
   const deleteUser  =(id)    =>{upUsers(us=>us.filter(u=>u.id!==id));if(isSupabaseReady())sbDelete('user_profiles',id).catch(()=>{});};
-  const resetPw     =async(id,pw)=>{const u=users.find(x=>x.id===id);if(!u)return;const n={...u,passwordHash:await sha256Hash(pw,u.username)};upUsers(us=>us.map(x=>x.id===id?n:x));if(isSupabaseReady())sbUpsert('user_profiles',toSbUser(n),'id').catch(()=>{});};
+  const resetPw     =async(id,pw)=>{
+    const u=users.find(x=>x.id===id);if(!u)return;
+    // Keep a local SHA-256 for offline login continuity; the authoritative
+    // (bcrypt) hash is written server-side via the RPC.
+    const n={...u,passwordHash:await sha256Hash(pw,u.username)};
+    upUsers(us=>us.map(x=>x.id===id?n:x));
+    await setPasswordServer(id,pw);
+  };
   const createUser  =async(name,username,password,role,title)=>{
     const uname=username.toLowerCase().trim();
     const newUser={id:uid(),name:name.trim(),username:uname,passwordHash:await sha256Hash(password,uname),role,title:title.trim()||role,status:"active",createdAt:today};
     upUsers(us=>[...us,newUser]);
-    if(isSupabaseReady()) sbUpsert('user_profiles',toSbUser(newUser),'id').catch(()=>{});
+    if(isSupabaseReady()){
+      // Insert the row first (without the hash — toSbUser omits it), then set
+      // the bcrypt password server-side.
+      await sbUpsert('user_profiles',toSbUser(newUser),'id');
+      await setPasswordServer(newUser.id,password);
+    }
   };
   // ── Derived ───────────────────────────────────────────────────────────────
   const wonDeals    =useMemo(()=>deals.filter(d=>WON_STAGES.includes(d.stage)),[deals]);
@@ -15730,7 +15764,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             }} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"10px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>🔄 Reload from Cloud</button>
           </div>
         )}
-        <MyAccountPage session={session} users={users} setUsers={setUsers} upUsers={upUsers} setSession={setSession} logActivity={logActivity} checkPw={checkPw} hashPw={hashPw} actLog={actLog} verifyCurrentPassword={verifyCurrentPassword}/>
+        <MyAccountPage session={session} users={users} setUsers={setUsers} upUsers={upUsers} setSession={setSession} logActivity={logActivity} checkPw={checkPw} hashPw={hashPw} actLog={actLog} verifyCurrentPassword={verifyCurrentPassword} onSetServerPw={setPasswordServer}/>
       </div>
     </Wrap>
   );
