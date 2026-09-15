@@ -19,8 +19,15 @@
 -- Re-define the approval gate to also admit named grantees by username.
 -- public.app_username() (migration 033) reads the 'username' JWT claim;
 -- public.has_role() (migration 037) reads the role claim.
+-- NOTE: mirrors the live function definition exactly (including the hardened
+-- search_path pin) as verified against prod when this was applied, and adds only
+-- the app_username() grantee clause.
 create or replace function public.enforce_payable_approval()
-returns trigger language plpgsql security definer as $fn$
+returns trigger
+language plpgsql
+security definer
+set search_path to 'pg_catalog', 'public'
+as $fn$
 begin
   if (new.approval_status is distinct from old.approval_status)
      and coalesce(current_setting('request.jwt.claims', true),'') <> ''
@@ -36,7 +43,8 @@ select 'Migration 065 applied — Mark Acejo granted payable approval (role unch
 
 -- ── ROLLBACK (restore the role-only gate from migration 063) ────────────────
 --   create or replace function public.enforce_payable_approval()
---   returns trigger language plpgsql security definer as $fn$
+--   returns trigger language plpgsql security definer
+--   set search_path to 'pg_catalog', 'public' as $fn$
 --   begin
 --     if (new.approval_status is distinct from old.approval_status)
 --        and coalesce(current_setting('request.jwt.claims', true),'') <> ''
