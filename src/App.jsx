@@ -1547,11 +1547,19 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
   const mob=window.innerWidth<768;
   const[saving,setSaving]=useState(false);
   const[vatErr,setVatErr]=useState(false);
+  // Gross-entry helper. Staff type the VAT-INCLUSIVE (gross) contract amount for
+  // OR deals — the number off the client PO — but the deal's `value` is stored
+  // VAT-EXCLUSIVE (net) as everywhere else in the system, so nothing downstream
+  // (saveDeal, reports, tax engine, existing data) changes. This local string
+  // holds what the user typed in the gross box; `value` = gross / 1.12.
+  const netToGross=(v)=>{const n=Number(v)||0;return n?String(Math.round(n*1.12*100)/100):"";};
+  const[grossStr,setGrossStr]=useState(()=>initialForm?.receiptType==="OR"?netToGross(initialForm?.value):"");
 
   // Sync when modal opens or editId changes
   const formKey=`${open}-${editId||"new"}`;
   useEffect(()=>{
-    if(open){setForm(initialForm||emptyDeal);setSaving(false);setVatErr(false);}
+    if(open){setForm(initialForm||emptyDeal);setSaving(false);setVatErr(false);
+      setGrossStr(initialForm?.receiptType==="OR"?netToGross(initialForm?.value):"");}
   },[open,editId]);
 
   const handleSave=async()=>{
@@ -1589,7 +1597,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
           </Fld>
         </div>
         <Fld label="Project Name" hint="e.g. SM Megamall Fit-Out Phase 1"><Inp value={form.contact} onChange={e=>f("contact",e.target.value)} placeholder="e.g. SM Megamall Fit-Out Phase 1"/></Fld>
-        <Fld label={form.standbyPO?"Deal Value (₱) — held at 0 for standby PO":"Deal Value (₱)"} hint={form.standbyPO?"Standby POs earn nothing on the umbrella itself — value lives on the drawdown jobs":"Leave blank if not yet finalized"}><Inp type="number" min={0} value={form.standbyPO?0:form.value} disabled={form.standbyPO} onChange={e=>{const v=e.target.value;f("value",v===""?"":Math.max(0,Number(v)||0));}} placeholder="To be confirmed" style={form.standbyPO?{background:"#f1f5f9",color:"#94a3b8",cursor:"not-allowed"}:undefined}/></Fld>
+        <Fld label={form.standbyPO?"Deal Value (₱) — held at 0 for standby PO":"Contract Value (₱, Net / VAT-exclusive)"} hint={form.standbyPO?"Standby POs earn nothing on the umbrella itself — value lives on the drawdown jobs":"Net (ex-VAT). For VAT (OR) deals you can instead type the gross total in Tax Settings below — this fills automatically."}><Inp type="number" min={0} value={form.standbyPO?0:form.value} disabled={form.standbyPO} onChange={e=>{const v=e.target.value;const nv=v===""?"":Math.max(0,Number(v)||0);f("value",nv);setGrossStr(nv===""?"":netToGross(nv));}} placeholder="To be confirmed" style={form.standbyPO?{background:"#f1f5f9",color:"#94a3b8",cursor:"not-allowed"}:undefined}/></Fld>
         <Fld label="CE Number"><Inp value={form.ceNo||""} onChange={e=>f("ceNo",e.target.value)} placeholder="CE-2026-005"/></Fld>
         <Fld label="CE Type">
           <Sel value={form.ceType||"Fabrication / General"} onChange={e=>f("ceType",e.target.value)}>
@@ -1768,7 +1776,9 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
 
 
       {/* ── SECTION 6: TAX SETTINGS ─────────────────────────────────────── */}
-      {Number(form.value)>0&&(
+      {/* Shown from the start (except standby POs) so staff can pick OR and enter
+          the gross figure up front, rather than being gated behind a net value. */}
+      {!form.standbyPO&&(
         <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:12,padding:"16px 18px",marginTop:10}}>
           <div style={{fontWeight:700,color:"#92400e",fontSize:".88rem",marginBottom:12}}>🧾 Tax Settings</div>
           <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:14,marginBottom:14}}>
@@ -1776,7 +1786,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
               <label style={{display:"block",fontSize:".68rem",fontWeight:700,color:"#92400e",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>Receipt Type <span style={{color:"#dc2626"}}>*</span></label>
               <div style={{display:"flex",gap:8}}>
                 {["OR","AR"].map(rt=>(
-                  <button key={rt} type="button" onClick={()=>{setForm(p=>({...p,receiptType:rt,withholding:rt==="AR"?false:p.withholding}));setVatErr(false);}}
+                  <button key={rt} type="button" onClick={()=>{setForm(p=>({...p,receiptType:rt,withholding:rt==="AR"?false:p.withholding}));setVatErr(false);if(rt==="OR")setGrossStr(netToGross(form.value));}}
                     style={{flex:1,padding:"8px",border:`2px solid ${form.receiptType===rt?"#d97706":(vatErr?"#fca5a5":"#e2e8f0")}`,borderRadius:8,background:form.receiptType===rt?"#fef3c7":"#fff",color:form.receiptType===rt?"#92400e":"#64748b",fontWeight:form.receiptType===rt?700:400,cursor:"pointer",fontFamily:"inherit",fontSize:".82rem"}}>
                     {rt==="OR"?"🧾 OR (with VAT)":"📄 AR (no VAT)"}
                   </button>
@@ -1806,21 +1816,35 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
               </div>
             )}
           </div>
+          {/* Gross entry — staff type the VAT-inclusive total off the client PO;
+              the net Contract Value above fills automatically (value stays net). */}
+          {form.receiptType==="OR"&&!form.standbyPO&&(
+            <div style={{marginBottom:14}}>
+              <label style={{display:"block",fontSize:".68rem",fontWeight:700,color:"#92400e",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>Or enter Gross (VAT-inclusive) — from client PO</label>
+              <Inp type="number" min={0} value={grossStr} onChange={e=>{const g=e.target.value;setGrossStr(g);f("value",g===""?"":Math.round(Math.max(0,Number(g)||0)/1.12*100)/100);}} placeholder="e.g. 1,120,000 total incl. VAT"/>
+              <div style={{fontSize:".68rem",color:"#92400e",opacity:.8,marginTop:5}}>Type the gross here and the net Contract Value fills for you — or type net above and this shows the gross.</div>
+            </div>
+          )}
           {["OR","AR"].includes(form.receiptType)&&(()=>{
             const tx=calcTax(form.value,form.receiptType,form.withholding||false);
+            // Invoice-style breakdown, read top-to-bottom the way an OR reads:
+            // net sale → +VAT → =gross billed → −EWT withheld → =cash you collect.
+            const rows=form.receiptType==="OR"
+              ?[["Net Sale (VAT-exclusive)", tx.base, "#0f172a"],
+                ["VAT 12%",                  tx.vat,  "#f59e0b"],
+                ["Gross (billed to client)", tx.gross,"#2563eb"],
+                ...(tx.ewt>0?[["EWT 2% (client withholds)", -tx.ewt, "#ef4444"]]:[]),
+                ["Net Collectible (cash in)",tx.netReceivable, "#059669"]]
+              :[["Contract (AR — no VAT)",   tx.base, "#0f172a"],
+                ["Net Collectible (cash in)",tx.netReceivable, "#059669"]];
             return(
-              <div style={{background:"rgba(255,255,255,.8)",borderRadius:8,padding:"12px 14px",display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(4,1fr)",gap:10,borderTop:"1px solid #fde68a"}}>
-                {[
-                  ["Contract (Base)",  tx.base,          "#0f172a"],
-                  ["VAT 12%",          tx.vat,           tx.vat>0?"#f59e0b":"#94a3b8"],
-                  ["EWT 2%",           tx.ewt,           tx.ewt>0?"#ef4444":"#94a3b8"],
-                  ["Net Receivable",   tx.netReceivable, "#059669"],
-                ].map(([l,v,c])=>(
-                  <div key={l} style={{textAlign:"center"}}>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1rem",color:c}}>
-                      ₱{Number(v).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2})}
-                    </div>
-                    <div style={{fontSize:".62rem",color:"#94a3b8",marginTop:3,textTransform:"uppercase",letterSpacing:".5px"}}>{l}</div>
+              <div style={{background:"rgba(255,255,255,.9)",borderRadius:8,padding:"6px 14px",borderTop:"1px solid #fde68a"}}>
+                {rows.map(([l,v,c],i)=>(
+                  <div key={l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderTop:i===0?"none":"1px dashed #fde68a"}}>
+                    <span style={{fontSize:".74rem",color:"#78716c",fontWeight:i===rows.length-1?700:500}}>{l}</span>
+                    <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.05rem",color:c}}>
+                      {v<0?"−":""}₱{Math.abs(Number(v)).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2})}
+                    </span>
                   </div>
                 ))}
               </div>
