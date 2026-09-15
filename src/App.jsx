@@ -18353,7 +18353,10 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
     }
     return true;
   });
-  const canCreate=["Manager","Sales","Operations","SalesOpsAdmin"].includes(role);
+  // Head designer (Design Manager) can raise a DRF too — server RLS already
+  // permits the Design role to insert design_requests, so this only unhides the
+  // button for the design lead rather than granting any new server access.
+  const canCreate=["Manager","Sales","Operations","SalesOpsAdmin"].includes(role)||isHeadDesigner(session?.name);
   const canAcknowledge=["Manager","Design"].includes(role);
 
   return(
