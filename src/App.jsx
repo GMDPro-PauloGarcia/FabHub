@@ -6,8 +6,7 @@ import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {mergeLocalOnly} from './core';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -1575,8 +1574,8 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
     <Modal open={open} onClose={onClose} title={editId?"Edit Deal":"Add New Deal"} wide key={formKey}>
 
       {/* Contract breakdown (original + addenda) — shown when this deal has change orders */}
-      {editId&&(addenda||[]).some(a=>a.dealId===editId&&a.status!=="Rejected")&&(
-        <div style={{marginBottom:16}}><ContractBreakdown deal={deals.find(d=>d.id===editId)} addenda={addenda}/></div>
+      {editId&&((addenda||[]).some(a=>a.dealId===editId&&a.status!=="Rejected")||(deals||[]).some(d=>d.parentDealId===editId&&!isLostStage(d.stage)))&&(
+        <div style={{marginBottom:16}}><ContractBreakdown deal={deals.find(d=>d.id===editId)} addenda={addenda} deals={deals}/></div>
       )}
 
       {/* ── SECTION 1: DEAL ESSENTIALS ─────────────────────────────────── */}
@@ -2603,8 +2602,12 @@ function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logAc
 
 // ─── ADDENDA PAGE CONTENT ─────────────────────────────────────────────────────
 // Extracted from App IIFE to fix React hooks #310 — hooks must be at top level
-function AddendaPageContent({role,wonDeals,jos,session,addenda,upAddenda,logActivity,onOpenCoBoq}){
+function AddendaPageContent({role,wonDeals,deals,jos,session,addenda,upAddenda,updateAddendum,logActivity,onOpenCoBoq}){
   const canCreate=!["Sales","Finance"].includes(role);
+  // Who may advance a change order's status (Discovered → … → Approved) from this
+  // page. Sales, Ops and Management all speak to clients directly, so all three
+  // can approve. (Server-side RLS must allow the same set — see migration 054.)
+  const canApprove=["Manager","Sales","Operations","ProjectMover","SalesOpsAdmin"].includes(role)&&typeof updateAddendum==="function";
   const myName=session?.name||"";
   const myProjects=wonDeals.filter(d=>{
     const jo=jos.find(j=>j.dealId===d.id);
@@ -2624,14 +2627,36 @@ function AddendaPageContent({role,wonDeals,jos,session,addenda,upAddenda,logActi
   const setScopeRow=(i,ch)=>setScopeItems(r=>r.map((it,j)=>j===i?{...it,...ch}:it));
   const delScopeRow=(i)=>setScopeItems(r=>r.filter((_,j)=>j!==i));
 
+  // Linked child deals ARE the addendums (parentDealId set). They stay their own
+  // live deals — created by Sales via "+ Add New Deal → Link to Parent Deal",
+  // awarded and billed on their own — and roll into the parent's Total Contract
+  // as a display line. Surface them here alongside legacy CO records so the log
+  // is a complete ledger of every change order. A child in a won stage is an
+  // approved addendum; otherwise it reflects its pipeline stage. They're
+  // read-only in this log (managed from the Pipeline), flagged _linkedDeal.
+  const childEntries=(deals||[]).filter(d=>d.parentDealId&&!isLostStage(d.stage)).map(d=>{
+    const par=(deals||[]).find(p=>p.id===d.parentDealId);
+    const won=WON_STAGES.includes(d.stage);
+    return{
+      id:d.id,dealId:d.parentDealId,
+      title:d.contact||d.client||"Addendum",
+      description:d.notes||"Addendum — linked deal with its own billing.",
+      kind:"Additive",value:Math.abs(Number(d.value)||0),
+      status:won?"Approved":(d.stage||"In pipeline"),
+      discoveredBy:d.salesOwner||"",salesOwner:d.salesOwner||"",
+      subAccount:(d.client&&par&&d.client!==par.client)?d.client:"",
+      ceNo:d.ceNo||"",_linkedDeal:true,_won:won,
+    };
+  });
+  const allEntries=[...addenda,...childEntries];
   const visibleAddenda=canCreate
-    ?(["Manager","QS"].includes(role)?addenda:addenda.filter(a=>myProjects.find(d=>d.id===a.dealId)))
-    :addenda;
+    ?(["Manager","QS"].includes(role)?allEntries:allEntries.filter(a=>myProjects.find(d=>d.id===a.dealId)))
+    :allEntries;
   const filteredAddenda=addSearch
-    ?visibleAddenda.filter(a=>{const d=wonDeals.find(x=>x.id===a.dealId);return[a.title,a.status,d?.client,d?.ceNo].join(" ").toLowerCase().includes(addSearch.toLowerCase());})
+    ?visibleAddenda.filter(a=>{const d=(deals||[]).find(x=>x.id===a.dealId);return[a.title,a.status,d?.client,d?.ceNo].join(" ").toLowerCase().includes(addSearch.toLowerCase());})
     :visibleAddenda;
 
-  const statusClr={Discovered:"#f59e0b","Sales Notified":"#3b82f6","Client Coordinating":"#8b5cf6",Approved:"#059669",Billed:"#06b6d4",Collected:"#10b981",Rejected:"#ef4444"};
+  const statusClr={Discovered:"#f59e0b","Sales Notified":"#3b82f6","Client Coordinating":"#8b5cf6",Approved:"#059669",Billed:"#06b6d4",Collected:"#10b981",Rejected:"#ef4444","Linked — not converted":"#94a3b8"};
   const totalValue=filteredAddenda.reduce((s,a)=>s+coSignedValue(a),0);
   const fmtSigned=(v)=>`${v<0?"−":"+"}₱${Number(Math.abs(v)).toLocaleString("en-PH")}`;
 
@@ -2655,7 +2680,7 @@ function AddendaPageContent({role,wonDeals,jos,session,addenda,upAddenda,logActi
               byDeal[a.dealId].items.push(a);
             });
             return groups.map(g=>{
-              const d=wonDeals.find(x=>x.id===g.dealId);
+              const d=(deals||[]).find(x=>x.id===g.dealId)||wonDeals.find(x=>x.id===g.dealId);
               const grpTotal=g.items.reduce((s,a)=>s+coSignedValue(a),0);
               return(
                 <div key={g.dealId||"unassigned"}>
@@ -2676,12 +2701,19 @@ function AddendaPageContent({role,wonDeals,jos,session,addenda,upAddenda,logActi
                           {a.description&&<div style={{fontSize:".75rem",color:"#64748b",marginTop:2,lineHeight:1.4}}>{a.description}</div>}
                         </div>
                         <div style={{display:"flex",alignItems:"center",gap:6,marginLeft:8,flexShrink:0}}>
-                          {canCreate&&onOpenCoBoq&&<button onClick={()=>onOpenCoBoq(a.id)} title="Build this change order's BOQ (sections, rate card, markup)" style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:6,padding:"3px 9px",fontSize:".66rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>🧮 BOQ{(a.coBoqData?.items?.length)?` (${a.coBoqData.items.length})`:""}</button>}
-                          {!canCreate&&onOpenCoBoq&&(a.coBoqData?.items?.length)>0&&<button onClick={()=>onOpenCoBoq(a.id,true)} title="View & print this change order's BOQ to send to the client" style={{background:"#f5f3ff",border:"1.5px solid #ddd6fe",borderRadius:6,padding:"3px 9px",fontSize:".66rem",fontWeight:700,color:"#7c3aed",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>📄 Print BOQ</button>}
-                          <span style={{fontSize:".68rem",fontWeight:700,color:statusClr[a.status]||"#64748b",background:(statusClr[a.status]||"#64748b")+"18",borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap"}}>{a.status}</span>
+                          {!a._linkedDeal&&canCreate&&onOpenCoBoq&&<button onClick={()=>onOpenCoBoq(a.id)} title="Build this change order's BOQ (sections, rate card, markup)" style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:6,padding:"3px 9px",fontSize:".66rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>🧮 BOQ{(a.coBoqData?.items?.length)?` (${a.coBoqData.items.length})`:""}</button>}
+                          {!a._linkedDeal&&!canCreate&&onOpenCoBoq&&(a.coBoqData?.items?.length)>0&&<button onClick={()=>onOpenCoBoq(a.id,true)} title="View & print this change order's BOQ to send to the client" style={{background:"#f5f3ff",border:"1.5px solid #ddd6fe",borderRadius:6,padding:"3px 9px",fontSize:".66rem",fontWeight:700,color:"#7c3aed",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>📄 Print BOQ</button>}
+                          {a._linkedDeal&&<span title="This addendum is a linked deal, managed from the Sales Pipeline. It has its own billing and rolls into the parent's Total Contract when awarded." style={{fontSize:".62rem",fontWeight:700,color:"#0369a1",background:"#f0f9ff",border:"1px solid #bae6fd",borderRadius:6,padding:"2px 7px",whiteSpace:"nowrap"}}>🔗 linked deal</span>}
+                          {canApprove&&!a._linkedDeal
+                            ? <select value={a.status} title="Advance this change order's status. Set to Approved once the client agrees — it rolls into the contract and creates its billing claim."
+                                onChange={e=>{const v=e.target.value;updateAddendum(a.id,v==="Approved"?{status:v,clientApproved:true}:{status:v});}}
+                                style={{fontSize:".68rem",fontWeight:700,color:statusClr[a.status]||"#64748b",background:(statusClr[a.status]||"#64748b")+"18",border:`1px solid ${(statusClr[a.status]||"#64748b")}55`,borderRadius:20,padding:"2px 8px",fontFamily:"inherit",cursor:"pointer",whiteSpace:"nowrap"}}>
+                                {ADDENDUM_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
+                              </select>
+                            : <span style={{fontSize:".68rem",fontWeight:700,color:statusClr[a.status]||"#64748b",background:(statusClr[a.status]||"#64748b")+"18",borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap"}}>{a.status}</span>}
                         </div>
                       </div>
-                      {Number(a.value)>0&&<div style={{fontSize:".75rem",color:a.kind==="Deductive"?"#dc2626":"#059669",marginTop:3,fontWeight:600}}>{fmtSigned(coSignedValue(a))} {a.kind==="Deductive"?"deducted":"additional"}{Array.isArray(a.scopeItems)&&a.scopeItems.length?` · ${a.scopeItems.length} BOQ item${a.scopeItems.length>1?"s":""}`:""}</div>}
+                      {Number(a.value)>0&&<div style={{fontSize:".75rem",color:a.kind==="Deductive"?"#dc2626":"#059669",marginTop:3,fontWeight:600}}>{fmtSigned(coSignedValue(a))} {a._linkedDeal?(a._won?"additional (own billing)":"additional — pending award"):a.kind==="Deductive"?"deducted":"additional"}{Array.isArray(a.scopeItems)&&a.scopeItems.length?` · ${a.scopeItems.length} BOQ item${a.scopeItems.length>1?"s":""}`:""}</div>}
                     </div>
                   ))}
                 </div>
@@ -3488,7 +3520,10 @@ function OfficeTVDashboard({deals=[],wonDeals=[],checklists=[],announcements=[],
 
   // ── Awarded / won projects ────────────────────────────────────────────────
   const awarded=React.useMemo(()=>{
-    const rows=(wonDeals||[]).map(d=>({id:d.id,client:d.client||"—",name:d.contact||d.product||d.client||"Project",value:Number(d.value||0),stage:d.stage||"",date:d.awardDate||d.awardedDate||d.dateAcquired||"",owner:d.salesOwner||"",location:d.location||""}));
+    // Award date is the real awarded date only (project_cards.award_date) — no fallback to
+    // dateAcquired. A won deal with no award date set shows blank and is excluded from the
+    // "awarded this month" tally, rather than silently borrowing the lead-acquisition date.
+    const rows=(wonDeals||[]).map(d=>({id:d.id,client:d.client||"—",name:d.contact||d.product||d.client||"Project",value:Number(d.value||0),stage:d.stage||"",date:d.awardDate||d.awardedDate||"",owner:d.salesOwner||"",location:d.location||""}));
     rows.sort((a,b)=>(b.date||"").localeCompare(a.date||""));
     return rows;
   },[wonDeals]);
@@ -3809,6 +3844,237 @@ function TVBoardAdmin({announcements=[],upAnnouncements,session,today}){
   );
 }
 
+// ─── BANK CASH SUMMARY ───────────────────────────────────────────────────────
+// Single source of truth for "money in the bank." The in-memory cashPositions
+// object stores nested banks[b.id].{beg,book,end} (see convertSbCashPos /
+// emptyDayPosition) — NOT the flat metrobank_end / secbank_end keys the old
+// owner-dashboard KPIs read, which silently resolved to 0. Mirrors CashFlowView's
+// book||end||beg convention.
+function bankCashSummary(cashPositions, today){
+  const days=Object.values(cashPositions||{}).filter(p=>p&&p.date).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  const latest=days[0]||null;
+  const val=(id)=>{const r=latest?.banks?.[id]||{};return Number(r.book)||Number(r.end)||Number(r.beg)||0;};
+  const perBank=latest?BANKS.map(b=>({id:b.id,short:b.short,name:b.name,type:b.type,val:val(b.id)})):[];
+  const total=perBank.reduce((s,b)=>s+b.val,0);
+  const stale=!latest||latest.date!==today;
+  const daysOld=latest?Math.round((new Date(today)-new Date(latest.date))/86400000):null;
+  return {latest,total,perBank,stale,daysOld};
+}
+
+// ─── FINANCIAL OVERVIEW ──────────────────────────────────────────────────────
+// Owner-only ("paulo"/"mar") consolidated finance snapshot: project count,
+// per-project margin, bank cash (with a hard staleness flag), total payables,
+// total loans outstanding. Rendered on both the CEO (generic Manager) and COO
+// dashboards. Margin here is contract value less EXPENSES BOOKED TO DATE — an
+// as-of number, not final profitability; early-stage jobs read optimistically
+// high because their costs haven't been incurred yet. The "% billed" column is
+// shown alongside so the reader can gauge how far along each job actually is.
+// Per-project margin rows — all won deals, contract value less expenses booked
+// to date. Shared by the dashboard panel (preview) and the full Project Margins
+// page so both compute identically. Sorted worst-margin-first so problems lead.
+function projectMarginRows(wonDeals=[],exps=[],billings=[]){
+  const expByDeal={};(exps||[]).forEach(e=>{const id=e.projectId||e.dealId;if(id)expByDeal[id]=(expByDeal[id]||0)+(Number(String(e.amount).replace(/,/g,""))||0);});
+  const billedByDeal={};(billings||[]).forEach(b=>{if(b.dealId)billedByDeal[b.dealId]=(billedByDeal[b.dealId]||0)+Number(b.amount||0);});
+  return (wonDeals||[]).map(d=>{
+    const contract=Number(d.value||0);
+    const spent=expByDeal[d.id]||0;
+    const profit=contract-spent;
+    const margin=contract>0?Math.round(profit/contract*100):null;
+    const billedPct=contract>0?Math.round((billedByDeal[d.id]||0)/contract*100):0;
+    return {id:d.id,name:d.contact||d.client||d.projName||"Untitled",ceNo:d.ceNo||"",contract,spent,profit,margin,billedPct};
+  }).sort((a,b)=>(a.margin==null?999:a.margin)-(b.margin==null?999:b.margin));
+}
+const _fmtM=v=>{const a=Math.abs(v);const s=v<0?"−":"";return a>=1000000?s+"₱"+(Math.round(a/100000)/10)+"M":a>=1000?s+"₱"+Math.round(a/1000)+"K":s+"₱"+Math.round(a||0);};
+const _money=v=>(v<0?"−₱":"₱")+Math.round(Math.abs(Number(v)||0)).toLocaleString("en-PH");
+const _marginClr=m=>m==null?"#94a3b8":m>=25?"#059669":m>=10?"#f59e0b":"#ef4444";
+
+function FinancialOverview({deals=[],wonDeals=[],exps=[],payables=[],loans=[],cashPositions={},billings=[],today,setPage,setFinTab,onOpenProject,onViewAllMargins,isMobile}){
+  const cash=bankCashSummary(cashPositions,today);
+  const payTotal=(payables||[]).filter(p=>p.status!=="Paid"&&p.status!=="Cancelled"&&Number(p.amount)>0).reduce((s,p)=>s+Number(p.amount||0),0);
+  const payCount=(payables||[]).filter(p=>p.status!=="Paid"&&p.status!=="Cancelled"&&Number(p.amount)>0).length;
+  const loanPrincipal=(loans||[]).reduce((s,l)=>s+(Number(l.principal)||0),0);
+  const loanPaid=(loans||[]).reduce((s,l)=>s+(l.payments||[]).reduce((a,p)=>a+Number(p.amount||0),0),0);
+  const loanOutstanding=Math.max(0,loanPrincipal-loanPaid);
+  const loanMonthly=(loans||[]).reduce((s,l)=>s+(Number(l.monthlyPayment)||0),0);
+
+  const allRows=projectMarginRows(wonDeals,exps,billings);
+  const preview=allRows.slice(0,5); // just the 5 worst — full list lives on its own page
+  const openProj=(id)=>onOpenProject&&onOpenProject(id);
+  const card=(bg="#fff")=>({background:bg,borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 16px"});
+
+  return(
+    <div style={{background:"linear-gradient(135deg,#0f172a,#1e293b)",borderRadius:16,padding:isMobile?14:18,marginBottom:18}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.15rem",color:"#fff"}}>💼 Financial Overview</span>
+          <span style={{fontSize:".6rem",fontWeight:800,color:"#fbbf24",background:"rgba(251,191,36,.15)",borderRadius:5,padding:"2px 7px",letterSpacing:".5px"}}>OWNERS ONLY</span>
+        </div>
+        <span style={{fontSize:".7rem",color:"rgba(255,255,255,.5)"}}>Paulo & Mar · live</span>
+      </div>
+
+      {/* KPI row */}
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:12}}>
+        {/* Projects */}
+        <div onClick={()=>onViewAllMargins&&onViewAllMargins()} style={{...card(),cursor:"pointer",textAlign:"center"}}>
+          <div style={{fontSize:"1.2rem"}}>🏗</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.5rem",color:"#0f172a"}}>{wonDeals.length}</div>
+          <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",fontWeight:700}}>Awarded Projects</div>
+        </div>
+        {/* Bank cash */}
+        <div onClick={()=>{setFinTab&&setFinTab("cash");setPage&&setPage("finance");}} style={{...card(cash.stale?"#fffbeb":"#fff"),cursor:"pointer",textAlign:"center",borderColor:cash.stale?"#fcd34d":"#e2e8f0"}}>
+          <div style={{fontSize:"1.2rem"}}>🏦</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.5rem",color:cash.total>0?"#059669":"#94a3b8"}}>{_fmtM(cash.total)}</div>
+          <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",fontWeight:700}}>Cash in Bank</div>
+          {cash.stale
+            ?<div style={{fontSize:".62rem",color:"#b45309",fontWeight:700,marginTop:3}}>⚠ {cash.latest?`As of ${cash.latest.date} · ${cash.daysOld}d old`:"No entry yet"}</div>
+            :<div style={{fontSize:".62rem",color:"#059669",fontWeight:700,marginTop:3}}>✓ Updated today</div>}
+        </div>
+        {/* Payables */}
+        <div onClick={()=>{setFinTab&&setFinTab("payables");setPage&&setPage("finance");}} style={{...card(),cursor:"pointer",textAlign:"center"}}>
+          <div style={{fontSize:"1.2rem"}}>📤</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.5rem",color:payTotal>0?"#ef4444":"#94a3b8"}}>{_fmtM(payTotal)}</div>
+          <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",fontWeight:700}}>Total Payables</div>
+          <div style={{fontSize:".62rem",color:"#64748b",fontWeight:600,marginTop:3}}>{payCount} unpaid</div>
+        </div>
+        {/* Loans */}
+        <div onClick={()=>{setFinTab&&setFinTab("loans");setPage&&setPage("finance");}} style={{...card(),cursor:"pointer",textAlign:"center"}}>
+          <div style={{fontSize:"1.2rem"}}>💳</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.5rem",color:loanOutstanding>0?"#7c3aed":"#94a3b8"}}>{_fmtM(loanOutstanding)}</div>
+          <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",fontWeight:700}}>Loans Outstanding</div>
+          <div style={{fontSize:".62rem",color:"#64748b",fontWeight:600,marginTop:3}}>{_fmtM(loanMonthly)}/mo</div>
+        </div>
+      </div>
+
+      {/* Margin preview — only the 5 that need attention; full list on its own page */}
+      <div style={{background:"#fff",borderRadius:12,overflow:"hidden"}}>
+        <div style={{padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid #f1f5f9"}}>
+          <span style={{fontWeight:800,fontSize:".84rem",color:"#0f172a"}}>⚠ Lowest-Margin Projects</span>
+          <span style={{fontSize:".62rem",color:"#94a3b8"}}>Contract − expenses booked</span>
+        </div>
+        {allRows.length===0
+          ?<div style={{padding:"22px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No awarded projects yet.</div>
+          :preview.map((r,i)=>(
+            <div key={r.id} onClick={()=>openProj(r.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderTop:i>0?"1px solid #f8fafc":"",cursor:"pointer"}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:".82rem",fontWeight:600,color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.name}{r.ceNo?<span style={{color:"#94a3b8",fontWeight:400}}> · {r.ceNo}</span>:null}</div>
+                <div style={{fontSize:".68rem",color:"#94a3b8"}}>{_money(r.contract)} contract · {r.billedPct}% billed</div>
+              </div>
+              <div style={{textAlign:"right",flexShrink:0}}>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.05rem",color:_marginClr(r.margin)}}>{r.margin==null?"—":r.margin+"%"}</div>
+                <div style={{fontSize:".66rem",fontWeight:600,color:r.profit>=0?"#059669":"#ef4444"}}>{_money(r.profit)}</div>
+              </div>
+              <span style={{fontSize:".8rem",color:"#cbd5e1",flexShrink:0}}>→</span>
+            </div>
+          ))}
+        {allRows.length>0&&(
+          <button onClick={()=>onViewAllMargins&&onViewAllMargins()} style={{width:"100%",border:"none",borderTop:"1px solid #f1f5f9",background:"#f8fafc",padding:"11px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#1e293b",cursor:"pointer"}}>
+            View all {allRows.length} projects →
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Full owner-only page: every awarded project's margin, click a row to open its
+// project card. Reached from the Financial Overview panel's "View all" button.
+function ProjectMarginsView({wonDeals=[],exps=[],billings=[],today,setPage,onOpenProject,Wrap,isMobile}){
+  const [sortKey,setSortKey]=useState("margin"); // margin | contract | profit | billed | name
+  const [sortDir,setSortDir]=useState("desc");    // desc = highest first
+  const [q,setQ]=useState("");
+  let rows=projectMarginRows(wonDeals,exps,billings);
+  if(q.trim()){const t=q.trim().toLowerCase();rows=rows.filter(r=>r.name.toLowerCase().includes(t)||r.ceNo.toLowerCase().includes(t));}
+  // Base comparators are ascending (small→large / A→Z); direction flips them.
+  // Null margins always sink to the bottom regardless of direction.
+  const base={
+    margin:(a,b)=>{if(a.margin==null&&b.margin==null)return 0;if(a.margin==null)return 1;if(b.margin==null)return -1;return a.margin-b.margin;},
+    contract:(a,b)=>a.contract-b.contract,
+    profit:(a,b)=>a.profit-b.profit,
+    billed:(a,b)=>a.billedPct-b.billedPct,
+    name:(a,b)=>a.name.localeCompare(b.name),
+  };
+  const cmp=base[sortKey]||base.margin;
+  rows=[...rows].sort((a,b)=>{const r=cmp(a,b);if(r!==0)return sortDir==="asc"?r:-r;return 0;});
+  // Default direction when switching to a new column: text asc, numbers desc.
+  const setSort=(key)=>{
+    if(key===sortKey){setSortDir(d=>d==="asc"?"desc":"asc");}
+    else{setSortKey(key);setSortDir(key==="name"?"asc":"desc");}
+  };
+  const totContract=rows.reduce((s,r)=>s+r.contract,0);
+  const totSpent=rows.reduce((s,r)=>s+r.spent,0);
+  const totProfit=totContract-totSpent;
+  const totMargin=totContract>0?Math.round(totProfit/totContract*100):null;
+
+  const th=(key,label,align="left")=>(
+    <th onClick={()=>setSort(key)} style={{padding:"9px 12px",fontWeight:700,textAlign:align,cursor:"pointer",whiteSpace:"nowrap",userSelect:"none",color:sortKey===key?"#1e293b":"#64748b"}}>
+      {label}{sortKey===key?(sortDir==="asc"?" ↑":" ↓"):""}
+    </th>
+  );
+
+  return(
+    <Wrap>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
+        <div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.5rem",color:"#0f172a"}}>Profit Margin by Project</div>
+          <div style={{fontSize:".8rem",color:"#64748b",marginTop:2}}>All awarded projects · contract value less expenses booked to date</div>
+        </div>
+        <button onClick={()=>setPage&&setPage("home")} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>← Back to Dashboard</button>
+      </div>
+
+      {/* totals strip */}
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:12,marginBottom:14}}>
+        {[
+          {l:"Projects",v:rows.length,c:"#0f172a"},
+          {l:"Total Contract",v:_fmtM(totContract),c:"#6366f1"},
+          {l:"Profit (to date)",v:_money(totProfit),c:totProfit>=0?"#059669":"#ef4444"},
+          {l:"Blended Margin",v:totMargin==null?"—":totMargin+"%",c:_marginClr(totMargin)},
+        ].map(k=>(
+          <div key={k.l} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 16px",textAlign:"center"}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.5rem",color:k.c}}>{k.v}</div>
+            <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",fontWeight:700,marginTop:2}}>{k.l}</div>
+          </div>
+        ))}
+      </div>
+
+      <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search project or CE no…" style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"9px 12px",fontFamily:"inherit",fontSize:".84rem",marginBottom:12}}/>
+
+      <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:".8rem",minWidth:620}}>
+            <thead><tr style={{background:"#f8fafc"}}>
+              {th("name","Project")}
+              {th("contract","Contract","right")}
+              <th style={{padding:"9px 12px",fontWeight:700,textAlign:"right",color:"#64748b"}}>Expenses</th>
+              {th("profit","Profit","right")}
+              {th("margin","Margin","right")}
+              {th("billed","% Billed","right")}
+              <th style={{width:24}}></th>
+            </tr></thead>
+            <tbody>
+              {rows.length===0
+                ?<tr><td colSpan={7} style={{padding:"24px",textAlign:"center",color:"#94a3b8"}}>No matching projects.</td></tr>
+                :rows.map((r,i)=>(
+                  <tr key={r.id} onClick={()=>onOpenProject&&onOpenProject(r.id)} style={{borderTop:"1px solid #f1f5f9",cursor:"pointer"}}>
+                    <td style={{padding:"9px 12px",fontWeight:600,color:"#0f172a",maxWidth:240,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.name}{r.ceNo?<span style={{color:"#94a3b8",fontWeight:400}}> · {r.ceNo}</span>:null}</td>
+                    <td style={{padding:"9px 12px",textAlign:"right",fontVariantNumeric:"tabular-nums",color:"#475569"}}>{_money(r.contract)}</td>
+                    <td style={{padding:"9px 12px",textAlign:"right",fontVariantNumeric:"tabular-nums",color:"#475569"}}>{_money(r.spent)}</td>
+                    <td style={{padding:"9px 12px",textAlign:"right",fontVariantNumeric:"tabular-nums",fontWeight:700,color:r.profit>=0?"#059669":"#ef4444"}}>{_money(r.profit)}</td>
+                    <td style={{padding:"9px 12px",textAlign:"right",fontWeight:800,color:_marginClr(r.margin)}}>{r.margin==null?"—":r.margin+"%"}</td>
+                    <td style={{padding:"9px 12px",textAlign:"right",fontVariantNumeric:"tabular-nums",color:"#94a3b8"}}>{r.billedPct}%</td>
+                    <td style={{padding:"9px 8px",textAlign:"right",color:"#cbd5e1"}}>→</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+        <div style={{padding:"9px 14px",fontSize:".64rem",color:"#94a3b8",background:"#fafafa",borderTop:"1px solid #f1f5f9"}}>
+          ⚠ Margin uses expenses booked so far, not final cost. Early-stage jobs (low % billed) will read high — cross-check against progress before treating as final profit. Tap any column header to sort; tap it again to reverse (highest ↔ lowest). Tap a row to open its project card.
+        </div>
+      </div>
+    </Wrap>
+  );
+}
+
 export default function App(){
   const[users,      setUsers]     = useState(DEFAULT_USERS);
   const[cashPositions,setCashPos]  = useState({});
@@ -3861,11 +4127,6 @@ export default function App(){
   // role; the server-side RLS in migration 033 mirrors this exact allow-list.
   const DEAL_DELETE_USERS=["jena","wyn","paolo"];
   const canDeleteDeal=role==="Manager"||DEAL_DELETE_USERS.includes(session?.username);
-  // Converting a linked child deal into a Change Order is a Sales action, not an
-  // Ops/PM one: allow anyone who can delete deals, plus the Sales / SalesOpsAdmin
-  // AE who owns the child deal, to convert (and approve) their own addendum so it
-  // is recognized as sales without waiting on another team.
-  const canConvertChild=(d)=>canDeleteDeal||((role==="Sales"||role==="SalesOpsAdmin")&&!!d?.salesOwner&&d.salesOwner===session?.name);
   const[deals,    setDeals]   = useState([]);
   const[projs,    setProjs]   = useState({});
   const[exps,     setExps]    = useState([]);
@@ -4038,7 +4299,7 @@ export default function App(){
             const _budgets=Object.keys(data.budgets||{}).length?Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}])):null;
             if(_budgets){setBudgets(prev=>mergeLocalOnlyObj(_budgets,prev));idbE.push([KEYS.budgets,_budgets]);}
             if(data.inflows!=null){setInfs(data.inflows);idbE.push([KEYS.inflows,data.inflows]);}
-            const _payables=data.payables!=null?data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0,accountCode:p.account_code||"",verified:p.verified!==false,verifiedBy:p.verified_by||"",verifiedAt:p.verified_at||"",verificationPct:p.verification_pct!=null?Number(p.verification_pct):100,payBank:p.pay_bank||"",payMethod:p.pay_method||"",payRef:p.pay_ref||"",vatable:!!p.vatable,inputVat:Number(p.input_vat)||0,netAmount:Number(p.net_amount)||0,ewtRate:Number(p.ewt_rate)||0,ewtAmount:Number(p.ewt_amount)||0,tin:p.tin||""})):null;
+            const _payables=data.payables!=null?data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0,accountCode:p.account_code||"",verified:p.verified!==false,verifiedBy:p.verified_by||"",verifiedAt:p.verified_at||"",verificationPct:p.verification_pct!=null?Number(p.verification_pct):100,payBank:p.pay_bank||"",payMethod:p.pay_method||"",payRef:p.pay_ref||"",vatable:!!p.vatable,inputVat:Number(p.input_vat)||0,netAmount:Number(p.net_amount)||0,ewtRate:Number(p.ewt_rate)||0,ewtAmount:Number(p.ewt_amount)||0,tin:p.tin||"",approvalStatus:p.approval_status||"Approved",approvedBy:p.approved_by||"",approvedAt:p.approved_at||null})):null;
             if(_payables!=null){setPayables(prev=>mlo(_payables,prev));idbE.push(["gmdv5:payables",_payables]);}
             const _loans=data.loans!=null?data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]})):null;
             if(_loans!=null){setLoans(prev=>mlo(_loans,prev));idbE.push(["gmdv5:loans",_loans]);}
@@ -4184,12 +4445,21 @@ export default function App(){
     // login: appLogin mints the role token, restoreAppToken rehydrates it on boot.)
   },[]);
 
+  // Tables whose dropped writes are derived/log/rollup state, not something a person
+  // typed as a form — they get a dedicated, non-alarming drop toast (below) and must NOT
+  // also trip the scary red "redo it or contact support" banner. Defined here (module-ish
+  // scope for this component) so BOTH the error handler and the drop handler can read it.
+  const LOW_STAKES_DROP_TABLES=useRef(new Set(["activity_log","project_card_dept_tasks","project_card_dept_status"])).current;
   // App-wide sync-failure warning: when ANY Supabase write fails (offline, RLS,
   // network), warn the user once (throttled) that changes are local-only — instead
   // of the 160+ silent .catch() sites that hid sync failures from the user.
   useEffect(()=>{
     let last=0;
     setSbErrorHandler((op,table,msg,kind)=>{
+      // Low-stakes tables own their own gentle drop toast (setSbDropHandler below).
+      // Firing the red "bad data — redo it or contact support" banner for them too
+      // produced two contradictory toasts for one event ("redo it" vs "nothing lost").
+      if(LOW_STAKES_DROP_TABLES.has(table)) return;
       const n=Date.now();
       if(n-last>30000){
         last=n;
@@ -4215,7 +4485,7 @@ export default function App(){
   // work vanished. A dropped write here should read as low-stakes, not as a
   // wall of identical "NOT SAVED, please redo it" errors (which is exactly
   // what a burst of same-cause drops used to produce, one toast per item).
-  const LOW_STAKES_DROP_TABLES=useRef(new Set(["activity_log","project_card_dept_tasks","project_card_dept_status"])).current;
+  // (LOW_STAKES_DROP_TABLES is defined above so the red-banner handler shares it.)
   const dropBufferRef=useRef([]);
   const dropTimerRef=useRef(null);
   useEffect(()=>{
@@ -4238,8 +4508,15 @@ export default function App(){
           // the local record up first via the Data Backup → "Push All Data to
           // Cloud" button, which recreates the parent so the queued edit lands.
           const orphan=!low && /no row matched/i.test(msg||"");
+          // Department task/status rows are real completion state a person toggled — not a
+          // log — but they're a rollup that lives on the device and re-derives from the
+          // checklist, so the honest message is "saved here, not on the server yet," not the
+          // "nothing you did is lost" line that's true only for the activity_log feed.
+          const deptTable=table==="project_card_dept_tasks"||table==="project_card_dept_status";
           const text=low
-            ? `ℹ️ ${count} history/audit ${count===1?"entry":"entries"} for ${table} couldn't be saved — this is internal log data, not something you entered, so nothing you did is lost.`
+            ? deptTable
+              ? `⚠️ ${count} department progress update${count===1?"":"s"} couldn't reach the server yet — ${count===1?"it's":"they're"} saved on this device. This usually means the project card isn't on the server yet: open 💾 Data Backup and tap "☁ Push All Data to Cloud", then retry sync.`
+              : `ℹ️ ${count} history/audit ${count===1?"entry":"entries"} for ${table} couldn't be saved — this is internal log data, not something you entered, so nothing you did is lost.`
             : orphan
             ? `❌ ${count} change${count===1?"":"s"} to ${table} couldn't sync — the record ${count===1?"it belongs":"they belong"} to isn't on the server yet. Your change is still saved on this device. Open 💾 Data Backup and tap "☁ Push All Data to Cloud" to fix it, then retry sync.`
             : `❌ ${count} change${count===1?"":"s"} to ${table} could not be saved after several attempts — ${count===1?"it":"they"} were NOT saved. Please redo ${count===1?"it":"them"}. ${msg?`(${msg})`:""}`;
@@ -4335,7 +4612,7 @@ export default function App(){
     }
     if(Object.keys(data.budgets||{}).length){const bg=Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}]));setBudgets(prev=>mergeLocalOnlyObj(bg,prev));idbE.push([KEYS.budgets,bg]);}
     if(data.users?.length){const us=data.users.map(u=>{const fallbackHash=DEFAULT_USERS.find(d=>d.username===(u.username||""))?.passwordHash||"";return{id:u.id,username:u.username||"",name:u.name||u.full_name||"",role:u.role||"Sales",title:u.title||u.role||"",status:u.status||"active",passwordHash:u.password_hash||fallbackHash,createdAt:u.created_at||""};});setUsers(prev=>mlo(us,prev));idbE.push([KEYS.users,us]);}
-    if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0,accountCode:p.account_code||"",verified:p.verified!==false,verifiedBy:p.verified_by||"",verifiedAt:p.verified_at||"",verificationPct:p.verification_pct!=null?Number(p.verification_pct):100,payBank:p.pay_bank||"",payMethod:p.pay_method||"",payRef:p.pay_ref||"",vatable:!!p.vatable,inputVat:Number(p.input_vat)||0,netAmount:Number(p.net_amount)||0,ewtRate:Number(p.ewt_rate)||0,ewtAmount:Number(p.ewt_amount)||0,tin:p.tin||""}));setPayables(prev=>mlo(ps,prev));idbE.push(["gmdv5:payables",ps]);}
+    if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0,accountCode:p.account_code||"",verified:p.verified!==false,verifiedBy:p.verified_by||"",verifiedAt:p.verified_at||"",verificationPct:p.verification_pct!=null?Number(p.verification_pct):100,payBank:p.pay_bank||"",payMethod:p.pay_method||"",payRef:p.pay_ref||"",vatable:!!p.vatable,inputVat:Number(p.input_vat)||0,netAmount:Number(p.net_amount)||0,ewtRate:Number(p.ewt_rate)||0,ewtAmount:Number(p.ewt_amount)||0,tin:p.tin||"",approvalStatus:p.approval_status||"Approved",approvedBy:p.approved_by||"",approvedAt:p.approved_at||null}));setPayables(prev=>mlo(ps,prev));idbE.push(["gmdv5:payables",ps]);}
     if(data.loans?.length){const ls=data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]}));setLoans(prev=>mlo(ls,prev));idbE.push(["gmdv5:loans",ls]);}
     if(data.dailyLogs?.length){const dl=data.dailyLogs.map(l=>({...l,dealId:l.deal_id,date:l.log_date,workDone:l.work_done,progressNote:l.progress_note,loggedBy:l.logged_by,createdAt:l.created_at}));setDailyLogs(prev=>mlo(dl,prev));idbE.push([KEYS.dailylogs,dl]);}
     if(data.ceReqs?.length){const cr=data.ceReqs.map(ceReqFromSb);setCeReqs(prev=>mlo(cr,prev));idbE.push([KEYS.ceReqs,cr]);}
@@ -4405,6 +4682,7 @@ export default function App(){
     ce_type:r.ceType, product:r.product, stage:r.stage,
     priority:r.priority||"Normal", sales_owner:r.salesOwner||"",
     biz_dev_source:r.bizDevSource||"", lead_origin:leadOriginOf(r), date_acquired:r.dateAcquired||null,
+    temperature:r.temperature||null,
     due_date:r.dueDate||null, follow_up:r.followUp||null,
     value:Number(r.value)||0,
     invoiced:Number(r.invoiced)||0, amount_paid:Number(r.amountPaid)||0,
@@ -4679,6 +4957,29 @@ export default function App(){
   const sbSyncDelete=(table,id)=>{
     if(!isSupabaseReady()||!id) return;
     sbDelete(table,id).catch(e=>console.error("FabHub sbDelete "+table+":",e.message));
+  };
+  // Persist a partial project_cards change keyed on deal_id — but ALWAYS make
+  // sure the parent deal exists on the server first. A project_cards row
+  // references deals(id) by foreign key (project_cards_deal_id_fkey). Upserting
+  // a card for a deal that hasn't reached the server yet — its own insert still
+  // sitting in the offline queue, dropped, or never synced from this device —
+  // turns the upsert into an INSERT that violates that FK. That's a
+  // non-retryable "data" error, so the sync queue drops it for good and the user
+  // gets the alarming red "1 change to project_cards could not be saved … it
+  // were NOT saved" toast (the recurring failure reported from the pipeline).
+  // The Award flow already prevents this by upserting the whole deal before its
+  // child writes; this helper applies the SAME parent-before-child ordering to
+  // every other project-card write (award date, TAT/turnover, PM/AE assignment,
+  // manual progress) so none of them can strand a card against a missing deal.
+  // sbSyncOne is an idempotent full-record deal upsert: for a role that can't
+  // insert deals it no-ops (that role never created the deal, so whoever did has
+  // already synced it), and for the deal's owner it re-materialises the parent
+  // if it somehow went missing — exactly the self-heal we want.
+  const syncProjectCard=async(dealId,patch)=>{
+    if(!isSupabaseReady()||!dealId) return false;
+    const deal=deals.find(d=>d.id===dealId);
+    if(deal) await sbSyncOne("deals",deal,toSbDeal);
+    return sbUpsert('project_cards',{deal_id:dealId,...patch},'deal_id').catch(()=>false);
   };
 
   // ── PERSIST — updates the save indicator; Supabase is the write target ──
@@ -5249,7 +5550,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       // failing an FK check that sync retry then permanently drops (a
       // constraint violation is a "data" error, never retried, only dropped —
       // this silently lost individual checklist tasks in production).
-      const cardSynced=await sbUpsert('project_cards',{id:card.id,deal_id:dealId,client:dealData?.client||"",ce_no:dealData?.ceNo||"",value:Number(dealData?.value)||0,award_date:dealData?.awardDate||dealData?.dateAcquired||today,created_at:card.createdAt,ae_assigned:card.aeAssigned||"",pm1:card.pm1||"",pm2:card.pm2||"",pm3:card.pm3||"",designer:card.designer||"",coordinator:card.coordinator||"",...(card.targetEndDate?{target_end_date:card.targetEndDate}:{}),...(card.targetDays!=null?{target_days:card.targetDays}:{})},'deal_id');
+      // Guarantee the parent deal exists on the server before the card's own FK
+      // to deals(id) is evaluated — createProjectCard is reachable from the
+      // manual "create card" path too, where the deal may still be local-only.
+      const parentDeal=deals.find(d=>d.id===dealId);
+      if(parentDeal) await sbSyncOne("deals",parentDeal,toSbDeal);
+      const cardSynced=await sbUpsert('project_cards',{id:card.id,deal_id:dealId,client:dealData?.client||"",ce_no:dealData?.ceNo||"",value:Number(dealData?.value)||0,award_date:dealData?.awardDate||today,created_at:card.createdAt,ae_assigned:card.aeAssigned||"",pm1:card.pm1||"",pm2:card.pm2||"",pm3:card.pm3||"",designer:card.designer||"",coordinator:card.coordinator||"",...(card.targetEndDate?{target_end_date:card.targetEndDate}:{}),...(card.targetDays!=null?{target_days:card.targetDays}:{})},'deal_id');
       if(cardSynced){
         DEPT_ORDER.forEach(dept=>{
           (card.departments?.[dept]?.tasks||[]).forEach((t,i)=>{
@@ -5307,7 +5613,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       tatSetAt:new Date().toISOString(),
     }}));
     if(isSupabaseReady()){
-      sbUpsert('project_cards',{deal_id:dealId,target_days:targetDays,target_end_date:dateStr,tat_category:category||"",tat_set_by:session?.name,tat_set_at:new Date().toISOString()},'deal_id').catch(()=>{});
+      syncProjectCard(dealId,{target_days:targetDays,target_end_date:dateStr,tat_category:category||"",tat_set_by:session?.name,tat_set_at:new Date().toISOString()});
     }
     toastEmit("Turnover date set — Due "+dateStr,"success");
     logActivity(dealId,"TAT Set",`Target: ${targetDays} days → Due ${dateStr}`,session?.name);
@@ -5714,8 +6020,26 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       });
     });
 
+    // Standalone BOQs had NO realtime subscription — they were fetched once at
+    // boot only, so a BOQ created or edited by anyone else (or by you on another
+    // device) never appeared until a hard refresh re-ran the boot fetch. Subscribe
+    // and merge per id (server is authoritative for BOQs) so they stream in live.
+    const rowToBoq=r=>({id:r.id,title:r.title||"",location:r.location||"",quotationNo:r.quotation_no||"",boqDate:r.boq_date||"",items:Array.isArray(r.items)?r.items:[],sections:Array.isArray(r.sections)?r.sections:[],vatEnabled:r.vat_enabled!==false,discount:r.discount||"",markupPct:r.markup_pct||"",createdBy:r.created_by||"",createdAt:r.created_at||"",updatedAt:r.updated_at||""});
+    const boqSub = !wantsRT('standalone_boqs')?null:sbSubscribe('standalone-boqs-rt','standalone_boqs',payload=>{
+      const{eventType,new:rec,old}=payload;
+      setStandaloneBoqs(prev=>{
+        let next;
+        if(eventType==='DELETE'){const id=old?.id;if(!id)return prev;next=prev.filter(b=>b.id!==id);}
+        else{ if(!rec||!rec.id) return prev; const rb=rowToBoq(rec); next=prev.some(b=>b.id===rb.id)?prev.map(b=>b.id===rb.id?rb:b):[...prev,rb]; }
+        localStorage.setItem("gmdv5:standaloneBoqs",JSON.stringify(next));
+        idbSetMany([["gmdv5:standaloneBoqs",next]]).catch(()=>{});
+        return next;
+      });
+    });
+
     return ()=>{
       dealsSub?.unsubscribe?.();
+      boqSub?.unsubscribe?.();
       pcardSub?.unsubscribe?.();
       billSub?.unsubscribe?.();
       addSub?.unsubscribe?.();
@@ -5790,7 +6114,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // Billing was remounted — "every awarded deal has a proper billing" wasn't
   // actually guaranteed.
   const generateBillingSchedule=(dealId,terms,contractVal)=>{
-    const val=Number(contractVal)||0;
+    // The base schedule bills the ORIGINAL contract only. Approved change orders
+    // each carry their own separate billing milestone (see syncCoBilling), so if
+    // this deal has had a CO rolled in, split the pre-CO base (originalValue) —
+    // never the blended deal.value — otherwise the CO would be billed twice (once
+    // inside the base schedule and once as its own line). With no CO, originalValue
+    // is unset and this is the passed contract value unchanged.
+    const _deal=deals.find(d=>d.id===dealId);
+    const val=Number(_deal&&_deal.originalValue!=null?_deal.originalValue:contractVal)||0;
     if(!terms||val<=0) return;
     // Idempotency: never regenerate once a schedule has been generated. The
     // persistent deal.billingGenerated flag survives reloads / remounts / other
@@ -6113,16 +6444,20 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     }));
     logActivity(dealId,"Contract Value Updated",`${delta>0?"+":"−"}₱${Number(Math.abs(delta)).toLocaleString("en-PH",{maximumFractionDigits:2})} from change order "${addendum?.title||""}" → revised contract value`);
   };
-  // Once a change order is billed/collected it should carry its own billing
-  // milestone so Finance can invoice the delta directly instead of hand-rolling
-  // it. Deductive change orders create a negative (credit) milestone.
-  const CO_BILLED=s=>["Billed","Collected"].includes(s);
+  // Once a change order is APPROVED it carries its own billing milestone so
+  // Finance can raise the claim for the delta directly — as a SEPARATE line from
+  // the original contract's schedule, never blended into it (the base schedule
+  // bills the original contract only; see generateBillingSchedule). Deductive
+  // change orders create a negative (credit) milestone. The milestone's tax basis
+  // is INHERITED from the parent contract (receipt type + withholding) so a CO is
+  // never taxed on a different basis than its project.
   const syncCoBilling=(co,shouldExist)=>{
     const dealId=co.dealId||co.projectId;
     const existing=billings.find(b=>b.coId===co.id);
     if(shouldExist&&!existing&&dealId){
+      const parentDeal=deals.find(d=>d.id===dealId);
       const invMax=billings.reduce((m,b)=>{const x=parseInt(String(b.invoiceNo||"").replace(/\D/g,""))||0;return Math.max(m,x);},0);
-      addMilestone({name:`Change Order — ${co.title||"Scope Change"}`,description:co.description||co.desc||"",amount:coSignedValue(co),dealId,coId:co.id,invoiceNo:`INV-${String(invMax+1).padStart(4,"0")}`,invoiceDate:today,dueDate:"",status:"Draft",receiptType:co.receiptType||null,withholding:co.withholding??null,createdBy:session?.name||role,deductions:[]});
+      addMilestone({name:`Change Order — ${co.title||"Scope Change"}`,description:co.description||co.desc||"",amount:coSignedValue(co),dealId,coId:co.id,invoiceNo:`INV-${String(invMax+1).padStart(4,"0")}`,invoiceDate:today,dueDate:"",status:"Draft",receiptType:parentDeal?.receiptType||co.receiptType||null,withholding:parentDeal?.withholding??co.withholding??null,createdBy:session?.name||role,deductions:[]});
     }else if(!shouldExist&&existing){
       upBillings(bs=>bs.filter(b=>b.coId!==co.id));
       if(isSupabaseReady()) sbDelete('billing_milestones',existing.id).catch(()=>{});
@@ -6171,9 +6506,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       else if(!nowIn&&n.awardedDate&&!ch.awardedDate) n.awardedDate=null;
       const delta=(nowIn?newVal:0)-(wasIn?oldVal:0);
       if(delta) rollDealContract(n.dealId||n.projectId,delta,n);
-      // Scope items flow into the BOQ on approval, billing milestone on billing.
+      // Scope items flow into the BOQ on approval; the CO's own billing milestone
+      // is created on approval too (ADDENDUM_ROLLED = Approved/Billed/Collected) so
+      // Finance can raise the claim immediately — not left until someone marks it
+      // "Billed", which used to leave the delta unbilled and the contract short.
       if(wasIn!==nowIn||(nowIn&&oldVal!==newVal)) syncCoBoq(n,nowIn);
-      syncCoBilling(n,CO_BILLED(n.status));
+      syncCoBilling(n,ADDENDUM_ROLLED(n.status));
       if(isSupabaseReady()) sbSyncOne("addenda",n,toSbAddendum);
       if(ch.status==="Approved"||ch.clientApproved){
         const deal=deals.find(d=>d.id===(a.dealId||a.projectId));
@@ -6717,8 +7055,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const projsKeyCount=Object.keys(projs).length;
   useEffect(()=>{
     // Standby PO umbrellas have no production of their own (their jobs do),
-    // so don't spin up an empty ₱0 project shell for them.
-    const missing=wonDeals.filter(d=>!projs[d.id]&&!d.standbyPO);
+    // so don't spin up an empty ₱0 project shell for them. Child/addendum deals
+    // (parentDealId) never get their own project card either — Ops maintains the
+    // single parent card even when the project has addendums.
+    const missing=wonDeals.filter(d=>!projs[d.id]&&!d.standbyPO&&!d.parentDealId);
     if(missing.length>0){
       const patch={};
       missing.forEach(d=>{patch[d.id]=emptyProject();});
@@ -7001,8 +7341,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[dnwExpanded,  setDnwExpanded]  = useState(false);  // did-not-win accordion (under closed-out)
   const[pipeType,     setPipeType]     = useState("all");  // awarded-project type filter
   const[pipeAE,       setPipeAE]       = useState("all");  // AE/salesperson filter
+  const[pipeNoAward,  setPipeNoAward]  = useState(false);  // awarded tab: show only won projects with no award date set
   const[showActChat,  setShowActChat]  = useState(false); // pipeline activity pop-up
   const[rowMenu,      setRowMenu]      = useState(null);   // {deal,x,y} — pipeline row overflow menu
+  const[pipeDragId,   setPipeDragId]   = useState(null);   // deal id being dragged between temperature columns
+  const[pipeDragOver, setPipeDragOver] = useState(null);   // temperature column currently hovered during drag
+  const[coldSweepDismissed,setColdSweepDismissed]=useState(false); // hide stale-cold review banner for this session
   const[priceModal,   setPriceModal]   = useState(null);   // {deal} — QS set price modal
   const[quickAddClientOpen,setQuickAddClientOpen]=useState(false);
   const[quickAddClientForm,setQuickAddClientForm]=useState({name:"",contactPerson:"",email:"",phone:"",mobile:"",website:"",billingAddress:"",city:"",province:"",zipCode:"",country:"Philippines",tin:"",paymentTerms:"Due on receipt",notes:""});
@@ -7173,7 +7517,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     };
     // Only trigger award logic for NEW deals entering won stages — never on edit
     const wasAlreadyAwarded = editDeal && WON_STAGES.includes(deals.find(d=>d.id===editDeal)?.stage);
-    if(WON_STAGES.includes(data.stage) && !editDeal) upProjs(ps=>ps[rec.id]?ps:{...ps,[rec.id]:emptyProject()});
+    // Child/addendum deals (parentDealId set) never get their own project card —
+    // Ops keeps the single parent project card. Only parent deals do.
+    if(WON_STAGES.includes(data.stage) && !editDeal && !rec.parentDealId) upProjs(ps=>ps[rec.id]?ps:{...ps,[rec.id]:emptyProject()});
     upDeals(ds=>editDeal?ds.map(d=>d.id===editDeal?rec:d):[...ds,rec]);
     // Await the deal's own write before firing the DRF auto-create below, which
     // references rec.id by foreign key — firing it unawaited let the design
@@ -7280,10 +7626,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             `\nAwarded by: ${session?.name||"Manager"}`
           );
           logActivity(rec.id,"Project Awarded",`${rec.client} moved to awarded stage by ${session?.name}`,session?.name);
-          // A linked child deal (addendum) awarded via the edit modal is auto-
-          // converted into an approved Change Order on its parent — same behavior
-          // as the pipeline quick-stage control — so it never lingers as a deal.
-          if(rec.parentDealId) convertChildToCO(rec,{silent:true,approve:true,system:true});
+          // A linked child deal (addendum) stays its own deal — it is awarded and
+          // billed on its own, and rolls into the parent's Total Contract as a
+          // display-only addendum line (see ContractBreakdown). It is never
+          // converted or retired, and never spawns a second project card.
         }
         // Fire notification when stage moves back out of awarded (e.g. cancelled)
         if(!WON_STAGES.includes(rec.stage)&&WON_STAGES.includes(prevStage)&&rec.stage==="Cancelled"){
@@ -7377,85 +7723,24 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     }
   };
 
-  // Convert a linked "child" deal (parentDealId set) into a real Change Order on
-  // its parent, then retire the child so its value isn't double-counted. Child
-  // deals have no additive/deductive concept, so we default to Additive; the CO
-  // enters as "Discovered" (the normal entry point) for Ops to approve on the
-  // Scope Changes page, at which point it rolls into the parent contract.
-  const convertChildToCO=(child,opts={})=>{
-    // approve — immediately push the new CO to "Approved" so it rolls into the
-    //   parent contract and is credited as sales (award date stamped to today).
-    // system — internal/automated call (e.g. auto-convert on award); skips the
-    //   interactive permission gate since the triggering action was itself gated.
-    const {silent=false,approve=false,system=false}=opts;
-    if(!child?.parentDealId){if(!silent)toastEmit("This deal has no parent to attach a change order to.","error");return false;}
-    if(!system&&!canConvertChild(child)){if(!silent)toastEmit("You don't have permission to convert this deal.","error");return false;}
-    const parent=deals.find(d=>d.id===child.parentDealId);
-    if(!parent){if(!silent)toastEmit("Parent project not found.","error");return false;}
-    const title=(child.contact||child.product||child.client||"Scope Change").trim();
-    // Carry any BOQ line items over as the change order's scope items so approval
-    // flows them into the parent BOQ; otherwise fall back to a single lump value.
-    // The child's FULL BOQ (sections, markup, VAT…) is carried as coBoqData so the
-    // change order opens in the BOQ Builder exactly as it was built on the deal.
-    const boqItems=Array.isArray(child.boqData?.items)?child.boqData.items:[];
-    const scopeItems=boqItems.filter(it=>(it.description||"").trim()).map(it=>({description:(it.description||"").trim(),qty:Number(it.qty)||0,unit:it.unit||"lot",rate:Number(it.unitCost!=null?it.unitCost:it.rate)||0}));
-    const rec={
-      id:"add"+Date.now()+Math.floor(Math.random()*1000),dealId:parent.id,
-      title,description:(child.notes||`Converted from linked deal "${title}".`).trim(),
-      kind:"Additive",value:Math.abs(Number(child.value)||0),scopeItems,
-      coBoqData:child.boqData||null,
-      ceNo:parent.ceNo||child.ceNo||"",
-      receiptType:parent.receiptType||"OR",
-      withholding:parent.withholding||false,
-      // Sales attribution: credit the child's AE; the child's own brand becomes
-      // the sub-account when it differs from the parent's client. awardedDate is
-      // stamped when the CO is Approved (drives the Sales Value month).
-      salesOwner:child.salesOwner||parent.salesOwner||"",
-      subAccount:(child.client&&child.client!==parent.client)?child.client:"",
-      status:"Discovered",salesNotified:true,
-      discoveredBy:session?.name||role,
-      convertedFromDealId:child.id,
-    };
-    upAddenda(as=>[...as,rec]);
-    if(isSupabaseReady()) sbSyncOne("addenda",rec,toSbAddendum);
-    // Optionally approve right away — updateAddendum stamps the award date, rolls
-    // the value into the parent contract and flows the scope into the BOQ, so the
-    // CO is recognized as sales immediately instead of sitting as "Discovered".
-    if(approve) updateAddendum(rec.id,{status:"Approved"});
-    logActivity(parent.id,"Change Order Created",`${session?.name||role} converted linked deal "${title}" (₱${Number(rec.value).toLocaleString("en-PH")}) into an additive change order${approve?" and approved it — now credited as sales.":" — pending approval."}`);
-    // Retire the now-redundant child deal (cascade handled by delDeal).
-    delDeal(child.id);
-    if(!silent)toastEmit(approve?"Converted & approved — now recognized as sales.":"Converted to Change Order — review & approve on Scope Changes.","success");
-    return true;
-  };
-  // Bulk: convert every linked child deal of a parent into a change order in one
-  // action. Keeps the per-deal ⇄ CO button; this just fans it out across all
-  // children of the given parent and reports a single summary toast.
-  const convertAllChildrenToCO=(parent)=>{
-    if(!parent){toastEmit("Parent project not found.","error");return;}
-    if(!canDeleteDeal){toastEmit("You don't have permission to convert these deals.","error");return;}
-    const children=deals.filter(d=>d.parentDealId===parent.id);
-    if(!children.length){toastEmit("No linked deals to convert on this project.","info");return;}
-    let n=0;
-    children.forEach(c=>{if(convertChildToCO(c,{silent:true}))n++;});
-    toastEmit(`Converted ${n} linked deal${n===1?"":"s"} on ${parent.client||"this project"} into change orders — review & approve on Scope Changes.`,"success");
-  };
+  // NOTE: Change orders are modeled as linked child deals (parentDealId set) that
+  // stay their own live deals — created by Sales via "+ Add New Deal → Link to
+  // Parent Deal", awarded and billed on their own. They are NEVER converted into
+  // a CO record or retired, and never spawn a second project card; they roll into
+  // the parent's Total Contract as a display-only line (see ContractBreakdown).
+  // The old convertChildToCO / convertAllChildrenToCO helpers were removed with
+  // that model change.
 
   const updatePayment=(id,key,val)=>upDeals(ds=>ds.map(d=>d.id===id?{...d,[key]:val}:d));
 
   const stageQ=(id,st)=>{
-    // A linked child deal (addendum) that reaches an awarded stage should not sit
-    // in the pipeline: auto-convert it into an approved Change Order on its parent
-    // so it is recognized as sales in the month it was awarded, then retire it.
+    // A linked child deal (addendum) stays its own live deal — it is NEVER
+    // converted or retired. It counts as sales/billing on its own, but it must
+    // NOT spawn a second project card: Operations maintains the ONE parent
+    // project card even when the project has addendums, so only parent deals
+    // (no parentDealId) get a projs entry on award.
     const staging=deals.find(x=>x.id===id);
-    if(staging?.parentDealId&&WON_STAGES.includes(st)){
-      if(convertChildToCO(staging,{silent:true,approve:true,system:true})){
-        toastEmit(`"${staging.contact||staging.client}" awarded — auto-converted into an approved Change Order on its parent project.`,"success");
-        return;
-      }
-      // Conversion failed (e.g. missing parent) — fall through to a normal stage move.
-    }
-    if(WON_STAGES.includes(st)) upProjs(ps=>ps[id]?ps:{...ps,[id]:emptyProject()});
+    if(WON_STAGES.includes(st)&&!staging?.parentDealId) upProjs(ps=>ps[id]?ps:{...ps,[id]:emptyProject()});
     if(st==="14 · Completed"){
       const d=deals.find(x=>x.id===id);
       // Standby PO umbrellas have no contract value/payments of their own.
@@ -7576,8 +7861,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       if(awardSynced) toastUpdate(savingToastId,`✅ ${awardModal.client} awarded and saved to server`,"success",3000);
       else toastUpdate(savingToastId,`⚠️ ${awardModal.client} awarded on this device only — didn't reach the server yet. Keep this browser/tab around so it can sync.`,"warning",12000);
     }
-    // Create project record
-    if(!projs[id]) upProjs(ps=>ps[id]?ps:{...ps,[id]:emptyProject()});
+    // Create project record — but never for a child/addendum deal, which shares
+    // its parent's single project card.
+    if(!projs[id]&&!awardedDeal.parentDealId) upProjs(ps=>ps[id]?ps:{...ps,[id]:emptyProject()});
     // Build PM list
     const pms=[form.pm1,form.pm2,form.pm3].filter(Boolean);
     const pmDisplay=pms.join(", ")||"TBA";
@@ -8103,6 +8389,34 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const savePayable=async(data)=>{
     if(!data.vendor||!data.amount) return;
     if(!String(data.accountCode||"").trim()){toastEmit("Select a Chart-of-Accounts code before saving — it drives the financial statements.","error");return;}
+    // Duplicate guard (new payables only) — the AP ledger has no unique key, so the
+    // same supplier invoice can be entered twice and double-paid. Warn before saving
+    // a likely repeat: same vendor + same amount, matched on invoice number when both
+    // sides have one (strong signal) or on invoice date when neither does (soft).
+    // Bypassable, because genuine identical recurring bills do occur.
+    if(!editPayId){
+      const norm=s=>String(s||"").trim().toLowerCase().replace(/\s+/g," ");
+      const dupAmt=Math.round((Number(data.amount)||0)*100)/100;
+      const inv=norm(data.invoiceNumber);
+      const dup=payables.find(p=>{
+        if(norm(p.vendor)!==norm(data.vendor)) return false;
+        if(Math.round((Number(p.amount)||0)*100)/100!==dupAmt) return false;
+        const pInv=norm(p.invoiceNumber);
+        if(inv&&pInv) return pInv===inv;                                  // both have invoice # → match on it
+        if(!inv&&!pInv) return (p.invoiceDate||"")===(data.invoiceDate||""); // neither → match on invoice date
+        return false;                                                     // one has #, the other doesn't → not a match
+      });
+      if(dup){
+        const peso=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+        const ok=await uiConfirm({title:"Possible duplicate payable",tone:"warning",confirmLabel:"Save anyway",cancelLabel:"Go back",
+          message:`A payable for ${data.vendor||"this vendor"} of ${peso(dupAmt)} already exists`+
+            (dup.invoiceNumber?` (Invoice ${dup.invoiceNumber})`:"")+
+            (dup.apNumber?` · ${dup.apNumber}`:"")+
+            (dup.createdAt?` · entered ${dup.createdAt}`:"")+
+            `.\n\nThis looks like the same bill entered twice — entering it again would double the amount owed. Save it anyway?`});
+        if(!ok) return;
+      }
+    }
     // Due date drives the cash-flow forecast — nudge (don't hard-block) if missing.
     if(!String(data.dueDate||"").trim()){
       const ok=await uiConfirm({title:"No due date set",tone:"warning",confirmLabel:"Save without due date",cancelLabel:"Go back & set it",
@@ -8120,7 +8434,18 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const inputVat=vatable?Math.round((amount-netAmount)*100)/100:0;
     const ewtRate=Number(data.ewtRate)||0;
     const ewtAmount=ewtRate>0?Math.round(netAmount*ewtRate/100*100)/100:0;
-    const rec={...data,amount,paidAmount,vatable,netAmount,inputVat,ewtRate,ewtAmount,tin:data.tin||"",
+    // Approval gate: a new payable enters as Pending and cannot be paid until a
+    // Manager or Finance Manager approves it. Editing preserves the existing
+    // decision — UNLESS the amount changed after approval, which resets it to
+    // Pending so a larger amount can't ride an old approval.
+    let approvalStatus="Pending",approvedBy="",approvedAt=null;
+    if(editPayId){
+      const prev=payables.find(p=>p.id===editPayId);
+      const amtChanged=prev&&Math.round((Number(prev.amount)||0)*100)/100!==Math.round(amount*100)/100;
+      if(prev&&prev.approvalStatus==="Approved"&&amtChanged){approvalStatus="Pending";approvedBy="";approvedAt=null;}
+      else{approvalStatus=prev?.approvalStatus||"Pending";approvedBy=prev?.approvedBy||"";approvedAt=prev?.approvedAt||null;}
+    }
+    const rec={...data,amount,paidAmount,vatable,netAmount,inputVat,ewtRate,ewtAmount,tin:data.tin||"",approvalStatus,approvedBy,approvedAt,
       apNumber:data.apNumber||(editPayId?"":nextApNumber()),
       id:editPayId||uid(),status:editPayId?derived:(paidAmount>0?derived:"Unpaid"),
       paidDate:derived==="Paid"?(data.paidDate||today):(data.paidDate||""),
@@ -8156,6 +8481,37 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     upPayables(ps=>ps.map(x=>x.id===id?upd:x));
     if(isSupabaseReady()&&isUUID(id)) sbUpsert("payables",payableToSb(upd),"id").catch(()=>{});
     toastEmit(payIsSubcon(p)?`Verified ${pct}% (Operations) — now payable.`:"Warehouse receipt verified — now payable.","success");
+  };
+  // ── Expense/payable approval gate ────────────────────────────────────────
+  // Only a Manager or the Finance Manager (Finance role) may approve a payable
+  // for payment. Approval is separate from receiving-verification: verification
+  // confirms goods/work arrived; approval authorizes the spend. A payable must
+  // be Approved before it can be paid or routed to a check voucher.
+  const canApprovePayables=["Manager","Finance"].includes(role);
+  const payApproved=p=>((p?.approvalStatus)||"Approved")==="Approved"; // legacy rows (no field) treated as approved
+  const approvePayable=async(id)=>{
+    const p=payables.find(x=>x.id===id); if(!p) return;
+    if(!canApprovePayables){toastEmit("Only a Manager or the Finance Manager can approve a payable.","error");return;}
+    // Block self-approval — the person who entered it can't clear it (Manager may override).
+    const nm=s=>String(s||"").trim().toLowerCase();
+    if(role!=="Manager"&&nm(p.createdBy)===nm(session?.name)&&nm(p.createdBy)!==""){
+      toastEmit("You entered this payable — another Manager or Finance approver must review it.","error",7000);return;
+    }
+    if(!(await uiConfirm(`Approve ${p.vendor||"this payable"}${p.apNumber?` (${p.apNumber})`:""} for ₱${Number(p.amount||0).toLocaleString("en-PH",{minimumFractionDigits:2})}? This clears it for payment.`))) return;
+    const upd={...p,approvalStatus:"Approved",approvedBy:session?.name||role,approvedAt:today};
+    upPayables(ps=>ps.map(x=>x.id===id?upd:x));
+    if(isSupabaseReady()&&isUUID(id)) sbUpsert("payables",payableToSb(upd),"id").catch(()=>{toastEmit("⚠️ Approval saved locally but NOT synced — do not close this tab!","warning",9000);});
+    toastEmit(`✅ Approved — ${p.vendor||"payable"} is now cleared for payment.`,"success");
+  };
+  const rejectPayable=async(id)=>{
+    const p=payables.find(x=>x.id===id); if(!p) return;
+    if(!canApprovePayables){toastEmit("Only a Manager or the Finance Manager can reject a payable.","error");return;}
+    const reason=await uiPrompt("Reason for rejecting this payable (kept on record):","");
+    if(reason==null) return;
+    const upd={...p,approvalStatus:"Rejected",approvedBy:session?.name||role,approvedAt:today,notes:(p.notes?p.notes+" · ":"")+"REJECTED: "+(reason||"(no reason given)")};
+    upPayables(ps=>ps.map(x=>x.id===id?upd:x));
+    if(isSupabaseReady()&&isUUID(id)) sbUpsert("payables",payableToSb(upd),"id").catch(()=>{toastEmit("⚠️ Rejection saved locally but NOT synced — do not close this tab!","warning",9000);});
+    toastEmit("Payable rejected — it can be edited and re-submitted.","info");
   };
   // Record a payment against a payable (full or partial). Advances paidAmount and
   // flips Unpaid → Partial → Paid as the running balance closes — the "Pay" action
@@ -8358,7 +8714,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // scope belongs to the parent project. Steer it to the change-order flow.
     if(d?.parentDealId){
       const par=deals.find(x=>x.id===d.parentDealId);
-      toastEmit(`"${d.contact||d.client}" is an addendum of ${par?.client||"another project"}${par?.ceNo?` (${par.ceNo})`:""}. Don't issue a Job Order for it — convert it to a Change Order (⇄ CO) so the scope rolls into the parent project.`,"error",9000);
+      toastEmit(`"${d.contact||d.client}" is an addendum of ${par?.client||"another project"}${par?.ceNo?` (${par.ceNo})`:""}. Don't issue a separate Job Order for it — the added scope runs under the parent project's Job Order.`,"error",9000);
       return;
     }
     const matT=(p?.materials||[]).reduce((s,m)=>s+m.cost,0);
@@ -8376,7 +8732,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Reports"}]},
       {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"BOQ"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"finance-reports",l:"Reports"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},...((session?.username==="paulo"||session?.username==="mar")?[{id:"projectmargins",l:"Project Margins"}]:[]),{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"finance-reports",l:"Reports"}]},
       {group:"Accounting",  items:[{id:"coa",l:"Chart of Accounts"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
       {group:"Design",      items:[{id:"designboard",l:"Design Board"},{id:"drf",l:"Design Requests"}]},
@@ -8445,7 +8801,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     ProjectMover:[
       {group:"Overview", items:[{id:"home",l:"My Projects"},{id:"calendar",l:"Calendar"}]},
-      {group:"Updates",  items:[{id:"pmupdates",l:"PM Updates"},{id:"addenda",l:"Scope Changes"}]},
+      // Scope changes are Sales-owned (a linked deal). A PM who spots one reports
+      // it via PM Updates; Sales picks it up and logs the linked addendum.
+      {group:"Updates",  items:[{id:"pmupdates",l:"PM Updates"}]},
       {group:"Work",     items:[{id:"projects",l:"Project Cards"}]},
     ],
     Warehouse:[
@@ -8454,10 +8812,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     SalesOpsAdmin:[
       {group:"Overview",   items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
-      {group:"Sales",      items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"},{id:"ceqs",l:"CE Requests"},{id:"boq",l:"BOQ"}]},
+      {group:"Sales",      items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Reports"},{id:"ceqs",l:"CE Requests"},{id:"boq",l:"BOQ"}]},
       {group:"Billing",    items:[{id:"billing",l:"Billing"}]},
       {group:"Finance",    items:[{id:"financecal",l:"Finance Calendar"}]},
       {group:"Operations", items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
+      {group:"Design",     items:[{id:"drf",l:"Design Requests"}]},
     ],
     FinanceAssistant:[
       {group:"Overview",   items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
@@ -8468,7 +8827,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const Nav=useStableComponent(()=>{
     const NAV_ICONS={
       home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   cashposition:"🏦",   cashflow:"📈",   payables:"📤",   billing:"🧾",
-      reports:"📈", "sales-reports":"📈", "finance-reports":"📈", acctdash:"📒", executive:"🎯", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
+      reports:"📈", "sales-reports":"📈", "finance-reports":"📈", projectmargins:"🪙", acctdash:"📒", executive:"🎯", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅", financecal:"📅",
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
       masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆", audit:"🔎", syshealth:"🩺", tvboard:"📺",
@@ -8619,7 +8978,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const allItems=groups.flatMap(g=>g.items||[]);
     const NAV_ICONS={
       home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   cashposition:"🏦",   cashflow:"📈",   payables:"📤",   billing:"🧾",
-      reports:"📈", "sales-reports":"📈", "finance-reports":"📈", acctdash:"📒", executive:"🎯", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
+      reports:"📈", "sales-reports":"📈", "finance-reports":"📈", projectmargins:"🪙", acctdash:"📒", executive:"🎯", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅", financecal:"📅",
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
       masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆", audit:"🔎", syshealth:"🩺", tvboard:"📺",
@@ -9291,9 +9650,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             {Object.keys(cashPositions).length===0
               ? <div style={{color:"#94a3b8",fontSize:".82rem",textAlign:"center",padding:"16px"}}>No cash position entries yet. Click Open to start today's entry.</div>
               : (()=>{
-                  const latest=Object.values(cashPositions).sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
+                  const _cs=bankCashSummary(cashPositions,today);
+                  const latest=_cs.latest;
                   if(!latest) return <div style={{color:"#94a3b8",fontSize:".82rem",textAlign:"center",padding:"16px"}}>No valid entries found.</div>;
-                  const total=["bpi","metrobank","chinabank","bdo","secbank","unionbank"].reduce((s,b)=>s+Number(latest[b+"_end"]||latest[b+"End"]||0),0);
+                  const total=_cs.total;
                   return(
                     <div>
                       <div style={{fontSize:".72rem",color:"#94a3b8",marginBottom:8}}>Last entry: {latest.date}</div>
@@ -10135,7 +10495,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       addOpsEvent={data=>{const rec={...data,id:uid(),dept:"Operations",createdDate:today,createdBy:session?.name||role};upChecklist(cs=>[...cs,rec]);if(isSupabaseReady())sbInsert('checklists',toSbChecklist(rec)).catch(err=>{console.error("Calendar item sync:",err);toastEmit&&toastEmit("Calendar item saved locally only — tap 🔄 sync to push it to the server.","warning",8000);});const proj=wonDeals.find(d=>d.id===rec.projectId);const msg=`📅 <b>Calendar Item Added</b>\n<b>${rec.type||"Event"}</b>: ${rec.title||""}\nDate: ${rec.dueDate||"—"}${proj?`\nProject: ${proj.client}${proj.ceNo?" ("+proj.ceNo+")":""}`:""}\nBy: ${rec.createdBy||"—"}`;const _t=(rec.type||"").toLowerCase();if(_t==="turnover"){sendTelegramNotification("ops",msg);sendTelegramNotification("sales",msg);sendTelegramNotification("management",msg);}else if(_t==="po delivery"){sendTelegramNotification("procurement",msg);sendTelegramNotification("warehouse",msg);}else if(_t.includes("billing")){sendTelegramNotification("financialcontrol",msg);sendTelegramNotification("management",msg);}else if(_t.includes("drf")||_t.includes("design")){sendTelegramNotification("design",msg);}else if(_t==="inspection"){sendTelegramNotification("ops",msg);sendTelegramNotification("management",msg);}else if(_t==="maintenance"){sendTelegramNotification("ops",msg);}else{sendTelegramNotification("ops",msg);sendTelegramNotification("sales",msg);}}}
       updateOpsEvent={(id,ch)=>{upChecklist(cs=>cs.map(c=>c.id===id?{...c,...ch}:c));if(isSupabaseReady())sbUpdate('checklists',id,toSbChecklist({...checklist.find(c=>c.id===id),...ch})).catch(()=>{});}}
       deleteOpsEvent={delOpsEvent}
-      updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())sbUpsert('project_cards',{deal_id:dealId,target_end_date:date},'deal_id').catch(()=>{});}}
+      updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())syncProjectCard(dealId,{target_end_date:date});}}
     />
   );
 
@@ -10273,7 +10633,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       })()}
 
       {/* PM Update Modal (also accessible from home) */}
-      {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate} updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())sbUpsert('project_cards',{deal_id:dealId,target_end_date:date},'deal_id').catch(()=>{});}}/>}
+      {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate} updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())syncProjectCard(dealId,{target_end_date:date});}}/>}
     </Wrap>
   );
 
@@ -10294,6 +10654,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         </div>
       </div>
 
+      {/* ── FINANCIAL OVERVIEW (owners only) ─────────────────────────── */}
+      {(session?.username==="paulo"||session?.username==="mar")&&(
+        <FinancialOverview deals={deals} wonDeals={wonDeals} exps={exps} payables={payables} loans={loans} cashPositions={cashPositions} billings={billings} today={today} setPage={setPage} setFinTab={setFinTab} onOpenProject={id=>{setJumpDeal(id);setPage("projects");}} onViewAllMargins={()=>setPage("projectmargins")} isMobile={isMobile}/>
+      )}
+
       {(()=>{
         const allMs = billings;
         const totalBilled   = allMs.reduce((s,m)=>s+Number(m.amount||0),0);
@@ -10302,8 +10667,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const today2        = new Date();
         const overdue       = allMs.filter(m=>m.dueDate&&new Date(m.dueDate)<today2&&m.status!=="Fully Paid");
         const overdueValue  = overdue.reduce((s,m)=>{const p=(m.payments||[]).reduce((ps,py)=>ps+Number(py.amount||0),0);return s+Math.max(0,Number(m.amount||0)-p);},0);
-        const latestCash    = Object.values(cashPositions).sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
-        const totalCash     = latestCash?["bpi","metrobank","chinabank","bdo","secbank","unionbank"].reduce((s,b)=>s+Number(latestCash[b+"_end"]||latestCash[b+"End"]||0),0):0;
+        const _cash         = bankCashSummary(cashPositions,today);
+        const latestCash    = _cash.latest;
+        const totalCash     = _cash.total;
         const noBilling     = wonDeals.filter(d=>!billings.find(b=>b.dealId===d.id));
         const collRate      = totalBilled>0?Math.round(totalPaid/totalBilled*100):0;
         const totalPipeVal  = deals.filter(d=>isActivePipeline(d.stage)).reduce((s,d)=>s+Number(d.value||0),0);
@@ -10312,7 +10678,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           {/* KPI Row 1 — Financial health */}
           <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:12}}>
             {[
-              {l:"Total Cash (6 banks)",   v:"₱"+Math.round(totalCash/1000)+"K",        c:"#059669",  icon:"🏦", sub:latestCash?"As of "+latestCash.date:"No entry yet"},
+              {l:"Total Cash (6 banks)",   v:"₱"+Math.round(totalCash/1000)+"K",        c:"#059669",  icon:"🏦", sub:!latestCash?"⚠ No entry yet":_cash.stale?`⚠ As of ${latestCash.date} · ${_cash.daysOld}d old`:"✓ Updated today"},
               {l:"Total Collected YTD",    v:"₱"+Math.round(totalPaid/1000)+"K",         c:"#3b82f6",  icon:"✅", sub:"Collection rate: "+collRate+"%"},
               {l:"Outstanding",            v:"₱"+Math.round(outstanding/1000)+"K",       c:"#f59e0b",  icon:"⏰", sub:overdue.length+" invoices overdue"},
               {l:"Overdue Value",          v:"₱"+Math.round(overdueValue/1000)+"K",      c:"#ef4444",  icon:"🚨", sub:"Needs immediate follow-up", click:()=>setPage("billing")},
@@ -10375,10 +10741,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               </div>
               {!latestCash
                 ?<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No cash position entered yet. Aerwin needs to update daily.</div>
-                :[["BPI","bpi"],["Metrobank","metrobank"],["Chinabank","chinabank"],["BDO","bdo"],["Security Bank","secbank"],["Unionbank","unionbank"]].map(([label,key],i)=>{
-                  const val=Number(latestCash[key+"_end"]||latestCash[key+"End"]||0);
-                  return(<div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 14px",borderBottom:i<5?"1px solid #f8fafc":""}}>
-                    <span style={{fontSize:".82rem",color:"#475569",fontWeight:500}}>{label}</span>
+                :_cash.perBank.map((b,i)=>{
+                  const val=b.val;
+                  return(<div key={b.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 14px",borderBottom:i<_cash.perBank.length-1?"1px solid #f8fafc":""}}>
+                    <span style={{fontSize:".82rem",color:"#475569",fontWeight:500}}>{b.short}</span>
                     <span style={{fontWeight:700,color:val>0?"#059669":"#94a3b8",fontSize:".82rem"}}>₱{val.toLocaleString("en-PH",{minimumFractionDigits:0})}</span>
                   </div>);
                 })
@@ -10705,6 +11071,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         </div>
         </div>
 
+      {/* ── FINANCIAL OVERVIEW (owners only) ─────────────────────────── */}
+      {(session?.username==="paulo"||session?.username==="mar")&&(
+        <FinancialOverview deals={deals} wonDeals={wonDeals} exps={exps} payables={payables} loans={loans} cashPositions={cashPositions} billings={billings} today={today} setPage={setPage} setFinTab={setFinTab} onOpenProject={id=>{setJumpDeal(id);setPage("projects");}} onViewAllMargins={()=>setPage("projectmargins")} isMobile={ceoMob}/>
+      )}
+
       {/* ── ACTION CENTER (what needs attention, promoted to the top) ── */}
       {(()=>{
         const items=[];
@@ -10774,7 +11145,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const now=new Date();
         const months=[];
         for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);months.push({yr:d.getFullYear(),mo:d.getMonth(),label:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()]});}
-        const awardedMonth=d=>{const aw=pcards[d.id]?.awardDate||d.dateAcquired;return aw?new Date(aw):null;};
+        // Awarded month is driven ONLY by the real award date (project_cards.award_date).
+        // No fallback to dateAcquired: a won deal with no award date set is undated and drops
+        // out of the monthly awarded buckets until a real date is entered, instead of landing
+        // in the wrong month on the lead-acquisition date.
+        const awardedMonth=d=>{const aw=pcards[d.id]?.awardDate;return aw?new Date(aw):null;};
         const salesData=months.map(({yr,mo})=>deals.filter(d=>{if(!WON_STAGES.includes(d.stage))return false;const dt=awardedMonth(d);return dt&&dt.getFullYear()===yr&&dt.getMonth()===mo;}).reduce((s,d)=>s+Number(d.value||0),0));
         const expData=months.map(({yr,mo})=>exps.filter(e=>{const ds=e.date||(e.year!=null&&e.month!=null?`${e.year}-${String(e.month+1).padStart(2,"0")}-01`:null);if(!ds)return false;const d=new Date(ds);return d.getFullYear()===yr&&d.getMonth()===mo;}).reduce((s,e)=>s+Number(e.amount||0),0));
         const collData=months.map(({yr,mo})=>{let sum=0;billings.forEach(b=>{(b.payments||[]).forEach(p=>{if(!p.date)return;const d=new Date(p.date);if(d.getFullYear()===yr&&d.getMonth()===mo)sum+=Number(p.amount||0);});});return sum;});
@@ -10849,7 +11224,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
         const monLabel=`${MON[cmo]} ${cyr}`;
         const inThisMonth=dt=>dt&&dt.getFullYear()===cyr&&dt.getMonth()===cmo;
-        const awardedMonth=d=>{const aw=pcards[d.id]?.awardDate||d.dateAcquired;return aw?new Date(aw):null;};
+        // Awarded month is driven ONLY by the real award date (project_cards.award_date).
+        // No fallback to dateAcquired: a won deal with no award date set is undated and drops
+        // out of the monthly awarded buckets until a real date is entered, instead of landing
+        // in the wrong month on the lead-acquisition date.
+        const awardedMonth=d=>{const aw=pcards[d.id]?.awardDate;return aw?new Date(aw):null;};
         // Build the row list for the clicked widget
         let rows=[];
         if(key==="sales"||key==="awarded"){
@@ -11049,7 +11428,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       addOpsEvent={data=>{const rec={...data,id:uid(),dept:"Operations",createdDate:today,createdBy:session?.name||role};upChecklist(cs=>[...cs,rec]);if(isSupabaseReady())sbInsert('checklists',toSbChecklist(rec)).catch(err=>{console.error("Calendar item sync:",err);toastEmit&&toastEmit("Calendar item saved locally only — tap 🔄 sync to push it to the server.","warning",8000);});const proj=wonDeals.find(d=>d.id===rec.projectId);const msg=`📅 <b>Calendar Item Added</b>\n<b>${rec.type||"Event"}</b>: ${rec.title||""}\nDate: ${rec.dueDate||"—"}${proj?`\nProject: ${proj.client}${proj.ceNo?" ("+proj.ceNo+")":""}`:""}\nBy: ${rec.createdBy||"—"}`;const _t=(rec.type||"").toLowerCase();if(_t==="turnover"){sendTelegramNotification("ops",msg);sendTelegramNotification("sales",msg);sendTelegramNotification("management",msg);}else if(_t==="po delivery"){sendTelegramNotification("procurement",msg);sendTelegramNotification("warehouse",msg);}else if(_t.includes("billing")){sendTelegramNotification("financialcontrol",msg);sendTelegramNotification("management",msg);}else if(_t.includes("drf")||_t.includes("design")){sendTelegramNotification("design",msg);}else if(_t==="inspection"){sendTelegramNotification("ops",msg);sendTelegramNotification("management",msg);}else if(_t==="maintenance"){sendTelegramNotification("ops",msg);}else{sendTelegramNotification("ops",msg);sendTelegramNotification("sales",msg);}}}
       updateOpsEvent={(id,ch)=>{upChecklist(cs=>cs.map(c=>c.id===id?{...c,...ch}:c));if(isSupabaseReady())sbUpdate('checklists',id,toSbChecklist({...checklist.find(c=>c.id===id),...ch})).catch(()=>{});}}
       deleteOpsEvent={delOpsEvent}
-      updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())sbUpsert('project_cards',{deal_id:dealId,target_end_date:date},'deal_id').catch(()=>{});}}
+      updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())syncProjectCard(dealId,{target_end_date:date});}}
     />
   );
 
@@ -11067,11 +11446,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const aeCode=(name)=>{if(!name)return"—";const skip=new Set(["de","del","ng","la","the"]);return name.split(" ").filter(w=>w&&!skip.has(w.toLowerCase())).map(w=>w[0].toUpperCase()).join("");};
     const getPCount=()=>repPeriod==="monthly"?12:repPeriod==="quarterly"?4:1;
     const getPLabel=(i)=>repPeriod==="monthly"?MONTHS[i]:repPeriod==="quarterly"?`Q${i+1}`:`${CY}`;
-    // acqDate: for WON deals, the actual award date (set on the project card at award
-    // time) is the correct "when it happened" timestamp — dateAcquired is just the
-    // original lead-intake date and is a poor stand-in once a deal is won. Fall back
-    // to dateAcquired only when no award date has been recorded yet.
+    // acqDate: the acquisition/win-RATE anchor. For WON deals it prefers the award date,
+    // falling back to the lead-intake date so a won-but-undated deal STILL counts in its
+    // acquisition cohort (dropping it would silently understate the win-rate denominator).
+    // Use this ONLY for period/win-rate bucketing, never for "awarded this month" value.
     const acqDate=(d)=>(WON_STAGES.includes(d.stage)?pcards[d.id]?.awardDate:null)||d.dateAcquired||null;
+    // awardOnly: the true awarded date with NO fallback — matches the TV and Sales Value
+    // reports. An undated won deal is excluded from the awarded-value/count metrics rather
+    // than being credited to the wrong (lead-intake) month.
+    const awardOnly=(d)=>pcards[d.id]?.awardDate||null;
     const getDealPeriod=(d)=>{const ds=acqDate(d);if(!ds)return -1;const dt=new Date(ds);if(dt.getFullYear()!==CY)return -1;return repPeriod==="monthly"?dt.getMonth():repPeriod==="quarterly"?Math.floor(dt.getMonth()/3):0;};
     const getFinPeriod=(dateStr)=>{if(!dateStr)return -1;const d=new Date(dateStr);if(d.getFullYear()!==CY)return -1;return repPeriod==="monthly"?d.getMonth():repPeriod==="quarterly"?Math.floor(d.getMonth()/3):0;};
     const n=getPCount();
@@ -11087,7 +11470,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const CO_APPROVED=a=>["Approved","Billed","Collected"].includes(a.status);
     const coTax=a=>{const t=calcTax(Math.abs(Number(a.value||0)),a.receiptType||"OR",a.withholding||false);const sign=a.kind==="Deductive"?-1:1;return {gross:sign*t.gross,base:sign*t.base,vat:sign*t.vat};};
     const coInPeriod=(a,i)=>{const ds=a.awardedDate;if(!ds)return false;const dt=new Date(ds);if(dt.getFullYear()!==CY)return false;const p=repPeriod==="monthly"?dt.getMonth():repPeriod==="quarterly"?Math.floor(dt.getMonth()/3):0;return p===i;};
-    const monthWon=deals.filter(d=>{if(!WON_STAGES.includes(d.stage))return false;const dt=acqDate(d);return dt&&new Date(dt).getFullYear()===CY&&new Date(dt).getMonth()===CM;});
+    // "Won this month" credits by the true award date (awardOnly) so AE credit and sales
+    // value land in the month the deal was actually awarded — consistent with the TV and
+    // Sales Value reports. Undated won deals are surfaced in dataFlags below, not mis-dated.
+    const monthWon=deals.filter(d=>{if(!WON_STAGES.includes(d.stage))return false;const dt=awardOnly(d);return dt&&new Date(dt).getFullYear()===CY&&new Date(dt).getMonth()===CM;});
     const monthCancelled=deals.filter(d=>{if(d.stage!=="Cancelled")return false;const dt=acqDate(d);return dt&&new Date(dt).getFullYear()===CY&&new Date(dt).getMonth()===CM;});
     // Change orders approved in the selected month (CM) — credited as sales value.
     const monthCO=addenda.filter(a=>{if(!CO_APPROVED(a)||!a.awardedDate)return false;const dt=new Date(a.awardedDate);return dt.getFullYear()===CY&&dt.getMonth()===CM;});
@@ -11112,6 +11498,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(zeroWon.length)dataFlags.push({n:dataFlags.length+1,issue:"Won deal with no value",detail:zeroWon.map(d=>`${d.client} — ${d.product||"(no project)"}`).join("; "),stake:"unknown"});
     const noCE=monthWon.filter(d=>!d.ceNo);
     if(noCE.length)dataFlags.push({n:dataFlags.length+1,issue:"Missing CE# on won deal",detail:noCE.map(d=>d.client).join(", "),stake:"—"});
+    // Won deals with no award date drop out of every awarded-value/count report (they can't
+    // be bucketed to a month). Surface them here so the award date gets set and the numbers
+    // reconcile, instead of the deal silently vanishing from the awarded totals.
+    const noAward=deals.filter(d=>WON_STAGES.includes(d.stage)&&!d.parentDealId&&!awardOnly(d));
+    if(noAward.length)dataFlags.push({n:dataFlags.length+1,issue:"Won project — no award date (excluded from awarded reports)",detail:noAward.map(d=>d.client+(d.ceNo?` (${d.ceNo})`:"")).join(", "),stake:fmt(noAward.reduce((s,d)=>s+Number(d.value||0),0))});
     const ceCounts={};deals.filter(d=>d.ceNo).forEach(d=>{ceCounts[d.ceNo]=(ceCounts[d.ceNo]||0)+1;});
     const dupCE=Object.entries(ceCounts).filter(([,c])=>c>1);
     if(dupCE.length)dataFlags.push({n:dataFlags.length+1,issue:"Duplicate CE numbers",detail:dupCE.map(([ce,c])=>`${ce} (${c}x)`).join(", "),stake:"—"});
@@ -12562,11 +12953,49 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             (!pipeSearch||[d.client,d.contact,d.ceNo,d.salesOwner,d.product].join(" ").toLowerCase().includes(pipeSearch.toLowerCase()))&&
             (pipeAE==="all"||d.salesOwner===pipeAE)
           ).sort((a,b)=>new Date(b.dateAcquired||0)-new Date(a.dateAcquired||0));
-          const hotDeals=allActive.filter(d=>!d.parentDealId&&daysSince(d.dateAcquired)<=15);
-          const coldDeals=allActive.filter(d=>!d.parentDealId&&daysSince(d.dateAcquired)>15);
           const childPipeDeals=allActive.filter(d=>d.parentDealId);
           const parentActive=allActive.filter(d=>!d.parentDealId);
           const overdueFollowUps=parentActive.filter(d=>d.followUp&&d.followUp<today).sort((a,b)=>new Date(a.followUp)-new Date(b.followUp));
+
+          // ── Pipeline temperature board (Hot / Almost Awarded / Cold) ──────────
+          // Buckets are MANUAL (deal.temperature), dragged between columns. When a
+          // deal has no explicit temperature we derive one so the board is never
+          // empty (see deriveTemp in core.js). tempOf resolves the effective bucket.
+          const tempOf=d=>deriveTemp(d,daysSince(d.dateAcquired));
+          const hotDeals   =parentActive.filter(d=>tempOf(d)==="Hot");
+          const almostDeals=parentActive.filter(d=>tempOf(d)==="Almost Awarded");
+          const coldDeals  =parentActive.filter(d=>tempOf(d)==="Cold");
+          const canSetTemp=(role==="Manager"||role==="Sales"||role==="SalesOpsAdmin");
+          // Last time the deal was touched: newest of dateAcquired and any activity
+          // log entry for it. Used for the stale-Cold review (NOT dateAcquired — an
+          // old-but-active deal isn't dead). followUp is a plan, not activity.
+          const lastActivityOf=d=>{
+            let latest=d.dateAcquired||"";
+            for(const e of actLog){ if(e.dealId===d.id && e.date && e.date>latest) latest=e.date; }
+            return latest;
+          };
+          const daysIdle=d=>{const la=lastActivityOf(d);return la?Math.floor((new Date(today)-new Date(la))/(864e5)):0;};
+          // setTemp — persist the manual bucket (partial column UPDATE, mirroring the
+          // Did Not Win / Cancel pattern so RLS INSERT policies don't clobber it).
+          const setTemp=(d,temp)=>{
+            if(!canSetTemp||!DEAL_TEMPS.includes(temp)||tempOf(d)===temp&&d.temperature===temp){setPipeDragId(null);setPipeDragOver(null);return;}
+            upDeals(ds=>ds.map(x=>x.id===d.id?{...x,temperature:temp}:x));
+            if(isSupabaseReady())sbUpdate('deals',d.id,{temperature:temp,updated_at:new Date().toISOString()}).catch(()=>{});
+            logActivity(d.id,"Temperature",`${d.contact||d.client} → ${TEMP_META[temp].icon} ${temp}`,session?.name);
+            toastEmit(`${TEMP_META[temp].icon} Moved to ${temp}`);
+            setPipeDragId(null);setPipeDragOver(null);
+          };
+          // Stale-Cold review: Cold parent deals idle ≥ COLD_STALE_DAYS. Surfaced for
+          // one-click "Did Not Win" — never auto-written (a slow bid isn't a lost bid).
+          const staleCold=coldDeals.filter(d=>daysIdle(d)>=COLD_STALE_DAYS).sort((a,b)=>daysIdle(b)-daysIdle(a));
+          const sweepDidNotWin=(d)=>{
+            const stamp=new Date().toISOString().slice(0,10);
+            upDeals(ds=>ds.map(x=>{if(x.id!==d.id)return x;const notes=(x.notes||"")+`\n[DID NOT WIN ${stamp}]: auto-flagged — Cold ${daysIdle(d)}d with no activity, confirmed by ${session?.name||"Sales"}`;
+              if(isSupabaseReady())sbUpdate('deals',x.id,{stage:"Did Not Win",probability:0,notes,updated_at:new Date().toISOString()}).catch(()=>{});
+              return{...x,stage:"Did Not Win",probability:0,notes};}));
+            logActivity(d.id,"Did Not Win",`${d.client} — stale Cold (${daysIdle(d)}d idle), marked Did Not Win`,session?.name);
+            toastEmit("Moved to Did Not Win.");
+          };
 
           // Helpers: hide contract value from Ops/Design/PM — show QS budget instead
           const BUDGET_ONLY=["Design","Operations","ProjectMover"];
@@ -12612,9 +13041,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               </div>
             );
             return(
-            <div style={{display:"flex",gap:8,padding:"7px 12px",borderBottom:i<list.length-1?"1px solid #f1f5f9":"none",alignItems:"center",background:"#fff",transition:"background .1s"}}
-              onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
-              onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
+            <div draggable={canSetTemp&&!d.parentDealId}
+              onDragStart={canSetTemp&&!d.parentDealId?(e=>{setPipeDragId(d.id);e.dataTransfer.effectAllowed="move";}):undefined}
+              onDragEnd={()=>{setPipeDragId(null);setPipeDragOver(null);}}
+              style={{display:"flex",gap:8,padding:"7px 12px",borderBottom:i<list.length-1?"1px solid #f1f5f9":"none",alignItems:"center",background:pipeDragId===d.id?"#eff6ff":"#fff",opacity:pipeDragId===d.id?.5:1,cursor:canSetTemp&&!d.parentDealId?"grab":"default",transition:"background .1s"}}
+              onMouseEnter={e=>{if(pipeDragId!==d.id)e.currentTarget.style.background="#f8fafc";}}
+              onMouseLeave={e=>{if(pipeDragId!==d.id)e.currentTarget.style.background="#fff";}}>
+              {canSetTemp&&!d.parentDealId&&<span style={{color:"#cbd5e1",fontSize:".85rem",cursor:"grab",flexShrink:0}} title="Drag to Hot / Almost Awarded / Cold">⠿</span>}
               <div style={{flex:1,minWidth:0}}>
                 <div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap"}}>
                   <span style={{fontWeight:700,color:"#0f172a",fontSize:".8rem"}}>{d.contact||d.client}</span>
@@ -12678,42 +13111,62 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 </div>
               )}
 
-              {/* 🔥 Hot + 🧊 Cold — side by side on desktop, stacked on mobile */}
-              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:14,marginBottom:20}}>
-                {/* Hot */}
-                <div>
-                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:7,display:"flex",alignItems:"center",gap:6}}>
-                    🔥 Hot Pipeline
-                    <span style={{fontWeight:400,color:"#94a3b8",fontSize:".72rem"}}>({hotDeals.length} · ≤15 days)</span>
-                  </div>
-                  <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-                    <PipeTableHeader/>
-                    <div style={{maxHeight:300,overflowY:"auto"}}>
-                      {hotDeals.length===0&&<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".78rem"}}>{pipeSearch?"No match.":"No new deals this period."}</div>}
-                      {hotDeals.map((d,i)=>{
-                        const children=childPipeDeals.filter(c=>c.parentDealId===d.id);
-                        return(<React.Fragment key={d.id}><PipeRow d={d} list={hotDeals} i={i}/>{children.map(c=><div key={c.id} style={{paddingLeft:24,borderLeft:"3px solid #f59e0b",marginLeft:12,background:"#fffbeb"}}><PipeRow d={c} list={children} i={0}/></div>)}</React.Fragment>);
-                      })}
+              {/* ⚠ Stale-Cold review — Cold deals idle ≥45 days, one-click Did Not Win.
+                  Never auto-written: a slow bid isn't a lost bid, so a human confirms. */}
+              {canSetTemp&&!coldSweepDismissed&&staleCold.length>0&&(
+                <div style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:12,padding:"12px 16px",marginBottom:14}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,flexWrap:"wrap"}}>
+                    <div style={{minWidth:0}}>
+                      <div style={{fontWeight:700,color:"#1d4ed8",fontSize:".85rem"}}>🧊 {staleCold.length} cold deal{staleCold.length>1?"s":""} look dead — mark Did Not Win?</div>
+                      <div style={{fontSize:".73rem",color:"#2563eb",opacity:.85,marginTop:3}}>No activity for {COLD_STALE_DAYS}+ days. Confirm each individually — nothing changes until you click ✗.</div>
                     </div>
+                    <button onClick={()=>setColdSweepDismissed(true)} style={{background:"transparent",border:"none",color:"#3b82f6",cursor:"pointer",fontSize:".76rem",fontWeight:700,flexShrink:0}}>Dismiss</button>
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",gap:6,marginTop:10}}>
+                    {staleCold.slice(0,8).map(d=>(
+                      <div key={d.id} style={{display:"flex",alignItems:"center",gap:10,background:"#fff",border:"1px solid #dbeafe",borderRadius:8,padding:"7px 11px",flexWrap:"wrap"}}>
+                        <div style={{flex:1,minWidth:0}}>
+                          <span style={{fontWeight:700,color:"#0f172a",fontSize:".8rem"}}>{d.contact||d.client}</span>
+                          {d.ceNo&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".62rem",fontWeight:600,color:"#6366f1",marginLeft:6}}>{d.ceNo}</span>}
+                          <span style={{fontSize:".68rem",color:"#94a3b8",marginLeft:6}}>· {daysIdle(d)}d idle · {d.salesOwner?.split(" ")[0]||"—"}</span>
+                        </div>
+                        <button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"5px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>Keep · Edit</button>
+                        <button onClick={async()=>{if(await uiConfirm(`Mark "${d.contact||d.client}" as Did Not Win?\n\nCold for ${daysIdle(d)} days with no activity. This removes it from the active pipeline and its commission projection. Reversible from the deal's edit screen.`))sweepDidNotWin(d);}} style={{background:"#64748b",border:"none",borderRadius:6,padding:"5px 10px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>✗ Did Not Win</button>
+                      </div>
+                    ))}
+                    {staleCold.length>8&&<div style={{fontSize:".7rem",color:"#2563eb",opacity:.7}}>+{staleCold.length-8} more</div>}
                   </div>
                 </div>
-                {/* Cold */}
-                <div>
-                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:7,display:"flex",alignItems:"center",gap:6}}>
-                    🧊 Cold Pipeline
-                    <span style={{fontWeight:400,color:"#94a3b8",fontSize:".72rem"}}>({coldDeals.length} · &gt;15 days)</span>
-                  </div>
-                  <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",opacity:coldDeals.length?1:0.6}}>
-                    <PipeTableHeader/>
-                    <div style={{maxHeight:300,overflowY:"auto"}}>
-                      {coldDeals.length===0&&<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".78rem"}}>{pipeSearch?"No match.":"All deals active — great work!"}</div>}
-                      {coldDeals.map((d,i)=>{
-                        const children=childPipeDeals.filter(c=>c.parentDealId===d.id);
-                        return(<React.Fragment key={d.id}><PipeRow d={d} list={coldDeals} i={i}/>{children.map(c=><div key={c.id} style={{paddingLeft:24,borderLeft:"3px solid #f59e0b",marginLeft:12,background:"#fffbeb"}}><PipeRow d={c} list={children} i={0}/></div>)}</React.Fragment>);
-                      })}
+              )}
+
+              {/* 🔥 Hot · 🏆 Almost Awarded · 🧊 Cold — drag cards between columns.
+                  Buckets are manual (deal.temperature); unset deals fall back to an
+                  age/stage-derived default. Three columns on desktop, stacked on mobile. */}
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(3,1fr)",gap:14,marginBottom:20}}>
+                {[["Hot",hotDeals],["Almost Awarded",almostDeals],["Cold",coldDeals]].map(([temp,list])=>{
+                  const m=TEMP_META[temp];const isOver=pipeDragOver===temp;
+                  return(
+                  <div key={temp}
+                    onDragOver={canSetTemp?(e=>{e.preventDefault();if(pipeDragOver!==temp)setPipeDragOver(temp);}):undefined}
+                    onDragLeave={canSetTemp?(e=>{if(e.currentTarget===e.target)setPipeDragOver(null);}):undefined}
+                    onDrop={canSetTemp?(e=>{e.preventDefault();const dd=deals.find(x=>x.id===pipeDragId);if(dd)setTemp(dd,temp);}):undefined}>
+                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:7,display:"flex",alignItems:"center",gap:6}}>
+                      {m.icon} {temp}
+                      <span style={{fontWeight:400,color:"#94a3b8",fontSize:".72rem"}}>({list.length})</span>
+                    </div>
+                    <div style={{background:isOver?m.bg:"#fff",borderRadius:12,border:`1.5px solid ${isOver?m.clr:"#e2e8f0"}`,overflow:"hidden",transition:"background .1s,border-color .1s",opacity:list.length||isOver?1:.6}}>
+                      <PipeTableHeader/>
+                      <div style={{maxHeight:340,overflowY:"auto",minHeight:isOver?90:0}}>
+                        {list.length===0&&<div style={{padding:"16px",textAlign:"center",color:isOver?m.clr:"#94a3b8",fontSize:".78rem"}}>{isOver?`Drop here → ${temp}`:pipeSearch?"No match.":`No deals. ${m.blurb}.`}</div>}
+                        {list.map((d,i)=>{
+                          const children=childPipeDeals.filter(c=>c.parentDealId===d.id);
+                          return(<React.Fragment key={d.id}><PipeRow d={d} list={list} i={i}/>{children.map(c=><div key={c.id} style={{paddingLeft:24,borderLeft:"3px solid #f59e0b",marginLeft:12,background:"#fffbeb"}}><PipeRow d={c} list={children} i={0}/></div>)}</React.Fragment>);
+                        })}
+                      </div>
                     </div>
                   </div>
-                </div>
+                  );
+                })}
               </div>
 
               {/* Awarded Projects — active only (stages 06–11) */}
@@ -12722,7 +13175,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 // Project cards are the parent deals (no parentDealId); bucket them by their own stage.
                 // Respect the AE chip filter (pipeAE) like the Hot/Cold pipeline does — addenda
                 // still nest under their parent below, so they follow the parent's AE automatically.
-                const wonParents=wonDeals.filter(d=>!d.parentDealId&&(pipeAE==="all"||d.salesOwner===pipeAE)&&(pipeType==="all"||(d.ceType||"Other")===pipeType));
+                const wonParents=wonDeals.filter(d=>!d.parentDealId&&(pipeAE==="all"||d.salesOwner===pipeAE)&&(pipeType==="all"||(d.ceType||"Other")===pipeType)&&(!pipeNoAward||!pcards[d.id]?.awardDate));
                 const activeWonBase=wonParents.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed"&&matchSearch(d));
                 const doneWonBase  =wonParents.filter(d=>(d.stage==="12 · Close-Out"||d.stage==="14 · Completed")&&matchSearch(d));
                 // Addenda nest under their parent's card, following the PARENT's bucket
@@ -12743,14 +13196,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 const AwardRow=({d,isChild=false})=>{
                   const jo=jos.find(j=>j.dealId===d.id);
                   const pc=pcards[d.id];
-                  // Award date is editable inline (Manager/Sales) so a mis-dated award
-                  // can be corrected without a DB touch — it drives the month each deal
-                  // lands in on the Awarded / Sales Value report (awardedMonth above).
-                  const canEditAward=(role==="Manager"||role==="Sales")&&!isChild;
+                  // Award date is editable inline (Manager/Sales/SalesOpsAdmin) so a
+                  // mis-dated award can be corrected without a DB touch — it drives the
+                  // month each deal lands in on the Awarded / Sales Value report
+                  // (awardedMonth above). Sub-project (child) rows are editable too: an
+                  // umbrella's standby-PO parent earns ₱0, so it is the sub-projects that
+                  // carry sales value and must be datable into the correct month.
+                  const canEditAward=(role==="Manager"||role==="Sales"||role==="SalesOpsAdmin");
                   const setCardAwardDate=(date)=>{
                     if(!date) return;
                     upPcards(ps=>({...ps,[d.id]:{...(ps[d.id]||emptyProjectCard(d.id,d)),awardDate:date}}));
-                    if(isSupabaseReady()) sbUpsert('project_cards',{deal_id:d.id,award_date:date},'deal_id').catch(()=>{});
+                    if(isSupabaseReady()) syncProjectCard(d.id,{award_date:date});
                     logActivity(d.id,"Award date set",`${d.contact||d.client} — award date set to ${date} by ${session?.name}`,session?.name);
                     toastEmit("Award date updated.");
                   };
@@ -12831,7 +13287,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                         </div>
                       </td>
                       <td style={{padding:cp,verticalAlign:"middle",whiteSpace:"nowrap"}} onClick={e=>e.stopPropagation()}>
-                        {canEditAward?(
+                        {isStandby?(
+                          <span title="Standby-PO umbrella earns ₱0 itself — set award dates on its sub-projects below, not here" style={{color:"#94a3b8",fontSize:".64rem",fontStyle:"italic"}}>on sub-projects ↓</span>
+                        ):canEditAward?(
                           <input type="date" value={pc?.awardDate||""} max={new Date().toISOString().slice(0,10)}
                             onClick={e=>e.stopPropagation()}
                             onChange={e=>setCardAwardDate(e.target.value)}
@@ -12859,9 +13317,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       <td style={{padding:cpA,verticalAlign:"middle",display:"flex",gap:4,alignItems:"center"}}>
                         <button onClick={e=>{e.stopPropagation();openEditDeal(d);}} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
                         {(role==="Manager"||role==="QS"||role==="Sales"||role==="SalesOpsAdmin")&&<button onClick={e=>{e.stopPropagation();setBoqCoId(null);setBoqStandaloneId(null);setBoqDealId(d.id);setPage("boq");}} title={isChild?"Open BOQ Builder for this addendum":"Open BOQ Builder for this project"} style={{background:"#0ea5e9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>🧮</button>}
-                        <button onClick={e=>{e.stopPropagation();setJumpDeal(d.id);setPage("projects");}} title="Open Project Card" style={{background:"#eff6ff",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#2563eb",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>📋</button>
-                        {isChild&&canConvertChild(d)&&<button onClick={async e=>{e.stopPropagation();if((await uiConfirm(`Convert "${d.contact||d.client}" into an approved additive Change Order on the parent project and retire this linked deal? It will be credited as sales for this month.`)))convertChildToCO(d,{approve:true});}} title="Convert this linked deal into an approved Change Order (credited as sales) and retire it" style={{background:"#fef3c7",border:"1px solid #f59e0b",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#92400e",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>⇄ CO</button>}
-                        {!isChild&&canDeleteDeal&&(()=>{const kids=deals.filter(x=>x.parentDealId===d.id);if(!kids.length)return null;return<button onClick={async e=>{e.stopPropagation();if((await uiConfirm(`Convert all ${kids.length} linked deal${kids.length===1?"":"s"} on "${d.client||d.contact}" into additive Change Orders and retire them?`)))convertAllChildrenToCO(d);}} title={`Convert all ${kids.length} linked deal(s) into Change Orders`} style={{background:"#fef3c7",border:"1px solid #f59e0b",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#92400e",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>⇄ All→CO ({kids.length})</button>;})()}
+                        <button onClick={e=>{e.stopPropagation();setJumpDeal(isChild?(d.parentDealId||d.id):d.id);setPage("projects");}} title={isChild?"Open the parent project card":"Open Project Card"} style={{background:"#eff6ff",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#2563eb",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>📋</button>
                       </td>
                     </tr>
                   );
@@ -12927,6 +13383,20 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:10,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                     🏆 Awarded Projects
                     <span style={{fontWeight:400,color:"#94a3b8",fontSize:".72rem"}}>({activeWon.filter(d=>!d.parentDealId).length} active)</span>
+                    {(()=>{
+                      // Count of active won parents still missing an award date — these are the
+                      // deals excluded from the awarded/sales-value reports until dated. The chip
+                      // toggles the awarded list down to exactly those, so they can be found and fixed.
+                      const missing=wonDeals.filter(d=>!d.parentDealId&&(pipeAE==="all"||d.salesOwner===pipeAE)&&d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed"&&!pcards[d.id]?.awardDate).length;
+                      if(!missing&&!pipeNoAward) return null;
+                      return(
+                        <button onClick={()=>setPipeNoAward(v=>!v)}
+                          title="Show only awarded projects that have no award date set"
+                          style={{padding:"3px 10px",borderRadius:20,border:`1.5px solid ${pipeNoAward?"#b45309":"#fbbf24"}`,background:pipeNoAward?"#b45309":"#fffbeb",color:pipeNoAward?"#fff":"#b45309",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer",whiteSpace:"nowrap"}}>
+                          ⚠️ No award date ({missing}){pipeNoAward?" ✕":""}
+                        </button>
+                      );
+                    })()}
                     {grandTotal>0&&<span style={{marginLeft:"auto",fontFamily:"'IBM Plex Mono',monospace",fontWeight:700,color:"#10b981",fontSize:".82rem"}}>₱{grandTotal.toLocaleString("en-PH")}</span>}
                   </div>
                   {typeList.length>1&&(
@@ -13069,6 +13539,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const d=rowMenu.deal;
         const items=[];
         const isWonDeal=WON_STAGES.includes(d.stage);
+        // Move between temperature columns without dragging (mobile / quick action).
+        // Only for active-pipeline parent deals — the board only buckets those.
+        if((role==="Manager"||role==="Sales"||role==="SalesOpsAdmin")&&isActivePipeline(d.stage)&&!d.parentDealId){
+          const cur=deriveTemp(d,d.dateAcquired?Math.floor((new Date(today)-new Date(d.dateAcquired))/(864e5)):0);
+          DEAL_TEMPS.filter(t=>t!==cur).forEach(t=>{const m=TEMP_META[t];items.push({icon:m.icon,label:`Move to ${t}`,color:m.clr,onClick:()=>{
+            upDeals(ds=>ds.map(x=>x.id===d.id?{...x,temperature:t}:x));
+            if(isSupabaseReady())sbUpdate('deals',d.id,{temperature:t,updated_at:new Date().toISOString()}).catch(()=>{});
+            logActivity(d.id,"Temperature",`${d.contact||d.client} → ${m.icon} ${t}`,session?.name);
+            toastEmit(`${m.icon} Moved to ${t}`);setRowMenu(null);
+          }});});
+        }
         if((role==="Manager"||role==="Sales")&&!isWonDeal) items.push({icon:"✗",label:"Mark Did Not Win",color:"#64748b",onClick:async ()=>{const reason=(await uiPrompt("Reason for not winning (optional):"));if(reason===null)return;const stamp=new Date().toISOString().slice(0,10);upDeals(ds=>ds.map(x=>{if(x.id!==d.id)return x;const notes=(x.notes||"")+(reason?"\n[DID NOT WIN "+stamp+"]: "+reason:"\n[DID NOT WIN "+stamp+"]");
           // Persist as a partial column UPDATE (like stageQ / payQ), NOT a full-row
           // upsert. An upsert routes through the RLS INSERT/WITH CHECK policy and was
@@ -13152,7 +13633,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {dupPrompt&&(
         <div onClick={()=>{setDupPrompt(null);setDupScopeTarget(null);setDupScopeForm({title:"",desc:"",value:"",});}} style={{position:"fixed",inset:0,background:"rgba(15,23,42,.65)",zIndex:1200,display:"flex",alignItems:isMobile?"flex-end":"center",justifyContent:"center",padding:isMobile?0:20}}>
           <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:isMobile?"18px 18px 0 0":16,width:"100%",maxWidth:isMobile?undefined:500,padding:isMobile?"20px 18px 28px":"24px 28px",boxShadow:"0 24px 64px rgba(0,0,0,.25)",maxHeight:"92vh",overflowY:"auto"}}>
-            {!dupScopeTarget?(
+            {(
               <>
                 <div style={{fontWeight:800,color:"#0f172a",fontSize:"1.05rem",marginBottom:6}}>⚠️ Looks like a duplicate</div>
                 <div style={{fontSize:".8rem",color:"#64748b",marginBottom:16}}>We found a similar project already in the pipeline for <strong>{dupPrompt.newData.client}</strong>. Is this a brand-new separate project, or a scope addition to an existing one?</div>
@@ -13161,48 +13642,19 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{m.client}{m.product?` — ${m.product}`:""}</div>
                     <div style={{fontSize:".74rem",color:"#64748b",marginTop:2}}>{[m.ceNo,m.stage].filter(Boolean).join(" · ")}</div>
                     <button onClick={()=>{
-                      if(HAS_ADDENDA_PAGE.includes(role)){
-                        setDupPrompt(null);setDupScopeTarget(null);
-                        if(role==="ProjectMover"){setPage("addenda");}
-                        else{setSelProj(m.id);setOpsTab("addenda");setPage("projects");}
-                      } else {
-                        // Roles without an addenda page — expand inline form here
-                        setDupScopeTarget({dealId:m.id,dealName:m.client+(m.product?` — ${m.product}`:"")});
-                        setDupScopeForm({title:dupPrompt.newData.product||dupPrompt.newData.contact||"",desc:"",value:String(dupPrompt.newData.value||"")});
-                      }
-                    }} style={{marginTop:8,background:"#fef3c7",border:"1.5px solid #fbbf24",borderRadius:7,padding:"6px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:"#92400e",cursor:"pointer"}}>➕ Add as Scope Change to this project</button>
+                      // A scope change is a linked child deal: save this new deal
+                      // tagged to the existing project (parentDealId). It keeps its
+                      // own billing and rolls into that project's Total Contract.
+                      const d={...dupPrompt.newData,parentDealId:m.id};
+                      setDupPrompt(null);setDupScopeTarget(null);
+                      saveDeal(d,true);
+                      toastEmit&&toastEmit(`Saved as a linked addendum of ${m.client} — it has its own billing and rolls into that project's Total Contract.`,"success",7000);
+                    }} style={{marginTop:8,background:"#fef3c7",border:"1.5px solid #fbbf24",borderRadius:7,padding:"6px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:"#92400e",cursor:"pointer"}}>🔗 Add as a linked addendum of this project</button>
                   </div>
                 ))}
                 <div style={{display:"flex",gap:10,marginTop:16}}>
                   <button onClick={()=>{const d=dupPrompt.newData;setDupPrompt(null);saveDeal(d,true);}} style={{flex:1,background:"#1e293b",border:"none",borderRadius:9,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#fff",cursor:"pointer"}}>✅ Save as New Project</button>
                   <button onClick={()=>{setDupPrompt(null);setDupScopeTarget(null);}} style={{flex:1,background:"#f1f5f9",border:"none",borderRadius:9,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#64748b",cursor:"pointer"}}>↩ Cancel</button>
-                </div>
-              </>
-            ):(
-              <>
-                <div style={{fontWeight:800,color:"#0f172a",fontSize:"1.05rem",marginBottom:4}}>⚠️ Log Scope Change</div>
-                <div style={{fontSize:".78rem",color:"#64748b",marginBottom:14}}>Adding to: <strong>{dupScopeTarget.dealName}</strong></div>
-                <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                  <div>
-                    <div style={{fontSize:".72rem",fontWeight:700,color:"#92400e",marginBottom:3}}>Title <span style={{color:"#ef4444"}}>*</span></div>
-                    <input value={dupScopeForm.title} onChange={e=>setDupScopeForm(f=>({...f,title:e.target.value}))} placeholder="Scope change description" style={{width:"100%",border:"1.5px solid #fbbf24",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".84rem",outline:"none",boxSizing:"border-box",background:"#fffbeb"}}/>
-                  </div>
-                  <div>
-                    <div style={{fontSize:".72rem",fontWeight:700,color:"#92400e",marginBottom:3}}>Description</div>
-                    <textarea value={dupScopeForm.desc} onChange={e=>setDupScopeForm(f=>({...f,desc:e.target.value}))} rows={2} placeholder="What changed, why, impact…" style={{width:"100%",border:"1.5px solid #fed7aa",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",outline:"none",resize:"vertical",boxSizing:"border-box",background:"#fffbeb"}}/>
-                  </div>
-                  <div>
-                    <div style={{fontSize:".72rem",fontWeight:700,color:"#92400e",marginBottom:3}}>Value (₱)</div>
-                    <input type="number" value={dupScopeForm.value} onChange={e=>setDupScopeForm(f=>({...f,value:e.target.value}))} placeholder="e.g. 25000" style={{width:"100%",border:"1.5px solid #fed7aa",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",outline:"none",boxSizing:"border-box",background:"#fffbeb"}}/>
-                  </div>
-                </div>
-                <div style={{display:"flex",gap:10,marginTop:16}}>
-                  <button onClick={()=>{
-                    if(!dupScopeForm.title.trim()) return;
-                    addAddendum2({...dupScopeForm,value:dupScopeForm.value?Number(dupScopeForm.value):0,dealId:dupScopeTarget.dealId,projectName:dupScopeTarget.dealName,status:"Discovered",salesNotified:false,clientApproved:false,receiptType:"OR",withholding:false,discoveredBy:session?.name||""});
-                    setDupPrompt(null);setDupScopeTarget(null);setDupScopeForm({title:"",desc:"",value:""});
-                  }} style={{flex:1,background:"#c2410c",border:"none",borderRadius:9,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#fff",cursor:"pointer"}}>✓ Log Scope Change</button>
-                  <button onClick={()=>setDupScopeTarget(null)} style={{background:"#f1f5f9",border:"none",borderRadius:9,padding:"10px 16px",fontFamily:"inherit",fontWeight:600,fontSize:".85rem",color:"#64748b",cursor:"pointer"}}>← Back</button>
                 </div>
               </>
             )}
@@ -13762,7 +14214,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           const projName=id=>{const d=wonDeals.find(x=>x.id===id)||completedDeals.find(x=>x.id===id);return d?(d.contact||d.client):"";};
           const apQ=apLogSearch.trim().toLowerCase();
           const apVisible=apRows.filter(p=>(apFilter==="All"?true:apFilter==="Paid"?isSettled(p):apFilter==="Partial"?p.status==="Partial":(p.status==="Unpaid"||p.status==="Check Issued"))
-            &&(!apQ||[p.apNumber,p.poNumber,p.vendor,p.invoiceNumber,p.invoiceRef,p.accountCode,projName(p.projectId)].some(v=>String(v||"").toLowerCase().includes(apQ))));
+            &&(!apQ||[p.apNumber,p.poNumber,p.vendor,p.invoiceNumber,p.invoiceRef,p.accountCode,projName(p.projectId)].some(v=>String(v||"").toLowerCase().includes(apQ))))
+            // Float payables awaiting approval to the top so nothing sits forgotten in Pending.
+            .sort((a,b)=>((a.approvalStatus==="Pending"&&!isSettled(a))?0:1)-((b.approvalStatus==="Pending"&&!isSettled(b))?0:1));
           const PAY_CATS=["Supplier","Subcontractor","Utility","Rent","Labor","Government","Other"];
           return(
             <div>
@@ -13880,7 +14334,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                               <td style={{...erpTdNum,fontWeight:700,color:ERP.navy,whiteSpace:"nowrap"}}>{fmtM(p.amount)}</td>
                               <td style={{...erpTdNum,color:ERP.ok,whiteSpace:"nowrap"}}>{paidAmt>0?<>{fmtM(paidAmt)}{Number(p.amount)>0&&<div style={{fontSize:11,color:ERP.muted}}>{Math.round(paidAmt/Number(p.amount)*100)}%</div>}</>:"—"}</td>
                               <td style={{...erpTdNum,fontWeight:700,color:balance>0?ERP.danger:ERP.muted,whiteSpace:"nowrap"}}>{fmtM(balance)}</td>
-                              <td style={{...erpTd,whiteSpace:"nowrap"}}><ErpBadge kind={erpStatusKind(stTxt)}>{stTxt}</ErpBadge></td>
+                              <td style={{...erpTd,whiteSpace:"nowrap"}}><ErpBadge kind={erpStatusKind(stTxt)}>{stTxt}</ErpBadge>{!settled&&p.approvalStatus==="Pending"&&<div style={{fontSize:10.5,fontWeight:800,color:"#b45309",marginTop:2}}>⏳ For approval</div>}{p.approvalStatus==="Rejected"&&<div style={{fontSize:10.5,fontWeight:800,color:ERP.danger,marginTop:2}}>✕ Rejected</div>}{p.approvalStatus==="Approved"&&p.approvedBy&&<div style={{fontSize:10,color:ERP.muted,marginTop:2}} title={`Approved by ${p.approvedBy}${p.approvedAt?" · "+p.approvedAt:""}`}>✓ {p.approvedBy}</div>}</td>
                               {(()=>{
                                 const needV=payNeedsVerify(p),isSub=payIsSubcon(p);
                                 return(
@@ -13895,9 +14349,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                               })()}
                               <td style={{...erpTd,whiteSpace:"nowrap"}}>
                                 <div style={{display:"flex",gap:4,justifyContent:"flex-end",alignItems:"center"}}>
+                                  {!settled&&p.approvalStatus==="Pending"&&(canApprovePayables
+                                    ? <><button onClick={()=>approvePayable(p.id)} title="Approve for payment (Manager / Finance)" style={{background:ERP.ok||"#16a34a",border:"none",borderRadius:6,padding:"4px 10px",fontSize:".7rem",color:"#fff",cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>✓ Approve</button>
+                                        <button onClick={()=>rejectPayable(p.id)} title="Reject" style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>Reject</button></>
+                                    : <span title="Awaiting Manager / Finance approval" style={{fontSize:11,fontWeight:700,color:"#b45309",whiteSpace:"nowrap"}}>⏳ For approval</span>)}
+                                  {!settled&&p.approvalStatus==="Rejected"&&<span title={p.notes||"Rejected"} style={{fontSize:11,fontWeight:700,color:ERP.danger,whiteSpace:"nowrap"}}>✕ Rejected</span>}
                                   {!settled&&payNeedsVerify(p)&&!p.verified&&<button onClick={()=>verifyPayable(p.id)} title={payIsSubcon(p)?"Operations: verify % complete":"Warehouse: verify receipt"} style={{background:ERP.gold,border:"none",borderRadius:6,padding:"4px 10px",fontSize:".7rem",color:ERP.navy,cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>✓ Verify</button>}
-                                  {!settled&&balance>0&&(!payNeedsVerify(p)||p.verified)&&<button onClick={()=>openPayModal(p)} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"4px 12px",fontSize:".7rem",color:"#fff",cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>Pay</button>}
-                                  {!settled&&(!payNeedsVerify(p)||p.verified)&&!(p.cvId||p.status==="Check Issued")&&<button onClick={()=>payableToCheck(p.id)} title="Route to Check Voucher" style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#2563eb",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🖊 CV</button>}
+                                  {!settled&&balance>0&&payApproved(p)&&(!payNeedsVerify(p)||p.verified)&&<button onClick={()=>openPayModal(p)} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"4px 12px",fontSize:".7rem",color:"#fff",cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>Pay</button>}
+                                  {!settled&&payApproved(p)&&(!payNeedsVerify(p)||p.verified)&&!(p.cvId||p.status==="Check Issued")&&<button onClick={()=>payableToCheck(p.id)} title="Route to Check Voucher" style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#2563eb",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🖊 CV</button>}
                                   <button onClick={()=>{setPayForm({...p});setEditPayId(p.id);setPayModal(true);}} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
                                   <button onClick={()=>delPayable(p.id)} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
                                 </div>
@@ -15281,7 +15740,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
       {/* PM Update Modal */}
       {/* PM Update Modal */}
-      {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate} updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())sbUpsert('project_cards',{deal_id:dealId,target_end_date:date},'deal_id').catch(()=>{});}}/>}
+      {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate} updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())syncProjectCard(dealId,{target_end_date:date});}}/>}
     </Wrap>
   );
 
@@ -15289,7 +15748,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   if(page==="addenda") return(
     <Wrap>
       <SecHead title="⚠️ Scope Changes" sub={["Sales","Finance"].includes(role)?"View all scope changes across active projects":"Flag addenda discovered on site — AE and Paolo will be notified"}/>
-      <AddendaPageContent role={role} wonDeals={wonDeals} jos={jos} session={session} addenda={addenda} upAddenda={upAddenda} logActivity={logActivity} onOpenCoBoq={(id,readOnly=false)=>{setBoqDealId(null);setBoqStandaloneId(null);setBoqCoReadOnly(!!readOnly);setBoqCoId(id);setPage("boq");}}/>
+      <AddendaPageContent role={role} wonDeals={wonDeals} deals={deals} jos={jos} session={session} addenda={addenda} upAddenda={upAddenda} updateAddendum={updateAddendum} logActivity={logActivity} onOpenCoBoq={(id,readOnly=false)=>{setBoqDealId(null);setBoqStandaloneId(null);setBoqCoReadOnly(!!readOnly);setBoqCoId(id);setPage("boq");}}/>
     </Wrap>
   );
 
@@ -15559,7 +16018,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     if(rec._exists){
                       upDeals(ds=>ds.map(d=>d.id===rec._existingId?rec:d));
                       if(isSupabaseReady()) sbSyncOne("deals",rec,toSbDeal);
-                      if(WON_STAGES.includes(rec.stage)){
+                      if(WON_STAGES.includes(rec.stage)&&!rec.parentDealId){
                         upProjs(ps=>({...ps,[rec.id]:ps[rec.id]||emptyProject()}));
                         upPcards(ps=>({...ps,[rec.id]:ps[rec.id]||emptyProjectCard(rec.id,rec)}));
                       }
@@ -15567,7 +16026,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     } else {
                       upDeals(ds=>[...ds,rec]);
                       if(isSupabaseReady()) sbSyncOne("deals",rec,toSbDeal);
-                      if(WON_STAGES.includes(rec.stage)){
+                      if(WON_STAGES.includes(rec.stage)&&!rec.parentDealId){
                         upProjs(ps=>({...ps,[rec.id]:emptyProject()}));
                         upPcards(ps=>({...ps,[rec.id]:emptyProjectCard(rec.id,rec)}));
                         const newJo={
@@ -15758,6 +16217,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     <Wrap>
       <AuditView findings={auditFindings} addFinding={addFinding} updateFinding={updateFinding} session={session} role={role}/>
     </Wrap>
+  );
+
+  if(page==="projectmargins"&&(session?.username==="paulo"||session?.username==="mar")) return(
+    <ProjectMarginsView wonDeals={wonDeals} exps={exps} billings={billings} today={today} setPage={setPage} onOpenProject={id=>{setJumpDeal(id);setPage("projects");}} Wrap={Wrap} isMobile={isMobile}/>
   );
 
   if(page==="syshealth"&&role==="Manager") return(
@@ -16985,17 +17448,34 @@ function OpsUpdateForm({selProj,selProjName,session,addPmUpdate,logActivity,open
 // so the original base is derived as (current value − rolled addenda) — correct
 // even after a reload, and never double-counting. Reused across Project Cards,
 // Billing, Sales, and Pipeline so every team sees the same numbers.
-function ContractBreakdown({deal,addenda,compact}){
+function ContractBreakdown({deal,addenda,deals,compact}){
   if(!deal) return null;
   const ROLLED=s=>["Approved","Billed","Collected"].includes(s);
   const peso=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:0});
-  const items=(addenda||[]).filter(a=>(a.dealId||a.projectId)===deal.id&&a.status!=="Rejected");
+  // Two kinds of addendum feed the breakdown:
+  //  1. Legacy CO records (addenda) — value was folded into deal.value via
+  //     rollDealContract, so the original base is (value − rolled COs).
+  //  2. Child deals (parentDealId set) — the current model. These are their OWN
+  //     deals and are NEVER rolled into the parent's value; they add on top.
+  //     A child in a won stage is an approved addendum; otherwise it's pending.
+  const coItems=(addenda||[]).filter(a=>(a.dealId||a.projectId)===deal.id&&a.status!=="Rejected");
+  const childItems=(deals||[]).filter(d=>d.parentDealId===deal.id&&!isLostStage(d.stage)).map(d=>({
+    id:d.id,title:d.contact||d.client||"Addendum",ceNo:d.ceNo||"",
+    value:Math.abs(Number(d.value)||0),
+    status:WON_STAGES.includes(d.stage)?"Approved":d.stage,
+    _child:true,_won:WON_STAGES.includes(d.stage),
+  }));
+  const items=[...coItems,...childItems];
   if(compact&&!items.length) return null;
-  const rolledSum=items.filter(a=>ROLLED(a.status)).reduce((s,a)=>s+(Number(a.value)||0),0);
-  const current=Number(deal.value)||0;
-  const original=Math.round((current-rolledSum)*100)/100;
-  const pendingSum=items.filter(a=>!ROLLED(a.status)).reduce((s,a)=>s+(Number(a.value)||0),0);
-  const approvedCount=items.filter(a=>ROLLED(a.status)).length;
+  // Legacy COs are already inside deal.value; child deals are additive on top.
+  const rolledCoSum=coItems.filter(a=>ROLLED(a.status)).reduce((s,a)=>s+(Number(a.value)||0),0);
+  const childApprovedSum=childItems.filter(a=>a._won).reduce((s,a)=>s+(Number(a.value)||0),0);
+  const dealVal=Number(deal.value)||0;
+  const original=Math.round((dealVal-rolledCoSum)*100)/100;
+  const current=Math.round((dealVal+childApprovedSum)*100)/100;
+  const isRolled=a=>a._child?a._won:ROLLED(a.status);
+  const pendingSum=items.filter(a=>!isRolled(a)).reduce((s,a)=>s+(Number(a.value)||0),0);
+  const approvedCount=items.filter(a=>isRolled(a)).length;
   const row=(key,label,sub,amt,clr,strong)=>(
     <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:10,padding:"5px 0",borderTop:strong?"1.5px solid #e2e8f0":"1px solid #f1f5f9"}}>
       <div style={{minWidth:0}}>
@@ -17008,9 +17488,9 @@ function ContractBreakdown({deal,addenda,compact}){
   return(
     <div style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 14px"}}>
       <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",fontWeight:700,marginBottom:2}}>Contract Breakdown</div>
-      {row("orig","Original Contract"+(deal.ceNo?" · "+deal.ceNo:""),null,peso(original),"#0f172a",false)}
-      {items.map(a=>row(a.id,(ROLLED(a.status)?"":"⏳ ")+(a.title||"Addendum"),(a.ceNo?a.ceNo+" · ":"")+(a.status||"")+(ROLLED(a.status)?"":" — not yet in contract"),peso(Number(a.value)||0),ROLLED(a.status)?"#059669":"#d97706",false))}
-      {row("cur","Current Contract",rolledSum>0?`original + ${approvedCount} approved addend${approvedCount===1?"um":"a"}`:null,peso(current),"#10b981",true)}
+      {row("orig","Initial Contract"+(deal.ceNo?" · "+deal.ceNo:""),null,peso(original),"#0f172a",false)}
+      {items.map(a=>row(a.id,(isRolled(a)?"":"⏳ ")+(a._child?"Addendum · ":"")+(a.title||"Addendum"),(a.ceNo?a.ceNo+" · ":"")+(a.status||"")+(isRolled(a)?"":" — not yet in contract"),peso(Number(a.value)||0),isRolled(a)?"#059669":"#d97706",false))}
+      {row("cur","Total Contract",approvedCount>0?`initial + ${approvedCount} approved addend${approvedCount===1?"um":"a"}`:null,peso(current),"#10b981",true)}
       {pendingSum>0&&row("pot","If pending approved","+"+peso(pendingSum)+" awaiting client approval",peso(current+pendingSum),"#d97706",false)}
     </div>
   );
@@ -17103,7 +17583,10 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
     </Wrap>
   );
 
-  const tabs=[["progress","📊 Progress"],["team","👥 Team"],["materials","📦 Materials"],["swatches","🛒 Swatchboard"],["costs","💰 Costs"],["updates","📝 PM Updates"],["addenda","⚠️ Addenda"],["closeout","✅ Close-Out"]];
+  // Scope changes / addenda are owned by Sales (a linked child deal via
+  // "+ Add New Deal -> Link to Parent Deal"), not Operations — so Ops has no
+  // Addenda tab. The single parent project card carries the added scope.
+  const tabs=[["progress","📊 Progress"],["team","👥 Team"],["materials","📦 Materials"],["swatches","🛒 Swatchboard"],["costs","💰 Costs"],["updates","📝 PM Updates"],["closeout","✅ Close-Out"]];
   return(
     <Wrap>
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
@@ -17413,163 +17896,6 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
         </div>
       )}
 
-      {/* ADDENDA TAB — full workflow */}
-      {opsTab==="addenda"&&(()=>{
-        // Addenda are tagged to their project via dealId (see addAddendum2 below + Project HQ),
-        // so filter by dealId — not projectId, which addendum records never carry.
-        const projAddenda=(addenda||[]).filter(a=>a.dealId===selProj);
-        const[showAF,setShowAF]=useState(false);
-        const[af,setAf]=useState({title:"",desc:"",value:"",ceNo:"",receiptType:"OR",withholding:false,discoveredBy:session?.name||"",notes:""});
-        const faf=(k,v)=>setAf(p=>({...p,[k]:v}));
-        return(
-          <div>
-            {/* Header summary — original contract + addenda with the correct revised total */}
-            <div style={{marginBottom:14}}>
-              <ContractBreakdown deal={projDeal} addenda={addenda}/>
-            </div>
-
-            <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:".8rem",color:"#92400e"}}>
-              ⚠️ <strong>Addendum Protocol:</strong> Operations logs scope changes → Sales is notified to coordinate with client → Client approves → Separate billing created. Each addendum may have its own CE number depending on size.
-            </div>
-
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-              <div style={{fontWeight:700,color:"#0f172a",fontSize:".9rem"}}>{projAddenda.length} Addendum{projAddenda.length!==1?"a":""}</div>
-              <Btn small onClick={()=>setShowAF(s=>!s)}>+ Log Scope Change</Btn>
-            </div>
-
-            {/* Add form */}
-            {showAF&&(
-              <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:12,padding:16,marginBottom:14}}>
-                <div style={{fontWeight:700,color:"#92400e",marginBottom:12}}>New Scope Change / Addendum</div>
-                <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:12}}>
-                  <div style={{gridColumn:"1/-1"}}>
-                    <Fld label="Title / Scope Change" required>
-                      <Inp value={af.title} onChange={e=>faf("title",e.target.value)} placeholder="e.g. Additional glass shelving Unit 3B — client requested during site visit"/>
-                    </Fld>
-                  </div>
-                  <div style={{gridColumn:"1/-1"}}>
-                    <Fld label="Description / Impact">
-                      <Inp rows={3} value={af.desc} onChange={e=>faf("desc",e.target.value)} placeholder="What changed, why it changed, impact on timeline and cost…"/>
-                    </Fld>
-                  </div>
-                  <Fld label="Addendum Value (₱)" hint="Estimated cost of this scope change">
-                    <Inp type="number" value={af.value} onChange={e=>faf("value",e.target.value)} placeholder="0.00"/>
-                  </Fld>
-                  <Fld label="CE Number" hint="Assign if large enough to warrant separate CE">
-                    <Inp value={af.ceNo} onChange={e=>faf("ceNo",e.target.value)} placeholder="e.g. CE-2026-001-A (optional)"/>
-                  </Fld>
-                  <Fld label="Receipt Type">
-                    <Sel value={af.receiptType} onChange={e=>faf("receiptType",e.target.value)}>
-                      <option value="OR">🧾 OR (with VAT)</option>
-                      <option value="AR">📄 AR (no VAT)</option>
-                    </Sel>
-                  </Fld>
-                  <Fld label="Withholding Tax (EWT 2%)">
-                    <Sel value={af.withholding?"YES":"NO"} onChange={e=>faf("withholding",e.target.value==="YES")}>
-                      <option value="NO">No withholding</option>
-                      <option value="YES">Yes — client withholds 2%</option>
-                    </Sel>
-                  </Fld>
-                  <Fld label="Discovered By">
-                    <Inp value={af.discoveredBy} onChange={e=>faf("discoveredBy",e.target.value)} placeholder={session?.name||""}/>
-                  </Fld>
-                  <div style={{gridColumn:"1/-1"}}>
-                    <Fld label="Notes">
-                      <Inp rows={2} value={af.notes} onChange={e=>faf("notes",e.target.value)} placeholder="Supporting details, client conversation notes, photos in Drive…"/>
-                    </Fld>
-                  </div>
-                </div>
-                <div style={{display:"flex",gap:8,marginTop:12}}>
-                  <Btn onClick={()=>{
-                    if(!af.title) return;
-                    addAddendum2({...af,dealId:selProj,projectName:projDeal?.client||"",status:"Discovered",salesNotified:false,clientApproved:false});
-                    setAf({title:"",desc:"",value:"",ceNo:"",receiptType:"OR",withholding:false,discoveredBy:session?.name||"",notes:""});
-                    setShowAF(false);
-                  }}>Log Scope Change</Btn>
-                  <Btn variant="ghost" onClick={()=>setShowAF(false)}>Cancel</Btn>
-                </div>
-              </div>
-            )}
-
-            {projAddenda.length===0&&!showAF&&<EmptyState icon="📋" msg="No addenda logged. When Operations discovers a scope change, log it here — Sales gets notified automatically."/>}
-
-            {/* Addenda list */}
-            <div style={{display:"flex",flexDirection:"column",gap:8}}>
-              {projAddenda.map(a=>{
-                const tx=calcTax(a.value||0,a.receiptType||"OR",a.withholding||false);
-                const statusClr=ADDENDUM_STATUS_CLR[a.status]||"#94a3b8";return(
-                  <div key={a.id} style={{background:"#fff",borderRadius:12,border:`1.5px solid ${statusClr}44`,padding:"14px 18px"}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
-                      <div style={{flex:1}}>
-                        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:6}}>
-                          <span style={{fontWeight:700,color:"#0f172a"}}>{a.title}</span>
-                          <span style={{fontSize:".7rem",background:statusClr+"22",color:statusClr,border:`1px solid ${statusClr}55`,borderRadius:20,padding:"1px 9px",fontWeight:700}}>{a.status}</span>
-                          {a.ceNo&&<span style={{fontSize:".7rem",color:"#64748b",background:"#f1f5f9",padding:"1px 8px",borderRadius:5}}>{a.ceNo}</span>}
-                        </div>
-                        {a.desc&&<div style={{fontSize:".8rem",color:"#475569",lineHeight:1.6,marginBottom:8}}>{a.desc}</div>}
-
-                        {/* Value breakdown */}
-                        {Number(a.value)>0&&(
-                          <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 12px",display:"flex",gap:16,flexWrap:"wrap",marginBottom:8,fontSize:".75rem"}}>
-                            <div><span style={{color:"#94a3b8"}}>Base: </span><strong>₱{Number(a.value).toLocaleString("en-PH")}</strong></div>
-                            <div><span style={{color:"#94a3b8"}}>{a.receiptType==="OR"?"VAT 12%":"No VAT"}: </span><strong style={{color:"#f59e0b"}}>₱{tx.vat.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></div>
-                            {a.withholding&&<div><span style={{color:"#94a3b8"}}>EWT 2%: </span><strong style={{color:"#ef4444"}}>-₱{tx.ewt.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></div>}
-                            <div><span style={{color:"#94a3b8"}}>Net Receivable: </span><strong style={{color:"#059669"}}>₱{tx.netReceivable.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></div>
-                          </div>
-                        )}
-
-                        {/* Workflow status flags */}
-                        <div style={{display:"flex",gap:8,flexWrap:"wrap",fontSize:".72rem"}}>
-                          <span style={{color:a.salesNotified?"#059669":"#f59e0b",fontWeight:600,background:a.salesNotified?"#f0fdf4":"#fffbeb",padding:"2px 9px",borderRadius:20,border:`1px solid ${a.salesNotified?"#6ee7b7":"#fde68a"}`}}>
-                            {a.salesNotified?"✓ Sales notified":"⚠ Sales not yet notified"}
-                          </span>
-                          <span style={{color:a.clientApproved?"#059669":"#94a3b8",fontWeight:600,background:a.clientApproved?"#f0fdf4":"#f8fafc",padding:"2px 9px",borderRadius:20,border:`1px solid ${a.clientApproved?"#6ee7b7":"#e2e8f0"}`}}>
-                            {a.clientApproved?"✓ Client approved":"Pending client approval"}
-                          </span>
-                          <span style={{fontSize:".68rem",color:"#94a3b8"}}>By {a.discoveredBy} · {a.createdDate}</span>
-                        </div>
-                      </div>
-
-                      {/* Actions */}
-                      <div style={{display:"flex",flexDirection:"column",gap:6,flexShrink:0,minWidth:160}}>
-                        <select value={a.status} onChange={e=>updateAddendum(a.id,{status:e.target.value})}
-                          style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:".78rem",color:"#0f172a",background:"#fff",cursor:"pointer",width:"100%"}}>
-                          {ADDENDUM_STATUSES.map(s=><option key={s}>{s}</option>)}
-                        </select>
-                        <div style={{display:"flex",gap:6}}>
-                          <button onClick={()=>updateAddendum(a.id,{salesNotified:true})}
-                            disabled={a.salesNotified}
-                            style={{flex:1,background:a.salesNotified?"#f0fdf4":"#fffbeb",border:`1.5px solid ${a.salesNotified?"#6ee7b7":"#fde68a"}`,borderRadius:7,padding:"5px 8px",fontSize:".68rem",color:a.salesNotified?"#059669":"#92400e",cursor:a.salesNotified?"default":"pointer",fontWeight:600,fontFamily:"inherit"}}>
-                            {a.salesNotified?"Notified":"Notify Sales"}
-                          </button>
-                          <button onClick={()=>updateAddendum(a.id,{clientApproved:true,status:"Approved"})}
-                            disabled={a.clientApproved}
-                            style={{flex:1,background:a.clientApproved?"#f0fdf4":"#f8fafc",border:`1.5px solid ${a.clientApproved?"#6ee7b7":"#e2e8f0"}`,borderRadius:7,padding:"5px 8px",fontSize:".68rem",color:a.clientApproved?"#059669":"#64748b",cursor:a.clientApproved?"default":"pointer",fontWeight:600,fontFamily:"inherit"}}>
-                            {a.clientApproved?"Approved":"Mark Approved"}
-                          </button>
-                        </div>
-                        {["Approved","Billed","Collected"].includes(a.status)&&(
-                          <div>
-                            <label style={{fontSize:".62rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:2}}>Awarded date <span style={{fontWeight:400,color:"#94a3b8"}}>(counts as sales this month)</span></label>
-                            <input type="date" value={a.awardedDate||""} max={new Date().toISOString().slice(0,10)}
-                              onChange={e=>updateAddendum(a.id,{awardedDate:e.target.value||null})}
-                              title="The month this change order's value is credited to the AE on the Sales Value report. Defaults to the approval date; set it to the date this scope was actually awarded."
-                              style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 8px",fontFamily:"inherit",fontSize:".74rem",color:"#0f172a",background:"#fff",boxSizing:"border-box"}}/>
-                          </div>
-                        )}
-                        <button onClick={async ()=>{if((await uiConfirm("Delete this addendum?")))deleteAddendum(a.id);}}
-                          style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:7,padding:"5px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })()}
       {opsTab==="closeout"&&(()=>{
         const warranty=proj?.warranty||{active:false,type:"30",startDate:"",endDate:"",notes:""};
         const reports=proj?.reports||[];
@@ -18421,13 +18747,12 @@ function JOView({deals,wonDeals,projs,jos,joStep,setJoStep,joSel,setJoSel,joExtr
       <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:16}}>
         <div>
           <SecHead title="Job Order Builder" sub="Select a Won deal to generate a job order"/>
-          {/* Addenda / linked deals are excluded — added scope belongs to the
-              parent project's Job Order, not its own. They're converted to Change
-              Orders (⇄ CO) instead. */}
+          {/* Addenda / linked deals are excluded — added scope runs under the
+              parent project's Job Order, so they never get their own. */}
           {(()=>{const joEligible=wonDeals.filter(d=>!d.parentDealId),joAddenda=wonDeals.filter(d=>d.parentDealId);return(<>
           {joAddenda.length>0&&(
             <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"9px 13px",marginBottom:10,fontSize:".76rem",color:"#92400e"}}>
-              ⚠️ {joAddenda.length} linked deal{joAddenda.length!==1?"s":""} (addend{joAddenda.length!==1?"a":"um"}) hidden — these belong to a parent project. Convert them to a <strong>Change Order (⇄ CO)</strong> in the Pipeline instead of issuing a separate Job Order.
+              ⚠️ {joAddenda.length} linked deal{joAddenda.length!==1?"s":""} (addend{joAddenda.length!==1?"a":"um"}) hidden — these are addendums that run under their parent project's Job Order, not a separate one.
             </div>
           )}
           {joEligible.map(d=>{const p=projs[d.id];return(
@@ -24349,14 +24674,24 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         {[
           {l:"Total Billed",      v:fmt(allBilled),                c:"#3b82f6"},
           {l:"Total Collected",   v:fmt(allCollected),             c:"#059669"},
-          {l:"Outstanding",       v:fmt(allOutstanding), c:allOutstanding>0?"#ef4444":"#059669"},
-          {l:"Overdue Invoices",  v:overdue.length,                c:overdue.length>0?"#ef4444":"#94a3b8"},
-        ].map(({l,v,c})=>(
-          <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0"}}>
+          {l:"Outstanding",       v:fmt(allOutstanding), c:allOutstanding>0?"#ef4444":"#059669", filter:"outstanding", hint:"View all clients with a balance →"},
+          {l:"Overdue Invoices",  v:overdue.length,                c:overdue.length>0?"#ef4444":"#94a3b8", filter:"overdue", hint:"View overdue invoices →"},
+        ].map(({l,v,c,filter,hint})=>{
+          const isLink=!!filter;
+          return(
+          <div key={l}
+            {...(isLink?clickable(()=>{setBillingFilter(filter);const el=document.getElementById("billing-list-top");if(el)el.scrollIntoView({behavior:"smooth",block:"start"});}):{})}
+            aria-label={isLink?hint:undefined}
+            title={isLink?hint:undefined}
+            style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:`1.5px solid ${isLink&&billingFilter===filter?c:"#e2e8f0"}`,cursor:isLink?"pointer":"default",transition:"border-color .1s,box-shadow .1s"}}
+            onMouseEnter={isLink?e=>{e.currentTarget.style.borderColor=c;e.currentTarget.style.boxShadow="0 2px 8px rgba(0,0,0,.06)";}:undefined}
+            onMouseLeave={isLink?e=>{e.currentTarget.style.borderColor=billingFilter===filter?c:"#e2e8f0";e.currentTarget.style.boxShadow="none";}:undefined}>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:c}}>{v}</div>
             <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:5}}>{l}</div>
+            {isLink&&<div style={{fontSize:".6rem",color:c,marginTop:4,fontWeight:600,opacity:.85}}>{hint}</div>}
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* ── Collection Forecast — expected net collections by due date ──── */}
@@ -24442,7 +24777,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       })()}
 
       {/* ── SEARCH + FILTER ────────────────────────────────────────────── */}
-      <div style={{display:"flex",gap:10,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
+      <div id="billing-list-top" style={{display:"flex",gap:10,marginBottom:12,flexWrap:"wrap",alignItems:"center",scrollMarginTop:12}}>
         <div style={{flex:1,minWidth:200,position:"relative"}}>
           <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#94a3b8",fontSize:".85rem",pointerEvents:"none"}}>🔍</span>
           <input value={billingSearch} onChange={e=>setBillingSearch(e.target.value)} placeholder="Search project, CE no, or contact…"
@@ -24645,7 +24980,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
           })()}
 
           {/* Contract breakdown (original + addenda) — shown when this project has change orders */}
-          {(addenda||[]).some(a=>a.dealId===selDeal&&a.status!=="Rejected")&&<div style={{marginBottom:12}}><ContractBreakdown deal={deal} addenda={addenda}/></div>}
+          {((addenda||[]).some(a=>a.dealId===selDeal&&a.status!=="Rejected")||(deals||[]).some(d=>d.parentDealId===selDeal&&!isLostStage(d.stage)))&&<div style={{marginBottom:12}}><ContractBreakdown deal={deal} addenda={addenda} deals={deals}/></div>}
 
           {/* COC-to-Finance notification banner */}
           {(()=>{
@@ -24717,7 +25052,10 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
           {(()=>{
             const terms=deal?.paymentTerms;
             const existingMs=billings.filter(b=>b.dealId===selDeal);
-            const val=Number(deal?.value||0);
+            // Base schedule is off the ORIGINAL contract (pre change orders) — each
+            // approved CO is billed as its own separate milestone. This keeps the
+            // preview in step with generateBillingSchedule so both split the same base.
+            const val=Number(deal?.originalValue!=null?deal.originalValue:deal?.value||0);
             const onboardingReady=dealOnboardingGate(deal).ready;
             const canGenerate=canEdit&&terms&&existingMs.length===0&&val>0&&!deal?.billingGenerated&&onboardingReady;
             // Billing schedules are no longer created automatically. This opens a
@@ -25914,6 +26252,16 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                     upDeals(ds=>ds.map(d=>d.id===selDeal?{...d,stage:st}:d));
                     if(isSupabaseReady()) sbUpdate('deals',selDeal,{stage:st}).catch(()=>{});
                     logActivity(selDeal,"Stage Change",`Stage → ${st}`,session?.name);
+                    // Auto-stamp the award date the first time a deal enters a WON stage so the
+                    // awarded / sales-value reports never silently miss it. Only stamps when the
+                    // project card has no award date yet — an existing (possibly hand-corrected)
+                    // date is never overwritten, and non-won stages don't touch it.
+                    if(WON_STAGES.includes(st)&&!pcards[selDeal]?.awardDate){
+                      const awDate=today;
+                      upPcards(ps=>({...ps,[selDeal]:{...(ps[selDeal]||emptyProjectCard(selDeal,deal)),awardDate:awDate}}));
+                      if(isSupabaseReady()) syncProjectCard(selDeal,{award_date:awDate});
+                      logActivity(selDeal,"Award date set",`${deal.contact||deal.client} — award date auto-set to ${awDate} on entering ${st}`,session?.name);
+                    }
                     const msg=`📌 <b>Project Stage Updated</b>\nClient: <b>${deal.client}</b>${deal.ceNo?`\nCE: ${deal.ceNo}`:""}${deal.contact?`\nProject: ${deal.contact}`:""}\nStage: ${st}\nBy: ${session?.name}`;
                     ["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,msg));
                     if(st==="12 · Close-Out"){
@@ -25984,41 +26332,9 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                     <span style={{fontSize:".8rem",fontWeight:700,color:"#059669"}}>🎉 All departments complete! Use the buttons above to close out or complete this project.</span>
                   </div>
                 )}
-                <div style={{marginTop:10,display:"flex",justifyContent:"flex-end",gap:8}}>
-                  {addAddendum2&&<button onClick={()=>{setScopeForm({title:"",desc:"",value:"",ceNo:""});setShowScopeForm(true);}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",color:"#c2410c",cursor:"pointer",fontWeight:700}}>➕ Scope Change</button>}
-                </div>
-                {showScopeForm&&addAddendum2&&(
-                  <div style={{marginTop:12,background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:12,padding:"14px 16px"}}>
-                    <div style={{fontWeight:700,color:"#92400e",fontSize:".82rem",marginBottom:10}}>⚠️ Log Scope Change / Addendum</div>
-                    <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10,marginBottom:10}}>
-                      <div style={{gridColumn:"1/-1"}}>
-                        <div style={{fontSize:".72rem",fontWeight:700,color:"#92400e",marginBottom:3}}>Title <span style={{color:"#ef4444"}}>*</span></div>
-                        <input value={scopeForm.title} onChange={e=>fsc("title",e.target.value)} placeholder="e.g. Additional glass shelving Unit 3B" style={{width:"100%",border:"1.5px solid #fbbf24",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",outline:"none",boxSizing:"border-box",background:"#fffbeb"}}/>
-                      </div>
-                      <div style={{gridColumn:"1/-1"}}>
-                        <div style={{fontSize:".72rem",fontWeight:700,color:"#92400e",marginBottom:3}}>Description / Impact</div>
-                        <textarea value={scopeForm.desc} onChange={e=>fsc("desc",e.target.value)} rows={2} placeholder="What changed, why, impact on timeline…" style={{width:"100%",border:"1.5px solid #fed7aa",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",outline:"none",resize:"vertical",boxSizing:"border-box",background:"#fffbeb"}}/>
-                      </div>
-                      <div>
-                        <div style={{fontSize:".72rem",fontWeight:700,color:"#92400e",marginBottom:3}}>Value (₱)</div>
-                        <input type="number" value={scopeForm.value} onChange={e=>fsc("value",e.target.value)} placeholder="e.g. 25000" style={{width:"100%",border:"1.5px solid #fed7aa",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",outline:"none",boxSizing:"border-box",background:"#fffbeb"}}/>
-                      </div>
-                      <div>
-                        <div style={{fontSize:".72rem",fontWeight:700,color:"#92400e",marginBottom:3}}>CE No. (if applicable)</div>
-                        <input value={scopeForm.ceNo} onChange={e=>fsc("ceNo",e.target.value)} placeholder="e.g. CE-2025-002A" style={{width:"100%",border:"1.5px solid #fed7aa",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",outline:"none",boxSizing:"border-box",background:"#fffbeb"}}/>
-                      </div>
-                    </div>
-                    <div style={{display:"flex",gap:8}}>
-                      <button onClick={()=>{
-                        if(!scopeForm.title.trim()) return;
-                        addAddendum2({...scopeForm,value:scopeForm.value?Number(scopeForm.value):0,dealId:selDeal,projectName:deal?.client||"",status:"Discovered",salesNotified:false,clientApproved:false,receiptType:"OR",withholding:false,discoveredBy:session?.name||""});
-                        setShowScopeForm(false);
-                        setScopeForm({title:"",desc:"",value:"",ceNo:""});
-                      }} style={{flex:1,background:"#c2410c",border:"none",borderRadius:8,padding:"8px",fontFamily:"inherit",fontSize:".82rem",color:"#fff",cursor:"pointer",fontWeight:700}}>✓ Log Scope Change</button>
-                      <button onClick={()=>setShowScopeForm(false)} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"8px 14px",fontFamily:"inherit",fontSize:".82rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>Cancel</button>
-                    </div>
-                  </div>
-                )}
+                {/* Scope changes are logged by Sales as a linked deal
+                    (+ Add New Deal -> Link to Parent Deal), not from the project
+                    card, so there is no "Log Scope Change" form here. */}
               </div>
 
               {/* ── Project Team ── */}
@@ -26067,7 +26383,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                         // next load sbLoadAll fills in the default department structure.
                         if(upPcards) upPcards(ps=>({...ps,[selDeal]:{...(ps[selDeal]||{deal_id:selDeal,dealId:selDeal}),aeAssigned:tf.ae,pm1:tf.pm1,pm2:tf.pm2,pm3:tf.pm3,designer:tf.designer,coordinator:tf.coordinator,warehouseOnly:tf.warehouseOnly||false}}));
                         if(isSupabaseReady()){
-                          sbUpsert('project_cards',{deal_id:selDeal,ae_assigned:tf.ae,pm1:tf.pm1,pm2:tf.pm2,pm3:tf.pm3,designer:tf.designer,coordinator:tf.coordinator,warehouse_only:tf.warehouseOnly||false},'deal_id').catch(()=>{});
+                          syncProjectCard(selDeal,{ae_assigned:tf.ae,pm1:tf.pm1,pm2:tf.pm2,pm3:tf.pm3,designer:tf.designer,coordinator:tf.coordinator,warehouse_only:tf.warehouseOnly||false});
                         }
                         if(jo&&updateJO) updateJO(jo.id,{aeAssigned:tf.ae,pm1:tf.pm1,pm2:tf.pm2,pm3:tf.pm3,designer:tf.designer,coordinator:tf.coordinator});
                         logActivity(selDeal,"Team Updated",`AE: ${tf.ae||"—"}, PM: ${[tf.pm1,tf.pm2,tf.pm3].filter(Boolean).join(", ")||"—"}, Designer: ${tf.designer||"—"}`,session?.name);
@@ -26147,7 +26463,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                         const newDays=dateForm.targetEndDate?Math.max(1,Math.ceil((new Date(dateForm.targetEndDate)-new Date(dateForm.awardDate))/86400000)):card?.targetDays;
                         upPcards(ps=>({...ps,[selDeal]:{...(ps[selDeal]||{deal_id:selDeal,dealId:selDeal}),awardDate:dateForm.awardDate,targetEndDate:dateForm.targetEndDate||ps[selDeal]?.targetEndDate,targetDays:newDays||ps[selDeal]?.targetDays}}));
                         if(isSupabaseReady()){
-                          sbUpsert('project_cards',{deal_id:selDeal,award_date:dateForm.awardDate,...(dateForm.targetEndDate?{target_end_date:dateForm.targetEndDate,target_days:newDays}:{})},'deal_id').catch(()=>{});
+                          syncProjectCard(selDeal,{award_date:dateForm.awardDate,...(dateForm.targetEndDate?{target_end_date:dateForm.targetEndDate,target_days:newDays}:{})});
                         }
                         // Location & CE Type live on the deal, not the card
                         if(upDeals&&(dateForm.location!==(deal?.location||"")||dateForm.ceType!==(deal?.ceType||""))){
@@ -26207,7 +26523,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 const canEditManual=role==="Manager"||role==="Operations"||role==="SalesOpsAdmin";
                 const setManual=(val)=>{
                   upPcards(ps=>({...ps,[selDeal]:{...ps[selDeal],manualProgress:val}}));
-                  if(isSupabaseReady()) sbUpsert('project_cards',{deal_id:selDeal,manual_progress:val},'deal_id').catch(()=>{});
+                  if(isSupabaseReady()) syncProjectCard(selDeal,{manual_progress:val});
                 };
                 return(
                 <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
@@ -26444,13 +26760,17 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 )}
               </div>
 
-              {/* ── Scope Changes ── */}
+              {/* ── Scope Changes (Total Contract roll-up) ──
+                  Finance-facing: shows Initial + Addendums = Total. Hidden from
+                  Operations/PM/Design — they maintain the single project card and
+                  don't need the contract total; scope changes are Sales-owned. */}
+              {!["Operations","ProjectMover","Design"].includes(role)&&(
               <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:projAddenda.length>0?10:0}}>
                   <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>⚠️ Scope Changes{projAddenda.length>0&&<span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:400,marginLeft:5}}>({projAddenda.length})</span>}</div>
                 </div>
-                {projAddenda.length>0&&<div style={{marginBottom:10}}><ContractBreakdown deal={deal} addenda={addenda}/></div>}
-                {projAddenda.length===0&&<div style={{fontSize:".78rem",color:"#94a3b8"}}>No scope changes for this project.</div>}
+                {(projAddenda.length>0||(deals||[]).some(d=>d.parentDealId===deal.id&&!isLostStage(d.stage)))&&<div style={{marginBottom:10}}><ContractBreakdown deal={deal} addenda={addenda} deals={deals}/></div>}
+                {projAddenda.length===0&&!(deals||[]).some(d=>d.parentDealId===deal.id&&!isLostStage(d.stage))&&<div style={{fontSize:".78rem",color:"#94a3b8"}}>No scope changes for this project.</div>}
                 {projAddenda.slice(0,3).map(a=>{
                   const sc={"Discovered":"#94a3b8","Sales Notified":"#f59e0b","Client Coordinating":"#3b82f6","Approved":"#059669","Billed":"#8b5cf6","Collected":"#10b981","Rejected":"#ef4444"}[a.status]||"#94a3b8";
                   return(
@@ -26465,6 +26785,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 })}
                 {projAddenda.length>3&&<div style={{fontSize:".72rem",color:"#94a3b8",marginTop:4}}>+{projAddenda.length-3} more — see Scope Changes page</div>}
               </div>
+              )}
 
 
               {/* ── Finance Snapshot ── */}
@@ -26519,7 +26840,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
         })()
       )}
     </div>
-    {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate} updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())sbUpsert('project_cards',{deal_id:dealId,target_end_date:date},'deal_id').catch(()=>{});}}/>}
+    {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate} updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())syncProjectCard(dealId,{target_end_date:date});}}/>}
     </>
   );
 }
@@ -27397,55 +27718,98 @@ function MasterListsView({suppliers,addSupplier,updateSupplier,deleteSupplier,su
 const COA_TYPES=["Asset","Liability","Equity","Income","COGS","Expense"];
 const COA_TYPE_CLR={Asset:"#0ea5e9",Liability:"#f97316",Equity:"#8b5cf6",Income:"#10b981",COGS:"#f59e0b",Expense:"#ef4444"};
 // Default chart tailored to a PH fabrication / construction company (GMD Productions)
-// Standard chart of accounts, adopted from the finance team's (Aerwin's) ERP so
-// FabHub and the ERP classify costs identically. Aerwin's taxonomy uses
-// Revenue/Expense; we map Revenue→Income and Expense codes 5000-5999→COGS (Cost
-// of Sales) so FabHub's existing type-based report/filter logic keeps working —
-// the codes, names and structure are Aerwin's verbatim.
+// GMD Production Inc. — actual chart of accounts, translated 1:1 from the
+// company's own management FS (Income Statement / Balance Sheet / Source Data,
+// Jan–Aug 2026 pack). Names mirror the finance team's real pivot categories so
+// FabHub reproduces that exact statement; codes and types are added here.
+// Mapping of the FS "Classification" tag → FabHub type:
+//   COGS → COGS · OPEX → Expense · (revenue) → Income · balance-sheet → Asset/
+//   Liability/Equity. Loan proceeds/repayment & dividends are financing/equity
+//   movements, not P&L, so they are NOT expense/income accounts here.
+// Obvious source typos are corrected (Ammortization→Amortization,
+// Occular→Ocular); everything else is kept verbatim for clean reconciliation.
 const DEFAULT_COA=[
+  // ── 1xxx ASSETS (Balance Sheet) ──────────────────────────
   {code:"1000",name:"Cash on Hand",type:"Asset"},
-  {code:"1010",name:"Cash in Bank - BDO",type:"Asset"},
-  {code:"1011",name:"Cash in Bank - BPI",type:"Asset"},
-  {code:"1012",name:"Cash in Bank - Metrobank",type:"Asset"},
-  {code:"1013",name:"Cash in Bank - Chinabank",type:"Asset"},
-  {code:"1014",name:"Cash in Bank - Security Bank",type:"Asset"},
-  {code:"1015",name:"Cash in Bank - UnionBank",type:"Asset"},
-  {code:"1100",name:"Accounts Receivable - Trade",type:"Asset"},
-  {code:"1200",name:"Input VAT",type:"Asset"},
-  {code:"1300",name:"Inventory - Raw Materials",type:"Asset"},
-  {code:"1310",name:"Inventory - Finished Goods",type:"Asset"},
-  {code:"1400",name:"Prepaid Expenses",type:"Asset"},
-  {code:"1500",name:"Property, Plant & Equipment",type:"Asset"},
-  {code:"1510",name:"Accumulated Depreciation",type:"Asset"},
-  {code:"2000",name:"Accounts Payable - Trade",type:"Liability"},
-  {code:"2010",name:"Accrued Expenses",type:"Liability"},
-  {code:"2100",name:"Output VAT Payable",type:"Liability"},
-  {code:"2200",name:"Withholding Tax Payable",type:"Liability"},
-  {code:"2300",name:"SSS / PhilHealth / Pag-IBIG Payable",type:"Liability"},
-  {code:"2400",name:"Loans Payable - Bank",type:"Liability"},
-  {code:"2500",name:"Loans Payable - Related Party",type:"Liability"},
-  {code:"3000",name:"Owner's Capital",type:"Equity"},
+  {code:"1100",name:"Accounts Receivable",type:"Asset"},
+  {code:"1110",name:"Accounts Receivable - Credit",type:"Asset"},      // memo item per BS Note 1
+  {code:"1200",name:"Advances to Employees",type:"Asset"},             // liquidated via "Return From Advances"
+  {code:"1210",name:"Advances - Mobilization",type:"Asset"},           // recovered via "Return From Mobilization"
+  {code:"1500",name:"Office Equipment (PPE)",type:"Asset"},
+  {code:"1510",name:"Production Equipment (PPE)",type:"Asset"},
+  {code:"1520",name:"Vehicle",type:"Asset"},
+  {code:"1590",name:"Accumulated Depreciation",type:"Asset"},
+  // ── 2xxx LIABILITIES (Balance Sheet) ─────────────────────
+  {code:"2000",name:"Accounts Payable",type:"Liability"},
+  {code:"2100",name:"Short-Term Loan",type:"Liability"},
+  {code:"2110",name:"Short-Term Interest Payable",type:"Liability"},
+  {code:"2200",name:"Long-Term Loan",type:"Liability"},
+  {code:"2210",name:"Long-Term Interest Payable",type:"Liability"},
+  {code:"2300",name:"Vehicle Loan",type:"Liability"},
+  // ── 3xxx EQUITY ──────────────────────────────────────────
+  {code:"3000",name:"Capital",type:"Equity"},
   {code:"3100",name:"Retained Earnings",type:"Equity"},
-  {code:"4000",name:"Sales - Construction & Fit-out",type:"Income"},
-  {code:"4010",name:"Sales - Signage",type:"Income"},
-  {code:"4020",name:"Sales - POP Displays",type:"Income"},
-  {code:"5000",name:"Cost of Materials - Construction",type:"COGS"},
-  {code:"5010",name:"Cost of Materials - Signage",type:"COGS"},
-  {code:"5020",name:"Cost of Materials - POP Displays",type:"COGS"},
-  {code:"5030",name:"Special Materials",type:"COGS"},
-  {code:"5100",name:"Direct Labor - Production",type:"COGS"},
-  {code:"5200",name:"Subcontractor Costs",type:"COGS"},
-  {code:"5300",name:"Freight & Handling",type:"COGS"},
-  {code:"6000",name:"Salaries & Wages - Office",type:"Expense"},
-  {code:"6010",name:"Salaries & Wages - Production",type:"Expense"},
-  {code:"6100",name:"Rent Expense",type:"Expense"},
-  {code:"6200",name:"Utilities Expense",type:"Expense"},
-  {code:"6300",name:"Office Supplies",type:"Expense"},
-  {code:"6400",name:"Repairs & Maintenance",type:"Expense"},
-  {code:"6500",name:"Fuel & Transportation",type:"Expense"},
-  {code:"6600",name:"Professional Fees",type:"Expense"},
-  {code:"6700",name:"Depreciation Expense",type:"Expense"},
-  {code:"6800",name:"Miscellaneous Expense",type:"Expense"},
+  // ── 4xxx INCOME ──────────────────────────────────────────
+  {code:"4000",name:"Sales Revenue (Contract Price)",type:"Income"},
+  {code:"4100",name:"Other Income",type:"Income"},                     // "Other Collection"
+  {code:"4900",name:"Interest Income (Bank Interest)",type:"Income"},
+  // ── 5xxx COST OF SALES (FS "COGS" — direct / project) ────
+  {code:"5000",name:"Warehouse Rental",type:"COGS"},
+  {code:"5010",name:"Warehouse Improvement",type:"COGS"},
+  {code:"5020",name:"Production Supplies",type:"COGS"},
+  {code:"5030",name:"Production Payroll",type:"COGS"},
+  {code:"5040",name:"Production Payroll - Overtime",type:"COGS"},
+  {code:"5050",name:"Production Equipment",type:"COGS"},
+  {code:"5060",name:"Production - Tools",type:"COGS"},
+  {code:"5070",name:"Production - Subcon",type:"COGS"},
+  {code:"5080",name:"Production - Signage",type:"COGS"},
+  {code:"5090",name:"Production - Printing",type:"COGS"},
+  {code:"5100",name:"Sub-Con Prof Fee",type:"COGS"},
+  {code:"5110",name:"Freight Charges",type:"COGS"},
+  {code:"5120",name:"Mobilization - Repair",type:"COGS"},
+  {code:"5130",name:"Mobilization - Pullout",type:"COGS"},
+  {code:"5140",name:"Mobilization - Ocular",type:"COGS"},
+  {code:"5150",name:"Mobilization - Installation",type:"COGS"},
+  {code:"5160",name:"Repair And Maintenance",type:"COGS"},
+  {code:"5170",name:"Logistic",type:"COGS"},
+  {code:"5180",name:"Delivery Fee",type:"COGS"},
+  {code:"5190",name:"OT Meal Allowance",type:"COGS"},
+  {code:"5200",name:"Load Allowance",type:"COGS"},
+  {code:"5210",name:"Insurance - Project",type:"COGS"},
+  {code:"5220",name:"Toll Fee",type:"COGS"},
+  // ── 6xxx OPERATING EXPENSES (FS "OPEX" — G&A) ────────────
+  {code:"6000",name:"Office Salaries Expense",type:"Expense"},
+  {code:"6010",name:"Sales Commission",type:"Expense"},
+  {code:"6020",name:"Employee Benefit",type:"Expense"},
+  {code:"6030",name:"Employee Benefit Expense (Other)",type:"Expense"},
+  {code:"6040",name:"Insurance - Employee",type:"Expense"},
+  {code:"6050",name:"Government Dues",type:"Expense"},
+  {code:"6060",name:"Employees Seminars",type:"Expense"},
+  {code:"6070",name:"Last Pay",type:"Expense"},
+  {code:"6100",name:"Utilities",type:"Expense"},
+  {code:"6110",name:"Other Rental",type:"Expense"},
+  {code:"6120",name:"Office Supplies Expense",type:"Expense"},
+  {code:"6130",name:"Office Services Expense",type:"Expense"},
+  {code:"6140",name:"Office Event",type:"Expense"},
+  {code:"6150",name:"Office-Improvement",type:"Expense"},
+  {code:"6160",name:"Office Equipment",type:"Expense"},
+  {code:"6170",name:"Courier Expense",type:"Expense"},
+  {code:"6200",name:"Travel Expense",type:"Expense"},
+  {code:"6210",name:"Transportation",type:"Expense"},
+  {code:"6220",name:"Parking Fee",type:"Expense"},
+  {code:"6230",name:"Gas - Expense",type:"Expense"},
+  {code:"6250",name:"Meal Allowance",type:"Expense"},
+  {code:"6300",name:"Taxes",type:"Expense"},
+  {code:"6310",name:"Business And Lic Permit",type:"Expense"},
+  {code:"6320",name:"Car Registration",type:"Expense"},
+  {code:"6330",name:"Professional Fee",type:"Expense"},
+  {code:"6400",name:"Marketing Collateral",type:"Expense"},
+  {code:"6500",name:"Bank Services",type:"Expense"},
+  {code:"6510",name:"Bank Charge",type:"Expense"},
+  {code:"6520",name:"Amortization",type:"Expense"},
+  {code:"6900",name:"Other Expense",type:"Expense"},
+  {code:"6910",name:"Miscellaneous Expense",type:"Expense"},
+  {code:"6950",name:"Interest Expense",type:"Expense"},                // shown under Other Income (Expense) on the FS
 ];
 
 // Finance Daily Digest — self-contained snapshot (Collections/AR · Cash Position
@@ -27907,22 +28271,30 @@ function BOQHomeView({standaloneBoqs=[],deals=[],session,role,today,onOpenStanda
           {all.length===0&&<button onClick={()=>{setDq("");setPicking(true);}} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>＋ New BOQ</button>}
         </div>
       ):(
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:12}}>
-          {filtered.map(e=>(
+        <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+          {/* Column header — list view (replaces the old card grid) */}
+          <div style={{display:"flex",alignItems:"center",gap:12,padding:"8px 14px",background:"#f8fafc",borderBottom:"1px solid #e2e8f0",fontSize:".62rem",fontWeight:800,textTransform:"uppercase",letterSpacing:".5px",color:"#94a3b8"}}>
+            <span style={{width:30,flexShrink:0}}>Type</span>
+            <span style={{flex:1,minWidth:0}}>BOQ / Client</span>
+            <span style={{width:96,textAlign:"right",flexShrink:0}}>Date</span>
+            <span style={{width:120,textAlign:"right",flexShrink:0}}>Total</span>
+            <span style={{width:22,flexShrink:0}}/>
+          </div>
+          {filtered.map((e,i)=>(
             <div key={e.kind+e.id} onClick={()=>e.kind==="standalone"?onOpenStandalone(e.id):onOpenDeal(e.id)}
-              style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 16px",cursor:"pointer",transition:"border-color .15s,box-shadow .15s",position:"relative"}}
-              onMouseEnter={ev=>{ev.currentTarget.style.borderColor="#94a3b8";ev.currentTarget.style.boxShadow="0 6px 18px rgba(15,23,42,.08)";}}
-              onMouseLeave={ev=>{ev.currentTarget.style.borderColor="#e2e8f0";ev.currentTarget.style.boxShadow="none";}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:8}}>
-                <span style={{fontSize:".6rem",fontWeight:800,textTransform:"uppercase",letterSpacing:".5px",padding:"2px 8px",borderRadius:20,background:e.kind==="standalone"?"#f5f3ff":"#eff6ff",color:e.kind==="standalone"?"#7c3aed":"#1d4ed8",border:`1px solid ${e.kind==="standalone"?"#ddd6fe":"#bfdbfe"}`}}>{e.kind==="standalone"?"📄 Standalone":"🔗 Pipeline"}</span>
-                {e.kind==="standalone"&&canDelete&&<button onClick={async ev=>{ev.stopPropagation();if((await uiConfirm("Delete this BOQ? This cannot be undone.")))onDeleteStandalone(e.id);}} title="Delete BOQ" style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".8rem",opacity:.5,padding:0}} onMouseEnter={ev=>ev.currentTarget.style.opacity=1} onMouseLeave={ev=>ev.currentTarget.style.opacity=.5}>🗑</button>}
+              style={{display:"flex",alignItems:"center",gap:12,padding:"11px 14px",cursor:"pointer",borderTop:i===0?"none":"1px solid #f1f5f9",transition:"background .12s"}}
+              onMouseEnter={ev=>ev.currentTarget.style.background="#f8fafc"}
+              onMouseLeave={ev=>ev.currentTarget.style.background="#fff"}>
+              <span title={e.kind==="standalone"?"Standalone":"Pipeline-linked"} style={{width:30,flexShrink:0,textAlign:"center",fontSize:".6rem",fontWeight:800,padding:"2px 0",borderRadius:20,background:e.kind==="standalone"?"#f5f3ff":"#eff6ff",color:e.kind==="standalone"?"#7c3aed":"#1d4ed8",border:`1px solid ${e.kind==="standalone"?"#ddd6fe":"#bfdbfe"}`}}>{e.kind==="standalone"?"📄":"🔗"}</span>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.title||"Untitled BOQ"}</div>
+                <div style={{fontSize:".72rem",color:"#94a3b8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.sub||"—"}</div>
               </div>
-              <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.title||"Untitled BOQ"}</div>
-              <div style={{fontSize:".72rem",color:"#94a3b8",marginBottom:10,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.sub||"—"}</div>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <span style={{fontWeight:800,color:"#059669",fontSize:"1rem",fontFamily:"'Barlow Condensed',sans-serif"}}>{peso(e.total)}</span>
-                <span style={{fontSize:".68rem",color:"#94a3b8"}}>{fmtDate(e.date)}</span>
-              </div>
+              <span style={{width:96,textAlign:"right",flexShrink:0,fontSize:".68rem",color:"#94a3b8"}}>{fmtDate(e.date)}</span>
+              <span style={{width:120,textAlign:"right",flexShrink:0,fontWeight:800,color:"#059669",fontSize:".95rem",fontFamily:"'Barlow Condensed',sans-serif"}}>{peso(e.total)}</span>
+              {e.kind==="standalone"&&canDelete
+                ? <button onClick={async ev=>{ev.stopPropagation();if((await uiConfirm("Delete this BOQ? This cannot be undone.")))onDeleteStandalone(e.id);}} title="Delete BOQ" style={{width:22,flexShrink:0,background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".8rem",opacity:.5,padding:0}} onMouseEnter={ev=>ev.currentTarget.style.opacity=1} onMouseLeave={ev=>ev.currentTarget.style.opacity=.5}>🗑</button>
+                : <span style={{width:22,flexShrink:0}}/>}
             </div>
           ))}
         </div>

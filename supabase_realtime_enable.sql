@@ -3,7 +3,7 @@
 -- ============================================================================
 -- The app opens realtime subscriptions for these tables so edits on one device
 -- appear on others without a manual refresh. Realtime only fires if the table
--- is in the `supabase_realtime` publication. Adds the 22 subscribed tables
+-- is in the `supabase_realtime` publication. Adds the 23 subscribed tables
 -- (idempotent). Run in: Supabase Dashboard -> SQL Editor.
 -- ============================================================================
 do $$
@@ -14,7 +14,8 @@ declare
     'billing_milestones','billing_payments','addenda','activity_log','job_orders',
     'purchase_requests','material_requests','budget_requests','expenses',
     'subcon_work_orders','inflows','checklists','swatches','ae_updates',
-    'project_blockers','inventory_items','stock_movements','design_requests'
+    'project_blockers','inventory_items','stock_movements','design_requests',
+    'standalone_boqs'
   ];
 begin
   foreach t in array subscribed loop
