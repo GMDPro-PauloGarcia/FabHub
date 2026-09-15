@@ -439,6 +439,36 @@ export const calcTax = (base, receiptType="OR", withholding=false) => {
   return { base:b, vat, gross, ewt, netReceivable };
 };
 
+// Canonical money for ONE deal, in every basis — so every view counts the same
+// way instead of each subtracting mismatched net/gross figures. In this system
+// `value` and `invoiced` are stored VAT-EXCLUSIVE (the net contract base), while
+// `amountPaid` is tracked in CASH terms (netReceivable = gross − EWT, i.e. what
+// the client actually remits). The long-standing bug is that several views did
+// `invoiced − amountPaid` (net minus cash), which reads ~10–12% low and can go
+// negative once a client has paid. Compare collections against the receivable in
+// the SAME cash basis and it's correct. Returns the four headline figures the
+// business tracks — contract price, VAT, EWT, collections — plus derived totals.
+export const dealFinancials = (d={}) => {
+  const r2 = x => Math.round((Number(x)||0)*100)/100;
+  const receiptType = d.receiptType || "OR";
+  const withholding = !!d.withholding;
+  const ct = calcTax(Number(d.value)||0,    receiptType, withholding); // whole contract
+  const bt = calcTax(Number(d.invoiced)||0, receiptType, withholding); // billed to date
+  const collected = r2(d.amountPaid);
+  return {
+    receiptType, withholding,
+    contract:         ct.base,          // Total Contract Price (VAT-exclusive)
+    vat:              ct.vat,           // 12% VAT (OR receipts only)
+    ewt:              ct.ewt,           // 2% EWT withheld by client (OR + withholding)
+    gross:            ct.gross,         // contract + VAT — the amount invoiced to client
+    netReceivable:    ct.netReceivable, // cash the client remits (gross − EWT)
+    billed:           bt.base,          // billed to date (net)
+    billedReceivable: bt.netReceivable, // billed to date, cash basis
+    collected,                          // Collections to date (cash basis)
+    outstanding: r2(Math.max(0, bt.netReceivable - collected)), // like-for-like cash basis
+  };
+};
+
 export const calcInputTax = (gross, vatable=false, ewtRate=0) => {
   const g = Number(gross)||0;
   const net = vatable ? Math.round(g/1.12*100)/100 : g;

@@ -6,7 +6,7 @@ import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -1345,18 +1345,26 @@ function CollectionsPanel({wonDeals,infs,onUpdatePayment,onLogPayment,readonly=f
   const[logModal,setLogModal]=useState(false);
   const[logForm,setLogForm]=useState({dealId:"",amount:"",note:"",date:today});
 
-  const totalInvoiced=wonDeals.reduce((s,d)=>s+d.invoiced,0);
-  const totalCollected=wonDeals.reduce((s,d)=>s+d.amountPaid,0);
-  const totalOut=totalInvoiced-totalCollected;
+  // All money runs through dealFinancials so every figure is on one consistent
+  // basis: contract/VAT/EWT are derived from the net base, and Outstanding is
+  // billed receivable (cash the client owes, VAT in / EWT out) minus collections.
+  const fins=wonDeals.map(d=>dealFinancials(d));
+  const totalContract =fins.reduce((s,f)=>s+f.contract,0);
+  const totalVat      =fins.reduce((s,f)=>s+f.vat,0);
+  const totalEwt      =fins.reduce((s,f)=>s+f.ewt,0);
+  const totalCollected=fins.reduce((s,f)=>s+f.collected,0);
+  const totalOut      =fins.reduce((s,f)=>s+f.outstanding,0);
   const overdue=wonDeals.filter(d=>d.dueDate&&d.dueDate<today&&d.paymentStatus!=="Paid"&&d.paymentStatus!=="Deposited"&&d.invoiced>0);
 
   return(
     <div>
       {/* Summary KPIs */}
-      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(3,1fr)",gap:12,marginBottom:20}}>
-        <KPI label="Total Invoiced"  value={fmtK(totalInvoiced)} color="#3b82f6"/>
-        <KPI label="Total Collected" value={fmtK(totalCollected)} color="#059669"/>
-        <KPI label="Outstanding"     value={fmtK(totalOut)}       color={totalOut>0?"#ef4444":"#059669"}/>
+      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"repeat(2,1fr)":"repeat(5,1fr)",gap:12,marginBottom:20}}>
+        <KPI label="Total Contract Price" value={fmtK(totalContract)} color="#3b82f6"/>
+        <KPI label="VAT (12%)"            value={fmtK(totalVat)}      color="#6366f1"/>
+        <KPI label="EWT Withheld"         value={fmtK(totalEwt)}      color="#a855f7"/>
+        <KPI label="Total Collected"      value={fmtK(totalCollected)} color="#059669"/>
+        <KPI label="Outstanding"          value={fmtK(totalOut)}       color={totalOut>0?"#ef4444":"#059669"}/>
       </div>
 
       {/* Overdue alert */}
@@ -1373,9 +1381,10 @@ function CollectionsPanel({wonDeals,infs,onUpdatePayment,onLogPayment,readonly=f
       <SecHead title="Client Collections" action={!readonly&&<Btn onClick={()=>setLogModal(true)}>+ Log Payment</Btn>}/>
 
       {wonDeals.filter(d=>d.invoiced>0).map(d=>{
-        const bal=d.invoiced-d.amountPaid;
+        const f=dealFinancials(d);
+        const bal=f.outstanding;
         const od=d.dueDate&&d.dueDate<today&&d.paymentStatus!=="Paid";
-        const pct=d.invoiced>0?Math.round(d.amountPaid/d.invoiced*100):0;
+        const pct=f.billedReceivable>0?Math.round(f.collected/f.billedReceivable*100):0;
         return(
           <Card key={d.id} accent={od?"#fca5a5":bal===0?"#6ee7b7":undefined}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
@@ -1384,10 +1393,11 @@ function CollectionsPanel({wonDeals,infs,onUpdatePayment,onLogPayment,readonly=f
                 <div style={{fontSize:".76rem",color:"#64748b",marginTop:3}}>{d.product}</div>
                 <div style={{marginTop:10,marginBottom:4}}>
                   <div style={{display:"flex",justifyContent:"space-between",fontSize:".7rem",color:"#94a3b8",marginBottom:4}}>
-                    <span>{fmt(d.amountPaid)} collected of {fmt(d.invoiced)}</span>
+                    <span>{fmt(f.collected)} collected of {fmt(f.billedReceivable)}</span>
                     <span style={{fontWeight:700,color:pct===100?"#059669":"#64748b"}}>{pct}%</span>
                   </div>
                   <ProgBar pct={pct} color={pct===100?"#059669":pct>0?"#10b981":"#e2e8f0"} h={8}/>
+                  <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:5}}>Contract {fmt(f.contract)} · VAT {fmt(f.vat)}{f.ewt>0?` · EWT −${fmt(f.ewt)}`:""} · Receivable {fmt(f.billedReceivable)}</div>
                 </div>
                 {d.dueDate&&<div style={{fontSize:".72rem",color:od?"#ef4444":"#94a3b8",marginTop:6}}>{od?"⚠ Overdue since":"Due:"} {d.dueDate}</div>}
               </div>
@@ -1417,7 +1427,7 @@ function CollectionsPanel({wonDeals,infs,onUpdatePayment,onLogPayment,readonly=f
           <Sel value={logForm.dealId} onChange={e=>setLogForm(p=>({...p,dealId:e.target.value}))}>
             <option value="">— Select client —</option>
             {wonDeals.filter(d=>d.invoiced>0).map(d=>(
-              <option key={d.id} value={d.id}>{d.client} — {fmt(d.invoiced-d.amountPaid)} remaining</option>
+              <option key={d.id} value={d.id}>{d.client} — {fmt(dealFinancials(d).outstanding)} remaining</option>
             ))}
           </Sel>
         </Fld>
