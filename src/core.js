@@ -62,6 +62,36 @@ export const normalizeStage=(s)=>{
 // key so look-alike names are grouped, counted, and matched as one client.
 export const clientKey=(s)=>String(s||"").toLowerCase().replace(/[.,]+/g," ").replace(/\s+/g," ").trim();
 
+// Stronger key for DUPLICATE DETECTION at deal entry. On top of clientKey it
+// also flattens hyphens / ampersands / slashes and strips trailing corporate
+// suffixes, so look-alikes that clientKey keeps apart still collapse:
+//   "Adm Indicia" ≡ "Adm-Indicia",  "Matchanese" ≡ "Matchanese Inc"
+// Deliberately more aggressive than clientKey — only used to RAISE a "possible
+// duplicate?" confirm prompt (never to auto-block or to group clients in
+// reports), so an occasional over-match just asks the user, it doesn't lose data.
+const CORP_SUFFIX=/\b(incorporated|corporation|corp|inc|company|co|ltd|limited|enterprises?|ventures?|trading|holdings?|group|philippines|phils?|ph)\b/g;
+export const clientMatchKey=(s)=>clientKey(s).replace(/[-&/]+/g," ").replace(CORP_SUFFIX," ").replace(/\s+/g," ").trim();
+
+// Loose title similarity for the same duplicate prompt. True when one title
+// contains the other, or the two share ≥50% of their meaningful word tokens —
+// so "Zyn Bacolod Event 1" and "Zyn Bacolod Leg 1" register as the same project
+// even though neither string contains the other. Digits are kept (they separate
+// "Leg 1" from "Leg 2"); a few filler words are dropped.
+const TITLE_STOP=new Set(["the","a","an","for","of","and","to","with"]);
+export const titleTokens=(s)=>String(s||"").toLowerCase().replace(/[^a-z0-9]+/g," ").split(" ").filter(t=>t&&!TITLE_STOP.has(t));
+export const titleSimilar=(a,b)=>{
+  const A=titleTokens(a), B=titleTokens(b);
+  if(!A.length||!B.length) return false;
+  // If both titles carry numbers and share none, they're distinct instances of a
+  // series — "Leg 1" vs "Leg 2", "Phase 1" vs "Phase 3" — never the same deal.
+  const numsA=A.filter(t=>/^\d+$/.test(t)), numsB=B.filter(t=>/^\d+$/.test(t));
+  if(numsA.length&&numsB.length&&!numsA.some(n=>numsB.includes(n))) return false;
+  const sa=A.join(" "), sb=B.join(" ");
+  if(sa.includes(sb)||sb.includes(sa)) return true;
+  const setB=new Set(B), inter=A.filter(t=>setB.has(t)).length, union=new Set([...A,...B]).size;
+  return union>0 && inter/union>=0.5;
+};
+
 export const WON_STAGES    = ["06 · Kickoff","07 · Briefing","08 · Fabrication","09 · Site & Billing","10 · Installation","11 · Punchlist","12 · Close-Out","14 · Completed"];
 
 export const ACTIVE_STAGES = ["01 · BizDev","02 · Engagement","03 · Design & Folder","04 · CE in Progress","05 · For Approval"];
@@ -407,6 +437,36 @@ export const calcTax = (base, receiptType="OR", withholding=false) => {
   const ewt = (receiptType==="OR" && withholding) ? c(b*0.02) : 0; // EWT only on OR, not AR
   const netReceivable = c(gross - ewt);                 // what GMD actually receives
   return { base:b, vat, gross, ewt, netReceivable };
+};
+
+// Canonical money for ONE deal, in every basis — so every view counts the same
+// way instead of each subtracting mismatched net/gross figures. In this system
+// `value` and `invoiced` are stored VAT-EXCLUSIVE (the net contract base), while
+// `amountPaid` is tracked in CASH terms (netReceivable = gross − EWT, i.e. what
+// the client actually remits). The long-standing bug is that several views did
+// `invoiced − amountPaid` (net minus cash), which reads ~10–12% low and can go
+// negative once a client has paid. Compare collections against the receivable in
+// the SAME cash basis and it's correct. Returns the four headline figures the
+// business tracks — contract price, VAT, EWT, collections — plus derived totals.
+export const dealFinancials = (d={}) => {
+  const r2 = x => Math.round((Number(x)||0)*100)/100;
+  const receiptType = d.receiptType || "OR";
+  const withholding = !!d.withholding;
+  const ct = calcTax(Number(d.value)||0,    receiptType, withholding); // whole contract
+  const bt = calcTax(Number(d.invoiced)||0, receiptType, withholding); // billed to date
+  const collected = r2(d.amountPaid);
+  return {
+    receiptType, withholding,
+    contract:         ct.base,          // Total Contract Price (VAT-exclusive)
+    vat:              ct.vat,           // 12% VAT (OR receipts only)
+    ewt:              ct.ewt,           // 2% EWT withheld by client (OR + withholding)
+    gross:            ct.gross,         // contract + VAT — the amount invoiced to client
+    netReceivable:    ct.netReceivable, // cash the client remits (gross − EWT)
+    billed:           bt.base,          // billed to date (net)
+    billedReceivable: bt.netReceivable, // billed to date, cash basis
+    collected,                          // Collections to date (cash basis)
+    outstanding: r2(Math.max(0, bt.netReceivable - collected)), // like-for-like cash basis
+  };
 };
 
 export const calcInputTax = (gross, vatable=false, ewtRate=0) => {
