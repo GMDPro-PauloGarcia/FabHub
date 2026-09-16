@@ -43,14 +43,14 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
 
   const opsEvents=React.useMemo(()=>checklists.filter(c=>OPS_EVENT_TYPES.includes(c.type)&&c.dept==="Operations"&&c.dueDate&&c.status!=="Done"),[checklists]);
 
-  // ── Field Board: the six weekdays (Mon–Sat) of the selected week ──────────
+  // ── Field Board: the full week (Mon–Sun) of the selected week ─────────────
   const boardDays=React.useMemo(()=>{
-    return Array.from({length:6},(_,i)=>{const d=new Date(boardMonday);d.setDate(d.getDate()+i);return{date:isoDate(d),dow:DOW[d.getDay()],dd:`${String(d.getMonth()+1).padStart(2,"0")}.${String(d.getDate()).padStart(2,"0")}`};});
+    return Array.from({length:7},(_,i)=>{const d=new Date(boardMonday);d.setDate(d.getDate()+i);return{date:isoDate(d),dow:DOW[d.getDay()],dd:`${String(d.getMonth()+1).padStart(2,"0")}.${String(d.getDate()).padStart(2,"0")}`};});
   },[boardMonday]);
   // All ops-created field jobs (any status) that fall inside the visible week,
   // grouped by day. Unlike opsEvents this keeps Done items so the week reads true.
   const boardJobs=React.useMemo(()=>{
-    const start=boardDays[0]?.date, end=boardDays[5]?.date;
+    const start=boardDays[0]?.date, end=boardDays[6]?.date;
     if(!start||!end) return {};
     const inWeek=checklists.filter(c=>c.dept==="Operations"&&OPS_EVENT_TYPES.includes(c.type)&&c.dueDate&&c.dueDate>=start&&c.dueDate<=end);
     const map={};boardDays.forEach(d=>map[d.date]=[]);
@@ -81,7 +81,10 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
     const proj=schedForm.projectId?projById[schedForm.projectId]:null;
     const cat=schedForm.category;
     const title=proj?(projLabel(proj)||proj.client||""):customTitle;
-    const data={type:CAT_LABEL_BY_CODE[cat]||"Repair",category:cat,workDetail:cat==="O"?workDetail:"",location:schedForm.location||"",title,dueDate:schedForm.date,projectId:schedForm.projectId||"",dealId:schedForm.projectId||"",assignedTo:schedForm.assignedTo||"",notes:schedForm.notes||"",status:schedForm.status||"Scheduled",priority:"Normal"};
+    // Preserve the work description on edit for every job type — not just "Others".
+    // Field Board jobs carry their description in workDetail regardless of category,
+    // so blanking it for non-"O" types silently erased it on every save.
+    const data={type:CAT_LABEL_BY_CODE[cat]||"Repair",category:cat,workDetail,location:schedForm.location||"",title,dueDate:schedForm.date,projectId:schedForm.projectId||"",dealId:schedForm.projectId||"",assignedTo:schedForm.assignedTo||"",notes:schedForm.notes||"",status:schedForm.status||"Scheduled",priority:"Normal"};
     if(editSchedId) updateOpsEvent?.(editSchedId,data);
     else addOpsEvent?.(data);
     setSchedModal(false);setEditSchedId(null);
@@ -281,7 +284,7 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
 
       {calTab==="board"&&(()=>{
         const wkNo=(()=>{const d=new Date(boardMonday);const oneJan=new Date(d.getFullYear(),0,1);return Math.ceil((((d-oneJan)/86400000)+oneJan.getDay()+1)/7);})();
-        const rangeLbl=`${boardMonday.toLocaleDateString("en-PH",{month:"short",day:"numeric"})} – ${new Date(boardMonday.getTime()+5*86400000).toLocaleDateString("en-PH",{day:"numeric"})}`;
+        const rangeLbl=`${boardMonday.toLocaleDateString("en-PH",{month:"short",day:"numeric"})} – ${new Date(boardMonday.getTime()+6*86400000).toLocaleDateString("en-PH",{day:"numeric"})}`;
         const shiftWeek=n=>setBoardMonday(m=>{const d=new Date(m);d.setDate(d.getDate()+n*7);return d;});
         const thisMonday=()=>{const d=new Date(today+"T00:00:00");d.setDate(d.getDate()-((d.getDay()+6)%7));d.setHours(0,0,0,0);return d;};
         return(
@@ -355,7 +358,7 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
             })}
           </div>
           <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:8,display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:6}}>
-            <span>Jobs added here appear on the Monthly calendar and This Week too. Sunday is a rest day and is hidden.</span>
+            <span>Jobs added here appear on the Monthly calendar and This Week too. Sunday is shown — leave it empty on rest weeks.</span>
             <span style={{fontFamily:"monospace"}}>I · Installation&nbsp; R · Repair&nbsp; P · Punchlist&nbsp; C · Construction&nbsp; O · Others</span>
           </div>
         </div>
