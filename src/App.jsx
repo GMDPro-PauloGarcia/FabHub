@@ -5009,13 +5009,18 @@ export default function App(){
     });
     return false;
   };
-  const sbSyncOne=(table,record,mapper)=>{
+  // opts.ignoreDuplicates → INSERT ... ON CONFLICT DO NOTHING: only materialise a
+  // MISSING row, never overwrite an existing one. Use it for parent-before-child
+  // FK-safety writes so they can't clobber a server row that's newer than this
+  // device's local copy (the stale-`deals`-snapshot clobber that silently
+  // reverted an awarded deal's stage and produced a duplicate Job Order).
+  const sbSyncOne=(table,record,mapper,opts={})=>{
     if(!isSupabaseReady()||!record) return Promise.resolve(false);
     // Don't re-push what RLS will reject — see roleCanInsert / INSERT_ROLES above.
     if(!roleCanInsert(table)) return Promise.resolve(false);
     const payload=mapper?mapper(record):record;
     if(!hasValidUUIDs(payload)) return Promise.resolve(false);
-    return sbUpsert(table,payload,'id')
+    return sbUpsert(table,payload,'id',opts)
       .catch(e=>{console.error("FabHub sbSyncOne "+table+":",e.message);return false;});
   };
   const sbSyncDelete=(table,id)=>{
@@ -5041,8 +5046,13 @@ export default function App(){
   // if it somehow went missing — exactly the self-heal we want.
   const syncProjectCard=async(dealId,patch)=>{
     if(!isSupabaseReady()||!dealId) return false;
+    // Insert-if-missing only: this write exists solely to guarantee the parent
+    // deal row is present for the card's FK. `deal` here is this device's local
+    // (possibly-stale) copy, so a full upsert would overwrite whatever is on the
+    // server — reverting another user's newer stage/value edit. ignoreDuplicates
+    // makes it a no-op whenever the row already exists.
     const deal=deals.find(d=>d.id===dealId);
-    if(deal) await sbSyncOne("deals",deal,toSbDeal);
+    if(deal) await sbSyncOne("deals",deal,toSbDeal,{ignoreDuplicates:true});
     // Adopt the local card id on the server row. project_card_dept_status/_tasks
     // reference the card by card_id; if the parent row is created here without an
     // id, the server assigns its own UUID and every child write orphans (the
@@ -5627,8 +5637,25 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       // Guarantee the parent deal exists on the server before the card's own FK
       // to deals(id) is evaluated — createProjectCard is reachable from the
       // manual "create card" path too, where the deal may still be local-only.
+      // Merge the caller-supplied dealData over the `deals` snapshot before
+      // re-syncing the parent. During Award the optimistic stage/probability
+      // update (upDeals → "06 · Kickoff") has only been scheduled, so the
+      // `deals` closure here still holds the PRE-award stage. Syncing that raw
+      // snapshot would land after confirmAward's own Kickoff write and silently
+      // revert the deal to its old stage (e.g. "01 · BizDev") — the deal then
+      // looks un-awarded in the pipeline and gets awarded again, issuing a
+      // duplicate Job Order. dealData carries the authoritative just-changed
+      // fields, so let it win over the stale snapshot.
+      // Insert-if-missing only (ignoreDuplicates): if the deal already exists on
+      // the server — the normal case, since confirmAward upserts the awarded deal
+      // just before this — leave that row untouched so this write can't revert the
+      // "06 · Kickoff" stage back to the pre-award value. The merged payload only
+      // matters for the self-heal case where the parent was never synced, and even
+      // then carries the caller's authoritative (awarded) fields, not the stale
+      // `deals` snapshot.
       const parentDeal=deals.find(d=>d.id===dealId);
-      if(parentDeal) await sbSyncOne("deals",parentDeal,toSbDeal);
+      const parentToSync=parentDeal?{...parentDeal,...(dealData||{})}:(dealData||null);
+      if(parentToSync&&parentToSync.id) await sbSyncOne("deals",parentToSync,toSbDeal,{ignoreDuplicates:true});
       const cardSynced=await sbUpsert('project_cards',{id:card.id,deal_id:dealId,client:dealData?.client||"",ce_no:dealData?.ceNo||"",value:Number(dealData?.value)||0,award_date:dealData?.awardDate||today,created_at:card.createdAt,ae_assigned:card.aeAssigned||"",pm1:card.pm1||"",pm2:card.pm2||"",pm3:card.pm3||"",designer:card.designer||"",coordinator:card.coordinator||"",...(card.targetEndDate?{target_end_date:card.targetEndDate}:{}),...(card.targetDays!=null?{target_days:card.targetDays}:{})},'deal_id');
       if(cardSynced){
         DEPT_ORDER.forEach(dept=>{
@@ -8019,6 +8046,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const turnoverDate=form.startDate||"";
     const turnoverDays=turnoverDate?Math.max(1,Math.ceil((new Date(turnoverDate)-new Date(awardDateForCard))/86400000)):null;
     const cardOk=await createProjectCard(id,{...awardModal,
+      // Carry the awarded stage/probability/payment so createProjectCard's
+      // parent-deal re-sync writes the AWARDED deal, not awardModal's stale
+      // pre-award snapshot (which would revert stage back and orphan the award).
+      stage:"06 · Kickoff",
+      probability:100,
+      paymentStatus:"Unpaid",
+      notes:form.scopeNotes||awardModal.notes||"",
+      dateAcquired:awardModal.dateAcquired||awardedDate,
       aeAssigned:jo.aeAssigned,
       pm1:jo.pm1||"",
       pm2:jo.pm2||"",
