@@ -18263,6 +18263,12 @@ function MyFolderView({session,projList,projs,drfs,updateDRF,deleteDRF,upProj,se
   };
   const[sortBy,setSortBy]=useState("client");
   const[openItem,setOpenItem]=useState(null); // `${kind}:${id}`
+  const[openCat,setOpenCat]=useState({});     // `${member}:${status}` -> expanded
+  // Done / Cancelled are "closed" design statuses. They get their own collapsed
+  // sub-folders so they stop inflating the live project count. Works for both
+  // project cards (DESIGN_STATUSES) and DRFs (DRF_STATUSES) — both share the
+  // Done/Cancelled tokens.
+  const isClosedItem=it=>it.status==="Done"||it.status==="Cancelled";
   const mob=window.innerWidth<768;
   const yearOf=(...cands)=>{for(const c of cands){const m=/(\d{4})/.exec(c||"");if(m)return m[1];}return "Undated";};
 
@@ -18289,6 +18295,120 @@ function MyFolderView({session,projList,projs,drfs,updateDRF,deleteDRF,upProj,se
     return (a.client||"").localeCompare(b.client||"");
   });
 
+  // One collapsible row for a single project/DRF. Reused by the live year
+  // sub-folders and by the Done / Cancelled category sub-folders below.
+  const ItemRow=(it)=>{
+    const isDrf=it.kind==="drf";
+    const c=(isDrf?DRF_CLR[it.status]:DS_CLR[it.status])||"#94a3b8";
+    const key=`${it.kind}:${it.id}`;
+    const open=openItem===key;
+    return(
+      <div key={key} style={{borderBottom:"1px solid #f8fafc"}}>
+        <div onClick={()=>setOpenItem(open?null:key)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",cursor:"pointer",background:open?"#fdf4ff":"#fff"}}>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{isDrf?"🖌️ ":""}{it.title||it.client}</div>
+            <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>{it.client}{it.due?` · due ${it.due}`:""}</div>
+          </div>
+          <span style={{marginLeft:12,fontSize:".68rem",fontWeight:700,color:c,background:c+"18",border:`1px solid ${c}44`,borderRadius:20,padding:"2px 9px",whiteSpace:"nowrap"}}>{it.status}</span>
+          <span style={{marginLeft:10,color:"#94a3b8",fontSize:".7rem"}}>{open?"▲":"▼"}</span>
+        </div>
+        {open&&(
+          <div style={{background:"#faf5ff",borderTop:"1px solid #e9d5ff",padding:"14px 18px"}}>
+            {/* Standardized data card — same Category · Client ·
+                Location · Size block as the DRF list, so a project
+                reads consistently wherever it appears. For a project
+                card the values come from its linked DRF, falling back
+                to the deal's brief. */}
+            {(()=>{
+              const ld=isDrf?it.drf:(drfs||[]).find(r=>r.dealId===it.id);
+              const cat=ld?.category||"";
+              const client=it.client||it.deal?.client||"";
+              const loc=ld?.location||it.deal?.location||"";
+              const size=ld?.size||it.deal?.drfSize||"";
+              return(
+                <div style={{background:"#fff",border:"1px solid #e9d5ff",borderRadius:10,padding:"12px 14px",marginBottom:14}}>
+                  <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(4,1fr)",gap:"10px 16px"}}>
+                    {[["Category",cat],["Client",client],["Location",loc],["Size",size]].map(([l,v])=>(
+                      <div key={l}>
+                        <div style={{fontSize:".62rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".6px",marginBottom:3}}>{l}</div>
+                        <div style={{fontSize:".82rem",color:v?"#0f172a":"#cbd5e1",fontWeight:600}}>{v||"—"}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+            <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:14}}>
+              {/* Project Status */}
+              <div>
+                <div style={{fontSize:".65rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Project Status</div>
+                {isDrf
+                  ?<select value={it.status} onChange={e=>updateDRF(it.id,{status:e.target.value})}
+                     style={{width:"100%",boxSizing:"border-box",border:`1.5px solid ${c}`,borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:c,background:c+"12",fontWeight:700,cursor:"pointer"}}>
+                     {DRF_STATUSES.map(s=><option key={s} value={s} style={{color:"#0f172a",background:"#fff",fontWeight:400}}>{s}</option>)}
+                   </select>
+                  :<select value={it.status} onChange={e=>upProj(it.id,p=>({...p,design:{...p.design,status:e.target.value,statusHistory:[...(p.design?.statusHistory||[]),{status:e.target.value,date:todayL,by:session?.name||"Design"}]}}))}
+                     style={{width:"100%",boxSizing:"border-box",border:`1.5px solid ${c}`,borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:c,background:c+"12",fontWeight:700,cursor:"pointer"}}>
+                     {DESIGN_STATUSES.map(s=><option key={s} value={s} style={{color:"#0f172a",background:"#fff",fontWeight:400}}>{s}</option>)}
+                   </select>
+                }
+              </div>
+              {/* Timeline / Due Date */}
+              <div>
+                <div style={{fontSize:".65rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Timeline / Due Date</div>
+                <input type="date" value={it.due||""}
+                  onChange={e=>{const v=e.target.value;if(isDrf)updateDRF(it.id,{designDeadline:v});else upProj(it.id,p=>({...p,design:{...p.design,dueDate:v}}));}}
+                  style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a"}}/>
+              </div>
+              {/* Project Details — editable */}
+              <div style={{gridColumn:mob?"auto":"1/-1"}}>
+                <div style={{fontSize:".65rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Project Details</div>
+                {isDrf?(
+                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                    <input value={it.drf.projectTitle||""} onChange={e=>updateDRF(it.id,{projectTitle:e.target.value})} placeholder="Project title"
+                      style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a"}}/>
+                    <textarea value={it.drf.notes||""} onChange={e=>updateDRF(it.id,{notes:e.target.value})} placeholder="Notes / details" rows={2}
+                      style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a",resize:"vertical"}}/>
+                  </div>
+                ):(
+                  <textarea value={projs[it.id]?.design?.notes||""} onChange={e=>upProj(it.id,p=>({...p,design:{...p.design,notes:e.target.value}}))} placeholder="Design notes / details" rows={2}
+                    style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a",resize:"vertical"}}/>
+                )}
+              </div>
+            </div>
+            <div style={{display:"flex",gap:8,marginTop:12,alignItems:"center"}}>
+              {!isDrf&&(
+                <button onClick={e=>{e.stopPropagation();setSelProj(it.id);setOpsTab("design");}}
+                  style={{background:"#7c3aed",border:"none",borderRadius:8,padding:"7px 14px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".76rem",cursor:"pointer"}}>Open full design →</button>
+              )}
+              <button onClick={e=>{e.stopPropagation();deleteItem(it);}}
+                style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,padding:"7px 14px",color:"#dc2626",fontFamily:"inherit",fontWeight:700,fontSize:".76rem",cursor:"pointer"}}>✕ Delete</button>
+              <span style={{fontSize:".7rem",color:"#94a3b8"}}>Changes save automatically.</span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // A collapsible category sub-folder (Done / Cancelled), one per member.
+  const ClosedCategory=(member,label,emoji,color,catItems)=>{
+    if(catItems.length===0) return null;
+    const ck=`${member}:${label}`;
+    const expanded=!!openCat[ck];
+    return(
+      <div key={ck}>
+        <div onClick={()=>setOpenCat(p=>({...p,[ck]:!expanded}))}
+          style={{background:"#f8fafc",borderTop:"1px solid #eef2f7",padding:"7px 16px",display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
+          <span style={{fontWeight:800,color,fontSize:".82rem",letterSpacing:".3px"}}>{emoji} {label}</span>
+          <span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:600}}>{catItems.length} project{catItems.length!==1?"s":""}</span>
+          <span style={{marginLeft:"auto",color:"#94a3b8",fontSize:".7rem"}}>{expanded?"▲ Hide":"▼ Show"}</span>
+        </div>
+        {expanded&&sortItems(catItems).map(ItemRow)}
+      </div>
+    );
+  };
+
   return(
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:18,flexWrap:"wrap",gap:12}}>
@@ -18308,9 +18428,15 @@ function MyFolderView({session,projList,projs,drfs,updateDRF,deleteDRF,upProj,se
 
       {folders.map(({member,items})=>{
         const mine=member===me;
-        // Split into year sub-folders, newest year first (Undated last).
+        // Live vs closed. Done / Cancelled drop out of the year sub-folders and
+        // the header count, and get their own collapsed category sub-folders so
+        // "My Projects" reflects active work only.
+        const active=items.filter(it=>!isClosedItem(it));
+        const doneItems=items.filter(it=>it.status==="Done");
+        const cancelledItems=items.filter(it=>it.status==="Cancelled");
+        // Split live items into year sub-folders, newest year first (Undated last).
         const years={};
-        items.forEach(it=>{const y=yearOf(it.due);(years[y]=years[y]||[]).push(it);});
+        active.forEach(it=>{const y=yearOf(it.due);(years[y]=years[y]||[]).push(it);});
         const yearKeys=Object.keys(years).sort((a,b)=>{
           if(a==="Undated") return 1; if(b==="Undated") return -1; return b.localeCompare(a);
         });
@@ -18318,111 +18444,24 @@ function MyFolderView({session,projList,projs,drfs,updateDRF,deleteDRF,upProj,se
           <div key={member} style={{background:"#fff",borderRadius:12,border:`1.5px solid ${mine?"#ec489966":"#e2e8f0"}`,overflow:"hidden",marginBottom:14}}>
             <div style={{background:mine?"#be185d":"#1e293b",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <span style={{fontWeight:700,color:"#fff",fontSize:".9rem"}}>📁 {member}{mine?" (You)":""}</span>
-              <span style={{fontSize:".72rem",color:"rgba(255,255,255,.7)",fontWeight:600}}>{items.length} item{items.length!==1?"s":""}</span>
+              <span style={{fontSize:".72rem",color:"rgba(255,255,255,.7)",fontWeight:600}}>{active.length} active{(doneItems.length||cancelledItems.length)?` · ${doneItems.length+cancelledItems.length} closed`:""}</span>
             </div>
             {items.length===0
               ? <div style={{padding:"18px 16px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No projects assigned yet.</div>
-              : yearKeys.map(yr=>(
-                <div key={yr}>
-                  <div style={{background:"#f8fafc",borderBottom:"1px solid #eef2f7",borderTop:"1px solid #eef2f7",padding:"7px 16px",display:"flex",alignItems:"center",gap:8}}>
-                    <span style={{fontWeight:800,color:"#475569",fontSize:".82rem",letterSpacing:".3px"}}>🗂 {yr}</span>
-                    <span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:600}}>{years[yr].length} project{years[yr].length!==1?"s":""}</span>
+              : <>
+                {active.length===0&&<div style={{padding:"14px 16px",textAlign:"center",color:"#94a3b8",fontSize:".8rem"}}>No active projects — see closed below.</div>}
+                {yearKeys.map(yr=>(
+                  <div key={yr}>
+                    <div style={{background:"#f8fafc",borderBottom:"1px solid #eef2f7",borderTop:"1px solid #eef2f7",padding:"7px 16px",display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{fontWeight:800,color:"#475569",fontSize:".82rem",letterSpacing:".3px"}}>🗂 {yr}</span>
+                      <span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:600}}>{years[yr].length} project{years[yr].length!==1?"s":""}</span>
+                    </div>
+                    {sortItems(years[yr]).map(ItemRow)}
                   </div>
-                  {sortItems(years[yr]).map(it=>{
-                    const isDrf=it.kind==="drf";
-                    const c=(isDrf?DRF_CLR[it.status]:DS_CLR[it.status])||"#94a3b8";
-                    const key=`${it.kind}:${it.id}`;
-                    const open=openItem===key;
-                    return(
-                      <div key={key} style={{borderBottom:"1px solid #f8fafc"}}>
-                        <div onClick={()=>setOpenItem(open?null:key)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",cursor:"pointer",background:open?"#fdf4ff":"#fff"}}>
-                          <div style={{flex:1,minWidth:0}}>
-                            <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{isDrf?"🖌️ ":""}{it.title||it.client}</div>
-                            <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>{it.client}{it.due?` · due ${it.due}`:""}</div>
-                          </div>
-                          <span style={{marginLeft:12,fontSize:".68rem",fontWeight:700,color:c,background:c+"18",border:`1px solid ${c}44`,borderRadius:20,padding:"2px 9px",whiteSpace:"nowrap"}}>{it.status}</span>
-                          <span style={{marginLeft:10,color:"#94a3b8",fontSize:".7rem"}}>{open?"▲":"▼"}</span>
-                        </div>
-                        {open&&(
-                          <div style={{background:"#faf5ff",borderTop:"1px solid #e9d5ff",padding:"14px 18px"}}>
-                            {/* Standardized data card — same Category · Client ·
-                                Location · Size block as the DRF list, so a project
-                                reads consistently wherever it appears. For a project
-                                card the values come from its linked DRF, falling back
-                                to the deal's brief. */}
-                            {(()=>{
-                              const ld=isDrf?it.drf:(drfs||[]).find(r=>r.dealId===it.id);
-                              const cat=ld?.category||"";
-                              const client=it.client||it.deal?.client||"";
-                              const loc=ld?.location||it.deal?.location||"";
-                              const size=ld?.size||it.deal?.drfSize||"";
-                              return(
-                                <div style={{background:"#fff",border:"1px solid #e9d5ff",borderRadius:10,padding:"12px 14px",marginBottom:14}}>
-                                  <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(4,1fr)",gap:"10px 16px"}}>
-                                    {[["Category",cat],["Client",client],["Location",loc],["Size",size]].map(([l,v])=>(
-                                      <div key={l}>
-                                        <div style={{fontSize:".62rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".6px",marginBottom:3}}>{l}</div>
-                                        <div style={{fontSize:".82rem",color:v?"#0f172a":"#cbd5e1",fontWeight:600}}>{v||"—"}</div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              );
-                            })()}
-                            <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:14}}>
-                              {/* Project Status */}
-                              <div>
-                                <div style={{fontSize:".65rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Project Status</div>
-                                {isDrf
-                                  ?<select value={it.status} onChange={e=>updateDRF(it.id,{status:e.target.value})}
-                                     style={{width:"100%",boxSizing:"border-box",border:`1.5px solid ${c}`,borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:c,background:c+"12",fontWeight:700,cursor:"pointer"}}>
-                                     {DRF_STATUSES.map(s=><option key={s} value={s} style={{color:"#0f172a",background:"#fff",fontWeight:400}}>{s}</option>)}
-                                   </select>
-                                  :<select value={it.status} onChange={e=>upProj(it.id,p=>({...p,design:{...p.design,status:e.target.value,statusHistory:[...(p.design?.statusHistory||[]),{status:e.target.value,date:todayL,by:session?.name||"Design"}]}}))}
-                                     style={{width:"100%",boxSizing:"border-box",border:`1.5px solid ${c}`,borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:c,background:c+"12",fontWeight:700,cursor:"pointer"}}>
-                                     {DESIGN_STATUSES.map(s=><option key={s} value={s} style={{color:"#0f172a",background:"#fff",fontWeight:400}}>{s}</option>)}
-                                   </select>
-                                }
-                              </div>
-                              {/* Timeline / Due Date */}
-                              <div>
-                                <div style={{fontSize:".65rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Timeline / Due Date</div>
-                                <input type="date" value={it.due||""}
-                                  onChange={e=>{const v=e.target.value;if(isDrf)updateDRF(it.id,{designDeadline:v});else upProj(it.id,p=>({...p,design:{...p.design,dueDate:v}}));}}
-                                  style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a"}}/>
-                              </div>
-                              {/* Project Details — editable */}
-                              <div style={{gridColumn:mob?"auto":"1/-1"}}>
-                                <div style={{fontSize:".65rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Project Details</div>
-                                {isDrf?(
-                                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                                    <input value={it.drf.projectTitle||""} onChange={e=>updateDRF(it.id,{projectTitle:e.target.value})} placeholder="Project title"
-                                      style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a"}}/>
-                                    <textarea value={it.drf.notes||""} onChange={e=>updateDRF(it.id,{notes:e.target.value})} placeholder="Notes / details" rows={2}
-                                      style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a",resize:"vertical"}}/>
-                                  </div>
-                                ):(
-                                  <textarea value={projs[it.id]?.design?.notes||""} onChange={e=>upProj(it.id,p=>({...p,design:{...p.design,notes:e.target.value}}))} placeholder="Design notes / details" rows={2}
-                                    style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a",resize:"vertical"}}/>
-                                )}
-                              </div>
-                            </div>
-                            <div style={{display:"flex",gap:8,marginTop:12,alignItems:"center"}}>
-                              {!isDrf&&(
-                                <button onClick={e=>{e.stopPropagation();setSelProj(it.id);setOpsTab("design");}}
-                                  style={{background:"#7c3aed",border:"none",borderRadius:8,padding:"7px 14px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".76rem",cursor:"pointer"}}>Open full design →</button>
-                              )}
-                              <button onClick={e=>{e.stopPropagation();deleteItem(it);}}
-                                style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,padding:"7px 14px",color:"#dc2626",fontFamily:"inherit",fontWeight:700,fontSize:".76rem",cursor:"pointer"}}>✕ Delete</button>
-                              <span style={{fontSize:".7rem",color:"#94a3b8"}}>Changes save automatically.</span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              ))
+                ))}
+                {ClosedCategory(member,"Done","✅","#059669",doneItems)}
+                {ClosedCategory(member,"Cancelled","🚫","#dc2626",cancelledItems)}
+              </>
             }
           </div>
         );
@@ -18467,7 +18506,10 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
     }
     return true;
   });
-  const canCreate=["Manager","Sales","Operations","SalesOpsAdmin"].includes(role);
+  // Head designer (Design Manager) can raise a DRF too — server RLS already
+  // permits the Design role to insert design_requests, so this only unhides the
+  // button for the design lead rather than granting any new server access.
+  const canCreate=["Manager","Sales","Operations","SalesOpsAdmin"].includes(role)||isHeadDesigner(session?.name);
   const canAcknowledge=["Manager","Design"].includes(role);
 
   return(
