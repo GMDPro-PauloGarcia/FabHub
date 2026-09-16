@@ -62,6 +62,36 @@ export const normalizeStage=(s)=>{
 // key so look-alike names are grouped, counted, and matched as one client.
 export const clientKey=(s)=>String(s||"").toLowerCase().replace(/[.,]+/g," ").replace(/\s+/g," ").trim();
 
+// Stronger key for DUPLICATE DETECTION at deal entry. On top of clientKey it
+// also flattens hyphens / ampersands / slashes and strips trailing corporate
+// suffixes, so look-alikes that clientKey keeps apart still collapse:
+//   "Adm Indicia" ≡ "Adm-Indicia",  "Matchanese" ≡ "Matchanese Inc"
+// Deliberately more aggressive than clientKey — only used to RAISE a "possible
+// duplicate?" confirm prompt (never to auto-block or to group clients in
+// reports), so an occasional over-match just asks the user, it doesn't lose data.
+const CORP_SUFFIX=/\b(incorporated|corporation|corp|inc|company|co|ltd|limited|enterprises?|ventures?|trading|holdings?|group|philippines|phils?|ph)\b/g;
+export const clientMatchKey=(s)=>clientKey(s).replace(/[-&/]+/g," ").replace(CORP_SUFFIX," ").replace(/\s+/g," ").trim();
+
+// Loose title similarity for the same duplicate prompt. True when one title
+// contains the other, or the two share ≥50% of their meaningful word tokens —
+// so "Zyn Bacolod Event 1" and "Zyn Bacolod Leg 1" register as the same project
+// even though neither string contains the other. Digits are kept (they separate
+// "Leg 1" from "Leg 2"); a few filler words are dropped.
+const TITLE_STOP=new Set(["the","a","an","for","of","and","to","with"]);
+export const titleTokens=(s)=>String(s||"").toLowerCase().replace(/[^a-z0-9]+/g," ").split(" ").filter(t=>t&&!TITLE_STOP.has(t));
+export const titleSimilar=(a,b)=>{
+  const A=titleTokens(a), B=titleTokens(b);
+  if(!A.length||!B.length) return false;
+  // If both titles carry numbers and share none, they're distinct instances of a
+  // series — "Leg 1" vs "Leg 2", "Phase 1" vs "Phase 3" — never the same deal.
+  const numsA=A.filter(t=>/^\d+$/.test(t)), numsB=B.filter(t=>/^\d+$/.test(t));
+  if(numsA.length&&numsB.length&&!numsA.some(n=>numsB.includes(n))) return false;
+  const sa=A.join(" "), sb=B.join(" ");
+  if(sa.includes(sb)||sb.includes(sa)) return true;
+  const setB=new Set(B), inter=A.filter(t=>setB.has(t)).length, union=new Set([...A,...B]).size;
+  return union>0 && inter/union>=0.5;
+};
+
 export const WON_STAGES    = ["06 · Kickoff","07 · Briefing","08 · Fabrication","09 · Site & Billing","10 · Installation","11 · Punchlist","12 · Close-Out","14 · Completed"];
 
 export const ACTIVE_STAGES = ["01 · BizDev","02 · Engagement","03 · Design & Folder","04 · CE in Progress","05 · For Approval"];
@@ -77,6 +107,31 @@ export const ACTIVE_STAGES = ["01 · BizDev","02 · Engagement","03 · Design & 
 export const LOST_STAGES   = ["Cancelled","Did Not Win"];
 export const isLostStage      = (stage)=>LOST_STAGES.includes(stage);
 export const isActivePipeline = (stage)=>!WON_STAGES.includes(stage)&&!isLostStage(stage);
+
+// ── Pipeline temperature (Hot / Almost Awarded / Cold) ───────────────────────
+// A MANUAL classification a salesperson sets by dragging a deal between the three
+// board columns — it is the sales team's read on how likely/close a deal is,
+// independent of the workflow stage (a deal can be "Hot" at stage 02 or "Cold"
+// at stage 04). Stored on deal.temperature. When unset (legacy deals, fresh
+// imports) we DERIVE a sensible default so the board is never empty:
+//   • award requested OR at "05 · For Approval"  → "Almost Awarded"
+//   • acquired ≤15 days ago                       → "Hot"
+//   • otherwise                                   → "Cold"
+// The derived value is only a fallback; once a human drags a card, the explicit
+// deal.temperature wins and age no longer moves it.
+export const DEAL_TEMPS = ["Hot","Almost Awarded","Cold"];
+export const TEMP_META = {
+  "Hot":            {icon:"🔥",clr:"#ef4444",bg:"#fef2f2",border:"#fecaca",blurb:"Active & likely to close"},
+  "Almost Awarded": {icon:"🏆",clr:"#f59e0b",bg:"#fffbeb",border:"#fde68a",blurb:"In final approval / award pending"},
+  "Cold":           {icon:"🧊",clr:"#3b82f6",bg:"#eff6ff",border:"#bfdbfe",blurb:"Gone quiet — needs a nudge"},
+};
+export const HOT_AGE_DAYS = 15;   // acquired within this window defaults to Hot
+export const COLD_STALE_DAYS = 45; // Cold with no activity this long → suggest Did Not Win
+export const deriveTemp = (deal, daysSinceAcquired)=>{
+  if(DEAL_TEMPS.includes(deal&&deal.temperature)) return deal.temperature;
+  if(deal&&(deal.awardRequestData||deal.stage==="05 · For Approval")) return "Almost Awarded";
+  return (Number(daysSinceAcquired)||0)<=HOT_AGE_DAYS ? "Hot" : "Cold";
+};
 
 export const PAULO_GATE    = ["05 · For Approval","06 · Kickoff"];
 
@@ -384,6 +439,36 @@ export const calcTax = (base, receiptType="OR", withholding=false) => {
   return { base:b, vat, gross, ewt, netReceivable };
 };
 
+// Canonical money for ONE deal, in every basis — so every view counts the same
+// way instead of each subtracting mismatched net/gross figures. In this system
+// `value` and `invoiced` are stored VAT-EXCLUSIVE (the net contract base), while
+// `amountPaid` is tracked in CASH terms (netReceivable = gross − EWT, i.e. what
+// the client actually remits). The long-standing bug is that several views did
+// `invoiced − amountPaid` (net minus cash), which reads ~10–12% low and can go
+// negative once a client has paid. Compare collections against the receivable in
+// the SAME cash basis and it's correct. Returns the four headline figures the
+// business tracks — contract price, VAT, EWT, collections — plus derived totals.
+export const dealFinancials = (d={}) => {
+  const r2 = x => Math.round((Number(x)||0)*100)/100;
+  const receiptType = d.receiptType || "OR";
+  const withholding = !!d.withholding;
+  const ct = calcTax(Number(d.value)||0,    receiptType, withholding); // whole contract
+  const bt = calcTax(Number(d.invoiced)||0, receiptType, withholding); // billed to date
+  const collected = r2(d.amountPaid);
+  return {
+    receiptType, withholding,
+    contract:         ct.base,          // Total Contract Price (VAT-exclusive)
+    vat:              ct.vat,           // 12% VAT (OR receipts only)
+    ewt:              ct.ewt,           // 2% EWT withheld by client (OR + withholding)
+    gross:            ct.gross,         // contract + VAT — the amount invoiced to client
+    netReceivable:    ct.netReceivable, // cash the client remits (gross − EWT)
+    billed:           bt.base,          // billed to date (net)
+    billedReceivable: bt.netReceivable, // billed to date, cash basis
+    collected,                          // Collections to date (cash basis)
+    outstanding: r2(Math.max(0, bt.netReceivable - collected)), // like-for-like cash basis
+  };
+};
+
 export const calcInputTax = (gross, vatable=false, ewtRate=0) => {
   const g = Number(gross)||0;
   const net = vatable ? Math.round(g/1.12*100)/100 : g;
@@ -405,9 +490,19 @@ export const EWT_RATES = [
 
 export const todayL= new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"});
 
-export const mergeLocalOnly=(serverList,localList)=>{
+// Re-add records that exist locally but weren't in the server's response — but
+// ONLY the ones that are genuinely unsynced local creates, never rows the server
+// deleted. Without `keepIds` this cannot tell those two cases apart and keeps
+// EVERY local-only row, which silently resurrects deleted deals/records on the
+// next reload (and cross-user: another user's cached copy comes back to life the
+// moment they refresh, because they never issued the delete). `keepIds` is the
+// set of ids with a pending offline-queue write (see sbPendingIds) — i.e. the
+// only ids that legitimately exist locally but not yet on the server. Any other
+// local-only row is a server-side deletion and is dropped. When keepIds is null
+// (e.g. before the app has wired it up) the old keep-everything behavior stands.
+export const mergeLocalOnly=(serverList,localList,keepIds=null)=>{
   const ids=new Set(serverList.map(x=>x.id));
-  const localOnly=(localList||[]).filter(x=>x.id&&!ids.has(x.id));
+  const localOnly=(localList||[]).filter(x=>x.id&&!ids.has(x.id)&&(!keepIds||keepIds.has(x.id)));
   return localOnly.length?[...serverList,...localOnly]:serverList;
 };
 
@@ -455,6 +550,30 @@ export const ADDENDUM_STATUSES = ["Discovered","Sales Notified","Client Coordina
 // sign so nothing downstream has to guess from a bare number.
 export const CO_KINDS = ["Additive","Deductive"];
 export const coSignedValue = (x) => ((x && x.kind === "Deductive" ? -1 : 1) * Math.abs(Number(x && x.value) || 0));
+
+// A change order can be recorded two ways in FabHub — as an `addenda` record on a
+// parent deal, OR as a linked child deal (parentDealId set). If the SAME change
+// order is entered via both, its value is double-counted in awarded totals (the
+// Kiko Milano case). Call this before committing a new CO of either kind: given
+// the parent deal id and the CO value, it returns a human-readable warning if a
+// same-value CO of EITHER mechanism already exists on that parent, else null.
+// Matching is by parent + absolute value (COs on one parent rarely share an exact
+// amount by coincidence); callers gate a save on it, they don't hard-block.
+export const findCrossMechanismCO = ({ parentId, value, deals = [], addenda = [], excludeDealId = null, excludeAddendumId = null } = {}) => {
+  const v = Math.abs(Number(value) || 0);
+  if (!parentId || !v) return null;
+  const childDup = deals.find(d =>
+    d && d.id !== excludeDealId && d.parentDealId === parentId &&
+    !isLostStage(d.stage) && Math.abs(Number(d.value) || 0) === v);
+  if (childDup)
+    return `A linked change-order deal for ₱${v.toLocaleString("en-PH")} already exists on this project ("${childDup.contact || childDup.client || childDup.ceNo || "CO"}"). Recording it again would double-count it in awarded value.`;
+  const addDup = addenda.find(a =>
+    a && a.id !== excludeAddendumId && (a.dealId === parentId || a.projectId === parentId) &&
+    a.status !== "Rejected" && Math.abs(Number(a.value) || 0) === v);
+  if (addDup)
+    return `A change-order addendum for ₱${v.toLocaleString("en-PH")} already exists on this project ("${addDup.title || addDup.ceNo || "CO"}"). Recording it again would double-count it in awarded value.`;
+  return null;
+};
 
 export const ADDENDUM_STATUS_CLR = {
   "Discovered":"#94a3b8",
@@ -730,7 +849,7 @@ export const emptyDeal={
   invoiced:"",amountPaid:"",paymentStatus:"Unpaid",dueDate:"",discount:0,
   progressBilled:0,progressPaid:0,finalBilled:0,finalPaid:0,
   // GMD fields
-  ceNo:"",ceType:"Fabrication / General",salesOwner:"",dateAcquired:today,
+  ceNo:"",ceType:"Fabrication / General",salesOwner:"",dateAcquired:today,temperature:null,
   assignedAE:"",bizDevSource:"",leadOrigin:DEFAULT_LEAD_ORIGIN,location:"",
   // File links (Drive + FabHub)
   salesRepoLink:"",proposalFolderLink:"",salesRepoNote:"",

@@ -1,12 +1,12 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef, useContext, createContext } from "react";
 const WrapCtx = createContext(false);
-import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbOnQueueChange,appLogin,appLogout,restoreAppToken,logClientError} from './supabaseClient';
+import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbPendingIds,sbOnQueueChange,appLogin,appLogout,restoreAppToken,logClientError} from './supabaseClient';
 import{idbGetMany,idbSetMany}from'./idb.js';
 import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable} from './shared';
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -95,6 +95,13 @@ const StockMovementView=_lazyView(()=>import('./views/Warehouse').then(m=>({defa
 // and the Project Card finance snapshot so both agree on the same numbers.
 
 
+
+// Reload-merge that only preserves genuinely-unsynced local rows (those with a
+// pending offline-queue write) and drops local-only rows the server deleted, so
+// a deleted deal/record can't resurrect itself on the next reload — including on
+// another user's device, which never issued the delete. See mergeLocalOnly in
+// core.js and sbPendingIds in supabaseClient.js.
+const mlo=(list,prev)=>mergeLocalOnly(list,prev,sbPendingIds());
 
 const WO_NO_RE=/^WO-(\d+)$/;
 const computeNextWoNo=swos=>{
@@ -1345,18 +1352,26 @@ function CollectionsPanel({wonDeals,infs,onUpdatePayment,onLogPayment,readonly=f
   const[logModal,setLogModal]=useState(false);
   const[logForm,setLogForm]=useState({dealId:"",amount:"",note:"",date:today});
 
-  const totalInvoiced=wonDeals.reduce((s,d)=>s+d.invoiced,0);
-  const totalCollected=wonDeals.reduce((s,d)=>s+d.amountPaid,0);
-  const totalOut=totalInvoiced-totalCollected;
+  // All money runs through dealFinancials so every figure is on one consistent
+  // basis: contract/VAT/EWT are derived from the net base, and Outstanding is
+  // billed receivable (cash the client owes, VAT in / EWT out) minus collections.
+  const fins=wonDeals.map(d=>dealFinancials(d));
+  const totalContract =fins.reduce((s,f)=>s+f.contract,0);
+  const totalVat      =fins.reduce((s,f)=>s+f.vat,0);
+  const totalEwt      =fins.reduce((s,f)=>s+f.ewt,0);
+  const totalCollected=fins.reduce((s,f)=>s+f.collected,0);
+  const totalOut      =fins.reduce((s,f)=>s+f.outstanding,0);
   const overdue=wonDeals.filter(d=>d.dueDate&&d.dueDate<today&&d.paymentStatus!=="Paid"&&d.paymentStatus!=="Deposited"&&d.invoiced>0);
 
   return(
     <div>
       {/* Summary KPIs */}
-      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(3,1fr)",gap:12,marginBottom:20}}>
-        <KPI label="Total Invoiced"  value={fmtK(totalInvoiced)} color="#3b82f6"/>
-        <KPI label="Total Collected" value={fmtK(totalCollected)} color="#059669"/>
-        <KPI label="Outstanding"     value={fmtK(totalOut)}       color={totalOut>0?"#ef4444":"#059669"}/>
+      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"repeat(2,1fr)":"repeat(5,1fr)",gap:12,marginBottom:20}}>
+        <KPI label="Total Contract Price" value={fmtK(totalContract)} color="#3b82f6"/>
+        <KPI label="VAT (12%)"            value={fmtK(totalVat)}      color="#6366f1"/>
+        <KPI label="EWT Withheld"         value={fmtK(totalEwt)}      color="#a855f7"/>
+        <KPI label="Total Collected"      value={fmtK(totalCollected)} color="#059669"/>
+        <KPI label="Outstanding"          value={fmtK(totalOut)}       color={totalOut>0?"#ef4444":"#059669"}/>
       </div>
 
       {/* Overdue alert */}
@@ -1373,9 +1388,10 @@ function CollectionsPanel({wonDeals,infs,onUpdatePayment,onLogPayment,readonly=f
       <SecHead title="Client Collections" action={!readonly&&<Btn onClick={()=>setLogModal(true)}>+ Log Payment</Btn>}/>
 
       {wonDeals.filter(d=>d.invoiced>0).map(d=>{
-        const bal=d.invoiced-d.amountPaid;
+        const f=dealFinancials(d);
+        const bal=f.outstanding;
         const od=d.dueDate&&d.dueDate<today&&d.paymentStatus!=="Paid";
-        const pct=d.invoiced>0?Math.round(d.amountPaid/d.invoiced*100):0;
+        const pct=f.billedReceivable>0?Math.round(f.collected/f.billedReceivable*100):0;
         return(
           <Card key={d.id} accent={od?"#fca5a5":bal===0?"#6ee7b7":undefined}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
@@ -1384,10 +1400,11 @@ function CollectionsPanel({wonDeals,infs,onUpdatePayment,onLogPayment,readonly=f
                 <div style={{fontSize:".76rem",color:"#64748b",marginTop:3}}>{d.product}</div>
                 <div style={{marginTop:10,marginBottom:4}}>
                   <div style={{display:"flex",justifyContent:"space-between",fontSize:".7rem",color:"#94a3b8",marginBottom:4}}>
-                    <span>{fmt(d.amountPaid)} collected of {fmt(d.invoiced)}</span>
+                    <span>{fmt(f.collected)} collected of {fmt(f.billedReceivable)}</span>
                     <span style={{fontWeight:700,color:pct===100?"#059669":"#64748b"}}>{pct}%</span>
                   </div>
                   <ProgBar pct={pct} color={pct===100?"#059669":pct>0?"#10b981":"#e2e8f0"} h={8}/>
+                  <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:5}}>Contract {fmt(f.contract)} · VAT {fmt(f.vat)}{f.ewt>0?` · EWT −${fmt(f.ewt)}`:""} · Receivable {fmt(f.billedReceivable)}</div>
                 </div>
                 {d.dueDate&&<div style={{fontSize:".72rem",color:od?"#ef4444":"#94a3b8",marginTop:6}}>{od?"⚠ Overdue since":"Due:"} {d.dueDate}</div>}
               </div>
@@ -1417,7 +1434,7 @@ function CollectionsPanel({wonDeals,infs,onUpdatePayment,onLogPayment,readonly=f
           <Sel value={logForm.dealId} onChange={e=>setLogForm(p=>({...p,dealId:e.target.value}))}>
             <option value="">— Select client —</option>
             {wonDeals.filter(d=>d.invoiced>0).map(d=>(
-              <option key={d.id} value={d.id}>{d.client} — {fmt(d.invoiced-d.amountPaid)} remaining</option>
+              <option key={d.id} value={d.id}>{d.client} — {fmt(dealFinancials(d).outstanding)} remaining</option>
             ))}
           </Sel>
         </Fld>
@@ -1537,11 +1554,19 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
   const mob=window.innerWidth<768;
   const[saving,setSaving]=useState(false);
   const[vatErr,setVatErr]=useState(false);
+  // Gross-entry helper. Staff type the VAT-INCLUSIVE (gross) contract amount for
+  // OR deals — the number off the client PO — but the deal's `value` is stored
+  // VAT-EXCLUSIVE (net) as everywhere else in the system, so nothing downstream
+  // (saveDeal, reports, tax engine, existing data) changes. This local string
+  // holds what the user typed in the gross box; `value` = gross / 1.12.
+  const netToGross=(v)=>{const n=Number(v)||0;return n?String(Math.round(n*1.12*100)/100):"";};
+  const[grossStr,setGrossStr]=useState(()=>initialForm?.receiptType==="OR"?netToGross(initialForm?.value):"");
 
   // Sync when modal opens or editId changes
   const formKey=`${open}-${editId||"new"}`;
   useEffect(()=>{
-    if(open){setForm(initialForm||emptyDeal);setSaving(false);setVatErr(false);}
+    if(open){setForm(initialForm||emptyDeal);setSaving(false);setVatErr(false);
+      setGrossStr(initialForm?.receiptType==="OR"?netToGross(initialForm?.value):"");}
   },[open,editId]);
 
   const handleSave=async()=>{
@@ -1579,7 +1604,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
           </Fld>
         </div>
         <Fld label="Project Name" hint="e.g. SM Megamall Fit-Out Phase 1"><Inp value={form.contact} onChange={e=>f("contact",e.target.value)} placeholder="e.g. SM Megamall Fit-Out Phase 1"/></Fld>
-        <Fld label={form.standbyPO?"Deal Value (₱) — held at 0 for standby PO":"Deal Value (₱)"} hint={form.standbyPO?"Standby POs earn nothing on the umbrella itself — value lives on the drawdown jobs":"Leave blank if not yet finalized"}><Inp type="number" min={0} value={form.standbyPO?0:form.value} disabled={form.standbyPO} onChange={e=>{const v=e.target.value;f("value",v===""?"":Math.max(0,Number(v)||0));}} placeholder="To be confirmed" style={form.standbyPO?{background:"#f1f5f9",color:"#94a3b8",cursor:"not-allowed"}:undefined}/></Fld>
+        <Fld label={form.standbyPO?"Deal Value (₱) — held at 0 for standby PO":"Contract Value (₱, Net / VAT-exclusive)"} hint={form.standbyPO?"Standby POs earn nothing on the umbrella itself — value lives on the drawdown jobs":"Net (ex-VAT). For VAT (OR) deals you can instead type the gross total in Tax Settings below — this fills automatically."}><Inp type="number" min={0} value={form.standbyPO?0:form.value} disabled={form.standbyPO} onChange={e=>{const v=e.target.value;const nv=v===""?"":Math.max(0,Number(v)||0);f("value",nv);setGrossStr(nv===""?"":netToGross(nv));}} placeholder="To be confirmed" style={form.standbyPO?{background:"#f1f5f9",color:"#94a3b8",cursor:"not-allowed"}:undefined}/></Fld>
         <Fld label="CE Number"><Inp value={form.ceNo||""} onChange={e=>f("ceNo",e.target.value)} placeholder="CE-2026-005"/></Fld>
         <Fld label="CE Type">
           <Sel value={form.ceType||"Fabrication / General"} onChange={e=>f("ceType",e.target.value)}>
@@ -1758,7 +1783,9 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
 
 
       {/* ── SECTION 6: TAX SETTINGS ─────────────────────────────────────── */}
-      {Number(form.value)>0&&(
+      {/* Shown from the start (except standby POs) so staff can pick OR and enter
+          the gross figure up front, rather than being gated behind a net value. */}
+      {!form.standbyPO&&(
         <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:12,padding:"16px 18px",marginTop:10}}>
           <div style={{fontWeight:700,color:"#92400e",fontSize:".88rem",marginBottom:12}}>🧾 Tax Settings</div>
           <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:14,marginBottom:14}}>
@@ -1766,7 +1793,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
               <label style={{display:"block",fontSize:".68rem",fontWeight:700,color:"#92400e",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>Receipt Type <span style={{color:"#dc2626"}}>*</span></label>
               <div style={{display:"flex",gap:8}}>
                 {["OR","AR"].map(rt=>(
-                  <button key={rt} type="button" onClick={()=>{setForm(p=>({...p,receiptType:rt,withholding:rt==="AR"?false:p.withholding}));setVatErr(false);}}
+                  <button key={rt} type="button" onClick={()=>{setForm(p=>({...p,receiptType:rt,withholding:rt==="AR"?false:p.withholding}));setVatErr(false);if(rt==="OR")setGrossStr(netToGross(form.value));}}
                     style={{flex:1,padding:"8px",border:`2px solid ${form.receiptType===rt?"#d97706":(vatErr?"#fca5a5":"#e2e8f0")}`,borderRadius:8,background:form.receiptType===rt?"#fef3c7":"#fff",color:form.receiptType===rt?"#92400e":"#64748b",fontWeight:form.receiptType===rt?700:400,cursor:"pointer",fontFamily:"inherit",fontSize:".82rem"}}>
                     {rt==="OR"?"🧾 OR (with VAT)":"📄 AR (no VAT)"}
                   </button>
@@ -1796,21 +1823,35 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
               </div>
             )}
           </div>
+          {/* Gross entry — staff type the VAT-inclusive total off the client PO;
+              the net Contract Value above fills automatically (value stays net). */}
+          {form.receiptType==="OR"&&!form.standbyPO&&(
+            <div style={{marginBottom:14}}>
+              <label style={{display:"block",fontSize:".68rem",fontWeight:700,color:"#92400e",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>Or enter Gross (VAT-inclusive) — from client PO</label>
+              <Inp type="number" min={0} value={grossStr} onChange={e=>{const g=e.target.value;setGrossStr(g);f("value",g===""?"":Math.round(Math.max(0,Number(g)||0)/1.12*100)/100);}} placeholder="e.g. 1,120,000 total incl. VAT"/>
+              <div style={{fontSize:".68rem",color:"#92400e",opacity:.8,marginTop:5}}>Type the gross here and the net Contract Value fills for you — or type net above and this shows the gross.</div>
+            </div>
+          )}
           {["OR","AR"].includes(form.receiptType)&&(()=>{
             const tx=calcTax(form.value,form.receiptType,form.withholding||false);
+            // Invoice-style breakdown, read top-to-bottom the way an OR reads:
+            // net sale → +VAT → =gross billed → −EWT withheld → =cash you collect.
+            const rows=form.receiptType==="OR"
+              ?[["Net Sale (VAT-exclusive)", tx.base, "#0f172a"],
+                ["VAT 12%",                  tx.vat,  "#f59e0b"],
+                ["Gross (billed to client)", tx.gross,"#2563eb"],
+                ...(tx.ewt>0?[["EWT 2% (client withholds)", -tx.ewt, "#ef4444"]]:[]),
+                ["Net Collectible (cash in)",tx.netReceivable, "#059669"]]
+              :[["Contract (AR — no VAT)",   tx.base, "#0f172a"],
+                ["Net Collectible (cash in)",tx.netReceivable, "#059669"]];
             return(
-              <div style={{background:"rgba(255,255,255,.8)",borderRadius:8,padding:"12px 14px",display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(4,1fr)",gap:10,borderTop:"1px solid #fde68a"}}>
-                {[
-                  ["Contract (Base)",  tx.base,          "#0f172a"],
-                  ["VAT 12%",          tx.vat,           tx.vat>0?"#f59e0b":"#94a3b8"],
-                  ["EWT 2%",           tx.ewt,           tx.ewt>0?"#ef4444":"#94a3b8"],
-                  ["Net Receivable",   tx.netReceivable, "#059669"],
-                ].map(([l,v,c])=>(
-                  <div key={l} style={{textAlign:"center"}}>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1rem",color:c}}>
-                      ₱{Number(v).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2})}
-                    </div>
-                    <div style={{fontSize:".62rem",color:"#94a3b8",marginTop:3,textTransform:"uppercase",letterSpacing:".5px"}}>{l}</div>
+              <div style={{background:"rgba(255,255,255,.9)",borderRadius:8,padding:"6px 14px",borderTop:"1px solid #fde68a"}}>
+                {rows.map(([l,v,c],i)=>(
+                  <div key={l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderTop:i===0?"none":"1px dashed #fde68a"}}>
+                    <span style={{fontSize:".74rem",color:"#78716c",fontWeight:i===rows.length-1?700:500}}>{l}</span>
+                    <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.05rem",color:c}}>
+                      {v<0?"−":""}₱{Math.abs(Number(v)).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2})}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -2788,6 +2829,8 @@ function AddendaPageContent({role,wonDeals,deals,jos,session,addenda,upAddenda,u
               const deal=wonDeals.find(d=>d.id===selDealId);
               const cleanItems=scopeItems.filter(it=>(it.description||"").trim()).map(it=>({description:(it.description||"").trim(),qty:Number(it.qty)||0,unit:it.unit||"lot",rate:Number(it.rate)||0}));
               const magnitude=cleanItems.length?cleanItems.reduce((s,it)=>s+it.qty*it.rate,0):Math.abs(Number(value)||0);
+              const coDup=findCrossMechanismCO({parentId:selDealId,value:magnitude,deals,addenda});
+              if(coDup && !window.confirm(coDup+"\n\nLog this change order anyway?")) return;
               const newAdd={
                 id:"add"+Date.now(),dealId:selDealId,
                 title:title.trim(),description:desc.trim(),
@@ -4244,9 +4287,33 @@ export default function App(){
           if(data){
             const idbE=[];
             const _deals=data.deals?.length?data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,standbyPO:d.standby_po||false,poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})):null;
-            if(_deals){setDeals(prev=>mergeLocalOnly(_deals,prev));idbE.push([KEYS.deals,_deals]);}
+            if(_deals){
+              // Reconcile legacy non-UUID "ghost" deals against the server.
+              // Before the deals.id → UUID migration, deals were keyed by local
+              // text ids (e.g. "d"+Date.now()). Those old rows still live in some
+              // users' IndexedDB/localStorage caches, and the local-only merge keeps
+              // any local id the server doesn't have — so a device carries BOTH the
+              // real UUID row AND its stale text-id twin. Every write then targets
+              // the ghost: sbUpdate('deals',<textId>) matches 0 server rows (edit
+              // "doesn't update", queues forever) and delDeal skips sbDelete
+              // entirely for non-UUID ids (isUUID gate at delDeal), so a "deleted"
+              // old project reappears from the server on the next hard reset.
+              // ce_no is unique and 100% populated on the server, so drop any local
+              // non-UUID deal whose ce_no already exists on the server: it's the
+              // same project, and the UUID row is the synced truth. Genuinely
+              // local-only deals (offline-created, no server ce_no twin) are still
+              // preserved. Reported live: Pao's account — old project edits don't
+              // update; deleted old projects come back.
+              // mlo() (from #297) is the keepIds-aware merge: it only retains
+              // local-only rows that are still pending sync, so cross-user deletes
+              // don't resurrect. Both fixes compose — pre-filter the legacy twins,
+              // then let mlo apply the pending-only rule to what remains.
+              const _serverCeNos=new Set(_deals.map(d=>d.ceNo).filter(Boolean));
+              setDeals(prev=>mlo(_deals,(prev||[]).filter(d=>isUUID(d.id)||!(d.ceNo&&_serverCeNos.has(d.ceNo)))));
+              idbE.push([KEYS.deals,_deals]);
+            }
             const _jos=data.jos?.length?data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})):null;
-            if(_jos){setJos(prev=>mergeLocalOnly(_jos,prev));idbE.push([KEYS.jos,_jos]);}
+            if(_jos){setJos(prev=>mlo(_jos,prev));idbE.push([KEYS.jos,_jos]);}
             if(Object.keys(data.pcards||{}).length){setPcards(prev=>mergeLocalOnlyObj(data.pcards,prev));idbE.push([KEYS.pcards,data.pcards]);}
             const mapSbPayment=p=>({...p,milestoneId:p.milestone_id??p.milestoneId,refNo:p.ref_no??p.refNo,recordedBy:p.recorded_by??p.recordedBy,valueDate:p.value_date??p.valueDate,method:p.payment_method??p.method,bounced:!!(p.bounced??false)});
             const _billings=data.billings?.length?data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by,receiptType:m.receipt_type||null,withholding:m.withholding??null,retentionHeld:m.retention_held!=null?Number(m.retention_held):undefined,isRetentionRelease:m.is_retention_release||undefined,payments:(m.payments||[]).map(mapSbPayment)})):null;
@@ -4264,20 +4331,20 @@ export default function App(){
               idbE.push([KEYS.billings,mergedBillings]);
             }
             const _exps=data.exps!=null?data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,projectId:e.deal_id||null,receiptNo:e.receipt_no,bankAccount:e.bank_account||"",expDate:e.date||null,poRef:e.po_ref||"",note:e.note||e.description||"",accountCode:e.account_code||"",month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};}) : null;
-            if(_exps!=null){setExps(prev=>mergeLocalOnly(_exps,prev));idbE.push([KEYS.expenses,_exps]);}
+            if(_exps!=null){setExps(prev=>mlo(_exps,prev));idbE.push([KEYS.expenses,_exps]);}
             const _prs=data.prs?.length?data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",fromMrId:p.from_mr_id||null,urgency:p.urgency||"Normal",approvedAt:p.approved_at||null,deliveryHistory:p.delivery_history?(() => { try { return JSON.parse(p.delivery_history); } catch(e) { return []; } })():undefined,acctStatus:p.acct_status||"",acctNotes:p.acct_notes||"",acctCheckedBy:p.acct_checked_by||"",acctCheckedAt:p.acct_checked_at||"",paymentBank:p.payment_bank||"",paymentRef:p.payment_ref||"",paymentOrderedBy:p.payment_ordered_by||"",paymentOrderedAt:p.payment_ordered_at||"",paidRef:p.paid_ref||"",paidDate:p.paid_date||"",paidAmt:p.paid_amt!=null?Number(p.paid_amt):null,paidBy:p.paid_by||"",discType:p.disc_type||"none",discValue:Number(p.disc_value)||0,poDiscType:p.po_discount_type||"none",poDiscValue:Number(p.po_discount_value)||0,withVat:p.with_vat||false,accountCode:p.account_code||""})):null;
             if(_prs){setPrs(prev=>{const sbIds=new Set(_prs.map(p=>p.id));const localOnly=prev.filter(p=>!sbIds.has(p.id));return localOnly.length?[..._prs,...localOnly]:_prs;});idbE.push([KEYS.prs,_prs]);}
             const _mreqs=data.mreqs?.length?data.mreqs.map(m=>({...m,dealId:m.deal_id,projectId:m.deal_id,itemName:m.item||"",estimatedCost:Number(m.estimated_cost)||0,estUnitCost:Number(m.estimated_cost)||0,submittedBy:m.submitted_by,requestedBy:m.submitted_by||"",statusChangedAt:m.status_changed_at,urgency:m.urgency||"Normal"})):null;
-            if(_mreqs){setMreqs(prev=>mergeLocalOnly(_mreqs,prev));idbE.push([KEYS.mreqs,_mreqs]);}
+            if(_mreqs){setMreqs(prev=>mlo(_mreqs,prev));idbE.push([KEYS.mreqs,_mreqs]);}
             const _breqs=data.breqs?.length?data.breqs.map(b=>({...b,dealId:b.deal_id,projectId:b.deal_id,dateNeeded:b.date_needed,approvedBy:b.approved_by,submittedBy:b.submitted_by,requestedBy:b.submitted_by||"",releasedBy:b.released_by||"",releasedAt:b.released_at,statusChangedAt:b.status_changed_at})):null;
-            if(_breqs){setBreqs(prev=>mergeLocalOnly(_breqs,prev));idbE.push([KEYS.breqs,_breqs]);}
+            if(_breqs){setBreqs(prev=>mlo(_breqs,prev));idbE.push([KEYS.breqs,_breqs]);}
             const _addenda=data.addenda?.length?data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by,kind:a.kind||"Additive",scopeItems:Array.isArray(a.scope_items)?a.scope_items:[],coBoqData:a.co_boq_data||null,salesOwner:a.sales_owner||"",awardedDate:a.awarded_date||null,subAccount:a.sub_account||null})):null;
-            if(_addenda){setAddenda(prev=>mergeLocalOnly(_addenda,prev));idbE.push([KEYS.addenda,_addenda]);}
+            if(_addenda){setAddenda(prev=>mlo(_addenda,prev));idbE.push([KEYS.addenda,_addenda]);}
             const _checklist=data.checklist?.length?data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,workDetail:c.work_detail||c.description||c.workDetail||""})):null;
-            if(_checklist){setChecklist(prev=>mergeLocalOnly(_checklist,prev));idbE.push([KEYS.checklist,_checklist]);}
+            if(_checklist){setChecklist(prev=>mlo(_checklist,prev));idbE.push([KEYS.checklist,_checklist]);}
             const _swatches=data.swatches?.length?data.swatches.map(s=>({...s,dealId:s.deal_id,refLink:s.ref_link})):null;
-            if(_swatches){setSwatches(prev=>mergeLocalOnly(_swatches,prev));idbE.push([KEYS.swatches,_swatches]);}
-            if(data.actLog?.length) setActLog(prev=>mergeLocalOnly(data.actLog.map(a=>({...a,dealId:a.deal_id})),prev));
+            if(_swatches){setSwatches(prev=>mlo(_swatches,prev));idbE.push([KEYS.swatches,_swatches]);}
+            if(data.actLog?.length) setActLog(prev=>mlo(data.actLog.map(a=>({...a,dealId:a.deal_id})),prev));
             // Cash positions are the source of truth for the whole finance report,
             // so treat the SERVER as authoritative whenever the read actually
             // succeeded — even if it came back empty (that genuinely means no rows).
@@ -4293,40 +4360,40 @@ export default function App(){
             if(_budgets){setBudgets(prev=>mergeLocalOnlyObj(_budgets,prev));idbE.push([KEYS.budgets,_budgets]);}
             if(data.inflows!=null){setInfs(data.inflows);idbE.push([KEYS.inflows,data.inflows]);}
             const _payables=data.payables!=null?data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0,accountCode:p.account_code||"",verified:p.verified!==false,verifiedBy:p.verified_by||"",verifiedAt:p.verified_at||"",verificationPct:p.verification_pct!=null?Number(p.verification_pct):100,payBank:p.pay_bank||"",payMethod:p.pay_method||"",payRef:p.pay_ref||"",vatable:!!p.vatable,inputVat:Number(p.input_vat)||0,netAmount:Number(p.net_amount)||0,ewtRate:Number(p.ewt_rate)||0,ewtAmount:Number(p.ewt_amount)||0,tin:p.tin||"",approvalStatus:p.approval_status||"Approved",approvedBy:p.approved_by||"",approvedAt:p.approved_at||null})):null;
-            if(_payables!=null){setPayables(prev=>mergeLocalOnly(_payables,prev));idbE.push(["gmdv5:payables",_payables]);}
+            if(_payables!=null){setPayables(prev=>mlo(_payables,prev));idbE.push(["gmdv5:payables",_payables]);}
             const _loans=data.loans!=null?data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]})):null;
-            if(_loans!=null){setLoans(prev=>mergeLocalOnly(_loans,prev));idbE.push(["gmdv5:loans",_loans]);}
+            if(_loans!=null){setLoans(prev=>mlo(_loans,prev));idbE.push(["gmdv5:loans",_loans]);}
             const _vouchers=data.checkVouchers?.length?data.checkVouchers.map(v=>({...v,cvNo:v.cv_no,projectId:v.project_id,releasedBy:v.released_by||"",releasedDate:v.released_date||null,createdBy:v.created_by||"",createdAt:v.created_at||null,poRef:v.po_ref||"",apRef:v.ap_ref||"",payableId:v.payable_id||null,checkNo:v.check_no||"",clearedDate:v.cleared_date||null,isCleared:v.is_cleared||false})):null;
-            if(_vouchers){setVouchers(prev=>mergeLocalOnly(_vouchers,prev));idbE.push([KEYS.vouchers,_vouchers]);}
+            if(_vouchers){setVouchers(prev=>mlo(_vouchers,prev));idbE.push([KEYS.vouchers,_vouchers]);}
             const _dl=data.dailyLogs?.length?data.dailyLogs.map(l=>({...l,dealId:l.deal_id,date:l.log_date,workDone:l.work_done,progressNote:l.progress_note,loggedBy:l.logged_by,createdAt:l.created_at})):null;
-            if(_dl){setDailyLogs(prev=>mergeLocalOnly(_dl,prev));idbE.push([KEYS.dailylogs,_dl]);}
+            if(_dl){setDailyLogs(prev=>mlo(_dl,prev));idbE.push([KEYS.dailylogs,_dl]);}
             const _ceReqs=data.ceReqs?.length?data.ceReqs.map(ceReqFromSb):null;
-            if(_ceReqs){setCeReqs(prev=>mergeLocalOnly(_ceReqs,prev));idbE.push([KEYS.ceReqs,_ceReqs]);}
-            if(data.blockers?.length){const bl=data.blockers.map(b=>({id:b.id,dealId:b.deal_id,title:b.title,dept:b.dept||"Operations",detail:b.detail||"",flaggedBy:b.flagged_by||"",status:b.status||"Open",createdAt:b.created_at||"",resolvedBy:b.resolved_by||null,resolvedAt:b.resolved_at||null}));setBlockers(prev=>mergeLocalOnly(bl,prev));idbE.push([KEYS.blockers,bl]);localStorage.setItem(KEYS.blockers,JSON.stringify(bl));}
+            if(_ceReqs){setCeReqs(prev=>mlo(_ceReqs,prev));idbE.push([KEYS.ceReqs,_ceReqs]);}
+            if(data.blockers?.length){const bl=data.blockers.map(b=>({id:b.id,dealId:b.deal_id,title:b.title,dept:b.dept||"Operations",detail:b.detail||"",flaggedBy:b.flagged_by||"",status:b.status||"Open",createdAt:b.created_at||"",resolvedBy:b.resolved_by||null,resolvedAt:b.resolved_at||null}));setBlockers(prev=>mlo(bl,prev));idbE.push([KEYS.blockers,bl]);localStorage.setItem(KEYS.blockers,JSON.stringify(bl));}
             if(data.settings?.botsettings){const bs=data.settings.botsettings;setBotSettings(prev=>({...bs,token:bs.token||prev.token||sessionStorage.getItem('fabhub:bottoken')||""}));if(bs.token){sessionStorage.setItem('fabhub:bottoken',bs.token);idbE.push([KEYS.botsettings,bs]);}}
             const _drfs=data.drfs?.length?data.drfs.map(drfFromSb):null;
-            if(_drfs){setDrfs(prev=>mergeLocalOnly(_drfs,prev));idbE.push([KEYS.drfs,_drfs]);}
+            if(_drfs){setDrfs(prev=>mlo(_drfs,prev));idbE.push([KEYS.drfs,_drfs]);}
             const _inv=data.inventory?.length?data.inventory.map(invFromSb):null;
             if(_inv){setInventory(prev=>{const sbIds=new Set(_inv.map(i=>i.id));const localOnly=prev.filter(i=>!sbIds.has(i.id));return localOnly.length?[..._inv,...localOnly]:_inv;});idbE.push([KEYS.inventory,_inv]);}
             const _stock=data.stocklog?.length?data.stocklog.map(moveFromSb):null;
             if(_stock){setStocklog(_stock);idbE.push([KEYS.stocklog,_stock]);}
             const _tools=data.tools?.length?data.tools.map(toolFromSb):null;
-            if(_tools){setTools(prev=>mergeLocalOnly(_tools,prev));idbE.push([KEYS.tools,_tools]);}
+            if(_tools){setTools(prev=>mlo(_tools,prev));idbE.push([KEYS.tools,_tools]);}
             const _drs=data.drs?.length?data.drs.map(drFromSb):null;
-            if(_drs){setDrs(prev=>mergeLocalOnly(_drs,prev));idbE.push([KEYS.drs,_drs]);}
+            if(_drs){setDrs(prev=>mlo(_drs,prev));idbE.push([KEYS.drs,_drs]);}
             const _suppliers=data.suppliers?.length?data.suppliers.map(s=>({...s,companyName:s.company_name,contactNos:s.contact_nos,contactPerson:s.contact_person,paymentTerms:s.payment_terms,tinNo:s.tin_no,createdBy:s.created_by})):null;
-            if(_suppliers){setSuppliers(prev=>mergeLocalOnly(_suppliers,prev));idbE.push([KEYS.suppliers,_suppliers]);}
+            if(_suppliers){setSuppliers(prev=>mlo(_suppliers,prev));idbE.push([KEYS.suppliers,_suppliers]);}
             const _subcons=data.subcontractors?.length?data.subcontractors.map(s=>({...s,companyName:s.company_name,strengthsWeaknesses:s.strengths_weaknesses,contactNo:s.contact_no,paymentTerms:s.payment_terms,rateStructure:s.rate_structure,paymentStructure:s.payment_structure,locationNote:s.location_note,createdBy:s.created_by})):null;
-            if(_subcons){setSubcons(prev=>mergeLocalOnly(_subcons,prev));idbE.push([KEYS.subcons,_subcons]);}
+            if(_subcons){setSubcons(prev=>mlo(_subcons,prev));idbE.push([KEYS.subcons,_subcons]);}
             const _boqLib=data.boqLibrary?.length?data.boqLibrary.map(it=>({id:it.id,name:it.name,description:it.description||"",section:it.category||"",unit:it.unit||"lot",unitCost:Number(it.unit_cost)||0,tags:it.tags||[],createdBy:it.created_by||"",createdAt:it.created_at||"",updatedAt:it.updated_at||""})):null;
-            if(_boqLib){setBoqLibrary(prev=>mergeLocalOnly(_boqLib,prev));idbE.push([KEYS.boqLibrary,_boqLib]);}
+            if(_boqLib){setBoqLibrary(prev=>mlo(_boqLib,prev));idbE.push([KEYS.boqLibrary,_boqLib]);}
             const _users=data.users?.length?data.users.map(u=>{
               // If Supabase row has no password_hash, fall back to the DEFAULT_USERS hash
               // so existing users can still log in while hashes are being migrated
               const fallbackHash=DEFAULT_USERS.find(d=>d.username===(u.username||""))?.passwordHash||"";
               return{id:u.id,username:u.username||"",name:u.name||u.full_name||"",role:u.role||"Sales",title:u.title||u.role||"",status:u.status||"active",passwordHash:u.password_hash||fallbackHash,createdAt:u.created_at||""};
             }):null;
-            if(_users){setUsers(prev=>mergeLocalOnly(_users,prev));idbE.push([KEYS.users,_users]);}
+            if(_users){setUsers(prev=>mlo(_users,prev));idbE.push([KEYS.users,_users]);}
             if(data.settings?.vvip){const sv=new Set(data.settings.vvip);setVvip(sv);idbE.push([KEYS.vvip,[...sv]]);}
             if(data.settings?.customclients){const cc=data.settings.customclients;setCustomClients(cc);idbE.push([KEYS.customclients,cc]);cc.forEach(c=>{if(!GMD_CLIENTS.find(x=>x.name.toLowerCase()===c.name.toLowerCase())) GMD_CLIENTS.push(c);}); }
             if(data.settings?.custom_members){const cm=data.settings.custom_members;setCustomMembers(cm);localStorage.setItem("gmdv5:customMembers",JSON.stringify(cm));idbE.push(["gmdv5:customMembers",cm]);}
@@ -4547,8 +4614,8 @@ export default function App(){
         // once/30s) — far more often than a manual page refresh — so a blind
         // overwrite here was the single biggest way to lose a just-added record
         // that hadn't synced yet (e.g. still in flight when the user tabbed away).
-        if(data?.deals?.length) setDeals(prev=>mergeLocalOnly(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,standbyPO:d.standby_po||false,poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})),prev));
-        if(data?.jos?.length) setJos(prev=>mergeLocalOnly(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no})),prev));
+        if(data?.deals?.length) setDeals(prev=>mlo(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,standbyPO:d.standby_po||false,poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})),prev));
+        if(data?.jos?.length) setJos(prev=>mlo(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no})),prev));
         if(Object.keys(data?.pcards||{}).length) setPcards(prev=>mergeLocalOnlyObj(data.pcards,prev));
         // Map the same camelCase fields the initial load does. Omitting dueDate
         // (leaving only the raw due_date) made the Field Board — which filters on
@@ -4556,7 +4623,7 @@ export default function App(){
         // calendar item showed on first load then vanished the moment the app
         // regained focus (constant on mobile). Keep this in sync with the full
         // checklist mapping in the initial load / loadAllFromSupabase.
-        if(data?.checklist?.length) setChecklist(prev=>mergeLocalOnly(data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,sortOrder:c.sort_order,workDetail:c.work_detail||c.description||c.workDetail||""})),prev));
+        if(data?.checklist?.length) setChecklist(prev=>mlo(data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,sortOrder:c.sort_order,workDetail:c.work_detail||c.description||c.workDetail||""})),prev));
       }catch(e){console.warn("Focus refresh:",e.message);}
     };
     const onVisibility=()=>{ if(document.visibilityState==="visible") refresh(); };
@@ -4581,20 +4648,20 @@ export default function App(){
     // clicks it is right after a save looked stuck, which is also the exact
     // moment a blind overwrite would erase the very record they're trying to
     // recover.
-    if(data.deals?.length){const ds=data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",awardRequestData:d.award_request_data||null,boqData:d.boq_data||null,bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null}));setDeals(prev=>mergeLocalOnly(ds,prev));idbE.push([KEYS.deals,ds]);}
-    if(data.jos?.length){const js=data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned}));setJos(prev=>mergeLocalOnly(js,prev));idbE.push([KEYS.jos,js]);}
+    if(data.deals?.length){const ds=data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",awardRequestData:d.award_request_data||null,boqData:d.boq_data||null,bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null}));setDeals(prev=>mlo(ds,prev));idbE.push([KEYS.deals,ds]);}
+    if(data.jos?.length){const js=data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned}));setJos(prev=>mlo(js,prev));idbE.push([KEYS.jos,js]);}
     if(Object.keys(data.pcards||{}).length){setPcards(data.pcards);idbE.push([KEYS.pcards,data.pcards]);}
-    if(data.billings?.length){const bs=data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by,retentionHeld:m.retention_held!=null?Number(m.retention_held):undefined,isRetentionRelease:m.is_retention_release||undefined,payments:(m.payments||[]).map(p=>({...p,milestoneId:p.milestone_id??p.milestoneId,refNo:p.ref_no??p.refNo,recordedBy:p.recorded_by??p.recordedBy,valueDate:p.value_date??p.valueDate,method:p.payment_method??p.method,bounced:!!(p.bounced??false)}))}));setBillings(prev=>mergeLocalOnly(bs,prev));idbE.push([KEYS.billings,bs]);}
-    if(data.exps?.length){const mappedExps=data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,createdBy:e.created_by,bankAccount:e.bank_account||"",expDate:e.date||null,poRef:e.po_ref||"",payee:e.supplier||"",vatable:e.vatable??undefined,inputVat:e.input_vat!=null?Number(e.input_vat):undefined,ewtRate:e.ewt_rate!=null?Number(e.ewt_rate):undefined,ewtAmount:e.ewt_amount!=null?Number(e.ewt_amount):undefined,netAmount:e.net_amount!=null?Number(e.net_amount):undefined,month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};});setExps(prev=>mergeLocalOnly(mappedExps,prev));idbE.push([KEYS.expenses,mappedExps]);}
-    if(data.swos?.length){const ws=data.swos.map(swoFromSb);setSwos(prev=>mergeLocalOnly(ws,prev));idbE.push([KEYS.swos,ws]);}
-    if(data.inflows?.length){const infs=data.inflows.map(i=>({...i,dealId:i.deal_id,refNo:i.ref_no}));setInfs(prev=>mergeLocalOnly(infs,prev));idbE.push([KEYS.inflows,infs]);}
-    if(data.prs?.length){const ps=data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",acctStatus:p.acct_status||"",acctNotes:p.acct_notes||"",acctCheckedBy:p.acct_checked_by||"",acctCheckedAt:p.acct_checked_at||"",paymentBank:p.payment_bank||"",paymentRef:p.payment_ref||"",paymentOrderedBy:p.payment_ordered_by||"",paymentOrderedAt:p.payment_ordered_at||"",paidRef:p.paid_ref||"",paidDate:p.paid_date||"",paidAmt:p.paid_amt!=null?Number(p.paid_amt):null,paidBy:p.paid_by||"",discType:p.disc_type||"none",discValue:Number(p.disc_value)||0,poDiscType:p.po_discount_type||"none",poDiscValue:Number(p.po_discount_value)||0,withVat:p.with_vat||false,accountCode:p.account_code||""}));setPrs(prev=>mergeLocalOnly(ps,prev));idbE.push([KEYS.prs,ps]);}
-    if(data.mreqs?.length){const ms=data.mreqs.map(m=>({...m,dealId:m.deal_id,projectId:m.deal_id,itemName:m.item||"",estimatedCost:Number(m.estimated_cost)||0,estUnitCost:Number(m.estimated_cost)||0,submittedBy:m.submitted_by,requestedBy:m.submitted_by||"",statusChangedAt:m.status_changed_at}));setMreqs(prev=>mergeLocalOnly(ms,prev));idbE.push([KEYS.mreqs,ms]);}
-    if(data.breqs?.length){const bs2=data.breqs.map(b=>({...b,dealId:b.deal_id,projectId:b.deal_id,dateNeeded:b.date_needed,approvedBy:b.approved_by,submittedBy:b.submitted_by,requestedBy:b.submitted_by||"",releasedBy:b.released_by||"",releasedAt:b.released_at,statusChangedAt:b.status_changed_at}));setBreqs(prev=>mergeLocalOnly(bs2,prev));idbE.push([KEYS.breqs,bs2]);}
-    if(data.addenda?.length){const as=data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by,kind:a.kind||"Additive",scopeItems:Array.isArray(a.scope_items)?a.scope_items:[],coBoqData:a.co_boq_data||null,salesOwner:a.sales_owner||"",awardedDate:a.awarded_date||null,subAccount:a.sub_account||null}));setAddenda(prev=>mergeLocalOnly(as,prev));idbE.push([KEYS.addenda,as]);}
-    if(data.checklist?.length){const cs=data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,sortOrder:c.sort_order,workDetail:c.work_detail||c.description||c.workDetail||""}));setChecklist(prev=>mergeLocalOnly(cs,prev));idbE.push([KEYS.checklist,cs]);}
-    if(data.swatches?.length){const ss=data.swatches.map(s=>({...s,dealId:s.deal_id,refLink:s.ref_link}));setSwatches(prev=>mergeLocalOnly(ss,prev));idbE.push([KEYS.swatches,ss]);}
-    if(data.actLog?.length)      setActLog(prev=>mergeLocalOnly(data.actLog.map(a=>({...a,dealId:a.deal_id})),prev));
+    if(data.billings?.length){const bs=data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by,retentionHeld:m.retention_held!=null?Number(m.retention_held):undefined,isRetentionRelease:m.is_retention_release||undefined,payments:(m.payments||[]).map(p=>({...p,milestoneId:p.milestone_id??p.milestoneId,refNo:p.ref_no??p.refNo,recordedBy:p.recorded_by??p.recordedBy,valueDate:p.value_date??p.valueDate,method:p.payment_method??p.method,bounced:!!(p.bounced??false)}))}));setBillings(prev=>mlo(bs,prev));idbE.push([KEYS.billings,bs]);}
+    if(data.exps?.length){const mappedExps=data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,createdBy:e.created_by,bankAccount:e.bank_account||"",expDate:e.date||null,poRef:e.po_ref||"",payee:e.supplier||"",vatable:e.vatable??undefined,inputVat:e.input_vat!=null?Number(e.input_vat):undefined,ewtRate:e.ewt_rate!=null?Number(e.ewt_rate):undefined,ewtAmount:e.ewt_amount!=null?Number(e.ewt_amount):undefined,netAmount:e.net_amount!=null?Number(e.net_amount):undefined,month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};});setExps(prev=>mlo(mappedExps,prev));idbE.push([KEYS.expenses,mappedExps]);}
+    if(data.swos?.length){const ws=data.swos.map(swoFromSb);setSwos(prev=>mlo(ws,prev));idbE.push([KEYS.swos,ws]);}
+    if(data.inflows?.length){const infs=data.inflows.map(i=>({...i,dealId:i.deal_id,refNo:i.ref_no}));setInfs(prev=>mlo(infs,prev));idbE.push([KEYS.inflows,infs]);}
+    if(data.prs?.length){const ps=data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",acctStatus:p.acct_status||"",acctNotes:p.acct_notes||"",acctCheckedBy:p.acct_checked_by||"",acctCheckedAt:p.acct_checked_at||"",paymentBank:p.payment_bank||"",paymentRef:p.payment_ref||"",paymentOrderedBy:p.payment_ordered_by||"",paymentOrderedAt:p.payment_ordered_at||"",paidRef:p.paid_ref||"",paidDate:p.paid_date||"",paidAmt:p.paid_amt!=null?Number(p.paid_amt):null,paidBy:p.paid_by||"",discType:p.disc_type||"none",discValue:Number(p.disc_value)||0,poDiscType:p.po_discount_type||"none",poDiscValue:Number(p.po_discount_value)||0,withVat:p.with_vat||false,accountCode:p.account_code||""}));setPrs(prev=>mlo(ps,prev));idbE.push([KEYS.prs,ps]);}
+    if(data.mreqs?.length){const ms=data.mreqs.map(m=>({...m,dealId:m.deal_id,projectId:m.deal_id,itemName:m.item||"",estimatedCost:Number(m.estimated_cost)||0,estUnitCost:Number(m.estimated_cost)||0,submittedBy:m.submitted_by,requestedBy:m.submitted_by||"",statusChangedAt:m.status_changed_at}));setMreqs(prev=>mlo(ms,prev));idbE.push([KEYS.mreqs,ms]);}
+    if(data.breqs?.length){const bs2=data.breqs.map(b=>({...b,dealId:b.deal_id,projectId:b.deal_id,dateNeeded:b.date_needed,approvedBy:b.approved_by,submittedBy:b.submitted_by,requestedBy:b.submitted_by||"",releasedBy:b.released_by||"",releasedAt:b.released_at,statusChangedAt:b.status_changed_at}));setBreqs(prev=>mlo(bs2,prev));idbE.push([KEYS.breqs,bs2]);}
+    if(data.addenda?.length){const as=data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by,kind:a.kind||"Additive",scopeItems:Array.isArray(a.scope_items)?a.scope_items:[],coBoqData:a.co_boq_data||null,salesOwner:a.sales_owner||"",awardedDate:a.awarded_date||null,subAccount:a.sub_account||null}));setAddenda(prev=>mlo(as,prev));idbE.push([KEYS.addenda,as]);}
+    if(data.checklist?.length){const cs=data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,sortOrder:c.sort_order,workDetail:c.work_detail||c.description||c.workDetail||""}));setChecklist(prev=>mlo(cs,prev));idbE.push([KEYS.checklist,cs]);}
+    if(data.swatches?.length){const ss=data.swatches.map(s=>({...s,dealId:s.deal_id,refLink:s.ref_link}));setSwatches(prev=>mlo(ss,prev));idbE.push([KEYS.swatches,ss]);}
+    if(data.actLog?.length)      setActLog(prev=>mlo(data.actLog.map(a=>({...a,dealId:a.deal_id})),prev));
     // Server is authoritative for cash positions on a successful read (even an
     // empty one); only a FAILED read keeps the stale local cache — flag it so the
     // UI warns and the Daily Cash Position sheet won't save over the server.
@@ -4604,29 +4671,29 @@ export default function App(){
       if(!cashReadFailed) setCashPos(prev=>{const merged=mergeLocalOnlyObj(convertSbCashPos(data.cashPositions),prev);idbE.push([KEYS.cashPos,merged]);return merged;});
     }
     if(Object.keys(data.budgets||{}).length){const bg=Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}]));setBudgets(prev=>mergeLocalOnlyObj(bg,prev));idbE.push([KEYS.budgets,bg]);}
-    if(data.users?.length){const us=data.users.map(u=>{const fallbackHash=DEFAULT_USERS.find(d=>d.username===(u.username||""))?.passwordHash||"";return{id:u.id,username:u.username||"",name:u.name||u.full_name||"",role:u.role||"Sales",title:u.title||u.role||"",status:u.status||"active",passwordHash:u.password_hash||fallbackHash,createdAt:u.created_at||""};});setUsers(prev=>mergeLocalOnly(us,prev));idbE.push([KEYS.users,us]);}
-    if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0,accountCode:p.account_code||"",verified:p.verified!==false,verifiedBy:p.verified_by||"",verifiedAt:p.verified_at||"",verificationPct:p.verification_pct!=null?Number(p.verification_pct):100,payBank:p.pay_bank||"",payMethod:p.pay_method||"",payRef:p.pay_ref||"",vatable:!!p.vatable,inputVat:Number(p.input_vat)||0,netAmount:Number(p.net_amount)||0,ewtRate:Number(p.ewt_rate)||0,ewtAmount:Number(p.ewt_amount)||0,tin:p.tin||"",approvalStatus:p.approval_status||"Approved",approvedBy:p.approved_by||"",approvedAt:p.approved_at||null}));setPayables(prev=>mergeLocalOnly(ps,prev));idbE.push(["gmdv5:payables",ps]);}
-    if(data.loans?.length){const ls=data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]}));setLoans(prev=>mergeLocalOnly(ls,prev));idbE.push(["gmdv5:loans",ls]);}
-    if(data.dailyLogs?.length){const dl=data.dailyLogs.map(l=>({...l,dealId:l.deal_id,date:l.log_date,workDone:l.work_done,progressNote:l.progress_note,loggedBy:l.logged_by,createdAt:l.created_at}));setDailyLogs(prev=>mergeLocalOnly(dl,prev));idbE.push([KEYS.dailylogs,dl]);}
-    if(data.ceReqs?.length){const cr=data.ceReqs.map(ceReqFromSb);setCeReqs(prev=>mergeLocalOnly(cr,prev));idbE.push([KEYS.ceReqs,cr]);}
-    if(data.commissionPayouts?.length){const po=data.commissionPayouts.map(commissionPayoutFromSb);setPayouts(prev=>mergeLocalOnly(po,prev));idbE.push([KEYS.payouts,po]);}
+    if(data.users?.length){const us=data.users.map(u=>{const fallbackHash=DEFAULT_USERS.find(d=>d.username===(u.username||""))?.passwordHash||"";return{id:u.id,username:u.username||"",name:u.name||u.full_name||"",role:u.role||"Sales",title:u.title||u.role||"",status:u.status||"active",passwordHash:u.password_hash||fallbackHash,createdAt:u.created_at||""};});setUsers(prev=>mlo(us,prev));idbE.push([KEYS.users,us]);}
+    if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0,accountCode:p.account_code||"",verified:p.verified!==false,verifiedBy:p.verified_by||"",verifiedAt:p.verified_at||"",verificationPct:p.verification_pct!=null?Number(p.verification_pct):100,payBank:p.pay_bank||"",payMethod:p.pay_method||"",payRef:p.pay_ref||"",vatable:!!p.vatable,inputVat:Number(p.input_vat)||0,netAmount:Number(p.net_amount)||0,ewtRate:Number(p.ewt_rate)||0,ewtAmount:Number(p.ewt_amount)||0,tin:p.tin||"",approvalStatus:p.approval_status||"Approved",approvedBy:p.approved_by||"",approvedAt:p.approved_at||null}));setPayables(prev=>mlo(ps,prev));idbE.push(["gmdv5:payables",ps]);}
+    if(data.loans?.length){const ls=data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]}));setLoans(prev=>mlo(ls,prev));idbE.push(["gmdv5:loans",ls]);}
+    if(data.dailyLogs?.length){const dl=data.dailyLogs.map(l=>({...l,dealId:l.deal_id,date:l.log_date,workDone:l.work_done,progressNote:l.progress_note,loggedBy:l.logged_by,createdAt:l.created_at}));setDailyLogs(prev=>mlo(dl,prev));idbE.push([KEYS.dailylogs,dl]);}
+    if(data.ceReqs?.length){const cr=data.ceReqs.map(ceReqFromSb);setCeReqs(prev=>mlo(cr,prev));idbE.push([KEYS.ceReqs,cr]);}
+    if(data.commissionPayouts?.length){const po=data.commissionPayouts.map(commissionPayoutFromSb);setPayouts(prev=>mlo(po,prev));idbE.push([KEYS.payouts,po]);}
     // These tables were previously set only by the boot-time load, never here.
     // Because this function is the LOGIN / Retry-Sync / focus-refresh path, a
     // freshly-provisioned account (e.g. a designer who just got a user_profiles
     // row) that logs in and never hard-reloads would see empty Design Requests,
     // Project Cards, inventory, suppliers, etc. until a full page reload — the
     // "designers see no DRFs" bug. Mirror the boot handler so login populates them.
-    if(data.drfs?.length){const _drfs=data.drfs.map(drfFromSb);setDrfs(prev=>mergeLocalOnly(_drfs,prev));idbE.push([KEYS.drfs,_drfs]);}
+    if(data.drfs?.length){const _drfs=data.drfs.map(drfFromSb);setDrfs(prev=>mlo(_drfs,prev));idbE.push([KEYS.drfs,_drfs]);}
     if(data.projs&&Object.keys(data.projs).length){setProjs(prev=>mergeLocalOnlyObj(data.projs,prev));idbE.push([KEYS.projects,data.projs]);}
     if(data.inventory?.length){const _inv=data.inventory.map(invFromSb);setInventory(prev=>{const sbIds=new Set(_inv.map(i=>i.id));const localOnly=prev.filter(i=>!sbIds.has(i.id));return localOnly.length?[..._inv,...localOnly]:_inv;});idbE.push([KEYS.inventory,_inv]);}
     if(data.stocklog?.length){const _stock=data.stocklog.map(moveFromSb);setStocklog(_stock);idbE.push([KEYS.stocklog,_stock]);}
-    if(data.tools?.length){const _tools=data.tools.map(toolFromSb);setTools(prev=>mergeLocalOnly(_tools,prev));idbE.push([KEYS.tools,_tools]);}
-    if(data.drs?.length){const _drs=data.drs.map(drFromSb);setDrs(prev=>mergeLocalOnly(_drs,prev));idbE.push([KEYS.drs,_drs]);}
-    if(data.suppliers?.length){const _sup=data.suppliers.map(s=>({...s,companyName:s.company_name,contactNos:s.contact_nos,contactPerson:s.contact_person,paymentTerms:s.payment_terms,tinNo:s.tin_no,createdBy:s.created_by}));setSuppliers(prev=>mergeLocalOnly(_sup,prev));idbE.push([KEYS.suppliers,_sup]);}
-    if(data.subcontractors?.length){const _sc=data.subcontractors.map(s=>({...s,companyName:s.company_name,strengthsWeaknesses:s.strengths_weaknesses,contactNo:s.contact_no,paymentTerms:s.payment_terms,rateStructure:s.rate_structure,paymentStructure:s.payment_structure,locationNote:s.location_note,createdBy:s.created_by}));setSubcons(prev=>mergeLocalOnly(_sc,prev));idbE.push([KEYS.subcons,_sc]);}
-    if(data.boqLibrary?.length){const _bl=data.boqLibrary.map(it=>({id:it.id,name:it.name,description:it.description||"",section:it.category||"",unit:it.unit||"lot",unitCost:Number(it.unit_cost)||0,tags:it.tags||[],createdBy:it.created_by||"",createdAt:it.created_at||"",updatedAt:it.updated_at||""}));setBoqLibrary(prev=>mergeLocalOnly(_bl,prev));idbE.push([KEYS.boqLibrary,_bl]);}
-    if(data.checkVouchers?.length){const _cv=data.checkVouchers.map(v=>({...v,cvNo:v.cv_no,projectId:v.project_id,releasedBy:v.released_by||"",releasedDate:v.released_date||null,createdBy:v.created_by||"",createdAt:v.created_at||null,poRef:v.po_ref||"",payableId:v.payable_id||null,checkNo:v.check_no||"",clearedDate:v.cleared_date||null,isCleared:v.is_cleared||false}));setVouchers(prev=>mergeLocalOnly(_cv,prev));idbE.push([KEYS.vouchers,_cv]);}
-    if(data.blockers?.length){const bl=data.blockers.map(b=>({id:b.id,dealId:b.deal_id,title:b.title,dept:b.dept||"Operations",detail:b.detail||"",flaggedBy:b.flagged_by||"",status:b.status||"Open",createdAt:b.created_at||"",resolvedBy:b.resolved_by||null,resolvedAt:b.resolved_at||null}));setBlockers(prev=>mergeLocalOnly(bl,prev));idbE.push([KEYS.blockers,bl]);}
+    if(data.tools?.length){const _tools=data.tools.map(toolFromSb);setTools(prev=>mlo(_tools,prev));idbE.push([KEYS.tools,_tools]);}
+    if(data.drs?.length){const _drs=data.drs.map(drFromSb);setDrs(prev=>mlo(_drs,prev));idbE.push([KEYS.drs,_drs]);}
+    if(data.suppliers?.length){const _sup=data.suppliers.map(s=>({...s,companyName:s.company_name,contactNos:s.contact_nos,contactPerson:s.contact_person,paymentTerms:s.payment_terms,tinNo:s.tin_no,createdBy:s.created_by}));setSuppliers(prev=>mlo(_sup,prev));idbE.push([KEYS.suppliers,_sup]);}
+    if(data.subcontractors?.length){const _sc=data.subcontractors.map(s=>({...s,companyName:s.company_name,strengthsWeaknesses:s.strengths_weaknesses,contactNo:s.contact_no,paymentTerms:s.payment_terms,rateStructure:s.rate_structure,paymentStructure:s.payment_structure,locationNote:s.location_note,createdBy:s.created_by}));setSubcons(prev=>mlo(_sc,prev));idbE.push([KEYS.subcons,_sc]);}
+    if(data.boqLibrary?.length){const _bl=data.boqLibrary.map(it=>({id:it.id,name:it.name,description:it.description||"",section:it.category||"",unit:it.unit||"lot",unitCost:Number(it.unit_cost)||0,tags:it.tags||[],createdBy:it.created_by||"",createdAt:it.created_at||"",updatedAt:it.updated_at||""}));setBoqLibrary(prev=>mlo(_bl,prev));idbE.push([KEYS.boqLibrary,_bl]);}
+    if(data.checkVouchers?.length){const _cv=data.checkVouchers.map(v=>({...v,cvNo:v.cv_no,projectId:v.project_id,releasedBy:v.released_by||"",releasedDate:v.released_date||null,createdBy:v.created_by||"",createdAt:v.created_at||null,poRef:v.po_ref||"",payableId:v.payable_id||null,checkNo:v.check_no||"",clearedDate:v.cleared_date||null,isCleared:v.is_cleared||false}));setVouchers(prev=>mlo(_cv,prev));idbE.push([KEYS.vouchers,_cv]);}
+    if(data.blockers?.length){const bl=data.blockers.map(b=>({id:b.id,dealId:b.deal_id,title:b.title,dept:b.dept||"Operations",detail:b.detail||"",flaggedBy:b.flagged_by||"",status:b.status||"Open",createdAt:b.created_at||"",resolvedBy:b.resolved_by||null,resolvedAt:b.resolved_at||null}));setBlockers(prev=>mlo(bl,prev));idbE.push([KEYS.blockers,bl]);}
     if(idbE.length) idbSetMany(idbE).catch(()=>{});
   };
 
@@ -4675,6 +4742,7 @@ export default function App(){
     ce_type:r.ceType, product:r.product, stage:r.stage,
     priority:r.priority||"Normal", sales_owner:r.salesOwner||"",
     biz_dev_source:r.bizDevSource||"", lead_origin:leadOriginOf(r), date_acquired:r.dateAcquired||null,
+    temperature:r.temperature||null,
     due_date:r.dueDate||null, follow_up:r.followUp||null,
     value:Number(r.value)||0,
     invoiced:Number(r.invoiced)||0, amount_paid:Number(r.amountPaid)||0,
@@ -4818,9 +4886,13 @@ export default function App(){
     value:Number(r.value)||0, ce_no:r.ceNo||"",
     kind:r.kind||"Additive", scope_items:Array.isArray(r.scopeItems)?r.scopeItems:[],
     receipt_type:r.receiptType||"OR", withholding:r.withholding||false,
-    cost_impact:Number(r.costImpact||r.value)||0,
+    // NOTE: cost_impact (duplicated `value`) and client_approved (redundant with
+    // status "Approved") were written here but never existed as columns on the
+    // addenda table and are never read back — so every addendum upsert failed on
+    // the unknown column and change orders stopped syncing. Dropped both; `value`
+    // and `status` already carry this information and are persisted.
     status:r.status||"Discovered", sales_notified:r.salesNotified||false,
-    discovered_by:r.discoveredBy||"", client_approved:r.clientApproved||false,
+    discovered_by:r.discoveredBy||"",
     co_boq_data:r.coBoqData||null,
     sales_owner:r.salesOwner||null, awarded_date:r.awardedDate||null, sub_account:r.subAccount||null,
   });
@@ -4855,7 +4927,11 @@ export default function App(){
     set_by:b.setBy||"",
   });
   const toSbActivity = r=>({
-    id:r.id||("act"+Date.now()), deal_id:r.dealId||null,
+    // deal_id is a UUID column: a legacy/ghost deal id (non-UUID local id) would
+    // fail the insert, dropping the whole audit entry. Keep the entry (deal_id is
+    // nullable) by nulling a non-UUID reference instead of losing the log line.
+    // id likewise must be a UUID — fall back to a fresh one, never a text id.
+    id:(r.id&&isUUID(r.id))?r.id:uid(), deal_id:(r.dealId&&isUUID(r.dealId))?r.dealId:null,
     action:r.action||"", detail:r.detail||"",
     by:r.by||"", date:r.date||today, time:r.time||"",
   });
@@ -4937,13 +5013,18 @@ export default function App(){
     });
     return false;
   };
-  const sbSyncOne=(table,record,mapper)=>{
+  // opts.ignoreDuplicates → INSERT ... ON CONFLICT DO NOTHING: only materialise a
+  // MISSING row, never overwrite an existing one. Use it for parent-before-child
+  // FK-safety writes so they can't clobber a server row that's newer than this
+  // device's local copy (the stale-`deals`-snapshot clobber that silently
+  // reverted an awarded deal's stage and produced a duplicate Job Order).
+  const sbSyncOne=(table,record,mapper,opts={})=>{
     if(!isSupabaseReady()||!record) return Promise.resolve(false);
     // Don't re-push what RLS will reject — see roleCanInsert / INSERT_ROLES above.
     if(!roleCanInsert(table)) return Promise.resolve(false);
     const payload=mapper?mapper(record):record;
     if(!hasValidUUIDs(payload)) return Promise.resolve(false);
-    return sbUpsert(table,payload,'id')
+    return sbUpsert(table,payload,'id',opts)
       .catch(e=>{console.error("FabHub sbSyncOne "+table+":",e.message);return false;});
   };
   const sbSyncDelete=(table,id)=>{
@@ -4969,9 +5050,24 @@ export default function App(){
   // if it somehow went missing — exactly the self-heal we want.
   const syncProjectCard=async(dealId,patch)=>{
     if(!isSupabaseReady()||!dealId) return false;
+    // Insert-if-missing only: this write exists solely to guarantee the parent
+    // deal row is present for the card's FK. `deal` here is this device's local
+    // (possibly-stale) copy, so a full upsert would overwrite whatever is on the
+    // server — reverting another user's newer stage/value edit. ignoreDuplicates
+    // makes it a no-op whenever the row already exists.
     const deal=deals.find(d=>d.id===dealId);
-    if(deal) await sbSyncOne("deals",deal,toSbDeal);
-    return sbUpsert('project_cards',{deal_id:dealId,...patch},'deal_id').catch(()=>false);
+    if(deal) await sbSyncOne("deals",deal,toSbDeal,{ignoreDuplicates:true});
+    // Adopt the local card id on the server row. project_card_dept_status/_tasks
+    // reference the card by card_id; if the parent row is created here without an
+    // id, the server assigns its own UUID and every child write orphans (the
+    // "department progress update couldn't reach the server — project card isn't
+    // on the server yet" toast). Sending the local UUID makes an INSERT adopt it
+    // so children match. On an UPDATE (row already exists for this unique
+    // deal_id) the id equals what a prior load set, so this is a no-op — never a
+    // PK change. createProjectCard already does exactly this on first creation.
+    const cardId=pcards[dealId]?.id;
+    const base=(cardId&&isUUID(cardId))?{id:cardId}:{};
+    return sbUpsert('project_cards',{...base,deal_id:dealId,...patch},'deal_id').catch(()=>false);
   };
 
   // ── PERSIST — updates the save indicator; Supabase is the write target ──
@@ -5545,8 +5641,25 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       // Guarantee the parent deal exists on the server before the card's own FK
       // to deals(id) is evaluated — createProjectCard is reachable from the
       // manual "create card" path too, where the deal may still be local-only.
+      // Merge the caller-supplied dealData over the `deals` snapshot before
+      // re-syncing the parent. During Award the optimistic stage/probability
+      // update (upDeals → "06 · Kickoff") has only been scheduled, so the
+      // `deals` closure here still holds the PRE-award stage. Syncing that raw
+      // snapshot would land after confirmAward's own Kickoff write and silently
+      // revert the deal to its old stage (e.g. "01 · BizDev") — the deal then
+      // looks un-awarded in the pipeline and gets awarded again, issuing a
+      // duplicate Job Order. dealData carries the authoritative just-changed
+      // fields, so let it win over the stale snapshot.
+      // Insert-if-missing only (ignoreDuplicates): if the deal already exists on
+      // the server — the normal case, since confirmAward upserts the awarded deal
+      // just before this — leave that row untouched so this write can't revert the
+      // "06 · Kickoff" stage back to the pre-award value. The merged payload only
+      // matters for the self-heal case where the parent was never synced, and even
+      // then carries the caller's authoritative (awarded) fields, not the stale
+      // `deals` snapshot.
       const parentDeal=deals.find(d=>d.id===dealId);
-      if(parentDeal) await sbSyncOne("deals",parentDeal,toSbDeal);
+      const parentToSync=parentDeal?{...parentDeal,...(dealData||{})}:(dealData||null);
+      if(parentToSync&&parentToSync.id) await sbSyncOne("deals",parentToSync,toSbDeal,{ignoreDuplicates:true});
       const cardSynced=await sbUpsert('project_cards',{id:card.id,deal_id:dealId,client:dealData?.client||"",ce_no:dealData?.ceNo||"",value:Number(dealData?.value)||0,award_date:dealData?.awardDate||today,created_at:card.createdAt,ae_assigned:card.aeAssigned||"",pm1:card.pm1||"",pm2:card.pm2||"",pm3:card.pm3||"",designer:card.designer||"",coordinator:card.coordinator||"",...(card.targetEndDate?{target_end_date:card.targetEndDate}:{}),...(card.targetDays!=null?{target_days:card.targetDays}:{})},'deal_id');
       if(cardSynced){
         DEPT_ORDER.forEach(dept=>{
@@ -5563,33 +5676,37 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     return true;
   };
   const toggleDeptTask=(dealId,dept,taskId)=>{
-    const existingCard=pcards[dealId];
-    const existingTask=existingCard?.departments?.[dept]?.tasks?.find(t=>t.id===taskId);
+    // Compute the new card OUTSIDE the setState updater. React runs updaters
+    // asynchronously, so the card wouldn't be available to the server writes
+    // below if they lived inside the updater — which is also why the writes used
+    // to sit inside it. Deriving from the current pcards (same closure the
+    // done/nowDone flags already read) lets us fire the writes parent-first.
+    const baseCard=pcards[dealId]||emptyProjectCard(dealId,{});
+    const existingTask=baseCard?.departments?.[dept]?.tasks?.find(t=>t.id===taskId);
     const nowDone=!(existingTask?.done||false);
-    const wasAlreadyDeptDone=existingCard?.departments?.[dept]?.done||false;
-    let deptJustCompleted=false;
-    upPcards(ps=>{
-      const card={...(ps[dealId]||emptyProjectCard(dealId,{}))};
-      const depts=card.departments||{};
-      const deptData={...(depts[dept]||{tasks:[]})};
-      deptData.tasks=(deptData.tasks||[]).map(t=>t.id===taskId?{...t,done:nowDone,doneAt:nowDone?new Date().toISOString():null,doneBy:nowDone?session?.name:null}:t);
-      deptData.done=deptData.tasks.length>0&&deptData.tasks.every(t=>t.done);
-      if(deptData.done&&!wasAlreadyDeptDone){
-        deptData.doneAt=new Date().toISOString();
-        deptData.doneBy=session?.name;
-        deptJustCompleted=true;
-      }
-      card.departments={...depts,[dept]:deptData};
-      if(isSupabaseReady()&&isUUID(taskId)){
-        sbUpdate('project_card_dept_tasks',taskId,{done:nowDone,done_at:nowDone?new Date().toISOString():null,done_by:nowDone?session?.name:null}).catch(()=>{});
-        if(deptData.done&&card.id&&isUUID(card.id)){
-          sbUpsert('project_card_dept_status',{card_id:card.id,department:dept,done:deptData.done,done_at:deptData.doneAt,done_by:deptData.doneBy},'card_id,department').catch(()=>{});
-        }
-      }
-      return{...ps,[dealId]:card};
-    });
-    // logActivity called AFTER setState, not inside it
-    if(deptJustCompleted) logActivity(dealId,"Department Done",`${dept} completed all tasks for ${existingCard?.client}`,session?.name);
+    const wasAlreadyDeptDone=baseCard?.departments?.[dept]?.done||false;
+    const ts=new Date().toISOString();
+    const depts=baseCard.departments||{};
+    const deptData={...(depts[dept]||{tasks:[]})};
+    deptData.tasks=(deptData.tasks||[]).map(t=>t.id===taskId?{...t,done:nowDone,doneAt:nowDone?ts:null,doneBy:nowDone?session?.name:null}:t);
+    deptData.done=deptData.tasks.length>0&&deptData.tasks.every(t=>t.done);
+    const deptJustCompleted=deptData.done&&!wasAlreadyDeptDone;
+    if(deptJustCompleted){deptData.doneAt=ts;deptData.doneBy=session?.name;}
+    const newCard={...baseCard,departments:{...depts,[dept]:deptData}};
+    upPcards(ps=>({...ps,[dealId]:{...(ps[dealId]||newCard),departments:{...((ps[dealId]||newCard).departments||{}),[dept]:deptData}}}));
+    if(isSupabaseReady()&&isUUID(taskId)){
+      sbUpdate('project_card_dept_tasks',taskId,{done:nowDone,done_at:nowDone?ts:null,done_by:nowDone?session?.name:null}).catch(()=>{});
+    }
+    // Parent-first: ensure the project_cards row (with this card's id) exists on
+    // the server before the dept_status child that references it, so it can't
+    // orphan ("progress update couldn't reach the server — card isn't there yet").
+    if(isSupabaseReady()&&deptData.done&&newCard.id&&isUUID(newCard.id)){
+      (async()=>{
+        await syncProjectCard(dealId,{});
+        sbUpsert('project_card_dept_status',{card_id:newCard.id,department:dept,done:deptData.done,done_at:deptData.doneAt,done_by:deptData.doneBy},'card_id,department').catch(()=>{});
+      })();
+    }
+    if(deptJustCompleted) logActivity(dealId,"Department Done",`${dept} completed all tasks for ${baseCard?.client}`,session?.name);
   };
   const setProjectTAT=(dealId,dateStr,category)=>{
     if(!dateStr) return;
@@ -5617,17 +5734,21 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   };
 
   const markDeptDone=(dealId,dept,done)=>{
-    upPcards(ps=>{
-      const card={...(ps[dealId]||emptyProjectCard(dealId,{}))};
-      const depts=card.departments||{};
-      const deptData={...(depts[dept]||{tasks:[]}),done,doneAt:done?new Date().toISOString():null,doneBy:done?session?.name:null};
-      card.departments={...depts,[dept]:deptData};
-      if(done) logActivity(dealId,"Department Done",`${dept} marked complete for ${card.client}`,session?.name);
-      if(isSupabaseReady()&&card.id&&isUUID(card.id)){
-        sbUpsert('project_card_dept_status',{card_id:card.id,department:dept,done,done_at:deptData.doneAt,done_by:deptData.doneBy},'card_id,department').catch(()=>{});
-      }
-      return{...ps,[dealId]:card};
-    });
+    // Same pattern as toggleDeptTask: compute outside the updater so the server
+    // write can run parent-first and can't orphan the dept_status child.
+    const baseCard=pcards[dealId]||emptyProjectCard(dealId,{});
+    const depts=baseCard.departments||{};
+    const ts=new Date().toISOString();
+    const deptData={...(depts[dept]||{tasks:[]}),done,doneAt:done?ts:null,doneBy:done?session?.name:null};
+    const newCard={...baseCard,departments:{...depts,[dept]:deptData}};
+    upPcards(ps=>({...ps,[dealId]:{...(ps[dealId]||newCard),departments:{...((ps[dealId]||newCard).departments||{}),[dept]:deptData}}}));
+    if(done) logActivity(dealId,"Department Done",`${dept} marked complete for ${baseCard.client}`,session?.name);
+    if(isSupabaseReady()&&newCard.id&&isUUID(newCard.id)){
+      (async()=>{
+        await syncProjectCard(dealId,{});
+        sbUpsert('project_card_dept_status',{card_id:newCard.id,department:dept,done,done_at:deptData.doneAt,done_by:deptData.doneBy},'card_id,department').catch(()=>{});
+      })();
+    }
   };
 
   // ── Supabase real-time subscriptions ─────────────────────────────────────────
@@ -6178,11 +6299,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     sendTelegramNotification("management",msg);
     logActivity(dealId,"Billing Setup Requested",`Jessica notified to set up billing milestones for ${client||"the awarded project"}.`,session?.name||role);
   };
-  const updateMilestone=(id,ch)=>{
+  const updateMilestone=(id,ch,audit)=>{
     if(ch.status==='Fully Paid'){
       const ms=billings.find(b=>b.id===id);
       const msDeal=ms?.dealId?deals.find(d=>d.id===ms.dealId):null;
-      const msg=`✅ <b>Milestone Fully Paid</b>\nClient: <b>${msDeal?.client||ms?.title||"?"}</b>\nMilestone: ${ms?.title||"—"}\nAmount: ₱${Number(ms?.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nUpdated by: ${session?.name||"Finance"}`;
+      const msg=`✅ <b>Milestone Fully Paid</b>\nProject: <b>${msDeal?.contact||ms?.name||ms?.title||"—"}</b>\nClient: ${msDeal?.client||"—"}\nMilestone: ${ms?.name||ms?.title||"—"}\nAmount: ₱${Number(ms?.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nUpdated by: ${session?.name||"Finance"}`;
       sendTelegramNotification("sales",msg);
       sendTelegramNotification("management",msg);
     }
@@ -6232,6 +6353,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         if(isSupabaseReady()) sbSyncOne("deals",nd,toSbDeal);
         return nd;
       }));
+    }
+    // Payment-mutation audit trail (edit / bounce / clear / restore). Deletes are
+    // already archived via confirmFinancialDelete; edits previously left no trace.
+    if(audit&&audit.action){
+      const aMs=billings.find(b=>b.id===id);
+      logActivity(aMs?.dealId||dealId,audit.action,audit.detail||"",session?.name||role);
     }
   };
   const deleteMilestone=async(id)=>{
@@ -6317,7 +6444,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const msTx=calcTax(milestone?.amount||0,milestone?.receiptType??milestone?.receipt_type??payDeal?.receiptType??"OR",milestone?.withholding??payDeal?.withholding??false);
     const totalPaidAfter=(milestone?.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0)+Number(payment.amount||0);
     const isFullyPaid=totalPaidAfter>=msTx.netReceivable;
-    const payMsg=`💵 <b>Payment Received</b>\nClient: <b>${payDeal?.client||milestone?.title||"?"}</b>\nMilestone: ${milestone?.title||"—"}\nAmount: ₱${Number(payment.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nRef: ${payment.refNo||payment.ref_no||"—"}\nRecorded by: ${payment.recordedBy||session?.name||"Finance"}${isFullyPaid?"\n✅ Milestone fully paid!":""}`;
+    // Where the money landed: resolve the stored bank code (e.g. "bpi") to its
+    // short name, then append the method (Bank Transfer / Cheque / Cash…).
+    const payBankCode=payment.bank??payment.bank_id;
+    const payBankRow=(BANKS||[]).find(x=>x.id===payBankCode||x.short===payBankCode||x.name===payBankCode);
+    const payBankLabel=payBankCode==="cash"?"Cash":payBankRow?payBankRow.short:(payBankCode||"—");
+    const payMethod=payment.method||payment.payment_method||"";
+    const depositedTo=`${payBankLabel}${payMethod?` · ${payMethod}`:""}`;
+    // "Credited" = value date (when funds were actually available); fall back to
+    // the date received, then today.
+    const creditedOn=payment.valueDate||payment.value_date||payment.date||today;
+    const payMsg=`💵 <b>Payment Received</b>\nProject: <b>${payDeal?.contact||milestone?.name||milestone?.title||"—"}</b>\nClient: ${payDeal?.client||"—"}\nDeposited to: ${depositedTo}\nAmount: ₱${Number(payment.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nCredited: ${creditedOn}\nRef: ${payment.refNo||payment.ref_no||"—"}\nRecorded by: ${payment.recordedBy||session?.name||"Finance"}${isFullyPaid?"\n✅ Milestone fully paid!":""}`;
     sendTelegramNotification("sales",payMsg);
     sendTelegramNotification("management",payMsg);
     if(dealId) logActivity(dealId,"Payment Received",`₱${Number(payment.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})} on ${milestone?.name||"milestone"}${payment.refNo?` · Ref: ${payment.refNo}`:""}`,payment.recordedBy||session?.name);
@@ -6412,6 +6549,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     return'INV-'+String(next).padStart(4,'0');
   };
   const addAddendum2=(adm)=>{
+    // Guard: warn if a same-value change order already exists on this parent as a
+    // linked child deal or another addendum (prevents double-counting).
+    const coDup=findCrossMechanismCO({parentId:adm.dealId,value:adm.value,deals,addenda,excludeAddendumId:adm.id});
+    if(coDup && !window.confirm(coDup+"\n\nLog this addendum anyway?")) return;
     const rec={...adm,id:uid(),createdDate:today,status:"Discovered"};
     upAddenda(as=>[rec,...as]);
     if(isSupabaseReady()) sbSyncOne("addenda",rec,toSbAddendum);
@@ -7336,6 +7477,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[pipeNoAward,  setPipeNoAward]  = useState(false);  // awarded tab: show only won projects with no award date set
   const[showActChat,  setShowActChat]  = useState(false); // pipeline activity pop-up
   const[rowMenu,      setRowMenu]      = useState(null);   // {deal,x,y} — pipeline row overflow menu
+  const[pipeDragId,   setPipeDragId]   = useState(null);   // deal id being dragged between temperature columns
+  const[pipeDragOver, setPipeDragOver] = useState(null);   // temperature column currently hovered during drag
+  const pipeGhostRef = useRef(null);                       // floating drag ghost node for mobile touch-drag
+  const[coldSweepDismissed,setColdSweepDismissed]=useState(false); // hide stale-cold review banner for this session
   const[priceModal,   setPriceModal]   = useState(null);   // {deal} — QS set price modal
   const[quickAddClientOpen,setQuickAddClientOpen]=useState(false);
   const[quickAddClientForm,setQuickAddClientForm]=useState({name:"",contactPerson:"",email:"",phone:"",mobile:"",website:"",billingAddress:"",city:"",province:"",zipCode:"",country:"Philippines",tin:"",paymentTerms:"Due on receipt",notes:""});
@@ -7480,17 +7625,44 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // Standby PO umbrellas are intentionally ₱0 (their value lives on the
     // drawdown jobs), so exempt them from the awarded-value requirement.
     if(WON_STAGES.includes(data.stage)&&!data.standbyPO&&(!data.value||Number(data.value)<=0)){toastEmit("Contract value is required for awarded projects.","error");return;}
+    // Awarding a project is exclusively the Award modal's job (it creates the Job
+    // Order, project card and starting budget). The deal edit form must never move
+    // a deal INTO a won stage — doing so marked it "awarded" with none of that
+    // scaffolding. Allowed: editing a deal that is ALREADY in a won stage (Ops
+    // pipeline progress). Blocked: a new deal saved directly at a won stage, or an
+    // edit lifting a pre-award deal into one — use the 🏆 Award button instead.
+    if(WON_STAGES.includes(data.stage)){
+      const prevStage=editDeal?deals.find(d=>d.id===editDeal)?.stage:null;
+      if(!editDeal||!WON_STAGES.includes(prevStage)){
+        toastEmit("🏆 To award a project, use the Award button (🏆) so its Job Order, project card and budget are created. Set the stage back to a pipeline stage to save this edit.","warning",7000);
+        return;
+      }
+    }
+    // Placeholder / import-artifact guard. A real contract is never ₱1, and a
+    // deal can't carry invoiced/paid amounts with no contract value. Both are the
+    // signature of a re-import where the value column didn't map (deals came in at
+    // ₱1 while invoiced/paid copied over from the source row). Standby PO
+    // umbrellas are legitimately ₱0 — their value lives on the drawdown jobs — so
+    // exempt them. Applies on edit too, so fixing a bad row means entering the
+    // real value, not re-saving the placeholder.
+    if(!data.standbyPO){
+      const v=Number(data.value)||0, inv=Number(data.invoiced)||0, paid=Number(data.amountPaid)||0;
+      if(v===1){toastEmit("Contract value of ₱1 looks like an import placeholder. Enter the real contract value before saving.","error");return;}
+      if(v<=0&&(inv>0||paid>0)){toastEmit("This deal has amounts invoiced/paid but no contract value — check the value field before saving.","error");return;}
+    }
     // Duplicate detection — only on new deals, not edits or forced saves
     if(!editDeal&&!skipDupCheck){
-      const clientLower=data.client.toLowerCase();
-      const titleLower=(data.product||data.contact||"").toLowerCase();
+      // Match clients with the fuzzy key so "Adm Indicia" vs "Adm-Indicia" and
+      // "Matchanese" vs "Matchanese Inc" are treated as the same client, then
+      // flag when the CE number matches OR the project titles are similar (loose
+      // token overlap, so "Event 1" vs "Leg 1" of the same job is caught).
+      const clientK=clientMatchKey(data.client);
+      const newTitle=data.product||data.contact||"";
       const dupes=deals.filter(d=>{
         if(isLostStage(d.stage)) return false;
-        if(d.client.toLowerCase()!==clientLower) return false;
-        const existTitle=(d.product||d.contact||"").toLowerCase();
-        const titleMatch=titleLower&&existTitle&&(existTitle.includes(titleLower)||titleLower.includes(existTitle));
+        if(clientMatchKey(d.client)!==clientK) return false;
         const ceMatch=data.ceNo&&d.ceNo&&data.ceNo.trim()===d.ceNo.trim();
-        return titleMatch||ceMatch;
+        return ceMatch||titleSimilar(newTitle,d.product||d.contact||"");
       });
       if(dupes.length>0){setDupPrompt({newData:data,matches:dupes});return;}
     }
@@ -7504,6 +7676,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       addedBy:editDeal?(data.addedBy||""):(session?.name||""),
       addedAt:editDeal?(data.addedAt||today):today,
     };
+    // Guard: block the same change order being recorded as BOTH a linked child
+    // deal AND an addendum on the same parent (double-counts awarded value).
+    if(!editDeal && !skipDupCheck && rec.parentDealId){
+      const coDup=findCrossMechanismCO({parentId:rec.parentDealId,value:rec.value,deals,addenda,excludeDealId:rec.id});
+      if(coDup && !window.confirm(coDup+"\n\nSave this change-order deal anyway?")) return;
+    }
     // Only trigger award logic for NEW deals entering won stages — never on edit
     const wasAlreadyAwarded = editDeal && WON_STAGES.includes(deals.find(d=>d.id===editDeal)?.stage);
     // Child/addendum deals (parentDealId set) never get their own project card —
@@ -7729,6 +7907,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // project card even when the project has addendums, so only parent deals
     // (no parentDealId) get a projs entry on award.
     const staging=deals.find(x=>x.id===id);
+    // Awarding is exclusively the Award modal's job — it issues the Job Order,
+    // project card and starting budget and sends the award notification. Dragging
+    // a deal from a pre-award stage straight into a won stage did NONE of that,
+    // leaving an "awarded" deal Operations never received. Block that one
+    // transition (non-won → won) and point to the 🏆 Award button. Moving BETWEEN
+    // won stages (already-awarded pipeline progress) stays free.
+    if(WON_STAGES.includes(st)&&staging&&!WON_STAGES.includes(staging.stage)){
+      toastEmit("🏆 Use the Award button (🏆) to award a project — it sets up the Job Order, project card and budget. Drag-to-award is disabled.","warning",6000);
+      return;
+    }
     if(WON_STAGES.includes(st)&&!staging?.parentDealId) upProjs(ps=>ps[id]?ps:{...ps,[id]:emptyProject()});
     if(st==="14 · Completed"){
       const d=deals.find(x=>x.id===id);
@@ -7902,6 +8090,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const turnoverDate=form.startDate||"";
     const turnoverDays=turnoverDate?Math.max(1,Math.ceil((new Date(turnoverDate)-new Date(awardDateForCard))/86400000)):null;
     const cardOk=await createProjectCard(id,{...awardModal,
+      // Carry the awarded stage/probability/payment so createProjectCard's
+      // parent-deal re-sync writes the AWARDED deal, not awardModal's stale
+      // pre-award snapshot (which would revert stage back and orphan the award).
+      stage:"06 · Kickoff",
+      probability:100,
+      paymentStatus:"Unpaid",
+      notes:form.scopeNotes||awardModal.notes||"",
+      dateAcquired:awardModal.dateAcquired||awardedDate,
       aeAssigned:jo.aeAssigned,
       pm1:jo.pm1||"",
       pm2:jo.pm2||"",
@@ -8476,7 +8672,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // for payment. Approval is separate from receiving-verification: verification
   // confirms goods/work arrived; approval authorizes the spend. A payable must
   // be Approved before it can be paid or routed to a check voucher.
-  const canApprovePayables=["Manager","Finance"].includes(role);
+  // Named individuals granted payable-approval WITHOUT holding the Finance role,
+  // mirroring the by-username deal-delete grantees (migrations 033/034). Keeps a
+  // FinanceAssistant's role intact while lending them Finance-Manager approval
+  // authority — used for Mark Acejo during Aerwin's turnover. Must stay in sync
+  // with the DB gate in supabase_migration_065 (enforce_payable_approval).
+  const PAYABLE_APPROVAL_GRANTEES=["mark"];
+  const canApprovePayables=["Manager","Finance"].includes(role)
+    || PAYABLE_APPROVAL_GRANTEES.includes((session?.username||"").toLowerCase());
   const payApproved=p=>((p?.approvalStatus)||"Approved")==="Approved"; // legacy rows (no field) treated as approved
   const approvePayable=async(id)=>{
     const p=payables.find(x=>x.id===id); if(!p) return;
@@ -8721,7 +8924,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Reports"}]},
       {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"BOQ"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"finance-reports",l:"Reports"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},...((session?.username==="paulo"||session?.username==="mar")?[{id:"projectmargins",l:"Project Margins"}]:[]),{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"finance-reports",l:"Reports"}]},
       {group:"Accounting",  items:[{id:"coa",l:"Chart of Accounts"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
       {group:"Design",      items:[{id:"designboard",l:"Design Board"},{id:"drf",l:"Design Requests"}]},
@@ -8816,7 +9019,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const Nav=useStableComponent(()=>{
     const NAV_ICONS={
       home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   cashposition:"🏦",   cashflow:"📈",   payables:"📤",   billing:"🧾",
-      reports:"📈", "sales-reports":"📈", "finance-reports":"📈", acctdash:"📒", executive:"🎯", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
+      reports:"📈", "sales-reports":"📈", "finance-reports":"📈", projectmargins:"🪙", acctdash:"📒", executive:"🎯", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅", financecal:"📅",
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
       masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆", audit:"🔎", syshealth:"🩺", tvboard:"📺",
@@ -8967,7 +9170,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const allItems=groups.flatMap(g=>g.items||[]);
     const NAV_ICONS={
       home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   cashposition:"🏦",   cashflow:"📈",   payables:"📤",   billing:"🧾",
-      reports:"📈", "sales-reports":"📈", "finance-reports":"📈", acctdash:"📒", executive:"🎯", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
+      reports:"📈", "sales-reports":"📈", "finance-reports":"📈", projectmargins:"🪙", acctdash:"📒", executive:"🎯", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅", financecal:"📅",
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
       masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆", audit:"🔎", syshealth:"🩺", tvboard:"📺",
@@ -11555,7 +11758,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(flagData),"Data Flags");
         window.XLSX.writeFile(wb,`GMD-Sales-MonthEnd-${MONTHS[CM]}${CY}.xlsx`);
       } else {
-        const sh1=[["Period","Acquired","Won","Win Rate %","Pipeline ₱","Won Value ₱"],...salesPeriods.map(p=>[p.label,p.acquired,p.won,p.winRate,p.pipelineValue,p.wonValue]),["TOTAL",yearDeals.length,yearWon.length,yearDeals.length>0?Math.round(yearWon.length/yearDeals.length*100):0,yearDeals.reduce((s,d)=>s+Number(d.value||0),0),yearWon.reduce((s,d)=>s+Number(d.value||0),0)]];
+        const sh1=[["Period","Acquired","Won","Win Rate %","Pipeline ₱","Won Value ₱ (incl. approved COs)"],...salesPeriods.map(p=>[p.label,p.acquired,p.won,p.winRate,Math.round(p.pipelineValue),Math.round(p.wonValue)]),["TOTAL",yearDeals.length,yearWon.length,yearDeals.length>0?Math.round(yearWon.length/yearDeals.length*100):0,Math.round(salesPeriods.reduce((s,p)=>s+p.pipelineValue,0)),Math.round(salesPeriods.reduce((s,p)=>s+p.wonValue,0))]];
         window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(sh1),"Sales");
         if(!salesOnly){
           const sh2=[["Period","Revenue ₱","Collections ₱","Outstanding ₱","Expenses ₱","Net Profit ₱"],...finPeriods.map(p=>[p.label,p.revenue,p.collections,p.outstanding,p.expenses,p.net]),["TOTAL",finTot.revenue,finTot.collections,finTot.outstanding,finTot.expenses,finTot.net]];
@@ -11878,16 +12081,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 <KPI label="Deals Won"      value={yearWon.length}  color="#10b981"/>
                 <KPI label="Win Rate"       value={(yearDeals.length>0?Math.round(yearWon.length/yearDeals.length*100):0)+"%"} color="#f59e0b"/>
                 <KPI label="Pipeline Value" value={fmtK(yearDeals.reduce((s,d)=>s+Number(d.value||0),0))} color="#6366f1"/>
-                <KPI label="Won Value"      value={fmtK(yearWon.reduce((s,d)=>s+Number(d.value||0),0))} color="#059669"/>
+                <KPI label="Won Value"      value={fmtK(salesPeriods.reduce((s,p)=>s+p.wonValue,0))} color="#059669"/>
               </div>
               <Card>
-                <div style={{fontWeight:700,color:"#0f172a",marginBottom:12,fontSize:".95rem"}}>{repPeriod==="quarterly"?"Quarterly":"Yearly"} Breakdown — {CY}</div>
+                <div style={{fontWeight:700,color:"#0f172a",marginBottom:2,fontSize:".95rem"}}>{repPeriod==="quarterly"?"Quarterly":"Yearly"} Breakdown — {CY}</div>
+                <div style={{fontSize:".72rem",color:"#64748b",marginBottom:12}}>Won Value = base contract + approved change orders, for deals acquired in {CY}. The all-time "Awarded Value" tile on Sales Pipeline uses a wider scope, so the two will differ.</div>
                 <div style={{overflowX:"auto"}}>
                   <table style={{width:"100%",borderCollapse:"collapse"}}>
                     <thead><tr>{[repPeriod==="quarterly"?"Quarter":"Year","Acquired","Won","Win Rate","Pipeline","Won Value"].map((h,i)=>TH(h,i>0))}</tr></thead>
                     <tbody>
-                      {salesPeriods.map((p,i)=>(<tr key={i} style={{background:i%2===0?"#fff":"#f9fafb"}}>{TD(<strong>{p.label}</strong>)}{TD(p.acquired,{right:true})}{TD(p.won,{right:true,color:p.won>0?"#059669":"#94a3b8"})}{TD(p.winRate+"%",{right:true,color:p.winRate>=50?"#059669":p.winRate>=25?"#f59e0b":"#ef4444"})}{TD(p.pipelineValue>0?fmt(p.pipelineValue):"—",{right:true})}{TD(p.wonValue>0?fmt(p.wonValue):"—",{right:true,bold:true,color:"#059669"})}</tr>))}
-                      <tr style={{background:"#eff6ff"}}>{TD(<strong style={{color:"#1e40af"}}>TOTAL</strong>)}{TD(yearDeals.length,{right:true,bold:true,color:"#1e40af"})}{TD(yearWon.length,{right:true,bold:true,color:"#059669"})}{TD((yearDeals.length>0?Math.round(yearWon.length/yearDeals.length*100):0)+"%",{right:true,bold:true,color:"#1e40af"})}{TD(fmt(yearDeals.reduce((s,d)=>s+Number(d.value||0),0)),{right:true,bold:true,color:"#1e40af"})}{TD(fmt(yearWon.reduce((s,d)=>s+Number(d.value||0),0)),{right:true,bold:true,color:"#059669"})}</tr>
+                      {salesPeriods.map((p,i)=>(<tr key={i} style={{background:i%2===0?"#fff":"#f9fafb"}}>{TD(<strong>{p.label}</strong>)}{TD(p.acquired,{right:true})}{TD(p.won,{right:true,color:p.won>0?"#059669":"#94a3b8"})}{TD(p.winRate+"%",{right:true,color:p.winRate>=50?"#059669":p.winRate>=25?"#f59e0b":"#ef4444"})}{TD(p.pipelineValue>0?fmt(Math.round(p.pipelineValue)):"—",{right:true})}{TD(p.wonValue>0?fmt(Math.round(p.wonValue)):"—",{right:true,bold:true,color:"#059669"})}</tr>))}
+                      <tr style={{background:"#eff6ff"}}>{TD(<strong style={{color:"#1e40af"}}>TOTAL</strong>)}{TD(yearDeals.length,{right:true,bold:true,color:"#1e40af"})}{TD(yearWon.length,{right:true,bold:true,color:"#059669"})}{TD((yearDeals.length>0?Math.round(yearWon.length/yearDeals.length*100):0)+"%",{right:true,bold:true,color:"#1e40af"})}{TD(fmt(Math.round(salesPeriods.reduce((s,p)=>s+p.pipelineValue,0))),{right:true,bold:true,color:"#1e40af"})}{TD(fmt(Math.round(salesPeriods.reduce((s,p)=>s+p.wonValue,0))),{right:true,bold:true,color:"#059669"})}</tr>
                     </tbody>
                   </table>
                 </div>
@@ -12796,8 +13000,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         })()}
         <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:24}}>
           {[
-            {l:"Total Pipeline",    v:fmt(deals.filter(d=>isActivePipeline(d.stage)).reduce((s,d)=>s+Number(d.value||0),0)), c:"#3b82f6"},
-            {l:"Awarded Value",     v:fmt(wonDeals.reduce((s,d)=>s+Number(d.value||0),0)),   c:"#059669"},
+            {l:"Total Pipeline",    v:fmt(Math.round(deals.filter(d=>isActivePipeline(d.stage)).reduce((s,d)=>s+Number(d.value||0),0))), c:"#3b82f6", sub:"Active stages"},
+            {l:"Awarded Value",     v:fmt(Math.round(wonDeals.reduce((s,d)=>s+Number(d.value||0),0))),   c:"#059669", sub:"All-time · base contract"},
             {l:"Active Deals",      v:deals.filter(d=>isActivePipeline(d.stage)).length, c:"#f59e0b"},
             {l:"Awarded Projects",  v:wonDeals.length, c:"#8b5cf6"},
           ].map(({l,v,c,sub})=>(
@@ -12942,11 +13146,82 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             (!pipeSearch||[d.client,d.contact,d.ceNo,d.salesOwner,d.product].join(" ").toLowerCase().includes(pipeSearch.toLowerCase()))&&
             (pipeAE==="all"||d.salesOwner===pipeAE)
           ).sort((a,b)=>new Date(b.dateAcquired||0)-new Date(a.dateAcquired||0));
-          const hotDeals=allActive.filter(d=>!d.parentDealId&&daysSince(d.dateAcquired)<=15);
-          const coldDeals=allActive.filter(d=>!d.parentDealId&&daysSince(d.dateAcquired)>15);
           const childPipeDeals=allActive.filter(d=>d.parentDealId);
           const parentActive=allActive.filter(d=>!d.parentDealId);
           const overdueFollowUps=parentActive.filter(d=>d.followUp&&d.followUp<today).sort((a,b)=>new Date(a.followUp)-new Date(b.followUp));
+
+          // ── Pipeline temperature board (Hot / Almost Awarded / Cold) ──────────
+          // Buckets are MANUAL (deal.temperature), dragged between columns. When a
+          // deal has no explicit temperature we derive one so the board is never
+          // empty (see deriveTemp in core.js). tempOf resolves the effective bucket.
+          const tempOf=d=>deriveTemp(d,daysSince(d.dateAcquired));
+          const hotDeals   =parentActive.filter(d=>tempOf(d)==="Hot");
+          const almostDeals=parentActive.filter(d=>tempOf(d)==="Almost Awarded");
+          const coldDeals  =parentActive.filter(d=>tempOf(d)==="Cold");
+          const canSetTemp=(role==="Manager"||role==="Sales"||role==="SalesOpsAdmin");
+          // Last time the deal was touched: newest of dateAcquired and any activity
+          // log entry for it. Used for the stale-Cold review (NOT dateAcquired — an
+          // old-but-active deal isn't dead). followUp is a plan, not activity.
+          const lastActivityOf=d=>{
+            let latest=d.dateAcquired||"";
+            for(const e of actLog){ if(e.dealId===d.id && e.date && e.date>latest) latest=e.date; }
+            return latest;
+          };
+          const daysIdle=d=>{const la=lastActivityOf(d);return la?Math.floor((new Date(today)-new Date(la))/(864e5)):0;};
+          // setTemp — persist the manual bucket (partial column UPDATE, mirroring the
+          // Did Not Win / Cancel pattern so RLS INSERT policies don't clobber it).
+          const setTemp=(d,temp)=>{
+            if(!canSetTemp||!DEAL_TEMPS.includes(temp)||tempOf(d)===temp&&d.temperature===temp){setPipeDragId(null);setPipeDragOver(null);return;}
+            upDeals(ds=>ds.map(x=>x.id===d.id?{...x,temperature:temp}:x));
+            if(isSupabaseReady())sbUpdate('deals',d.id,{temperature:temp,updated_at:new Date().toISOString()}).catch(()=>{});
+            logActivity(d.id,"Temperature",`${d.contact||d.client} → ${TEMP_META[temp].icon} ${temp}`,session?.name);
+            toastEmit(`${TEMP_META[temp].icon} Moved to ${temp}`);
+            setPipeDragId(null);setPipeDragOver(null);
+          };
+          // ── Mobile touch-drag ────────────────────────────────────────────────
+          // Native HTML5 drag-and-drop (used on desktop) never fires from a touch,
+          // so on phones we drive the same setTemp via Pointer Events off a grip
+          // handle: a floating ghost follows the finger and we hit-test which
+          // column ([data-temp-col]) is under the release point. Desktop is left on
+          // its native path — these handlers only bind to the mobile row's grip.
+          const colTempAtPoint=(x,y)=>{const el=document.elementFromPoint(x,y);const col=el&&el.closest&&el.closest('[data-temp-col]');return col?col.getAttribute('data-temp-col'):null;};
+          const touchDragStart=(d,e)=>{
+            if(!canSetTemp||d.parentDealId) return;
+            e.preventDefault();e.stopPropagation();
+            setPipeDragId(d.id);
+            const g=document.createElement('div');
+            g.textContent=d.contact||d.client||'Deal';
+            g.style.cssText=`position:fixed;z-index:4000;pointer-events:none;left:${e.clientX}px;top:${e.clientY}px;transform:translate(-50%,-150%);background:#1e293b;color:#fff;padding:6px 12px;border-radius:9px;font-family:inherit;font-weight:700;font-size:.8rem;box-shadow:0 10px 28px rgba(15,23,42,.35);max-width:70vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;`;
+            document.body.appendChild(g);pipeGhostRef.current=g;
+            try{e.currentTarget.setPointerCapture(e.pointerId);}catch(_){}
+          };
+          const touchDragMove=(e)=>{
+            const g=pipeGhostRef.current;if(!g)return;
+            e.preventDefault();
+            g.style.left=e.clientX+'px';g.style.top=e.clientY+'px';
+            const t=colTempAtPoint(e.clientX,e.clientY);
+            setPipeDragOver(prev=>prev===t?prev:t);
+          };
+          const touchDragEnd=(d,e)=>{
+            const g=pipeGhostRef.current;if(!g)return;   // not an active touch-drag
+            g.remove();pipeGhostRef.current=null;
+            const t=colTempAtPoint(e.clientX,e.clientY);
+            const dd=deals.find(x=>x.id===pipeDragId)||d;
+            if(t&&DEAL_TEMPS.includes(t)) setTemp(dd,t);
+            else {setPipeDragId(null);setPipeDragOver(null);}
+          };
+          const touchDragCancel=()=>{const g=pipeGhostRef.current;if(g){g.remove();pipeGhostRef.current=null;}setPipeDragId(null);setPipeDragOver(null);};
+          // Stale-Cold review: Cold parent deals idle ≥ COLD_STALE_DAYS. Surfaced for
+          // one-click "Did Not Win" — never auto-written (a slow bid isn't a lost bid).
+          const staleCold=coldDeals.filter(d=>daysIdle(d)>=COLD_STALE_DAYS).sort((a,b)=>daysIdle(b)-daysIdle(a));
+          const sweepDidNotWin=(d)=>{
+            const stamp=new Date().toISOString().slice(0,10);
+            upDeals(ds=>ds.map(x=>{if(x.id!==d.id)return x;const notes=(x.notes||"")+`\n[DID NOT WIN ${stamp}]: auto-flagged — Cold ${daysIdle(d)}d with no activity, confirmed by ${session?.name||"Sales"}`;
+              if(isSupabaseReady())sbUpdate('deals',x.id,{stage:"Did Not Win",probability:0,notes,updated_at:new Date().toISOString()}).catch(()=>{});
+              return{...x,stage:"Did Not Win",probability:0,notes};}));
+            logActivity(d.id,"Did Not Win",`${d.client} — stale Cold (${daysIdle(d)}d idle), marked Did Not Win`,session?.name);
+            toastEmit("Moved to Did Not Win.");
+          };
 
           // Helpers: hide contract value from Ops/Design/PM — show QS budget instead
           const BUDGET_ONLY=["Design","Operations","ProjectMover"];
@@ -12957,8 +13232,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           const PipeRow=({d,list,i})=>{
             const border=i<list.length-1?"1px solid #f1f5f9":"none";
             if(isMobile) return(
-              <div style={{padding:"12px 14px",borderBottom:border,background:"#fff"}}>
+              <div style={{padding:"12px 14px",borderBottom:border,background:pipeDragId===d.id?"#eff6ff":"#fff",opacity:pipeDragId===d.id?.5:1}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+                  {canSetTemp&&!d.parentDealId&&<span
+                    onPointerDown={e=>{if(e.pointerType!=='mouse')touchDragStart(d,e);}}
+                    onPointerMove={e=>{if(e.pointerType!=='mouse')touchDragMove(e);}}
+                    onPointerUp={e=>{if(e.pointerType!=='mouse')touchDragEnd(d,e);}}
+                    onPointerCancel={()=>touchDragCancel()}
+                    style={{touchAction:"none",color:"#cbd5e1",fontSize:"1.1rem",lineHeight:1,cursor:"grab",flexShrink:0,padding:"2px 6px 2px 0",alignSelf:"center",userSelect:"none"}}
+                    title="Drag to Hot / Almost Awarded / Cold">⠿</span>}
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap",marginBottom:3}}>
                       <span style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{d.contact||d.client}</span>
@@ -12992,9 +13274,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               </div>
             );
             return(
-            <div style={{display:"flex",gap:8,padding:"7px 12px",borderBottom:i<list.length-1?"1px solid #f1f5f9":"none",alignItems:"center",background:"#fff",transition:"background .1s"}}
-              onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
-              onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
+            <div draggable={canSetTemp&&!d.parentDealId}
+              onDragStart={canSetTemp&&!d.parentDealId?(e=>{setPipeDragId(d.id);e.dataTransfer.effectAllowed="move";}):undefined}
+              onDragEnd={()=>{setPipeDragId(null);setPipeDragOver(null);}}
+              style={{display:"flex",gap:8,padding:"7px 12px",borderBottom:i<list.length-1?"1px solid #f1f5f9":"none",alignItems:"center",background:pipeDragId===d.id?"#eff6ff":"#fff",opacity:pipeDragId===d.id?.5:1,cursor:canSetTemp&&!d.parentDealId?"grab":"default",transition:"background .1s"}}
+              onMouseEnter={e=>{if(pipeDragId!==d.id)e.currentTarget.style.background="#f8fafc";}}
+              onMouseLeave={e=>{if(pipeDragId!==d.id)e.currentTarget.style.background="#fff";}}>
+              {canSetTemp&&!d.parentDealId&&<span style={{color:"#cbd5e1",fontSize:".85rem",cursor:"grab",flexShrink:0}} title="Drag to Hot / Almost Awarded / Cold">⠿</span>}
               <div style={{flex:1,minWidth:0}}>
                 <div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap"}}>
                   <span style={{fontWeight:700,color:"#0f172a",fontSize:".8rem"}}>{d.contact||d.client}</span>
@@ -13058,42 +13344,67 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 </div>
               )}
 
-              {/* 🔥 Hot + 🧊 Cold — side by side on desktop, stacked on mobile */}
-              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:14,marginBottom:20}}>
-                {/* Hot */}
-                <div>
-                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:7,display:"flex",alignItems:"center",gap:6}}>
-                    🔥 Hot Pipeline
-                    <span style={{fontWeight:400,color:"#94a3b8",fontSize:".72rem"}}>({hotDeals.length} · ≤15 days)</span>
-                  </div>
-                  <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-                    <PipeTableHeader/>
-                    <div style={{maxHeight:300,overflowY:"auto"}}>
-                      {hotDeals.length===0&&<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".78rem"}}>{pipeSearch?"No match.":"No new deals this period."}</div>}
-                      {hotDeals.map((d,i)=>{
-                        const children=childPipeDeals.filter(c=>c.parentDealId===d.id);
-                        return(<React.Fragment key={d.id}><PipeRow d={d} list={hotDeals} i={i}/>{children.map(c=><div key={c.id} style={{paddingLeft:24,borderLeft:"3px solid #f59e0b",marginLeft:12,background:"#fffbeb"}}><PipeRow d={c} list={children} i={0}/></div>)}</React.Fragment>);
-                      })}
+              {/* ⚠ Stale-Cold review — Cold deals idle ≥45 days, one-click Did Not Win.
+                  Never auto-written: a slow bid isn't a lost bid, so a human confirms. */}
+              {canSetTemp&&!coldSweepDismissed&&staleCold.length>0&&(
+                <div style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:12,padding:"12px 16px",marginBottom:14}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,flexWrap:"wrap"}}>
+                    <div style={{minWidth:0}}>
+                      <div style={{fontWeight:700,color:"#1d4ed8",fontSize:".85rem"}}>🧊 {staleCold.length} cold deal{staleCold.length>1?"s":""} look dead — mark Did Not Win?</div>
+                      <div style={{fontSize:".73rem",color:"#2563eb",opacity:.85,marginTop:3}}>No activity for {COLD_STALE_DAYS}+ days. Confirm each individually — nothing changes until you click ✗.</div>
                     </div>
+                    <button onClick={()=>setColdSweepDismissed(true)} style={{background:"transparent",border:"none",color:"#3b82f6",cursor:"pointer",fontSize:".76rem",fontWeight:700,flexShrink:0}}>Dismiss</button>
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",gap:6,marginTop:10}}>
+                    {staleCold.slice(0,8).map(d=>(
+                      <div key={d.id} style={{display:"flex",alignItems:"center",gap:10,background:"#fff",border:"1px solid #dbeafe",borderRadius:8,padding:"7px 11px",flexWrap:"wrap"}}>
+                        <div style={{flex:1,minWidth:0}}>
+                          <span style={{fontWeight:700,color:"#0f172a",fontSize:".8rem"}}>{d.contact||d.client}</span>
+                          {d.ceNo&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".62rem",fontWeight:600,color:"#6366f1",marginLeft:6}}>{d.ceNo}</span>}
+                          <span style={{fontSize:".68rem",color:"#94a3b8",marginLeft:6}}>· {daysIdle(d)}d idle · {d.salesOwner?.split(" ")[0]||"—"}</span>
+                        </div>
+                        <button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"5px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>Keep · Edit</button>
+                        <button onClick={async()=>{if(await uiConfirm(`Mark "${d.contact||d.client}" as Did Not Win?\n\nCold for ${daysIdle(d)} days with no activity. This removes it from the active pipeline and its commission projection. Reversible from the deal's edit screen.`))sweepDidNotWin(d);}} style={{background:"#64748b",border:"none",borderRadius:6,padding:"5px 10px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>✗ Did Not Win</button>
+                      </div>
+                    ))}
+                    {staleCold.length>8&&<div style={{fontSize:".7rem",color:"#2563eb",opacity:.7}}>+{staleCold.length-8} more</div>}
                   </div>
                 </div>
-                {/* Cold */}
-                <div>
-                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:7,display:"flex",alignItems:"center",gap:6}}>
-                    🧊 Cold Pipeline
-                    <span style={{fontWeight:400,color:"#94a3b8",fontSize:".72rem"}}>({coldDeals.length} · &gt;15 days)</span>
-                  </div>
-                  <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",opacity:coldDeals.length?1:0.6}}>
-                    <PipeTableHeader/>
-                    <div style={{maxHeight:300,overflowY:"auto"}}>
-                      {coldDeals.length===0&&<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".78rem"}}>{pipeSearch?"No match.":"All deals active — great work!"}</div>}
-                      {coldDeals.map((d,i)=>{
-                        const children=childPipeDeals.filter(c=>c.parentDealId===d.id);
-                        return(<React.Fragment key={d.id}><PipeRow d={d} list={coldDeals} i={i}/>{children.map(c=><div key={c.id} style={{paddingLeft:24,borderLeft:"3px solid #f59e0b",marginLeft:12,background:"#fffbeb"}}><PipeRow d={c} list={children} i={0}/></div>)}</React.Fragment>);
-                      })}
+              )}
+
+              {/* 🔥 Hot · 🏆 Almost Awarded · 🧊 Cold — drag cards between columns.
+                  Buckets are manual (deal.temperature); unset deals fall back to an
+                  age/stage-derived default. Three columns on desktop, stacked on mobile. */}
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(3,1fr)",gap:14,marginBottom:20}}>
+                {[["Hot",hotDeals],["Almost Awarded",almostDeals],["Cold",coldDeals]].map(([temp,list])=>{
+                  const m=TEMP_META[temp];const isOver=pipeDragOver===temp;
+                  // Column total = contract value of the parent deals in this column
+                  // plus their nested children (addenda/linked deals carry value too).
+                  // Hidden for BUDGET_ONLY roles (Design/Ops/PM) so contract value never leaks.
+                  const colTotal=list.reduce((s,d)=>s+Number(d.value||0)+childPipeDeals.filter(c=>c.parentDealId===d.id).reduce((cs,c)=>cs+Number(c.value||0),0),0);
+                  return(
+                  <div key={temp} data-temp-col={temp}
+                    onDragOver={canSetTemp?(e=>{e.preventDefault();if(pipeDragOver!==temp)setPipeDragOver(temp);}):undefined}
+                    onDragLeave={canSetTemp?(e=>{if(e.currentTarget===e.target)setPipeDragOver(null);}):undefined}
+                    onDrop={canSetTemp?(e=>{e.preventDefault();const dd=deals.find(x=>x.id===pipeDragId);if(dd)setTemp(dd,temp);}):undefined}>
+                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:7,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                      {m.icon} {temp}
+                      <span style={{fontWeight:400,color:"#94a3b8",fontSize:".72rem"}}>({list.length})</span>
+                      {!BUDGET_ONLY.includes(role)&&<span style={{marginLeft:"auto",fontWeight:800,color:m.clr,fontSize:".82rem",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:".02em"}}>{fmt(colTotal)}</span>}
+                    </div>
+                    <div style={{background:isOver?m.bg:"#fff",borderRadius:12,border:`1.5px solid ${isOver?m.clr:"#e2e8f0"}`,overflow:"hidden",transition:"background .1s,border-color .1s",opacity:list.length||isOver?1:.6}}>
+                      <PipeTableHeader/>
+                      <div style={{maxHeight:340,overflowY:"auto",minHeight:isOver?90:0}}>
+                        {list.length===0&&<div style={{padding:"16px",textAlign:"center",color:isOver?m.clr:"#94a3b8",fontSize:".78rem"}}>{isOver?`Drop here → ${temp}`:pipeSearch?"No match.":`No deals. ${m.blurb}.`}</div>}
+                        {list.map((d,i)=>{
+                          const children=childPipeDeals.filter(c=>c.parentDealId===d.id);
+                          return(<React.Fragment key={d.id}><PipeRow d={d} list={list} i={i}/>{children.map(c=><div key={c.id} style={{paddingLeft:24,borderLeft:"3px solid #f59e0b",marginLeft:12,background:"#fffbeb"}}><PipeRow d={c} list={children} i={0}/></div>)}</React.Fragment>);
+                        })}
+                      </div>
                     </div>
                   </div>
-                </div>
+                  );
+                })}
               </div>
 
               {/* Awarded Projects — active only (stages 06–11) */}
@@ -13466,6 +13777,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const d=rowMenu.deal;
         const items=[];
         const isWonDeal=WON_STAGES.includes(d.stage);
+        // Move between temperature columns without dragging (mobile / quick action).
+        // Only for active-pipeline parent deals — the board only buckets those.
+        if((role==="Manager"||role==="Sales"||role==="SalesOpsAdmin")&&isActivePipeline(d.stage)&&!d.parentDealId){
+          const cur=deriveTemp(d,d.dateAcquired?Math.floor((new Date(today)-new Date(d.dateAcquired))/(864e5)):0);
+          DEAL_TEMPS.filter(t=>t!==cur).forEach(t=>{const m=TEMP_META[t];items.push({icon:m.icon,label:`Move to ${t}`,color:m.clr,onClick:()=>{
+            upDeals(ds=>ds.map(x=>x.id===d.id?{...x,temperature:t}:x));
+            if(isSupabaseReady())sbUpdate('deals',d.id,{temperature:t,updated_at:new Date().toISOString()}).catch(()=>{});
+            logActivity(d.id,"Temperature",`${d.contact||d.client} → ${m.icon} ${t}`,session?.name);
+            toastEmit(`${m.icon} Moved to ${t}`);setRowMenu(null);
+          }});});
+        }
         if((role==="Manager"||role==="Sales")&&!isWonDeal) items.push({icon:"✗",label:"Mark Did Not Win",color:"#64748b",onClick:async ()=>{const reason=(await uiPrompt("Reason for not winning (optional):"));if(reason===null)return;const stamp=new Date().toISOString().slice(0,10);upDeals(ds=>ds.map(x=>{if(x.id!==d.id)return x;const notes=(x.notes||"")+(reason?"\n[DID NOT WIN "+stamp+"]: "+reason:"\n[DID NOT WIN "+stamp+"]");
           // Persist as a partial column UPDATE (like stageQ / payQ), NOT a full-row
           // upsert. An upsert routes through the RLS INSERT/WITH CHECK policy and was
@@ -15826,12 +16148,25 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     const mapped=smartImport.rows.map((r,idx)=>{
                       const client=String(r["Client Name"]||r.client||r.Client||r["client_name"]||r.company||"").trim();
                       const ceNo=String(r["CE No"]||r.ceNo||r["CE Number"]||r.ce_no||r["CE No."]||"").trim();
+                      const product=String(r["Project / Product"]||r.product||r.Product||r["Project Name"]||r.project||"").trim();
                       const rawStage=r.Stage||r.stage||r.status||r._defaultStage||"";
-                      const exists=deals.find(d=>ceNo&&d.ceNo&&(d.ceNo===ceNo||d.ceNo==="#"+ceNo.replace(/^#/,"")));
+                      // Match an existing deal by CE number; when the row has NO CE
+                      // number, fall back to an exact client + product match against
+                      // a non-lost deal — otherwise every re-import of a CE-less row
+                      // spawns a fresh duplicate (root cause of the empty Kareila /
+                      // Archives / Diageo stub duplicates).
+                      const exists=deals.find(d=>{
+                        if(ceNo&&d.ceNo&&(d.ceNo===ceNo||d.ceNo==="#"+ceNo.replace(/^#/,""))) return true;
+                        if(!ceNo&&!isLostStage(d.stage)&&client&&d.client&&d.client.toLowerCase()===client.toLowerCase()){
+                          const dprod=String(d.product||d.contact||"").trim().toLowerCase();
+                          if(product&&dprod&&dprod===product.toLowerCase()) return true;
+                        }
+                        return false;
+                      });
                       return{
                         _idx:idx,_exists:!!exists,_existingId:exists?.id,
                         id:exists?.id||uid(),client,
-                        product:String(r["Project / Product"]||r.product||r.Product||r["Project Name"]||r.project||"").trim(),
+                        product,
                         contact:String(r["Contact Person"]||r.contact||r.Contact||"").trim(),
                         ceNo:ceNo||("CE-IMPORT-"+Date.now()+"-"+idx),
                         ceType:normType(r["CE Type"]||r.ceType||r.type||""),
@@ -18033,6 +18368,12 @@ function MyFolderView({session,projList,projs,drfs,updateDRF,deleteDRF,upProj,se
   };
   const[sortBy,setSortBy]=useState("client");
   const[openItem,setOpenItem]=useState(null); // `${kind}:${id}`
+  const[openCat,setOpenCat]=useState({});     // `${member}:${status}` -> expanded
+  // Done / Cancelled are "closed" design statuses. They get their own collapsed
+  // sub-folders so they stop inflating the live project count. Works for both
+  // project cards (DESIGN_STATUSES) and DRFs (DRF_STATUSES) — both share the
+  // Done/Cancelled tokens.
+  const isClosedItem=it=>it.status==="Done"||it.status==="Cancelled";
   const mob=window.innerWidth<768;
   const yearOf=(...cands)=>{for(const c of cands){const m=/(\d{4})/.exec(c||"");if(m)return m[1];}return "Undated";};
 
@@ -18059,6 +18400,120 @@ function MyFolderView({session,projList,projs,drfs,updateDRF,deleteDRF,upProj,se
     return (a.client||"").localeCompare(b.client||"");
   });
 
+  // One collapsible row for a single project/DRF. Reused by the live year
+  // sub-folders and by the Done / Cancelled category sub-folders below.
+  const ItemRow=(it)=>{
+    const isDrf=it.kind==="drf";
+    const c=(isDrf?DRF_CLR[it.status]:DS_CLR[it.status])||"#94a3b8";
+    const key=`${it.kind}:${it.id}`;
+    const open=openItem===key;
+    return(
+      <div key={key} style={{borderBottom:"1px solid #f8fafc"}}>
+        <div onClick={()=>setOpenItem(open?null:key)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",cursor:"pointer",background:open?"#fdf4ff":"#fff"}}>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{isDrf?"🖌️ ":""}{it.title||it.client}</div>
+            <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>{it.client}{it.due?` · due ${it.due}`:""}</div>
+          </div>
+          <span style={{marginLeft:12,fontSize:".68rem",fontWeight:700,color:c,background:c+"18",border:`1px solid ${c}44`,borderRadius:20,padding:"2px 9px",whiteSpace:"nowrap"}}>{it.status}</span>
+          <span style={{marginLeft:10,color:"#94a3b8",fontSize:".7rem"}}>{open?"▲":"▼"}</span>
+        </div>
+        {open&&(
+          <div style={{background:"#faf5ff",borderTop:"1px solid #e9d5ff",padding:"14px 18px"}}>
+            {/* Standardized data card — same Category · Client ·
+                Location · Size block as the DRF list, so a project
+                reads consistently wherever it appears. For a project
+                card the values come from its linked DRF, falling back
+                to the deal's brief. */}
+            {(()=>{
+              const ld=isDrf?it.drf:(drfs||[]).find(r=>r.dealId===it.id);
+              const cat=ld?.category||"";
+              const client=it.client||it.deal?.client||"";
+              const loc=ld?.location||it.deal?.location||"";
+              const size=ld?.size||it.deal?.drfSize||"";
+              return(
+                <div style={{background:"#fff",border:"1px solid #e9d5ff",borderRadius:10,padding:"12px 14px",marginBottom:14}}>
+                  <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(4,1fr)",gap:"10px 16px"}}>
+                    {[["Category",cat],["Client",client],["Location",loc],["Size",size]].map(([l,v])=>(
+                      <div key={l}>
+                        <div style={{fontSize:".62rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".6px",marginBottom:3}}>{l}</div>
+                        <div style={{fontSize:".82rem",color:v?"#0f172a":"#cbd5e1",fontWeight:600}}>{v||"—"}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+            <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:14}}>
+              {/* Project Status */}
+              <div>
+                <div style={{fontSize:".65rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Project Status</div>
+                {isDrf
+                  ?<select value={it.status} onChange={e=>updateDRF(it.id,{status:e.target.value})}
+                     style={{width:"100%",boxSizing:"border-box",border:`1.5px solid ${c}`,borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:c,background:c+"12",fontWeight:700,cursor:"pointer"}}>
+                     {DRF_STATUSES.map(s=><option key={s} value={s} style={{color:"#0f172a",background:"#fff",fontWeight:400}}>{s}</option>)}
+                   </select>
+                  :<select value={it.status} onChange={e=>upProj(it.id,p=>({...p,design:{...p.design,status:e.target.value,statusHistory:[...(p.design?.statusHistory||[]),{status:e.target.value,date:todayL,by:session?.name||"Design"}]}}))}
+                     style={{width:"100%",boxSizing:"border-box",border:`1.5px solid ${c}`,borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:c,background:c+"12",fontWeight:700,cursor:"pointer"}}>
+                     {DESIGN_STATUSES.map(s=><option key={s} value={s} style={{color:"#0f172a",background:"#fff",fontWeight:400}}>{s}</option>)}
+                   </select>
+                }
+              </div>
+              {/* Timeline / Due Date */}
+              <div>
+                <div style={{fontSize:".65rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Timeline / Due Date</div>
+                <input type="date" value={it.due||""}
+                  onChange={e=>{const v=e.target.value;if(isDrf)updateDRF(it.id,{designDeadline:v});else upProj(it.id,p=>({...p,design:{...p.design,dueDate:v}}));}}
+                  style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a"}}/>
+              </div>
+              {/* Project Details — editable */}
+              <div style={{gridColumn:mob?"auto":"1/-1"}}>
+                <div style={{fontSize:".65rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Project Details</div>
+                {isDrf?(
+                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                    <input value={it.drf.projectTitle||""} onChange={e=>updateDRF(it.id,{projectTitle:e.target.value})} placeholder="Project title"
+                      style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a"}}/>
+                    <textarea value={it.drf.notes||""} onChange={e=>updateDRF(it.id,{notes:e.target.value})} placeholder="Notes / details" rows={2}
+                      style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a",resize:"vertical"}}/>
+                  </div>
+                ):(
+                  <textarea value={projs[it.id]?.design?.notes||""} onChange={e=>upProj(it.id,p=>({...p,design:{...p.design,notes:e.target.value}}))} placeholder="Design notes / details" rows={2}
+                    style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a",resize:"vertical"}}/>
+                )}
+              </div>
+            </div>
+            <div style={{display:"flex",gap:8,marginTop:12,alignItems:"center"}}>
+              {!isDrf&&(
+                <button onClick={e=>{e.stopPropagation();setSelProj(it.id);setOpsTab("design");}}
+                  style={{background:"#7c3aed",border:"none",borderRadius:8,padding:"7px 14px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".76rem",cursor:"pointer"}}>Open full design →</button>
+              )}
+              <button onClick={e=>{e.stopPropagation();deleteItem(it);}}
+                style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,padding:"7px 14px",color:"#dc2626",fontFamily:"inherit",fontWeight:700,fontSize:".76rem",cursor:"pointer"}}>✕ Delete</button>
+              <span style={{fontSize:".7rem",color:"#94a3b8"}}>Changes save automatically.</span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // A collapsible category sub-folder (Done / Cancelled), one per member.
+  const ClosedCategory=(member,label,emoji,color,catItems)=>{
+    if(catItems.length===0) return null;
+    const ck=`${member}:${label}`;
+    const expanded=!!openCat[ck];
+    return(
+      <div key={ck}>
+        <div onClick={()=>setOpenCat(p=>({...p,[ck]:!expanded}))}
+          style={{background:"#f8fafc",borderTop:"1px solid #eef2f7",padding:"7px 16px",display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
+          <span style={{fontWeight:800,color,fontSize:".82rem",letterSpacing:".3px"}}>{emoji} {label}</span>
+          <span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:600}}>{catItems.length} project{catItems.length!==1?"s":""}</span>
+          <span style={{marginLeft:"auto",color:"#94a3b8",fontSize:".7rem"}}>{expanded?"▲ Hide":"▼ Show"}</span>
+        </div>
+        {expanded&&sortItems(catItems).map(ItemRow)}
+      </div>
+    );
+  };
+
   return(
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:18,flexWrap:"wrap",gap:12}}>
@@ -18078,9 +18533,15 @@ function MyFolderView({session,projList,projs,drfs,updateDRF,deleteDRF,upProj,se
 
       {folders.map(({member,items})=>{
         const mine=member===me;
-        // Split into year sub-folders, newest year first (Undated last).
+        // Live vs closed. Done / Cancelled drop out of the year sub-folders and
+        // the header count, and get their own collapsed category sub-folders so
+        // "My Projects" reflects active work only.
+        const active=items.filter(it=>!isClosedItem(it));
+        const doneItems=items.filter(it=>it.status==="Done");
+        const cancelledItems=items.filter(it=>it.status==="Cancelled");
+        // Split live items into year sub-folders, newest year first (Undated last).
         const years={};
-        items.forEach(it=>{const y=yearOf(it.due);(years[y]=years[y]||[]).push(it);});
+        active.forEach(it=>{const y=yearOf(it.due);(years[y]=years[y]||[]).push(it);});
         const yearKeys=Object.keys(years).sort((a,b)=>{
           if(a==="Undated") return 1; if(b==="Undated") return -1; return b.localeCompare(a);
         });
@@ -18088,111 +18549,24 @@ function MyFolderView({session,projList,projs,drfs,updateDRF,deleteDRF,upProj,se
           <div key={member} style={{background:"#fff",borderRadius:12,border:`1.5px solid ${mine?"#ec489966":"#e2e8f0"}`,overflow:"hidden",marginBottom:14}}>
             <div style={{background:mine?"#be185d":"#1e293b",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <span style={{fontWeight:700,color:"#fff",fontSize:".9rem"}}>📁 {member}{mine?" (You)":""}</span>
-              <span style={{fontSize:".72rem",color:"rgba(255,255,255,.7)",fontWeight:600}}>{items.length} item{items.length!==1?"s":""}</span>
+              <span style={{fontSize:".72rem",color:"rgba(255,255,255,.7)",fontWeight:600}}>{active.length} active{(doneItems.length||cancelledItems.length)?` · ${doneItems.length+cancelledItems.length} closed`:""}</span>
             </div>
             {items.length===0
               ? <div style={{padding:"18px 16px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No projects assigned yet.</div>
-              : yearKeys.map(yr=>(
-                <div key={yr}>
-                  <div style={{background:"#f8fafc",borderBottom:"1px solid #eef2f7",borderTop:"1px solid #eef2f7",padding:"7px 16px",display:"flex",alignItems:"center",gap:8}}>
-                    <span style={{fontWeight:800,color:"#475569",fontSize:".82rem",letterSpacing:".3px"}}>🗂 {yr}</span>
-                    <span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:600}}>{years[yr].length} project{years[yr].length!==1?"s":""}</span>
+              : <>
+                {active.length===0&&<div style={{padding:"14px 16px",textAlign:"center",color:"#94a3b8",fontSize:".8rem"}}>No active projects — see closed below.</div>}
+                {yearKeys.map(yr=>(
+                  <div key={yr}>
+                    <div style={{background:"#f8fafc",borderBottom:"1px solid #eef2f7",borderTop:"1px solid #eef2f7",padding:"7px 16px",display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{fontWeight:800,color:"#475569",fontSize:".82rem",letterSpacing:".3px"}}>🗂 {yr}</span>
+                      <span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:600}}>{years[yr].length} project{years[yr].length!==1?"s":""}</span>
+                    </div>
+                    {sortItems(years[yr]).map(ItemRow)}
                   </div>
-                  {sortItems(years[yr]).map(it=>{
-                    const isDrf=it.kind==="drf";
-                    const c=(isDrf?DRF_CLR[it.status]:DS_CLR[it.status])||"#94a3b8";
-                    const key=`${it.kind}:${it.id}`;
-                    const open=openItem===key;
-                    return(
-                      <div key={key} style={{borderBottom:"1px solid #f8fafc"}}>
-                        <div onClick={()=>setOpenItem(open?null:key)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",cursor:"pointer",background:open?"#fdf4ff":"#fff"}}>
-                          <div style={{flex:1,minWidth:0}}>
-                            <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{isDrf?"🖌️ ":""}{it.title||it.client}</div>
-                            <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>{it.client}{it.due?` · due ${it.due}`:""}</div>
-                          </div>
-                          <span style={{marginLeft:12,fontSize:".68rem",fontWeight:700,color:c,background:c+"18",border:`1px solid ${c}44`,borderRadius:20,padding:"2px 9px",whiteSpace:"nowrap"}}>{it.status}</span>
-                          <span style={{marginLeft:10,color:"#94a3b8",fontSize:".7rem"}}>{open?"▲":"▼"}</span>
-                        </div>
-                        {open&&(
-                          <div style={{background:"#faf5ff",borderTop:"1px solid #e9d5ff",padding:"14px 18px"}}>
-                            {/* Standardized data card — same Category · Client ·
-                                Location · Size block as the DRF list, so a project
-                                reads consistently wherever it appears. For a project
-                                card the values come from its linked DRF, falling back
-                                to the deal's brief. */}
-                            {(()=>{
-                              const ld=isDrf?it.drf:(drfs||[]).find(r=>r.dealId===it.id);
-                              const cat=ld?.category||"";
-                              const client=it.client||it.deal?.client||"";
-                              const loc=ld?.location||it.deal?.location||"";
-                              const size=ld?.size||it.deal?.drfSize||"";
-                              return(
-                                <div style={{background:"#fff",border:"1px solid #e9d5ff",borderRadius:10,padding:"12px 14px",marginBottom:14}}>
-                                  <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(4,1fr)",gap:"10px 16px"}}>
-                                    {[["Category",cat],["Client",client],["Location",loc],["Size",size]].map(([l,v])=>(
-                                      <div key={l}>
-                                        <div style={{fontSize:".62rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".6px",marginBottom:3}}>{l}</div>
-                                        <div style={{fontSize:".82rem",color:v?"#0f172a":"#cbd5e1",fontWeight:600}}>{v||"—"}</div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              );
-                            })()}
-                            <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:14}}>
-                              {/* Project Status */}
-                              <div>
-                                <div style={{fontSize:".65rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Project Status</div>
-                                {isDrf
-                                  ?<select value={it.status} onChange={e=>updateDRF(it.id,{status:e.target.value})}
-                                     style={{width:"100%",boxSizing:"border-box",border:`1.5px solid ${c}`,borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:c,background:c+"12",fontWeight:700,cursor:"pointer"}}>
-                                     {DRF_STATUSES.map(s=><option key={s} value={s} style={{color:"#0f172a",background:"#fff",fontWeight:400}}>{s}</option>)}
-                                   </select>
-                                  :<select value={it.status} onChange={e=>upProj(it.id,p=>({...p,design:{...p.design,status:e.target.value,statusHistory:[...(p.design?.statusHistory||[]),{status:e.target.value,date:todayL,by:session?.name||"Design"}]}}))}
-                                     style={{width:"100%",boxSizing:"border-box",border:`1.5px solid ${c}`,borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:c,background:c+"12",fontWeight:700,cursor:"pointer"}}>
-                                     {DESIGN_STATUSES.map(s=><option key={s} value={s} style={{color:"#0f172a",background:"#fff",fontWeight:400}}>{s}</option>)}
-                                   </select>
-                                }
-                              </div>
-                              {/* Timeline / Due Date */}
-                              <div>
-                                <div style={{fontSize:".65rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Timeline / Due Date</div>
-                                <input type="date" value={it.due||""}
-                                  onChange={e=>{const v=e.target.value;if(isDrf)updateDRF(it.id,{designDeadline:v});else upProj(it.id,p=>({...p,design:{...p.design,dueDate:v}}));}}
-                                  style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a"}}/>
-                              </div>
-                              {/* Project Details — editable */}
-                              <div style={{gridColumn:mob?"auto":"1/-1"}}>
-                                <div style={{fontSize:".65rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Project Details</div>
-                                {isDrf?(
-                                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                                    <input value={it.drf.projectTitle||""} onChange={e=>updateDRF(it.id,{projectTitle:e.target.value})} placeholder="Project title"
-                                      style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a"}}/>
-                                    <textarea value={it.drf.notes||""} onChange={e=>updateDRF(it.id,{notes:e.target.value})} placeholder="Notes / details" rows={2}
-                                      style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a",resize:"vertical"}}/>
-                                  </div>
-                                ):(
-                                  <textarea value={projs[it.id]?.design?.notes||""} onChange={e=>upProj(it.id,p=>({...p,design:{...p.design,notes:e.target.value}}))} placeholder="Design notes / details" rows={2}
-                                    style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a",resize:"vertical"}}/>
-                                )}
-                              </div>
-                            </div>
-                            <div style={{display:"flex",gap:8,marginTop:12,alignItems:"center"}}>
-                              {!isDrf&&(
-                                <button onClick={e=>{e.stopPropagation();setSelProj(it.id);setOpsTab("design");}}
-                                  style={{background:"#7c3aed",border:"none",borderRadius:8,padding:"7px 14px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".76rem",cursor:"pointer"}}>Open full design →</button>
-                              )}
-                              <button onClick={e=>{e.stopPropagation();deleteItem(it);}}
-                                style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,padding:"7px 14px",color:"#dc2626",fontFamily:"inherit",fontWeight:700,fontSize:".76rem",cursor:"pointer"}}>✕ Delete</button>
-                              <span style={{fontSize:".7rem",color:"#94a3b8"}}>Changes save automatically.</span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              ))
+                ))}
+                {ClosedCategory(member,"Done","✅","#059669",doneItems)}
+                {ClosedCategory(member,"Cancelled","🚫","#dc2626",cancelledItems)}
+              </>
             }
           </div>
         );
@@ -18237,7 +18611,10 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
     }
     return true;
   });
-  const canCreate=["Manager","Sales","Operations","SalesOpsAdmin"].includes(role);
+  // Head designer (Design Manager) can raise a DRF too — server RLS already
+  // permits the Design role to insert design_requests, so this only unhides the
+  // button for the design lead rather than granting any new server access.
+  const canCreate=["Manager","Sales","Operations","SalesOpsAdmin"].includes(role)||isHeadDesigner(session?.name);
   const canAcknowledge=["Manager","Design"].includes(role);
 
   return(
@@ -19545,7 +19922,10 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
   const[editClient, setEditClient] = useState(null);
   const[editName,   setEditName]   = useState("");
   const[addOpen,    setAddOpen]    = useState(false);
-  const EMPTY_ADD={name:"",contactPerson:"",email:"",phone:"",mobile:"",website:"",billingAddress:"",city:"",province:"",zipCode:"",country:"Philippines",tin:"",paymentTerms:"Due on receipt",notes:""};
+  const EMPTY_ADD={name:"",parentGroup:"",contactPerson:"",email:"",phone:"",mobile:"",website:"",billingAddress:"",city:"",province:"",zipCode:"",country:"Philippines",tin:"",paymentTerms:"Due on receipt",notes:""};
+  // Existing parent groups already in use — offered as suggestions so people
+  // pick a consistent spelling instead of inventing "Diageo" / "Diageo PH" / etc.
+  const knownGroups=useMemo(()=>[...new Set(Object.values(clientProfiles||{}).map(p=>p?.parentGroup).filter(Boolean))].sort(),[clientProfiles]);
   const[addForm,    setAddForm]    = useState(EMPTY_ADD);
   const fa=(k,v)=>setAddForm(p=>({...p,[k]:v}));
   const doAddClient=()=>{
@@ -19554,7 +19934,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
     const allC=[...GMD_CLIENTS,...(customClients||[])];
     if(allC.find(c=>c.name.toLowerCase()===name.toLowerCase())){alert("Client already exists.");return;}
     if(addNewClient) addNewClient(name); else GMD_CLIENTS.push({name,id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today});
-    const prof={contactPerson:addForm.contactPerson,email:addForm.email,phone:addForm.phone,mobile:addForm.mobile,website:addForm.website,billingAddress:addForm.billingAddress,city:addForm.city,province:addForm.province,zipCode:addForm.zipCode,country:addForm.country,tin:addForm.tin,paymentTerms:addForm.paymentTerms,notes:addForm.notes};
+    const prof={parentGroup:(addForm.parentGroup||"").trim(),contactPerson:addForm.contactPerson,email:addForm.email,phone:addForm.phone,mobile:addForm.mobile,website:addForm.website,billingAddress:addForm.billingAddress,city:addForm.city,province:addForm.province,zipCode:addForm.zipCode,country:addForm.country,tin:addForm.tin,paymentTerms:addForm.paymentTerms,notes:addForm.notes};
     if(saveClientProfile&&Object.values(prof).some(v=>v)) saveClientProfile(name,prof);
     setAddForm(EMPTY_ADD);
     setAddOpen(false);
@@ -19565,7 +19945,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
   const[,forceUpdate]              = useState(0);
   const fp2=(k,v)=>setProfileForm(p=>({...p,[k]:v}));
   const openProfile=(name)=>{
-    setProfileForm({...({contactPerson:"",email:"",phone:"",mobile:"",website:"",billingAddress:"",city:"",province:"",zipCode:"",country:"Philippines",tin:"",paymentTerms:"Due on receipt",notes:""}),...((clientProfiles||{})[name]||{})});
+    setProfileForm({...({parentGroup:"",contactPerson:"",email:"",phone:"",mobile:"",website:"",billingAddress:"",city:"",province:"",zipCode:"",country:"Philippines",tin:"",paymentTerms:"Due on receipt",notes:""}),...((clientProfiles||{})[name]||{})});
     setProfileModal(name);
   };
   const saveProfile=()=>{
@@ -19637,6 +20017,36 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
         ))}
       </div>
 
+      {/* Consolidated rollup by parent group (e.g. all Diageo departments) */}
+      {(()=>{
+        const g={};
+        deals.forEach(d=>{
+          const grp=(clientProfiles||{})[d.client]?.parentGroup;
+          if(!grp) return;
+          g[grp]=g[grp]||{group:grp,clients:new Set(),value:0,collected:0};
+          g[grp].clients.add(d.client);
+          if(WON_STAGES.includes(d.stage)) g[grp].value+=Number(d.value||0);
+          g[grp].collected+=Number(d.amountPaid||0);
+        });
+        const rows=Object.values(g).sort((a,b)=>b.value-a.value);
+        if(!rows.length) return null;
+        return(
+          <div style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"14px 18px",marginBottom:16}}>
+            <div style={{fontSize:".65rem",fontWeight:700,textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginBottom:10}}>Consolidated by Group</div>
+            <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(auto-fill,minmax(220px,1fr))",gap:10}}>
+              {rows.map(r=>(
+                <div key={r.group} style={{background:"#f8fafc",borderRadius:10,padding:"11px 14px",border:"1px solid #eef2f7"}}>
+                  <div style={{fontWeight:800,color:"#0f172a",fontSize:".92rem"}}>{r.group}</div>
+                  <div style={{fontSize:".7rem",color:"#94a3b8",margin:"1px 0 6px"}}>{r.clients.size} account{r.clients.size>1?"s":""}</div>
+                  <div style={{fontSize:".74rem",color:"#64748b"}}>Awarded: <strong style={{color:"#0f172a"}}>₱{r.value.toLocaleString("en-PH",{maximumFractionDigits:0})}</strong></div>
+                  <div style={{fontSize:".74rem",color:"#64748b"}}>Collected: <strong style={{color:"#059669"}}>₱{r.collected.toLocaleString("en-PH",{maximumFractionDigits:0})}</strong></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Open balances alert */}
       {allClients.filter(c=>c.balance>0).length>0&&(
         <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:12,padding:"12px 18px",marginBottom:16,display:"flex",gap:16,flexWrap:"wrap",alignItems:"center"}}>
@@ -19707,6 +20117,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
                     ):(
                       <>
                         <span style={{fontWeight:600,color:"#0f172a",fontSize:".88rem"}}>{c.name}</span>
+                        {(clientProfiles||{})[c.name]?.parentGroup&&<span style={{fontSize:".62rem",background:"#eef2ff",color:"#4338ca",border:"1px solid #c7d2fe",borderRadius:20,padding:"1px 7px",fontWeight:700}} title="Parent group">🏛 {(clientProfiles||{})[c.name].parentGroup}</span>}
                         {vvipClients?.has(c.name)&&<span style={{fontSize:".65rem",background:"#fef3c7",color:"#d97706",border:"1px solid #fde68a",borderRadius:20,padding:"1px 7px",fontWeight:700}}>VVIP</span>}
                         {(role==="Manager")&&<button onClick={e=>{e.stopPropagation();setEditClient(c.name);setEditName(c.name);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:".75rem",color:"#94a3b8",padding:"0 2px"}} title="Edit client name">✏️</button>}
                         {saveClientProfile&&<button onClick={e=>{e.stopPropagation();openProfile(c.name);}} style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:5,padding:"1px 7px",cursor:"pointer",fontSize:".65rem",color:"#3b82f6",fontWeight:700}} title="Edit client profile">👤 Profile</button>}
@@ -19818,6 +20229,11 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
             <div style={{background:"#f0fdf4",borderRadius:10,padding:"14px 16px",marginBottom:12,border:"1.5px solid #6ee7b7"}}>
               <div style={{fontWeight:700,fontSize:".8rem",color:"#059669",marginBottom:8}}>Company / Client Name <span style={{color:"#ef4444"}}>*</span></div>
               <Inp autoFocus value={addForm.name} onChange={e=>fa("name",e.target.value)} onKeyDown={e=>e.key==="Enter"&&doAddClient()} placeholder="Full company or client name…"/>
+              <div style={{marginTop:10}}>
+                <div style={{fontWeight:700,fontSize:".75rem",color:"#475569",marginBottom:4}}>Parent Group <span style={{fontWeight:400,color:"#94a3b8"}}>(optional — e.g. “Diageo” for a department/subsidiary)</span></div>
+                <input list="clientGroupOpts" value={addForm.parentGroup} onChange={e=>fa("parentGroup",e.target.value)} placeholder="Leave blank for a standalone client…" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 11px",fontFamily:"inherit",fontSize:".85rem",color:"#1e293b",outline:"none",boxSizing:"border-box"}}/>
+                <datalist id="clientGroupOpts">{knownGroups.map(g=><option key={g} value={g}/>)}</datalist>
+              </div>
             </div>
             <div style={{background:"#f8fafc",borderRadius:10,padding:"14px 16px",marginBottom:12,border:"1px solid #e2e8f0"}}>
               <div style={{fontWeight:700,fontSize:".8rem",color:"#475569",marginBottom:10}}>📇 Name & Contact</div>
@@ -19871,6 +20287,10 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
             <div style={{background:"#f8fafc",borderRadius:10,padding:"14px 16px",marginBottom:12,border:"1px solid #e2e8f0"}}>
               <div style={{fontWeight:700,fontSize:".8rem",color:"#475569",marginBottom:10}}>📇 Name & Contact</div>
               <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10}}>
+                <Fld label="Parent Group" hint="e.g. “Diageo” — groups departments/subsidiaries for consolidated reporting">
+                  <input list="clientGroupOpts" value={profileForm.parentGroup||""} onChange={e=>fp2("parentGroup",e.target.value)} placeholder="Blank = standalone client" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 11px",fontFamily:"inherit",fontSize:".85rem",color:"#1e293b",outline:"none",boxSizing:"border-box"}}/>
+                  <datalist id="clientGroupOpts">{knownGroups.map(g=><option key={g} value={g}/>)}</datalist>
+                </Fld>
                 <Fld label="Contact Person"><Inp value={profileForm.contactPerson||""} onChange={e=>fp2("contactPerson",e.target.value)} placeholder="e.g. Juan dela Cruz"/></Fld>
                 <Fld label="Email"><Inp type="email" value={profileForm.email||""} onChange={e=>fp2("email",e.target.value)} placeholder="accounts@company.com"/></Fld>
                 <Fld label="Phone"><Inp value={profileForm.phone||""} onChange={e=>fp2("phone",e.target.value)} placeholder="+63 2 8xxx xxxx"/></Fld>
@@ -23997,6 +24417,10 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const[editMs,   setEditMs]   =useState(null);     // milestone id being edited
   const[editMsForm,setEditMsForm]=useState({});
   const[msForm,   setMsForm]   =useState({name:"",description:"",amount:"",invoiceNo:"",invoiceDate:today,dueDate:"",status:"Draft",receiptType:null,withholding:null});
+  // Gross-entry helper for the milestone amount — staff can type the VAT-inclusive
+  // figure and the stored net Amount fills (amount stays net, as the SOA expects).
+  const[msGrossStr,setMsGrossStr]=useState("");
+  const msNetToGross=(v)=>{const x=Number(v)||0;return x?String(Math.round(x*1.12*100)/100):"";};
   const[payForm,  setPayForm]  =useState({amount:"",date:today,refNo:"",note:"",valueDate:"",bank:"",method:"Bank Transfer"});
   const[editPayForm,setEditPayForm]=useState({});
   const[billingSearch,setBillingSearch]=useState("");
@@ -24085,6 +24509,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     }
     addMilestone({...msForm,dealId:selDeal,invoiceNo:msForm.invoiceNo||await claimInv(),createdBy:session?.name||role});
     setMsForm({name:"",description:"",amount:"",invoiceNo:"",invoiceDate:today,dueDate:"",status:"Draft",receiptType:null,withholding:null});
+    setMsGrossStr("");
     setShowForm(false);
   };
   // Turn the WIP under-billed figure into an invoice: bill the work completed
@@ -24115,6 +24540,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       invoiceNo:"",invoiceDate:today,dueDate:"",status:"Draft",
       receiptType:deal.receiptType||null,withholding:deal.withholding??null,
     });
+    setMsGrossStr((deal.receiptType||"OR")==="OR"?msNetToGross(netInvoice):"");
     setShowForm(true);
     toastEmit&&toastEmit(ret?`Claim drafted: ₱${netInvoice.toLocaleString("en-PH")} net (₱${retHeld.toLocaleString("en-PH")} retention held).`:`Claim drafted: ₱${netInvoice.toLocaleString("en-PH")} (review & save).`,"success",6500);
   };
@@ -24137,8 +24563,10 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     addMilestone({name:"Retention Release",description:`Release of retention withheld across progress billings (${deal.paymentTerms?.retentionRelease||"on completion"}).`,amount:out,dealId:selDeal,isRetentionRelease:true,invoiceNo:await claimInv(),invoiceDate:today,dueDate:"",status:"Draft",receiptType:deal.receiptType||null,withholding:deal.withholding??null,createdBy:session?.name||role});
     toastEmit&&toastEmit(`Retention release drafted: ₱${out.toLocaleString("en-PH")}.`,"success",6000);
   };
-  const submitPay=()=>{
+  const submitPay=async()=>{
     if(!payForm.amount||!showPay) return;
+    const amt=Number(payForm.amount);
+    if(!isFinite(amt)||amt<=0){toastEmit("Enter a payment amount greater than zero.","warning");return;}
     const ms=billings.find(b=>b.id===showPay);
     if(ms){
       const alreadyPaid=(ms.payments||[]).filter(p=>!p.bounced).reduce((s,p)=>s+Number(p.amount||0),0);
@@ -24149,6 +24577,9 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         return;
       }
     }
+    // #4 Date sanity — warn (not block) on illogical dates.
+    if(payForm.date&&payForm.date>today&&!(await uiConfirm("The Date Received is in the future. Save anyway?")))return;
+    if(payForm.date&&payForm.valueDate&&payForm.valueDate<payForm.date&&!(await uiConfirm("The Value Date is before the Date Received (funds credited before payment received?). Save anyway?")))return;
     logBillingPayment(showPay,{...payForm,recordedBy:session?.name||role});
     setPayForm({amount:"",date:today,refNo:"",note:"",valueDate:"",bank:"",method:"Bank Transfer"});
     setShowPay(null);
@@ -24494,7 +24925,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         <p style="margin-top:3px"><b>METROBANK</b>&nbsp;—&nbsp;382-7-38202059-2</p>
       </div>
       <div class="sig">
-        <div><div class="sl2">Prepared by:</div><div class="sn">Aerwin Del Rosario</div><div class="sc">GMD Productions Inc.</div></div>
+        <div><div class="sl2">Prepared by:</div><div class="sn">${esc(preparedBy)||"&nbsp;"}</div><div class="sc">GMD Productions Inc.</div></div>
         <div><div class="sl2">Approved by:</div><div class="sn">Paulo Garcia</div><div class="sc">GMD Productions Inc.</div></div>
       </div>
     </div>
@@ -25059,16 +25490,16 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                     <Fld label="Milestone Name" required hint="e.g. 50% Downpayment, Progress Billing, Final Billing">
                       <Inp value={msForm.name} onChange={e=>fm("name",e.target.value)} placeholder="e.g. 50% Downpayment upon PO"/>
                     </Fld>
-                    <Fld label="Amount (₱)" required>
+                    <Fld label="Amount (₱, Net / VAT-exclusive)" hint={(msForm.receiptType??deal?.receiptType??"OR")==="OR"?"Net (ex-VAT). Prefer entering gross? Use the box below — this fills for you.":undefined} required>
                       <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                        <Inp type="number" value={msForm.amount} onChange={e=>fm("amount",e.target.value)} placeholder="0.00" style={{flex:1}}/>
+                        <Inp type="number" value={msForm.amount} onChange={e=>{fm("amount",e.target.value);setMsGrossStr(msNetToGross(e.target.value));}} placeholder="0.00" style={{flex:1}}/>
                         {selDeal&&(()=>{
                           const d=wonDeals.find(x=>x.id===selDeal)||deals.find(x=>x.id===selDeal);
                           const existingMs=billings.filter(b=>b.dealId===selDeal);
                           const totalMs=existingMs.reduce((s,b)=>s+Number(b.amount||0),0);
                           const remaining=Math.max(0,(Number(d?.value||0)-totalMs));
                           return remaining>0?(
-                            <button type="button" onClick={()=>fm("amount",String(remaining))}
+                            <button type="button" onClick={()=>{fm("amount",String(remaining));setMsGrossStr(msNetToGross(remaining));}}
                               style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"5px 10px",color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit",fontSize:".75rem",fontWeight:700,whiteSpace:"nowrap"}}>
                               Bill Remaining ₱{remaining.toLocaleString()}
                             </button>
@@ -25076,12 +25507,17 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                         })()}
                       </div>
                     </Fld>
+                    {(msForm.receiptType??deal?.receiptType??"OR")==="OR"&&(
+                      <Fld label="Or enter Gross (VAT-inclusive)" hint="Type the gross figure — the net Amount fills automatically.">
+                        <Inp type="number" min={0} value={msGrossStr} onChange={e=>{const g=e.target.value;setMsGrossStr(g);fm("amount",g===""?"":String(Math.round(Math.max(0,Number(g)||0)/1.12*100)/100));}} placeholder="e.g. 560,000 incl. VAT"/>
+                      </Fld>
+                    )}
                     <Fld label="Invoice No." hint="Auto-generated if blank"><Inp value={msForm.invoiceNo} onChange={e=>fm("invoiceNo",e.target.value)} placeholder={nextInvoiceNo()}/></Fld>
                     <Fld label="Invoice Date"><Inp type="date" value={msForm.invoiceDate} onChange={e=>fm("invoiceDate",e.target.value)}/></Fld>
                     <Fld label="Due Date" required hint={!msForm.dueDate?"Recommended — drives the cash-flow forecast.":undefined}><Inp type="date" value={msForm.dueDate} onChange={e=>fm("dueDate",e.target.value)}/></Fld>
                     <Fld label="Status"><Sel value={msForm.status} onChange={e=>fm("status",e.target.value)}>{BILLING_STATUSES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
                     <Fld label="Receipt Type" hint={`Defaults to deal setting (${deal?.receiptType||"OR"})`}>
-                      <Sel value={msForm.receiptType||""} onChange={e=>fm("receiptType",e.target.value||null)}>
+                      <Sel value={msForm.receiptType||""} onChange={e=>{const v=e.target.value||null;fm("receiptType",v);if((v??deal?.receiptType??"OR")==="OR")setMsGrossStr(msNetToGross(msForm.amount));}}>
                         <option value="">— Use Deal Default ({deal?.receiptType||"OR"}) —</option>
                         <option value="OR">OR (Official Receipt)</option>
                         <option value="AR">AR (Acknowledgement Receipt)</option>
@@ -25095,14 +25531,21 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                       </Sel>
                     </Fld>
                     <div style={{gridColumn:"1/-1"}}><Fld label="Description"><Inp value={msForm.description} onChange={e=>fm("description",e.target.value)} placeholder="What this billing covers…"/></Fld></div>
-                    {/* Tax preview */}
+                    {/* Tax preview — reads like the SOA: net sale → +VAT → =gross
+                        billed to client → −EWT withheld → =cash you collect. */}
                     {n(msForm.amount)>0&&deal&&(()=>{
                       const tx=calcTax(msForm.amount,msForm.receiptType??deal.receiptType??"OR",msForm.withholding??deal.withholding??false);
-                      return<div style={{gridColumn:"1/-1",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"8px 12px",display:"flex",gap:16,flexWrap:"wrap",fontSize:".78rem"}}>
-                        <span><span style={{color:"#92400e"}}>Base: </span><strong>₱{n(msForm.amount).toLocaleString("en-PH")}</strong></span>
-                        {tx.vat>0&&<span><span style={{color:"#92400e"}}>VAT: </span><strong style={{color:"#f59e0b"}}>₱{tx.vat.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>}
-                        {tx.ewt>0&&<span><span style={{color:"#92400e"}}>EWT: </span><strong style={{color:"#ef4444"}}>-₱{tx.ewt.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>}
-                        <span><span style={{color:"#92400e"}}>Net: </span><strong style={{color:"#059669",fontSize:".88rem"}}>₱{tx.netReceivable.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>
+                      const f2=v=>Math.abs(Number(v)).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+                      const rows=(msForm.receiptType??deal.receiptType??"OR")==="OR"
+                        ?[["Net Sale (VAT-exclusive)",tx.base,"#0f172a"],["VAT 12%",tx.vat,"#f59e0b"],["Gross — billed to client",tx.gross,"#2563eb"],...(tx.ewt>0?[["EWT 2% (client withholds)",-tx.ewt,"#ef4444"]]:[]),["Net Collectible (cash in)",tx.netReceivable,"#059669"]]
+                        :[["Amount (AR — no VAT)",tx.base,"#0f172a"],["Net Collectible (cash in)",tx.netReceivable,"#059669"]];
+                      return<div style={{gridColumn:"1/-1",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"4px 12px"}}>
+                        {rows.map(([l,v,c],i)=>(
+                          <div key={l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderTop:i===0?"none":"1px dashed #fde68a"}}>
+                            <span style={{fontSize:".74rem",color:"#78716c",fontWeight:i===rows.length-1?700:500}}>{l}</span>
+                            <span style={{fontFamily:"'IBM Plex Mono',monospace",fontWeight:700,fontSize:".82rem",color:c}}>{v<0?"−":""}₱{f2(v)}</span>
+                          </div>
+                        ))}
                       </div>;
                     })()}
                   </div>
@@ -25151,10 +25594,11 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                       </div>
                       {!ms.isRetentionRelease&&<div style={{marginBottom:8}}><LifecycleStrip nodes={msNodes}/></div>}
                       <div style={{display:"flex",gap:14,flexWrap:"wrap",fontSize:".78rem",marginBottom:8}}>
-                        <span><span style={{color:"#94a3b8"}}>Base: </span>₱{n(ms.amount).toLocaleString("en-PH")}</span>
+                        <span><span style={{color:"#94a3b8"}}>Net Sale: </span>₱{n(ms.amount).toLocaleString("en-PH")}</span>
                         {tx.vat>0&&<span><span style={{color:"#94a3b8"}}>VAT 12%: </span><strong style={{color:"#f59e0b"}}>+₱{tx.vat.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>}
+                        {tx.vat>0&&<span><span style={{color:"#94a3b8"}}>Gross billed: </span><strong style={{color:"#2563eb"}}>₱{tx.gross.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>}
                         {tx.ewt>0&&<span><span style={{color:"#94a3b8"}}>EWT 2%: </span><strong style={{color:"#ef4444"}}>−₱{tx.ewt.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>}
-                        <span><span style={{color:"#94a3b8"}}>Net Due: </span><strong style={{color:"#3b82f6"}}>₱{tx.netReceivable.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>
+                        <span><span style={{color:"#94a3b8"}}>Net Collectible: </span><strong style={{color:"#3b82f6"}}>₱{tx.netReceivable.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>
                         <span><span style={{color:"#94a3b8"}}>Paid: </span><strong style={{color:"#059669"}}>₱{paidTotal.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>
                         {balance>0&&<span><span style={{color:"#94a3b8"}}>Balance: </span><strong style={{color:"#ef4444"}}>₱{balance.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>}
                         {ms.dueDate&&<span style={{color:isOverdue?"#ef4444":"#64748b",fontWeight:isOverdue?700:400}}>Due: {ms.dueDate}</span>}
@@ -25179,16 +25623,28 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                                   <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:6}}>
                                     <Fld label="Amount (₱)"><Inp type="number" value={editPayForm.amount??p.amount} onChange={e=>setEditPayForm(f=>({...f,amount:e.target.value}))}/></Fld>
                                     <Fld label="Date"><Inp type="date" value={editPayForm.date??p.date??today} onChange={e=>setEditPayForm(f=>({...f,date:e.target.value}))}/></Fld>
-                                    <Fld label="Bank"><Sel value={editPayForm.bank??p.bank??""} onChange={e=>setEditPayForm(f=>({...f,bank:e.target.value}))}><option value="">— Select bank</option>{BANKS.map(b=><option key={b.id} value={b.id}>{b.short}</option>)}</Sel></Fld>
+                                    <Fld label="Bank"><Sel value={editPayForm.bank??p.bank??""} onChange={e=>setEditPayForm(f=>({...f,bank:e.target.value}))}><option value="">— Select bank</option>{BANKS.map(b=><option key={b.id} value={b.id}>{b.short}</option>)}<option value="cash">Cash</option></Sel></Fld>
                                     <Fld label="Method"><Sel value={editPayForm.method??p.method??"Bank Transfer"} onChange={e=>setEditPayForm(f=>({...f,method:e.target.value}))}>{PAYMENT_METHODS.map(m=><option key={m} value={m}>{m}</option>)}</Sel></Fld>
                                     <Fld label="Value Date"><Inp type="date" value={editPayForm.valueDate??p.valueDate??""} onChange={e=>setEditPayForm(f=>({...f,valueDate:e.target.value}))}/></Fld>
                                     <Fld label="Reference No."><Inp value={editPayForm.refNo??p.refNo??""} onChange={e=>setEditPayForm(f=>({...f,refNo:e.target.value}))} placeholder="Ref…"/></Fld>
                                     <Fld label="Note"><Inp value={editPayForm.note??p.note??""} onChange={e=>setEditPayForm(f=>({...f,note:e.target.value}))} placeholder="Note…"/></Fld>
                                   </div>
                                   <div style={{display:"flex",gap:6,marginTop:6}}>
-                                    <button onClick={()=>{
-                                      const updated={...p,...editPayForm,amount:Number(editPayForm.amount??p.amount)};
-                                      updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?updated:px)});
+                                    <button onClick={async()=>{
+                                      const amt=Number(editPayForm.amount??p.amount);
+                                      if(!isFinite(amt)||amt<=0){toastEmit("Enter a payment amount greater than zero.","warning");return;}
+                                      // #3 Overpayment cap on edit (Add already enforces this).
+                                      const eTx=calcTax(ms.amount,ms.receiptType??deal?.receiptType??"OR",ms.withholding??deal?.withholding??false);
+                                      const otherPaid=(ms.payments||[]).filter(px=>px.id!==p.id&&!px.bounced).reduce((s,px)=>s+Number(px.amount||0),0);
+                                      const eBalance=Math.max(0,eTx.netReceivable-otherPaid);
+                                      if(amt>eBalance+0.01){toastEmit(`Payment ₱${amt.toLocaleString("en-PH")} exceeds the milestone balance of ₱${eBalance.toLocaleString("en-PH")}.`,"warning");return;}
+                                      // #4 Date sanity — warn (not block) on illogical dates.
+                                      const nDate=editPayForm.date??p.date;
+                                      const nVal=editPayForm.valueDate??p.valueDate;
+                                      if(nDate&&nDate>today&&!(await uiConfirm("The Date Received is in the future. Save anyway?")))return;
+                                      if(nDate&&nVal&&nVal<nDate&&!(await uiConfirm("The Value Date is before the Date Received (funds credited before payment received?). Save anyway?")))return;
+                                      const updated={...p,...editPayForm,amount:amt};
+                                      updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?updated:px)},{action:"Payment Edited",detail:`${ms.name||"Milestone"}: ₱${Number(p.amount||0).toLocaleString("en-PH")} → ₱${amt.toLocaleString("en-PH")}`});
                                       setEditPay(null);setEditPayForm({});
                                     }} style={{background:"#1d4ed8",border:"none",borderRadius:6,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#fff",cursor:"pointer"}}>Save</button>
                                     <button onClick={()=>{setEditPay(null);setEditPayForm({});}} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 10px",fontFamily:"inherit",fontSize:".75rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
@@ -25200,7 +25656,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                                     <span>{p.date}</span>
                                     <span style={{fontWeight:700,color:"#059669"}}>₱{n(p.amount).toLocaleString("en-PH")}</span>
                                     {p.method&&<span style={{color:"#64748b"}}>{p.method}</span>}
-                                    {p.bank&&<span style={{color:"#64748b"}}>🏦 {p.bank}</span>}
+                                    {p.bank&&<span style={{color:"#64748b"}}>🏦 {p.bank==="cash"?"Cash":(BANKS.find(x=>x.id===p.bank)?.short||p.bank)}</span>}
                                     {(()=>{
                                       const cd=paymentClearDate(p);
                                       if(p.bounced) return <span style={{fontSize:".65rem",fontWeight:700,padding:"1px 7px",borderRadius:20,background:"#fef2f2",color:"#dc2626"}}>✕ Bounced</span>;
@@ -25213,17 +25669,17 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                                   {canEdit&&(
                                     <div style={{display:"flex",gap:4,flexShrink:0}}>
                                       {!p.bounced&&!isPaymentCleared(p,today)&&(
-                                        <button onClick={()=>updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?{...px,valueDate:today,bounced:false}:px)})}
+                                        <button onClick={()=>updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?{...px,valueDate:today,bounced:false}:px)},{action:"Payment Cleared",detail:`${ms.name||"Milestone"}: ₱${Number(p.amount||0).toLocaleString("en-PH")} marked cleared`})}
                                           title="Mark funds cleared today"
                                           style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:5,padding:"2px 7px",fontFamily:"inherit",fontSize:".65rem",color:"#059669",cursor:"pointer",fontWeight:600}}>✓ Clear</button>
                                       )}
                                       {!p.bounced&&(
-                                        <button onClick={async ()=>{if((await uiConfirm("Mark this collection as bounced? It will stop counting as cleared cash.")))updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?{...px,bounced:true}:px)});}}
+                                        <button onClick={async ()=>{if((await uiConfirm("Mark this collection as bounced? It will stop counting as cleared cash.")))updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?{...px,bounced:true}:px)},{action:"Payment Bounced",detail:`${ms.name||"Milestone"}: ₱${Number(p.amount||0).toLocaleString("en-PH")} marked bounced`});}}
                                           title="Mark cheque bounced"
                                           style={{background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:5,padding:"2px 7px",fontFamily:"inherit",fontSize:".65rem",color:"#c2410c",cursor:"pointer",fontWeight:600}}>⤺</button>
                                       )}
                                       {p.bounced&&(
-                                        <button onClick={()=>updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?{...px,bounced:false}:px)})}
+                                        <button onClick={()=>updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?{...px,bounced:false}:px)},{action:"Payment Restored",detail:`${ms.name||"Milestone"}: ₱${Number(p.amount||0).toLocaleString("en-PH")} un-bounced`})}
                                           title="Un-bounce"
                                           style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:5,padding:"2px 7px",fontFamily:"inherit",fontSize:".65rem",color:"#059669",cursor:"pointer",fontWeight:600}}>↺</button>
                                       )}
@@ -25280,7 +25736,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                             <Fld label="Bank Deposited To">
                               <Sel value={payForm.bank||""} onChange={e=>fp("bank",e.target.value)}>
                                 <option value="">— Select Bank —</option>
-                                {[{v:"bpi",l:"BPI"},{v:"metro",l:"Metrobank"},{v:"china",l:"Chinabank"},{v:"bdo",l:"BDO"},{v:"security",l:"Security Bank"},{v:"union",l:"Unionbank"},{v:"cash",l:"Cash"}].map(b=><option key={b.v} value={b.v}>{b.l}</option>)}
+                                {[...BANKS.map(b=>({v:b.id,l:b.short})),{v:"cash",l:"Cash"}].map(b=><option key={b.v} value={b.v}>{b.l}</option>)}
                               </Sel>
                             </Fld>
                             <Fld label="Payment Method">

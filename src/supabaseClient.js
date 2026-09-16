@@ -122,6 +122,20 @@ const _saveQueue = () => {
   _queueListeners.forEach(fn => { try { fn(_queue.length) } catch (_) {} })
 }
 export const sbQueueSize = () => _queue.length
+// Ids that have a write still waiting in the offline queue — i.e. rows that may
+// legitimately exist locally but not yet on the server (a create still in
+// flight, or an edit to a row the server hasn't got yet). mergeLocalOnly uses
+// this to keep exactly those on a reload while dropping local-only rows the
+// server has actually deleted, instead of resurrecting every deleted record.
+// Only inserts/upserts/updates count; a pending delete means we WANT it gone.
+export const sbPendingIds = () => {
+  const ids = new Set()
+  for (const op of _queue) {
+    if (op.kind === 'insert' || op.kind === 'upsert') { if (op.data && op.data.id != null) ids.add(op.data.id) }
+    else if (op.kind === 'update') { if (op.id != null) ids.add(op.id) }
+  }
+  return ids
+}
 export const sbOnQueueChange = (fn) => { _queueListeners.push(fn); return () => { _queueListeners = _queueListeners.filter(f => f !== fn) } }
 const _enqueue = (op) => { _queue.push({ qid: `${Date.now()}_${_seq++}`, attempts: 0, ...op }); _saveQueue() }
 
@@ -324,9 +338,13 @@ export const sbUpdate = async (table, id, data) => {
 // success first — otherwise the child write can reach the server before the
 // parent commits and fail an FK check, which sync retry can never fix (a "data"
 // error like a constraint violation is never retried, only dropped).
-export const sbUpsert = async (table, data, conflictCol = 'id') => {
+// ignoreDuplicates:true → INSERT ... ON CONFLICT DO NOTHING. Use it for
+// "make sure this parent row exists" writes (FK-safety before a child insert)
+// so they can NEVER overwrite an existing row with a stale local copy — a real
+// cross-user clobber vector when this device's `deals` state lags the server.
+export const sbUpsert = async (table, data, conflictCol = 'id', { ignoreDuplicates = false } = {}) => {
   if (!supabase) return false
-  const { error } = await _withTimeout(supabase.from(table).upsert(data, { onConflict: conflictCol }))
+  const { error } = await _withTimeout(supabase.from(table).upsert(data, { onConflict: conflictCol, ignoreDuplicates }))
   if (error) { console.error(`SB UPSERT ${table}:`, error.message); const kind=_writeFailed('upsert', table, error.message); if(_isRetryable(kind)) _enqueue({ kind: 'upsert', table, data, conflictCol }); else _notifyDropped({ kind: 'upsert', table, data, conflictCol }, kind, error.message); return false }
   return true
 }

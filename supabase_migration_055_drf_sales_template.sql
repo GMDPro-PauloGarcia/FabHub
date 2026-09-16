@@ -8,7 +8,13 @@
 -- Additive and idempotent — safe to run multiple times. Existing rows get NULLs,
 -- which the app renders as blank ("—") in the DRF detail panel.
 
-ALTER TABLE public.design_request_forms
+-- NOTE: the app reads/writes the `design_requests` table (see src/data/mappers.js
+-- drfToSb / src/App.jsx sbInsert('design_requests', …)). The original version of
+-- this migration targeted a non-existent `design_request_forms` table, so the
+-- columns never landed where the app needed them and every DRF save failed with
+-- "Could not find the 'brand_guide_link' column of 'design_requests'". Corrected
+-- to the real table below.
+ALTER TABLE public.design_requests
   ADD COLUMN IF NOT EXISTS category         TEXT,
   ADD COLUMN IF NOT EXISTS platform         TEXT,
   ADD COLUMN IF NOT EXISTS finishes         TEXT,
@@ -16,4 +22,4 @@ ALTER TABLE public.design_request_forms
   ADD COLUMN IF NOT EXISTS brand_guide_link TEXT,
   ADD COLUMN IF NOT EXISTS budget           TEXT;
 
-SELECT 'Migration 055 applied — DRF sales-template columns added to design_request_forms' AS status;
+SELECT 'Migration 055 applied — DRF sales-template columns added to design_requests' AS status;
