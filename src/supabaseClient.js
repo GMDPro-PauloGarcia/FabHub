@@ -338,9 +338,13 @@ export const sbUpdate = async (table, id, data) => {
 // success first — otherwise the child write can reach the server before the
 // parent commits and fail an FK check, which sync retry can never fix (a "data"
 // error like a constraint violation is never retried, only dropped).
-export const sbUpsert = async (table, data, conflictCol = 'id') => {
+// ignoreDuplicates:true → INSERT ... ON CONFLICT DO NOTHING. Use it for
+// "make sure this parent row exists" writes (FK-safety before a child insert)
+// so they can NEVER overwrite an existing row with a stale local copy — a real
+// cross-user clobber vector when this device's `deals` state lags the server.
+export const sbUpsert = async (table, data, conflictCol = 'id', { ignoreDuplicates = false } = {}) => {
   if (!supabase) return false
-  const { error } = await _withTimeout(supabase.from(table).upsert(data, { onConflict: conflictCol }))
+  const { error } = await _withTimeout(supabase.from(table).upsert(data, { onConflict: conflictCol, ignoreDuplicates }))
   if (error) { console.error(`SB UPSERT ${table}:`, error.message); const kind=_writeFailed('upsert', table, error.message); if(_isRetryable(kind)) _enqueue({ kind: 'upsert', table, data, conflictCol }); else _notifyDropped({ kind: 'upsert', table, data, conflictCol }, kind, error.message); return false }
   return true
 }
