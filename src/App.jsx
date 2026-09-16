@@ -7608,6 +7608,19 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // Standby PO umbrellas are intentionally ₱0 (their value lives on the
     // drawdown jobs), so exempt them from the awarded-value requirement.
     if(WON_STAGES.includes(data.stage)&&!data.standbyPO&&(!data.value||Number(data.value)<=0)){toastEmit("Contract value is required for awarded projects.","error");return;}
+    // Awarding a project is exclusively the Award modal's job (it creates the Job
+    // Order, project card and starting budget). The deal edit form must never move
+    // a deal INTO a won stage — doing so marked it "awarded" with none of that
+    // scaffolding. Allowed: editing a deal that is ALREADY in a won stage (Ops
+    // pipeline progress). Blocked: a new deal saved directly at a won stage, or an
+    // edit lifting a pre-award deal into one — use the 🏆 Award button instead.
+    if(WON_STAGES.includes(data.stage)){
+      const prevStage=editDeal?deals.find(d=>d.id===editDeal)?.stage:null;
+      if(!editDeal||!WON_STAGES.includes(prevStage)){
+        toastEmit("🏆 To award a project, use the Award button (🏆) so its Job Order, project card and budget are created. Set the stage back to a pipeline stage to save this edit.","warning",7000);
+        return;
+      }
+    }
     // Placeholder / import-artifact guard. A real contract is never ₱1, and a
     // deal can't carry invoiced/paid amounts with no contract value. Both are the
     // signature of a re-import where the value column didn't map (deals came in at
@@ -7877,6 +7890,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // project card even when the project has addendums, so only parent deals
     // (no parentDealId) get a projs entry on award.
     const staging=deals.find(x=>x.id===id);
+    // Awarding is exclusively the Award modal's job — it issues the Job Order,
+    // project card and starting budget and sends the award notification. Dragging
+    // a deal from a pre-award stage straight into a won stage did NONE of that,
+    // leaving an "awarded" deal Operations never received. Block that one
+    // transition (non-won → won) and point to the 🏆 Award button. Moving BETWEEN
+    // won stages (already-awarded pipeline progress) stays free.
+    if(WON_STAGES.includes(st)&&staging&&!WON_STAGES.includes(staging.stage)){
+      toastEmit("🏆 Use the Award button (🏆) to award a project — it sets up the Job Order, project card and budget. Drag-to-award is disabled.","warning",6000);
+      return;
+    }
     if(WON_STAGES.includes(st)&&!staging?.parentDealId) upProjs(ps=>ps[id]?ps:{...ps,[id]:emptyProject()});
     if(st==="14 · Completed"){
       const d=deals.find(x=>x.id===id);
