@@ -4852,9 +4852,13 @@ export default function App(){
     value:Number(r.value)||0, ce_no:r.ceNo||"",
     kind:r.kind||"Additive", scope_items:Array.isArray(r.scopeItems)?r.scopeItems:[],
     receipt_type:r.receiptType||"OR", withholding:r.withholding||false,
-    cost_impact:Number(r.costImpact||r.value)||0,
+    // NOTE: cost_impact (duplicated `value`) and client_approved (redundant with
+    // status "Approved") were written here but never existed as columns on the
+    // addenda table and are never read back — so every addendum upsert failed on
+    // the unknown column and change orders stopped syncing. Dropped both; `value`
+    // and `status` already carry this information and are persisted.
     status:r.status||"Discovered", sales_notified:r.salesNotified||false,
-    discovered_by:r.discoveredBy||"", client_approved:r.clientApproved||false,
+    discovered_by:r.discoveredBy||"",
     co_boq_data:r.coBoqData||null,
     sales_owner:r.salesOwner||null, awarded_date:r.awardedDate||null, sub_account:r.subAccount||null,
   });
