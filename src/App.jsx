@@ -8672,7 +8672,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // for payment. Approval is separate from receiving-verification: verification
   // confirms goods/work arrived; approval authorizes the spend. A payable must
   // be Approved before it can be paid or routed to a check voucher.
-  const canApprovePayables=["Manager","Finance"].includes(role);
+  // Named individuals granted payable-approval WITHOUT holding the Finance role,
+  // mirroring the by-username deal-delete grantees (migrations 033/034). Keeps a
+  // FinanceAssistant's role intact while lending them Finance-Manager approval
+  // authority — used for Mark Acejo during Aerwin's turnover. Must stay in sync
+  // with the DB gate in supabase_migration_065 (enforce_payable_approval).
+  const PAYABLE_APPROVAL_GRANTEES=["mark"];
+  const canApprovePayables=["Manager","Finance"].includes(role)
+    || PAYABLE_APPROVAL_GRANTEES.includes((session?.username||"").toLowerCase());
   const payApproved=p=>((p?.approvalStatus)||"Approved")==="Approved"; // legacy rows (no field) treated as approved
   const approvePayable=async(id)=>{
     const p=payables.find(x=>x.id===id); if(!p) return;
@@ -24918,7 +24925,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         <p style="margin-top:3px"><b>METROBANK</b>&nbsp;—&nbsp;382-7-38202059-2</p>
       </div>
       <div class="sig">
-        <div><div class="sl2">Prepared by:</div><div class="sn">Aerwin Del Rosario</div><div class="sc">GMD Productions Inc.</div></div>
+        <div><div class="sl2">Prepared by:</div><div class="sn">${esc(preparedBy)||"&nbsp;"}</div><div class="sc">GMD Productions Inc.</div></div>
         <div><div class="sl2">Approved by:</div><div class="sn">Paulo Garcia</div><div class="sc">GMD Productions Inc.</div></div>
       </div>
     </div>
