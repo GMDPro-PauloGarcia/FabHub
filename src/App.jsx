@@ -4340,7 +4340,7 @@ export default function App(){
             if(_breqs){setBreqs(prev=>mlo(_breqs,prev));idbE.push([KEYS.breqs,_breqs]);}
             const _addenda=data.addenda?.length?data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by,kind:a.kind||"Additive",scopeItems:Array.isArray(a.scope_items)?a.scope_items:[],coBoqData:a.co_boq_data||null,salesOwner:a.sales_owner||"",awardedDate:a.awarded_date||null,subAccount:a.sub_account||null})):null;
             if(_addenda){setAddenda(prev=>mlo(_addenda,prev));idbE.push([KEYS.addenda,_addenda]);}
-            const _checklist=data.checklist?.length?data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note})):null;
+            const _checklist=data.checklist?.length?data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,workDetail:c.work_detail||c.description||c.workDetail||""})):null;
             if(_checklist){setChecklist(prev=>mlo(_checklist,prev));idbE.push([KEYS.checklist,_checklist]);}
             const _swatches=data.swatches?.length?data.swatches.map(s=>({...s,dealId:s.deal_id,refLink:s.ref_link})):null;
             if(_swatches){setSwatches(prev=>mlo(_swatches,prev));idbE.push([KEYS.swatches,_swatches]);}
@@ -4623,7 +4623,7 @@ export default function App(){
         // calendar item showed on first load then vanished the moment the app
         // regained focus (constant on mobile). Keep this in sync with the full
         // checklist mapping in the initial load / loadAllFromSupabase.
-        if(data?.checklist?.length) setChecklist(prev=>mlo(data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,sortOrder:c.sort_order})),prev));
+        if(data?.checklist?.length) setChecklist(prev=>mlo(data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,sortOrder:c.sort_order,workDetail:c.work_detail||c.description||c.workDetail||""})),prev));
       }catch(e){console.warn("Focus refresh:",e.message);}
     };
     const onVisibility=()=>{ if(document.visibilityState==="visible") refresh(); };
@@ -4659,7 +4659,7 @@ export default function App(){
     if(data.mreqs?.length){const ms=data.mreqs.map(m=>({...m,dealId:m.deal_id,projectId:m.deal_id,itemName:m.item||"",estimatedCost:Number(m.estimated_cost)||0,estUnitCost:Number(m.estimated_cost)||0,submittedBy:m.submitted_by,requestedBy:m.submitted_by||"",statusChangedAt:m.status_changed_at}));setMreqs(prev=>mlo(ms,prev));idbE.push([KEYS.mreqs,ms]);}
     if(data.breqs?.length){const bs2=data.breqs.map(b=>({...b,dealId:b.deal_id,projectId:b.deal_id,dateNeeded:b.date_needed,approvedBy:b.approved_by,submittedBy:b.submitted_by,requestedBy:b.submitted_by||"",releasedBy:b.released_by||"",releasedAt:b.released_at,statusChangedAt:b.status_changed_at}));setBreqs(prev=>mlo(bs2,prev));idbE.push([KEYS.breqs,bs2]);}
     if(data.addenda?.length){const as=data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by,kind:a.kind||"Additive",scopeItems:Array.isArray(a.scope_items)?a.scope_items:[],coBoqData:a.co_boq_data||null,salesOwner:a.sales_owner||"",awardedDate:a.awarded_date||null,subAccount:a.sub_account||null}));setAddenda(prev=>mlo(as,prev));idbE.push([KEYS.addenda,as]);}
-    if(data.checklist?.length){const cs=data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,sortOrder:c.sort_order}));setChecklist(prev=>mlo(cs,prev));idbE.push([KEYS.checklist,cs]);}
+    if(data.checklist?.length){const cs=data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,sortOrder:c.sort_order,workDetail:c.work_detail||c.description||c.workDetail||""}));setChecklist(prev=>mlo(cs,prev));idbE.push([KEYS.checklist,cs]);}
     if(data.swatches?.length){const ss=data.swatches.map(s=>({...s,dealId:s.deal_id,refLink:s.ref_link}));setSwatches(prev=>mlo(ss,prev));idbE.push([KEYS.swatches,ss]);}
     if(data.actLog?.length)      setActLog(prev=>mlo(data.actLog.map(a=>({...a,dealId:a.deal_id})),prev));
     // Server is authoritative for cash positions on a successful read (even an
@@ -4907,7 +4907,7 @@ export default function App(){
   });
   const toSbChecklist = r=>({
     id:r.id, deal_id:r.dealId||r.projectId||null, type:r.type||"Task", title:r.title||"",
-    description:r.description||"", status:r.status||"Pending",
+    description:r.workDetail||r.description||"", status:r.status||"Pending",
     assigned_to:r.assignedTo||"", due_date:r.dueDate||null,
     risk_note:r.riskNote||"", sort_order:r.sortOrder||0,
     dept:r.dept||"", priority:r.priority||"Normal",
@@ -6053,7 +6053,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       const{eventType,new:rec,old:oldRow}=payload;
       if(eventType==='DELETE'){setChecklist(cs=>cs.filter(c=>c.id!==oldRow.id));return;}
       if(rec){
-        const item={...rec,projectId:rec.deal_id,dealId:rec.deal_id,assignedTo:rec.assigned_to,dueDate:rec.due_date,riskNote:rec.risk_note,sortOrder:rec.sort_order};
+        const item={...rec,projectId:rec.deal_id,dealId:rec.deal_id,assignedTo:rec.assigned_to,dueDate:rec.due_date,riskNote:rec.risk_note,sortOrder:rec.sort_order,workDetail:rec.work_detail||rec.description||rec.workDetail||""};
         setChecklist(cs=>eventType==='UPDATE'?cs.map(c=>c.id===rec.id?{...c,...item}:c):cs.find(c=>c.id===rec.id)?cs:[...cs,item]);
       }
     });
