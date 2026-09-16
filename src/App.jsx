@@ -5593,8 +5593,18 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       // Guarantee the parent deal exists on the server before the card's own FK
       // to deals(id) is evaluated — createProjectCard is reachable from the
       // manual "create card" path too, where the deal may still be local-only.
+      // Merge the caller-supplied dealData over the `deals` snapshot before
+      // re-syncing the parent. During Award the optimistic stage/probability
+      // update (upDeals → "06 · Kickoff") has only been scheduled, so the
+      // `deals` closure here still holds the PRE-award stage. Syncing that raw
+      // snapshot would land after confirmAward's own Kickoff write and silently
+      // revert the deal to its old stage (e.g. "01 · BizDev") — the deal then
+      // looks un-awarded in the pipeline and gets awarded again, issuing a
+      // duplicate Job Order. dealData carries the authoritative just-changed
+      // fields, so let it win over the stale snapshot.
       const parentDeal=deals.find(d=>d.id===dealId);
-      if(parentDeal) await sbSyncOne("deals",parentDeal,toSbDeal);
+      const parentToSync=parentDeal?{...parentDeal,...(dealData||{})}:(dealData||null);
+      if(parentToSync&&parentToSync.id) await sbSyncOne("deals",parentToSync,toSbDeal);
       const cardSynced=await sbUpsert('project_cards',{id:card.id,deal_id:dealId,client:dealData?.client||"",ce_no:dealData?.ceNo||"",value:Number(dealData?.value)||0,award_date:dealData?.awardDate||today,created_at:card.createdAt,ae_assigned:card.aeAssigned||"",pm1:card.pm1||"",pm2:card.pm2||"",pm3:card.pm3||"",designer:card.designer||"",coordinator:card.coordinator||"",...(card.targetEndDate?{target_end_date:card.targetEndDate}:{}),...(card.targetDays!=null?{target_days:card.targetDays}:{})},'deal_id');
       if(cardSynced){
         DEPT_ORDER.forEach(dept=>{
@@ -7971,6 +7981,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const turnoverDate=form.startDate||"";
     const turnoverDays=turnoverDate?Math.max(1,Math.ceil((new Date(turnoverDate)-new Date(awardDateForCard))/86400000)):null;
     const cardOk=await createProjectCard(id,{...awardModal,
+      // Carry the awarded stage/probability/payment so createProjectCard's
+      // parent-deal re-sync writes the AWARDED deal, not awardModal's stale
+      // pre-award snapshot (which would revert stage back and orphan the award).
+      stage:"06 · Kickoff",
+      probability:100,
+      paymentStatus:"Unpaid",
+      notes:form.scopeNotes||awardModal.notes||"",
+      dateAcquired:awardModal.dateAcquired||awardedDate,
       aeAssigned:jo.aeAssigned,
       pm1:jo.pm1||"",
       pm2:jo.pm2||"",
