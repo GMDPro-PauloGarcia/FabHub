@@ -210,51 +210,49 @@ const checkPw = async (pw, hash, username="") => {
   if(hash.startsWith("sha256:")) return (await sha256Hash(pw, username)) === hash;
   return legacyHashPw(pw) === hash; // legacy path for migration
 };
-// Synchronous legacy hash still used for DEFAULT_USERS seed data only
-const legacyHashPwSync = pw => legacyHashPw(pw);
 
 const DEFAULT_USERS = [
   // ── Owners / Management ──────────────────────────────────────────────────
-  { id:"u01", name:"Paulo Garcia", title:"CEO",       username:"paulo",    passwordHash:legacyHashPwSync("GMD2026!"),   role:"Manager",      status:"active", createdAt:today },
-  { id:"u02", name:"Mar Mungcal", title:"COO",        username:"mar",      passwordHash:legacyHashPwSync("GMD2026!"),   role:"Manager",      status:"active", createdAt:today },
+  { id:"u01", name:"Paulo Garcia", title:"CEO",       username:"paulo",    passwordHash:"",   role:"Manager",      status:"active", createdAt:today },
+  { id:"u02", name:"Mar Mungcal", title:"COO",        username:"mar",      passwordHash:"",   role:"Manager",      status:"active", createdAt:today },
   // ── Operations ───────────────────────────────────────────────────────────
-  { id:"u03", name:"Arrius Catubay", title:"Operations Director",     username:"arrius",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"Manager",      status:"active", createdAt:today },
-  { id:"u04", name:"Ryon Santiago",      username:"ryon",     passwordHash:legacyHashPwSync("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
-  { id:"u05", name:"David Melendez",     username:"david",    passwordHash:legacyHashPwSync("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
-  { id:"u06", name:"Jay Bernardo",       username:"jay",      passwordHash:legacyHashPwSync("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
-  { id:"u07", name:"Angelo Nogra",       username:"angelo",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
-  { id:"u08", name:"Arvin Jaca",         username:"arvin",    passwordHash:legacyHashPwSync("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
-  { id:"u09", name:"Jessie Singun",      username:"jessie",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
-  { id:"u10", name:"Anthony Nogra",      username:"thony",  passwordHash:legacyHashPwSync("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
-  { id:"u11", name:"Steve Jazmin",       username:"steve",    passwordHash:legacyHashPwSync("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
+  { id:"u03", name:"Arrius Catubay", title:"Operations Director",     username:"arrius",   passwordHash:"",   role:"Manager",      status:"active", createdAt:today },
+  { id:"u04", name:"Ryon Santiago",      username:"ryon",     passwordHash:"",   role:"ProjectMover",   status:"active", createdAt:today },
+  { id:"u05", name:"David Melendez",     username:"david",    passwordHash:"",   role:"ProjectMover",   status:"active", createdAt:today },
+  { id:"u06", name:"Jay Bernardo",       username:"jay",      passwordHash:"",   role:"ProjectMover",   status:"active", createdAt:today },
+  { id:"u07", name:"Angelo Nogra",       username:"angelo",   passwordHash:"",   role:"ProjectMover",   status:"active", createdAt:today },
+  { id:"u08", name:"Arvin Jaca",         username:"arvin",    passwordHash:"",   role:"ProjectMover",   status:"active", createdAt:today },
+  { id:"u09", name:"Jessie Singun",      username:"jessie",   passwordHash:"",   role:"ProjectMover",   status:"active", createdAt:today },
+  { id:"u10", name:"Anthony Nogra",      username:"thony",  passwordHash:"",   role:"ProjectMover",   status:"active", createdAt:today },
+  { id:"u11", name:"Steve Jazmin",       username:"steve",    passwordHash:"",   role:"ProjectMover",   status:"active", createdAt:today },
   // ── Sales ─────────────────────────────────────────────────────────────────
-  { id:"u12", name:"Paolo Gomez", title:"Sales Manager",        username:"paolo",    passwordHash:legacyHashPwSync("GMD2026!"),   role:"Manager",      status:"active", createdAt:today },
-  { id:"u13", name:"Jena De Asis",       username:"jena",     passwordHash:legacyHashPwSync("Sales2026!"), role:"Sales",        status:"active", createdAt:today },
-  { id:"u14", name:"Don Wyn Celmar",     username:"wyn",      passwordHash:legacyHashPwSync("Sales2026!"), role:"Sales",        status:"active", createdAt:today },
-  { id:"u15", name:"April Gail De Ello", username:"gail",     passwordHash:legacyHashPwSync("Sales2026!"), role:"Sales",        status:"active", createdAt:today },
+  { id:"u12", name:"Paolo Gomez", title:"Sales Manager",        username:"paolo",    passwordHash:"",   role:"Manager",      status:"active", createdAt:today },
+  { id:"u13", name:"Jena De Asis",       username:"jena",     passwordHash:"", role:"Sales",        status:"active", createdAt:today },
+  { id:"u14", name:"Don Wyn Celmar",     username:"wyn",      passwordHash:"", role:"Sales",        status:"active", createdAt:today },
+  { id:"u15", name:"April Gail De Ello", username:"gail",     passwordHash:"", role:"Sales",        status:"active", createdAt:today },
   // ── Cost Control ──────────────────────────────────────────────────────────
-  { id:"u16", name:"Aerwin Del Rosario", username:"aerwin",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"Finance",      status:"active", createdAt:today },
-  { id:"u25", name:"Accounting",         username:"accounting",passwordHash:legacyHashPwSync("GMD2026!"),  role:"Accounting",   status:"active", createdAt:today },
-  { id:"u17", name:"Marian Prile",       username:"marian",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"Procurement",  status:"active", createdAt:today },
-  { id:"u27", name:"Mark Acejo",         username:"mark",     passwordHash:legacyHashPwSync("GMD2026!"),   role:"FinanceAssistant", title:"Finance Assistant",          status:"active", createdAt:today },
-  { id:"u29", name:"Jerwin Limon",       username:"jerwin",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"FinanceAssistant", title:"Finance Assistant",          status:"active", createdAt:today },
+  { id:"u16", name:"Aerwin Del Rosario", username:"aerwin",   passwordHash:"",   role:"Finance",      status:"active", createdAt:today },
+  { id:"u25", name:"Accounting",         username:"accounting",passwordHash:"",  role:"Accounting",   status:"active", createdAt:today },
+  { id:"u17", name:"Marian Prile",       username:"marian",   passwordHash:"",   role:"Procurement",  status:"active", createdAt:today },
+  { id:"u27", name:"Mark Acejo",         username:"mark",     passwordHash:"",   role:"FinanceAssistant", title:"Finance Assistant",          status:"active", createdAt:today },
+  { id:"u29", name:"Jerwin Limon",       username:"jerwin",   passwordHash:"",   role:"FinanceAssistant", title:"Finance Assistant",          status:"active", createdAt:today },
   // ── Sales & Ops Admin ─────────────────────────────────────────────────────
-  { id:"u26", name:"Jessica Castro",     username:"jessica",  passwordHash:legacyHashPwSync("GMD2026!"),   role:"SalesOpsAdmin",    title:"Operations & Sales Admin",   status:"active", createdAt:today },
+  { id:"u26", name:"Jessica Castro",     username:"jessica",  passwordHash:"",   role:"SalesOpsAdmin",    title:"Operations & Sales Admin",   status:"active", createdAt:today },
   // ── QS / Cost Estimator ───────────────────────────────────────────────────
-  { id:"u23", name:"Rodney",             username:"rodney",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"QS",           status:"active", createdAt:today },
+  { id:"u23", name:"Rodney",             username:"rodney",   passwordHash:"",   role:"QS",           status:"active", createdAt:today },
   // ── Warehouse ─────────────────────────────────────────────────────────────
-  { id:"u24", name:"Warehouse",          username:"warehouse",passwordHash:legacyHashPwSync("GMD2026!"),   role:"Warehouse",    status:"active", createdAt:today },
+  { id:"u24", name:"Warehouse",          username:"warehouse",passwordHash:"",   role:"Warehouse",    status:"active", createdAt:today },
   // ── Design ────────────────────────────────────────────────────────────────
-  { id:"u18", name:"Gab Florita",        username:"gab",      passwordHash:legacyHashPwSync("GMD2026!"),   role:"Design",       status:"active", createdAt:today },
-  { id:"u19", name:"Miaa Villoria",      username:"miaa",     passwordHash:legacyHashPwSync("GMD2026!"),   role:"Design",       status:"active", createdAt:today },
-  { id:"u20", name:"Miel Vidallo",       username:"miel",     passwordHash:legacyHashPwSync("GMD2026!"),   role:"Design",       status:"active", createdAt:today },
-  { id:"u21", name:"Adrian Adriano",     username:"adrian",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"Design",       status:"active", createdAt:today },
-  { id:"u22", name:"Tisha Leyva",        username:"tisha",    passwordHash:legacyHashPwSync("GMD2026!"),   role:"Design",       status:"active", createdAt:today },
+  { id:"u18", name:"Gab Florita",        username:"gab",      passwordHash:"",   role:"Design",       status:"active", createdAt:today },
+  { id:"u19", name:"Miaa Villoria",      username:"miaa",     passwordHash:"",   role:"Design",       status:"active", createdAt:today },
+  { id:"u20", name:"Miel Vidallo",       username:"miel",     passwordHash:"",   role:"Design",       status:"active", createdAt:today },
+  { id:"u21", name:"Adrian Adriano",     username:"adrian",   passwordHash:"",   role:"Design",       status:"active", createdAt:today },
+  { id:"u22", name:"Tisha Leyva",        username:"tisha",    passwordHash:"",   role:"Design",       status:"active", createdAt:today },
   // ── Office wall display (65" touchscreen) ────────────────────────────────
   // A dedicated read-only kiosk account. Logging in as this user drops straight
   // into the fullscreen OfficeTVDashboard (no nav, no write actions). Role
   // "Display" is granted SELECT-only RLS in migration 054; it can never write.
-  { id:"u28", name:"Office Display",     username:"tv",       passwordHash:legacyHashPwSync("GMDwall2026!"), role:"Display",   title:"Office Wall Display", status:"active", createdAt:today },
+  { id:"u28", name:"Office Display",     username:"tv",       passwordHash:"", role:"Display",   title:"Office Wall Display", status:"active", createdAt:today },
 ];
 
 // ─── SEED DATA ────────────────────────────────────────────────────────────────
@@ -7028,11 +7026,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           viaServer=true;
           u={id:user.id,username:user.username,name:user.name,role:user.role,title:user.title||user.role,status:user.status};
           needsUpgrade=!!user.needs_upgrade;
-        } else if(error && !defUser){
-          return error;   // server rejected credentials and no built-in default to fall back to
+        } else if(error){
+          // Server was REACHABLE and rejected the credentials. Never fall back
+          // to a local/default hash here — doing so let the seeded default
+          // password authenticate even after a user changed their real
+          // (server-side) password. Only a genuinely unreachable server (the
+          // catch below) may fall through to the offline local check.
+          return error;
         }
-        // else: rejected but a DEFAULT_USERS entry exists → fall through to the local check
-      }catch(e){ /* network/offline → fall back to local/default check below */ }
+      }catch(e){ /* network/offline → fall back to local check below */ }
     }
     if(!viaServer){
       let localU=users.find(x=>x.username.toLowerCase()===unameLower);
@@ -7040,9 +7042,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       if(!localU) return "Username not found.";
       if(localU.status==="pending") return "Your account is pending approval by a Manager.";
       if(localU.status==="inactive") return "Your account has been deactivated. Contact Paulo.";
-      const hashToCheck=localU.passwordHash||(defUser?.passwordHash||"");
-      let valid=hashToCheck?await checkPw(password,hashToCheck,localU.username):false;
-      if(!valid&&defUser) valid=await checkPw(password,defUser.passwordHash,localU.username);
+      // Offline only. Check the user's own stored hash — no default-password
+      // fallback (the seeded DEFAULT_USERS carry no password now).
+      const hashToCheck=localU.passwordHash||"";
+      const valid=hashToCheck?await checkPw(password,hashToCheck,localU.username):false;
       if(!valid) return "Incorrect password.";
       needsUpgrade=!hashToCheck.startsWith("sha256:");
       u=localU;
