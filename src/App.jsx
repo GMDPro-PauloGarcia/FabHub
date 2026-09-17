@@ -15333,7 +15333,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(page==="masters") return(<Wrap><MasterListsView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role} isMobile={isMobile}/></Wrap>);
     if(page==="expenses") return(
       <Wrap>
-        <SecHead title="Expenses" action={<Btn onClick={()=>openAddExp()}>+ Other Payable</Btn>} sub="All logged costs — company-wide and per project"/>
+        <SecHead title="Expense Ledger" action={<Btn onClick={()=>openAddExp()}>+ Other Payable</Btn>} sub="Historical log of costs — company-wide and per project"/>
+        <div style={{display:"flex",gap:8,alignItems:"flex-start",background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:10,padding:"10px 14px",marginBottom:16,fontSize:".8rem",color:"#1e40af",lineHeight:1.45}}>
+          <span style={{fontSize:"1rem",lineHeight:1}}>💡</span>
+          <span>This is the historical expense ledger. To <strong>record a new cost</strong>, use <strong>+ Other Payable</strong> — it enters the AP ledger where it can be approved, verified and paid. Materials &amp; subcon costs come in through their PO / Work Order instead.</span>
+        </div>
         {["all",...projList.map(d=>d.id)].map(filter=>{
           const label=filter==="all"?"All Expenses":clientName(filter);
           const filtered=filter==="all"?exps:exps.filter(e=>e.projectId===filter);
@@ -15360,7 +15364,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   </div>
                 </Card>
               ))}
-              {filter==="all"&&exps.length===0&&<EmptyState icon="📋" msg="No expenses logged yet."/>}
+              {filter==="all"&&exps.length===0&&<EmptyState icon="📋" msg="No legacy expenses here. New costs are recorded as Other Payables in the AP ledger."/>}
             </div>
           );
         })}
