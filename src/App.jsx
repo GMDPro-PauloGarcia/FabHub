@@ -3913,7 +3913,11 @@ function TVBoardAdmin({announcements=[],upAnnouncements,session,today}){
 function bankCashSummary(cashPositions, today){
   const days=Object.values(cashPositions||{}).filter(p=>p&&p.date).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
   const latest=days[0]||null;
-  const val=(id)=>{const r=latest?.banks?.[id]||{};return Number(r.book)||Number(r.end)||Number(r.beg)||0;};
+  // Basis = Ending Bank Balance, to reconcile exactly with the Daily Cash
+  // Position report's "Total Cash – All Accounts (End of Day)" (opEnd+reserveBal).
+  // Ending is the actual bank-statement balance (gross of uncleared checks);
+  // book/beg are only fallbacks if a bank's ending wasn't persisted.
+  const val=(id)=>{const r=latest?.banks?.[id]||{};return Number(r.end)||Number(r.book)||Number(r.beg)||0;};
   const perBank=latest?BANKS.map(b=>({id:b.id,short:b.short,name:b.name,type:b.type,val:val(b.id)})):[];
   const total=perBank.reduce((s,b)=>s+b.val,0);
   const stale=!latest||latest.date!==today;
