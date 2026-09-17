@@ -1,0 +1,77 @@
+name: DB migrations
+
+# Enforces "DB before code": schema migrations are applied to the live database
+# on merge to main, BEFORE the app deploy is allowed to proceed. On PRs it only
+# previews the SQL (dry-run) so reviewers see exactly what will hit production.
+#
+# Required repo secrets (Settings -> Secrets and variables -> Actions):
+#   SUPABASE_ACCESS_TOKEN  - personal access token (supabase.com/dashboard/account/tokens)
+#   SUPABASE_DB_PASSWORD   - the live project's database password
+#   SUPABASE_PROJECT_REF   - the fabhub-gmd project ref
+#
+# One-time cutover before this ever applies anything: see docs/MIGRATIONS.md
+# (mark the baseline as already-applied with `supabase migration repair`).
+
+on:
+  push:
+    branches: [main]
+    paths: ['supabase/migrations/**']
+  pull_request:
+    branches: [main]
+    paths: ['supabase/migrations/**']
+
+concurrency:
+  # Never let two migration runs race against the live DB.
+  group: db-migrations
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link to live project
+        run: supabase link --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}"
+
+      - name: Preview pending migrations
+        run: supabase migration list
+
+      # PRs: show the SQL that WOULD run, but change nothing.
+      - name: Dry run (PR preview)
+        if: github.event_name == 'pull_request'
+        run: supabase db push --dry-run
+
+      # main: apply for real. The deploy job (below / in Vercel) must depend on
+      # this completing successfully.
+      - name: Apply migrations
+        if: github.event_name == 'push'
+        run: supabase db push
+
+  # Gate the app deploy behind a green migration. Wire your Vercel deploy hook
+  # into the secret below and drop Vercel's own git auto-deploy so THIS is the
+  # only path to production. Until then, keep the manual order rule in the runbook.
+  deploy:
+    needs: migrate
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger app deploy (after migrations are live)
+        env:
+          VERCEL_DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$VERCEL_DEPLOY_HOOK" ]; then
+            echo "No VERCEL_DEPLOY_HOOK set — skipping. Vercel is still deploying"
+            echo "from git directly, so DB-before-code order is NOT yet enforced."
+            echo "See docs/MIGRATIONS.md to finish wiring this."
+            exit 0
+          fi
+          curl -fsS -X POST "$VERCEL_DEPLOY_HOOK"

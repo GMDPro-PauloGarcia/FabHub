@@ -13,7 +13,8 @@
     "prebuild": "node scripts/check-imports.js",
     "build": "react-scripts build",
     "check-imports": "node scripts/check-imports.js",
-    "smoke": "node scripts/smoke.js"
+    "smoke": "node scripts/smoke.js",
+    "smoke:billing": "node scripts/smoke-billing.js"
   },
   "browserslist": {
     "production": [
