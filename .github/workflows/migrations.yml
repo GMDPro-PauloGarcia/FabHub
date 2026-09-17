@@ -19,10 +19,10 @@ name: DB migrations
 on:
   push:
     branches: [main]
-    paths: ['supabase/migrations/**']
+    paths: ['supabase/migrations/**', '.github/workflows/migrations.yml']
   pull_request:
     branches: [main]
-    paths: ['supabase/migrations/**']
+    paths: ['supabase/migrations/**', '.github/workflows/migrations.yml']
 
 concurrency:
   # Never let two migration runs race against the live DB.
