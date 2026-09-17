@@ -1,0 +1,100 @@
+name: DB migrations
+
+# Enforces "DB before code": schema migrations are applied to the live database
+# on merge to main, BEFORE the app deploy is allowed to proceed. On PRs it only
+# previews the SQL (dry-run) so reviewers see exactly what will hit production.
+#
+# Until the DB secrets are configured, this workflow SKIPS cleanly (green) rather
+# than failing — the scaffolding can merge before the one-time cutover is done.
+# Once the secrets exist it does the real work.
+#
+# Required repo secrets (Settings -> Secrets and variables -> Actions):
+#   SUPABASE_ACCESS_TOKEN  - personal access token (supabase.com/dashboard/account/tokens)
+#   SUPABASE_DB_PASSWORD   - the live project's database password
+#   SUPABASE_PROJECT_REF   - the fabhub-gmd project ref
+#
+# One-time cutover before this ever applies anything: see docs/MIGRATIONS.md
+# (mark the baseline as already-applied with `supabase migration repair`).
+
+on:
+  push:
+    branches: [main]
+    paths: ['supabase/migrations/**', '.github/workflows/migrations.yml']
+  pull_request:
+    branches: [main]
+    paths: ['supabase/migrations/**', '.github/workflows/migrations.yml']
+
+concurrency:
+  # Never let two migration runs race against the live DB.
+  group: db-migrations
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+    outputs:
+      configured: ${{ steps.preflight.outputs.configured }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Skip cleanly when secrets aren't set yet, so this can't block a merge
+      # before the one-time cutover in docs/MIGRATIONS.md is done.
+      - name: Preflight — are DB secrets configured?
+        id: preflight
+        env:
+          PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          if [ -n "$SUPABASE_ACCESS_TOKEN" ] && [ -n "$PROJECT_REF" ] && [ -n "$SUPABASE_DB_PASSWORD" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Supabase secrets not set — skipping migration preview/apply. Migrations are NOT being applied. See docs/MIGRATIONS.md to finish the one-time cutover (set SUPABASE_ACCESS_TOKEN, SUPABASE_PROJECT_REF, SUPABASE_DB_PASSWORD)."
+          fi
+
+      - uses: supabase/setup-cli@v1
+        if: steps.preflight.outputs.configured == 'true'
+        with:
+          version: latest
+
+      - name: Link to live project
+        if: steps.preflight.outputs.configured == 'true'
+        run: supabase link --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}"
+
+      - name: Preview pending migrations
+        if: steps.preflight.outputs.configured == 'true'
+        run: supabase migration list
+
+      # PRs: show the SQL that WOULD run, but change nothing.
+      - name: Dry run (PR preview)
+        if: steps.preflight.outputs.configured == 'true' && github.event_name == 'pull_request'
+        run: supabase db push --dry-run
+
+      # main: apply for real. The deploy job (below / in Vercel) must depend on
+      # this completing successfully.
+      - name: Apply migrations
+        if: steps.preflight.outputs.configured == 'true' && github.event_name == 'push'
+        run: supabase db push
+
+  # Gate the app deploy behind a green migration. Wire your Vercel deploy hook
+  # into the secret below and drop Vercel's own git auto-deploy so THIS is the
+  # only path to production. Until then, keep the manual order rule in the runbook.
+  deploy:
+    needs: migrate
+    if: github.event_name == 'push' && needs.migrate.outputs.configured == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger app deploy (after migrations are live)
+        env:
+          VERCEL_DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$VERCEL_DEPLOY_HOOK" ]; then
+            echo "No VERCEL_DEPLOY_HOOK set — skipping. Vercel is still deploying"
+            echo "from git directly, so DB-before-code order is NOT yet enforced."
+            echo "See docs/MIGRATIONS.md to finish wiring this."
+            exit 0
+          fi
+          curl -fsS -X POST "$VERCEL_DEPLOY_HOOK"
