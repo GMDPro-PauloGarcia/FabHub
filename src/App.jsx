@@ -16572,6 +16572,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         addMilestone={addMilestone} updateMilestone={updateMilestone}
         deleteMilestone={deleteMilestone} deleteProjectBilling={deleteProjectBilling} generateBillingSchedule={generateBillingSchedule} logBillingPayment={logBillingPayment}
         deleteBillingPayment={deleteBillingPayment}
+        setConfirmDel={setConfirmDel} canDeleteDeal={canDeleteDeal}
         nextInvoiceNo={nextInvoiceNo} session={session} role={role}
         clientProfiles={clientProfiles}
         upDeals={upDeals}
@@ -24423,7 +24424,7 @@ function AuditView({findings,addFinding,updateFinding,session,role}){
   );
 }
 
-function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMilestone,updateMilestone,deleteMilestone,deleteProjectBilling,generateBillingSchedule,logBillingPayment,deleteBillingPayment,nextInvoiceNo,session,role,cocDeals,clientProfiles,initialDeal,clearInitialDeal,upDeals,onSaveOnboarding,onOpenPayTerms,projs,overallProg,toastEmit,sendTelegramNotification}){
+function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMilestone,updateMilestone,deleteMilestone,deleteProjectBilling,generateBillingSchedule,logBillingPayment,deleteBillingPayment,setConfirmDel,canDeleteDeal,nextInvoiceNo,session,role,cocDeals,clientProfiles,initialDeal,clearInitialDeal,upDeals,onSaveOnboarding,onOpenPayTerms,projs,overallProg,toastEmit,sendTelegramNotification}){
   const mob=window.innerWidth<768;
   const[selDeal,  setSelDeal]  =useState(initialDeal||null);
   React.useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearInitialDeal&&clearInitialDeal();}},[]);
@@ -24449,6 +24450,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const[billingSearch,setBillingSearch]=useState("");
   const[billingFilter,setBillingFilter]=useState("all"); // all | outstanding | overdue | collected | uncollected | paid
   const[showNotBilled,setShowNotBilled]=useState(false);  // hide 0-milestone "Not billed" projects by default
+  const[billRowMenu,setBillRowMenu]=useState(null);       // ⋯ row-actions menu {id,client,canDeleteSchedule,canRemoveProject,top,right}
   const[forecastRange,setForecastRange]=useState("week"); // today | week | month — collection forecast horizon
 
   const n =v=>Number(String(v||0).replace(/,/g,""))||0;
@@ -25190,6 +25192,14 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
               {milestoneCount===0&&<span style={{fontSize:".68rem",color:"#e2e8f0"}}>—</span>}
             </>
           );
+          // Row-menu delete options adapt to the row: a billed project (milestones
+          // present) offers "Delete billing schedule" (archived, reversible); a
+          // "Not billed" 0-milestone project has no schedule to delete, so it
+          // offers "Remove project" instead — the full deal delete, Manager-gated
+          // and routed through the global confirmation modal.
+          const canDeleteSchedule=canEdit&&milestoneCount>0;
+          const canRemoveProject=canDeleteDeal&&milestoneCount===0;
+          const hasRowMenu=canDeleteSchedule||canRemoveProject;
           const actionButtons=(
             <>
               <button onClick={e=>{e.stopPropagation();setSelDeal(d.id);}}
@@ -25200,11 +25210,11 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                 style={{background:"#f97316",border:"none",borderRadius:7,padding:mob?"8px 14px":"5px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#fff",cursor:"pointer",fontWeight:700,flex:mob?1:undefined}}>
                 📄 SOA
               </button>
-              {canEdit&&milestoneCount>0&&(
-                <button onClick={e=>{e.stopPropagation();deleteProjectBilling(d.id);}}
-                  title="Delete this project's billing (archived to Audit Trail)"
-                  style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:7,padding:mob?"8px 12px":"5px 9px",fontFamily:"inherit",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontWeight:700,flex:mob?0:undefined}}>
-                  🗑
+              {hasRowMenu&&(
+                <button onClick={e=>{e.stopPropagation();const r=e.currentTarget.getBoundingClientRect();setBillRowMenu(billRowMenu?.id===d.id?null:{id:d.id,client:d.client,canDeleteSchedule,canRemoveProject,top:r.bottom+4,right:Math.max(8,window.innerWidth-r.right)});}}
+                  title="More actions"
+                  style={{background:billRowMenu?.id===d.id?"#e2e8f0":"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:7,padding:mob?"8px 13px":"5px 10px",fontFamily:"inherit",fontSize:".9rem",lineHeight:1,color:"#64748b",cursor:"pointer",fontWeight:700,flex:mob?0:undefined}}>
+                  ⋯
                 </button>
               )}
             </>
@@ -25273,6 +25283,31 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
           );
         })}
       </div>
+
+      {/* ── Row-actions menu (⋯) — fixed-position so the overflow:auto list
+             doesn't clip it. Anchored to the button that opened it. ─────────── */}
+      {billRowMenu&&(()=>{
+        const menuItem={display:"block",width:"100%",textAlign:"left",background:"#fff",border:"none",borderBottom:"1px solid #f1f5f9",padding:"11px 15px",fontFamily:"inherit",fontSize:".8rem",color:"#dc2626",cursor:"pointer",fontWeight:600,whiteSpace:"nowrap"};
+        return(
+        <>
+          <div onClick={()=>setBillRowMenu(null)} style={{position:"fixed",inset:0,zIndex:60}}/>
+          <div style={{position:"fixed",top:billRowMenu.top,right:billRowMenu.right,zIndex:61,background:"#fff",border:"1px solid #e2e8f0",borderRadius:9,boxShadow:"0 8px 24px rgba(0,0,0,.14)",minWidth:210,overflow:"hidden"}}>
+            {billRowMenu.canDeleteSchedule&&(
+              <button onClick={()=>{const id=billRowMenu.id;setBillRowMenu(null);deleteProjectBilling(id);}}
+                title="Archive this project's billing schedule to the Audit Trail (reversible)" style={menuItem}>
+                🗑 Delete billing schedule
+              </button>
+            )}
+            {billRowMenu.canRemoveProject&&(
+              <button onClick={()=>{const id=billRowMenu.id;setBillRowMenu(null);setConfirmDel(id);}}
+                title="This project has no billing set up. Removing it permanently deletes the whole project and all its records." style={{...menuItem,borderBottom:"none"}}>
+                🗑 Remove project…
+              </button>
+            )}
+          </div>
+        </>
+        );
+      })()}
 
       {/* ── POPUP: Project Billing Detail ──────────────────────────────── */}
       {selDeal&&(
