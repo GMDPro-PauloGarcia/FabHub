@@ -7504,6 +7504,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[designModal,setDesignModal]=useState(false);
   const[designForm, setDesignForm] =useState({});
   const[confirmDel, setConfirmDel] =useState(null);
+  const[delAck,     setDelAck]     =useState(false);  // forces an explicit tick before deleting a deal that has financial records
   const[stageFilter,  setStageFilter]  = useState(false);  // pipeline stage click filter
   const[pipeSearch,   setPipeSearch]   = useState("");     // pipeline search query
   const[pipeTab,      setPipeTab]      = useState("pipeline"); // "pipeline" | "awarded" | "updates"
@@ -9529,22 +9530,64 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {/* Global Modals */}
       <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal} deals={deals} addenda={addenda} role={role}/>
       <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={projList} clientName={clientName} chartOfAccounts={chartOfAccounts} suppliers={suppliers} exps={exps} poRefOptions={[...new Set([...prs.map(p=>p.poNumber),...swos.map(w=>w.woNumber)].filter(Boolean))]}/>
-      <Modal open={confirmDel!==null} onClose={()=>setConfirmDel(null)} title="Delete this deal?">
-        {(()=>{const d=deals.find(x=>x.id===confirmDel);return(
+      <Modal open={confirmDel!==null} onClose={()=>{setConfirmDel(null);setDelAck(false);}} title="Delete this deal?">
+        {(()=>{
+          const d=deals.find(x=>x.id===confirmDel);
+          // Compute what's ACTUALLY attached to this deal so the warning reflects
+          // reality instead of a generic list. Deleting a deal with delivered POs,
+          // logged expenses, or received payments erases real financial history
+          // and skews the linked project's margin — so those gate the button.
+          const dMs   =billings.filter(b=>b.dealId===confirmDel);
+          const dPrs  =prs.filter(p=>(p.dealId||p.projectId)===confirmDel);
+          const dExps =exps.filter(e=>(e.projectId||e.dealId)===confirmDel);
+          const dJos  =jos.filter(j=>j.dealId===confirmDel);
+          const payments=dMs.reduce((a,m)=>a.concat(m.payments||[]),[]);
+          const paidTotal=payments.filter(p=>!p.bounced).reduce((s,p)=>s+Number(p.amount||0),0);
+          const poCost=dPrs.reduce((s,p)=>s+(Number(p.actUnitCost)||Number(p.estUnitCost)||0)*(Number(p.qty)||0),0);
+          const expTotal=dExps.reduce((s,e)=>s+Number(e.amount||e.cost||0),0);
+          // "Financial" records are the ones whose loss actually matters on the books.
+          const hasFinancial=dPrs.length>0||dExps.length>0||payments.length>0;
+          const attached=[
+            dMs.length  &&`${dMs.length} billing milestone${dMs.length!==1?"s":""}`,
+            payments.length&&`${payments.length} payment${payments.length!==1?"s":""} (₱${paidTotal.toLocaleString("en-PH",{maximumFractionDigits:0})} received)`,
+            dPrs.length &&`${dPrs.length} purchase order${dPrs.length!==1?"s":""} (₱${poCost.toLocaleString("en-PH",{maximumFractionDigits:0})})`,
+            dExps.length&&`${dExps.length} logged expense${dExps.length!==1?"s":""} (₱${expTotal.toLocaleString("en-PH",{maximumFractionDigits:0})})`,
+            dJos.length &&`${dJos.length} job order${dJos.length!==1?"s":""}`,
+          ].filter(Boolean);
+          const canDelete=!hasFinancial||delAck;
+          return(
           <>
-            <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:10,padding:"12px 16px",marginBottom:16}}>
-              <div style={{fontWeight:700,color:"#dc2626",marginBottom:6,fontSize:".88rem"}}>⚠ This will permanently delete:</div>
-              <ul style={{margin:0,paddingLeft:18,fontSize:".82rem",color:"#7f1d1d",lineHeight:2}}>
-                <li>Deal: <strong>{d?.client}{d?.ceNo?" · "+d.ceNo:""}</strong></li>
-                <li>Project card, JO, and all department checklists</li>
-                <li>All billing milestones and payment records</li>
-                <li>All linked expenses, PRs, DRFs, and addenda</li>
-              </ul>
+            <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:10,padding:"12px 16px",marginBottom:14}}>
+              <div style={{fontWeight:700,color:"#dc2626",marginBottom:6,fontSize:".88rem"}}>⚠ Permanently delete <strong>{d?.client}{d?.ceNo?" · "+d.ceNo:""}</strong> and everything linked to it:</div>
+              {attached.length>0?(
+                <ul style={{margin:"6px 0 0",paddingLeft:18,fontSize:".82rem",color:"#7f1d1d",lineHeight:1.9}}>
+                  {attached.map((t,i)=><li key={i}>{t}</li>)}
+                  <li>Project card, checklists, DRFs, addenda &amp; swatches (if any)</li>
+                </ul>
+              ):(
+                <div style={{fontSize:".82rem",color:"#7f1d1d",marginTop:4}}>No billing, POs, expenses or job orders are attached — safe to remove.</div>
+              )}
             </div>
+            {hasFinancial&&(
+              <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"12px 16px",marginBottom:14}}>
+                <div style={{fontWeight:700,color:"#b45309",fontSize:".82rem",marginBottom:6}}>💰 This deal has financial records.</div>
+                <div style={{fontSize:".78rem",color:"#92400e",marginBottom:10,lineHeight:1.5}}>
+                  If this is a duplicate, the POs / expenses / payments above may belong to the real project. Deleting erases them and can inflate the other project's margin. Consider moving them first (Procurement ▸ reassign PO) before deleting.
+                </div>
+                <label style={{display:"flex",gap:8,alignItems:"flex-start",cursor:"pointer",fontSize:".8rem",color:"#7f1d1d",fontWeight:600}}>
+                  <input type="checkbox" checked={delAck} onChange={e=>setDelAck(e.target.checked)} style={{marginTop:2,cursor:"pointer"}}/>
+                  <span>I understand these financial records will be permanently deleted along with the deal.</span>
+                </label>
+              </div>
+            )}
             <p style={{color:"#64748b",marginBottom:20,fontSize:".85rem"}}>This cannot be undone. Make sure you have a data backup first.</p>
-            <div style={{display:"flex",gap:10}}><Btn variant="danger" onClick={()=>delDeal(confirmDel)}>Yes, Delete Everything</Btn><Btn variant="ghost" onClick={()=>setConfirmDel(null)}>Cancel</Btn></div>
+            <div style={{display:"flex",gap:10}}>
+              <Btn variant="danger" onClick={()=>{if(!canDelete)return;delDeal(confirmDel);setDelAck(false);}} disabled={!canDelete}>Yes, Delete Everything</Btn>
+              <Btn variant="ghost" onClick={()=>{setConfirmDel(null);setDelAck(false);}}>Cancel</Btn>
+            </div>
           </>
-        );})()}
+          );
+        })()}
       </Modal>
       <Modal open={swModal} onClose={()=>setSwModal(false)} title={editSw?"Edit Swatch Item":"Add to Swatchboard"} wide>
         <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
