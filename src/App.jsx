@@ -2984,7 +2984,7 @@ function AuditTrailView({isMobile,fmt,setPage,restoreFinancial,labelFor,Wrap}){
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18,flexWrap:"wrap",gap:10}}>
         <div>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>🕵️ Audit Trail</div>
-          <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>Deleted financial records — who, when, why. Nothing is lost; rows can be restored.</div>
+          <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>Billing edits &amp; deletions — who, when, what changed. Deleted rows can be restored.</div>
         </div>
         <div style={{display:"flex",gap:8}}>
           <button onClick={load} style={{background:"#475569",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>↻ Refresh</button>
@@ -2995,7 +2995,7 @@ function AuditTrailView({isMobile,fmt,setPage,restoreFinancial,labelFor,Wrap}){
         {rows===null?(
           <div style={{padding:30,textAlign:"center",color:"#94a3b8"}}>Loading…</div>
         ):rows.length===0?(
-          <div style={{padding:30,textAlign:"center",color:"#94a3b8"}}>No deleted financial records yet. Deletions of expenses, check vouchers, payables, loans, collections and inflows will appear here.</div>
+          <div style={{padding:30,textAlign:"center",color:"#94a3b8"}}>Nothing recorded yet. Billing edits and deletions — and deletions of expenses, check vouchers, payables, loans, collections and inflows — will appear here.</div>
         ):(
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:isMobile?".72rem":".82rem"}}>
             <thead>
@@ -3004,27 +3004,47 @@ function AuditTrailView({isMobile,fmt,setPage,restoreFinancial,labelFor,Wrap}){
                 <th style={{padding:"9px 12px"}}>Type</th>
                 <th style={{padding:"9px 12px"}}>Action</th>
                 <th style={{padding:"9px 12px"}}>Amount</th>
-                <th style={{padding:"9px 12px"}}>Reason</th>
+                <th style={{padding:"9px 12px"}}>Reason / change</th>
                 <th style={{padding:"9px 12px"}}>By</th>
                 <th style={{padding:"9px 12px"}}></th>
               </tr>
             </thead>
             <tbody>
               {rows.map(r=>{
-                const amt=Number(r.snapshot?.amount);
+                // action → badge label + colors. Older rows have no `action`
+                // set for a delete, so default to Deleted.
+                const badge=({
+                  insert:{t:"Created",bg:"#eff6ff",c:"#2563eb"},
+                  update:{t:"Edited", bg:"#fffbeb",c:"#b45309"},
+                  restore:{t:"Restored",bg:"#f0fdf4",c:"#059669"},
+                  delete:{t:"Deleted", bg:"#fef2f2",c:"#dc2626"},
+                }[r.action])||{t:"Deleted",bg:"#fef2f2",c:"#dc2626"};
+                const newAmt=Number(r.snapshot?.amount);
+                const oldAmt=Number(r.old_snapshot?.amount);
+                const amtChanged=r.action==="update"&&Number.isFinite(oldAmt)&&Number.isFinite(newAmt)&&oldAmt!==newAmt;
                 const when=(r.performed_at||"").replace("T"," ").slice(0,16);
+                // For edits, show which fields changed (amount rendered separately).
+                const changed=(r.changed_fields||[]).filter(f=>!["updated_at","created_at"].includes(f));
                 return(
                   <tr key={r.id} style={{borderTop:"1px solid #f1f5f9"}}>
                     <td style={{padding:"8px 12px",whiteSpace:"nowrap",color:"#475569"}}>{when}</td>
                     <td style={{padding:"8px 12px"}}>{labelFor(r.table_name)}</td>
                     <td style={{padding:"8px 12px"}}>
-                      <span style={{padding:"2px 8px",borderRadius:20,fontSize:".68rem",fontWeight:700,background:r.action==="restore"?"#f0fdf4":"#fef2f2",color:r.action==="restore"?"#059669":"#dc2626"}}>{r.action==="restore"?"Restored":"Deleted"}</span>
+                      <span style={{padding:"2px 8px",borderRadius:20,fontSize:".68rem",fontWeight:700,background:badge.bg,color:badge.c}}>{badge.t}</span>
                     </td>
-                    <td style={{padding:"8px 12px",fontWeight:700,color:"#0f172a"}}>{Number.isFinite(amt)?fmt(amt):"—"}</td>
-                    <td style={{padding:"8px 12px",color:"#475569",maxWidth:260}}>{r.reason||"—"}</td>
+                    <td style={{padding:"8px 12px",fontWeight:700,color:"#0f172a",whiteSpace:"nowrap"}}>
+                      {amtChanged?(
+                        <span><span style={{color:"#94a3b8",textDecoration:"line-through",fontWeight:500}}>{fmt(oldAmt)}</span> → <span style={{color:"#b45309"}}>{fmt(newAmt)}</span></span>
+                      ):Number.isFinite(newAmt)?fmt(newAmt):"—"}
+                    </td>
+                    <td style={{padding:"8px 12px",color:"#475569",maxWidth:260}}>
+                      {r.action==="update"
+                        ? (changed.length?<span>Changed: {changed.join(", ")}</span>:(r.reason||"—"))
+                        : (r.reason||"—")}
+                    </td>
                     <td style={{padding:"8px 12px",color:"#64748b"}}>{r.performed_by||"—"}</td>
                     <td style={{padding:"8px 12px"}}>
-                      {r.action!=="restore"&&(
+                      {r.action==="delete"&&(
                         <button disabled={busy===r.id} onClick={()=>onRestore(r)} style={{background:busy===r.id?"#cbd5e1":"#059669",border:"none",borderRadius:7,padding:"5px 12px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:busy===r.id?"default":"pointer"}}>{busy===r.id?"…":"Restore"}</button>
                       )}
                     </td>
