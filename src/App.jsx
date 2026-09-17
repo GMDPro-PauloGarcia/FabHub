@@ -7108,23 +7108,31 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const deactivateUser=(id)  =>upUsers(us=>us.map(u=>{if(u.id!==id)return u;const n={...u,status:"inactive"};if(isSupabaseReady())sbUpsert('user_profiles',toSbUser(n),'id').catch(()=>{});return n;}));
   const deleteUser  =(id)    =>{upUsers(us=>us.filter(u=>u.id!==id));if(isSupabaseReady())sbDelete('user_profiles',id).catch(()=>{});};
   const resetPw     =async(id,pw)=>{
-    const u=users.find(x=>x.id===id);if(!u)return;
+    const u=users.find(x=>x.id===id);if(!u)return false;
     // Keep a local SHA-256 for offline login continuity; the authoritative
     // (bcrypt) hash is written server-side via the RPC.
     const n={...u,passwordHash:await sha256Hash(pw,u.username)};
     upUsers(us=>us.map(x=>x.id===id?n:x));
-    await setPasswordServer(id,pw);
+    // Only report failure when the server was reachable but the RPC failed —
+    // offline we intentionally keep just the local hash and still succeed.
+    if(isSupabaseReady() && !(await setPasswordServer(id,pw))) return false;
+    return true;
   };
   const createUser  =async(name,username,password,role,title)=>{
     const uname=username.toLowerCase().trim();
     const newUser={id:uid(),name:name.trim(),username:uname,passwordHash:await sha256Hash(password,uname),role,title:title.trim()||role,status:"active",createdAt:today};
-    upUsers(us=>[...us,newUser]);
     if(isSupabaseReady()){
-      // Insert the row first (without the hash — toSbUser omits it), then set
-      // the bcrypt password server-side.
+      // Insert the row first (toSbUser omits the hash), then set the bcrypt
+      // password server-side. If that RPC fails, roll the row back rather than
+      // leave a passwordless account nobody can ever log into.
       await sbUpsert('user_profiles',toSbUser(newUser),'id');
-      await setPasswordServer(newUser.id,password);
+      if(!(await setPasswordServer(newUser.id,password))){
+        sbDelete('user_profiles',newUser.id).catch(()=>{});
+        return {ok:false,error:"Couldn't set the password on the server — account not created. Try again."};
+      }
     }
+    upUsers(us=>[...us,newUser]);
+    return {ok:true};
   };
   // ── Derived ───────────────────────────────────────────────────────────────
   const wonDeals    =useMemo(()=>deals.filter(d=>WON_STAGES.includes(d.stage)),[deals]);
@@ -19394,10 +19402,11 @@ function AccountsManager({users,session,onApprove,onReject,onDeactivate,onDelete
   const active   = users.filter(u=>u.status==="active");
   const inactive = users.filter(u=>u.status==="inactive"||u.status==="rejected");
 
-  const submitCreate=()=>{
+  const submitCreate=async()=>{
     if(!cf.name.trim()||!cf.username.trim()||cf.password.length<6){setCreateErr("Name, username, and password (min 6 chars) are required.");return;}
     if(users.some(u=>u.username===cf.username.toLowerCase().trim())){setCreateErr("Username already taken.");return;}
-    onCreateUser(cf.name,cf.username,cf.password,cf.role,cf.title);
+    const res=await onCreateUser(cf.name,cf.username,cf.password,cf.role,cf.title);
+    if(res&&res.ok===false){setCreateErr(res.error||"Couldn't create the account. Try again.");return;}
     setCf({name:"",username:"",password:"",role:"Sales",title:""});
     setCreateErr("");setShowCreate(false);
   };
@@ -19484,7 +19493,7 @@ function AccountsManager({users,session,onApprove,onReject,onDeactivate,onDelete
             {resetId===u.id&&(
               <div style={{marginTop:12,padding:"12px 14px",background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0",display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
                 <FInp type="password" value={newPw} onChange={e=>setNewPw(e.target.value)} placeholder="New password (min 6 chars)" style={{flex:1,minWidth:180,border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 11px",fontFamily:"inherit",fontSize:".83rem",color:"#0f172a"}}/>
-                <button onClick={()=>{if(newPw.length>=6){onResetPw(u.id,newPw);setResetId(null);setResetMsg("Password reset!");}else setResetMsg("Min 6 characters.");}} style={{background:"#1e293b",border:"none",borderRadius:7,padding:"7px 14px",fontWeight:700,fontSize:".78rem",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>Save</button>
+                <button onClick={async()=>{if(newPw.length>=6){const ok=await onResetPw(u.id,newPw);if(ok){setResetId(null);setResetMsg("Password reset!");}else setResetMsg("⚠️ Couldn't reach the server — password not reset. Try again.");}else setResetMsg("Min 6 characters.");}} style={{background:"#1e293b",border:"none",borderRadius:7,padding:"7px 14px",fontWeight:700,fontSize:".78rem",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>Save</button>
                 <button onClick={()=>setResetId(null)} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 12px",fontSize:".75rem",color:"#64748b",cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
                 {resetMsg&&<span style={{fontSize:".75rem",color:"#059669",fontWeight:600}}>{resetMsg}</span>}
               </div>
