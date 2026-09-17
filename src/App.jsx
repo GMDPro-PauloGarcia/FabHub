@@ -5000,7 +5000,15 @@ export default function App(){
     // means roleCanInsert returns true, matching the server. (Previously listed
     // Manager/ProjectMover only, which wrongly blocked the bulk-sync push for
     // Sales/Design/Finance even though RLS now allows them.)
-    expenses:["Manager","Finance","Accounting","FinanceAssistant"],
+    // Finance cost-entry tables: derive straight from the canonical PERMISSIONS
+    // map (core.js) so this push-gate can't drift out of sync with RLS the way it
+    // did before — expenses was missing SalesOpsAdmin/Procurement (migration 062),
+    // silently dropping their rows on bulk sync, and payables was absent entirely
+    // (unmapped → push attempted for every role → server-rejected "changes NOT
+    // saved" false alarm). PERMISSIONS is transcribed in lock-step with the
+    // migrations, so referencing it keeps one source of truth.
+    expenses:PERMISSIONS.expenses.insert,
+    payables:PERMISSIONS.payables.insert,
     billing_milestones:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"],
     billing_payments:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"],
     commission_payouts:["Manager","Finance","FinanceAssistant"],
