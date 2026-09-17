@@ -4,8 +4,8 @@
 project_id = "fabhub-gmd"
 
 [db]
-# Must match the Postgres major version of the live project.
-major_version = 15
+# Must match the Postgres major version of the live project (fabhub-gmd is on 17).
+major_version = 17
 
 [db.migrations]
 # Apply migration files in lexicographic order of their timestamp prefix.
