@@ -210,51 +210,49 @@ const checkPw = async (pw, hash, username="") => {
   if(hash.startsWith("sha256:")) return (await sha256Hash(pw, username)) === hash;
   return legacyHashPw(pw) === hash; // legacy path for migration
 };
-// Synchronous legacy hash still used for DEFAULT_USERS seed data only
-const legacyHashPwSync = pw => legacyHashPw(pw);
 
 const DEFAULT_USERS = [
   // ── Owners / Management ──────────────────────────────────────────────────
-  { id:"u01", name:"Paulo Garcia", title:"CEO",       username:"paulo",    passwordHash:legacyHashPwSync("GMD2026!"),   role:"Manager",      status:"active", createdAt:today },
-  { id:"u02", name:"Mar Mungcal", title:"COO",        username:"mar",      passwordHash:legacyHashPwSync("GMD2026!"),   role:"Manager",      status:"active", createdAt:today },
+  { id:"u01", name:"Paulo Garcia", title:"CEO",       username:"paulo",    passwordHash:"",   role:"Manager",      status:"active", createdAt:today },
+  { id:"u02", name:"Mar Mungcal", title:"COO",        username:"mar",      passwordHash:"",   role:"Manager",      status:"active", createdAt:today },
   // ── Operations ───────────────────────────────────────────────────────────
-  { id:"u03", name:"Arrius Catubay", title:"Operations Director",     username:"arrius",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"Manager",      status:"active", createdAt:today },
-  { id:"u04", name:"Ryon Santiago",      username:"ryon",     passwordHash:legacyHashPwSync("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
-  { id:"u05", name:"David Melendez",     username:"david",    passwordHash:legacyHashPwSync("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
-  { id:"u06", name:"Jay Bernardo",       username:"jay",      passwordHash:legacyHashPwSync("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
-  { id:"u07", name:"Angelo Nogra",       username:"angelo",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
-  { id:"u08", name:"Arvin Jaca",         username:"arvin",    passwordHash:legacyHashPwSync("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
-  { id:"u09", name:"Jessie Singun",      username:"jessie",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
-  { id:"u10", name:"Anthony Nogra",      username:"thony",  passwordHash:legacyHashPwSync("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
-  { id:"u11", name:"Steve Jazmin",       username:"steve",    passwordHash:legacyHashPwSync("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
+  { id:"u03", name:"Arrius Catubay", title:"Operations Director",     username:"arrius",   passwordHash:"",   role:"Manager",      status:"active", createdAt:today },
+  { id:"u04", name:"Ryon Santiago",      username:"ryon",     passwordHash:"",   role:"ProjectMover",   status:"active", createdAt:today },
+  { id:"u05", name:"David Melendez",     username:"david",    passwordHash:"",   role:"ProjectMover",   status:"active", createdAt:today },
+  { id:"u06", name:"Jay Bernardo",       username:"jay",      passwordHash:"",   role:"ProjectMover",   status:"active", createdAt:today },
+  { id:"u07", name:"Angelo Nogra",       username:"angelo",   passwordHash:"",   role:"ProjectMover",   status:"active", createdAt:today },
+  { id:"u08", name:"Arvin Jaca",         username:"arvin",    passwordHash:"",   role:"ProjectMover",   status:"active", createdAt:today },
+  { id:"u09", name:"Jessie Singun",      username:"jessie",   passwordHash:"",   role:"ProjectMover",   status:"active", createdAt:today },
+  { id:"u10", name:"Anthony Nogra",      username:"thony",  passwordHash:"",   role:"ProjectMover",   status:"active", createdAt:today },
+  { id:"u11", name:"Steve Jazmin",       username:"steve",    passwordHash:"",   role:"ProjectMover",   status:"active", createdAt:today },
   // ── Sales ─────────────────────────────────────────────────────────────────
-  { id:"u12", name:"Paolo Gomez", title:"Sales Manager",        username:"paolo",    passwordHash:legacyHashPwSync("GMD2026!"),   role:"Manager",      status:"active", createdAt:today },
-  { id:"u13", name:"Jena De Asis",       username:"jena",     passwordHash:legacyHashPwSync("Sales2026!"), role:"Sales",        status:"active", createdAt:today },
-  { id:"u14", name:"Don Wyn Celmar",     username:"wyn",      passwordHash:legacyHashPwSync("Sales2026!"), role:"Sales",        status:"active", createdAt:today },
-  { id:"u15", name:"April Gail De Ello", username:"gail",     passwordHash:legacyHashPwSync("Sales2026!"), role:"Sales",        status:"active", createdAt:today },
+  { id:"u12", name:"Paolo Gomez", title:"Sales Manager",        username:"paolo",    passwordHash:"",   role:"Manager",      status:"active", createdAt:today },
+  { id:"u13", name:"Jena De Asis",       username:"jena",     passwordHash:"", role:"Sales",        status:"active", createdAt:today },
+  { id:"u14", name:"Don Wyn Celmar",     username:"wyn",      passwordHash:"", role:"Sales",        status:"active", createdAt:today },
+  { id:"u15", name:"April Gail De Ello", username:"gail",     passwordHash:"", role:"Sales",        status:"active", createdAt:today },
   // ── Cost Control ──────────────────────────────────────────────────────────
-  { id:"u16", name:"Aerwin Del Rosario", username:"aerwin",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"Finance",      status:"active", createdAt:today },
-  { id:"u25", name:"Accounting",         username:"accounting",passwordHash:legacyHashPwSync("GMD2026!"),  role:"Accounting",   status:"active", createdAt:today },
-  { id:"u17", name:"Marian Prile",       username:"marian",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"Procurement",  status:"active", createdAt:today },
-  { id:"u27", name:"Mark Acejo",         username:"mark",     passwordHash:legacyHashPwSync("GMD2026!"),   role:"FinanceAssistant", title:"Finance Assistant",          status:"active", createdAt:today },
-  { id:"u29", name:"Jerwin Limon",       username:"jerwin",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"FinanceAssistant", title:"Finance Assistant",          status:"active", createdAt:today },
+  { id:"u16", name:"Aerwin Del Rosario", username:"aerwin",   passwordHash:"",   role:"Finance",      status:"active", createdAt:today },
+  { id:"u25", name:"Accounting",         username:"accounting",passwordHash:"",  role:"Accounting",   status:"active", createdAt:today },
+  { id:"u17", name:"Marian Prile",       username:"marian",   passwordHash:"",   role:"Procurement",  status:"active", createdAt:today },
+  { id:"u27", name:"Mark Acejo",         username:"mark",     passwordHash:"",   role:"FinanceAssistant", title:"Finance Assistant",          status:"active", createdAt:today },
+  { id:"u29", name:"Jerwin Limon",       username:"jerwin",   passwordHash:"",   role:"FinanceAssistant", title:"Finance Assistant",          status:"active", createdAt:today },
   // ── Sales & Ops Admin ─────────────────────────────────────────────────────
-  { id:"u26", name:"Jessica Castro",     username:"jessica",  passwordHash:legacyHashPwSync("GMD2026!"),   role:"SalesOpsAdmin",    title:"Operations & Sales Admin",   status:"active", createdAt:today },
+  { id:"u26", name:"Jessica Castro",     username:"jessica",  passwordHash:"",   role:"SalesOpsAdmin",    title:"Operations & Sales Admin",   status:"active", createdAt:today },
   // ── QS / Cost Estimator ───────────────────────────────────────────────────
-  { id:"u23", name:"Rodney",             username:"rodney",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"QS",           status:"active", createdAt:today },
+  { id:"u23", name:"Rodney",             username:"rodney",   passwordHash:"",   role:"QS",           status:"active", createdAt:today },
   // ── Warehouse ─────────────────────────────────────────────────────────────
-  { id:"u24", name:"Warehouse",          username:"warehouse",passwordHash:legacyHashPwSync("GMD2026!"),   role:"Warehouse",    status:"active", createdAt:today },
+  { id:"u24", name:"Warehouse",          username:"warehouse",passwordHash:"",   role:"Warehouse",    status:"active", createdAt:today },
   // ── Design ────────────────────────────────────────────────────────────────
-  { id:"u18", name:"Gab Florita",        username:"gab",      passwordHash:legacyHashPwSync("GMD2026!"),   role:"Design",       status:"active", createdAt:today },
-  { id:"u19", name:"Miaa Villoria",      username:"miaa",     passwordHash:legacyHashPwSync("GMD2026!"),   role:"Design",       status:"active", createdAt:today },
-  { id:"u20", name:"Miel Vidallo",       username:"miel",     passwordHash:legacyHashPwSync("GMD2026!"),   role:"Design",       status:"active", createdAt:today },
-  { id:"u21", name:"Adrian Adriano",     username:"adrian",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"Design",       status:"active", createdAt:today },
-  { id:"u22", name:"Tisha Leyva",        username:"tisha",    passwordHash:legacyHashPwSync("GMD2026!"),   role:"Design",       status:"active", createdAt:today },
+  { id:"u18", name:"Gab Florita",        username:"gab",      passwordHash:"",   role:"Design",       status:"active", createdAt:today },
+  { id:"u19", name:"Miaa Villoria",      username:"miaa",     passwordHash:"",   role:"Design",       status:"active", createdAt:today },
+  { id:"u20", name:"Miel Vidallo",       username:"miel",     passwordHash:"",   role:"Design",       status:"active", createdAt:today },
+  { id:"u21", name:"Adrian Adriano",     username:"adrian",   passwordHash:"",   role:"Design",       status:"active", createdAt:today },
+  { id:"u22", name:"Tisha Leyva",        username:"tisha",    passwordHash:"",   role:"Design",       status:"active", createdAt:today },
   // ── Office wall display (65" touchscreen) ────────────────────────────────
   // A dedicated read-only kiosk account. Logging in as this user drops straight
   // into the fullscreen OfficeTVDashboard (no nav, no write actions). Role
   // "Display" is granted SELECT-only RLS in migration 054; it can never write.
-  { id:"u28", name:"Office Display",     username:"tv",       passwordHash:legacyHashPwSync("GMDwall2026!"), role:"Display",   title:"Office Wall Display", status:"active", createdAt:today },
+  { id:"u28", name:"Office Display",     username:"tv",       passwordHash:"", role:"Display",   title:"Office Wall Display", status:"active", createdAt:today },
 ];
 
 // ─── SEED DATA ────────────────────────────────────────────────────────────────
@@ -2347,7 +2345,7 @@ function ActivityDashboard({actLog,users,session,isMobile}){
 }
 
 // ── MY ACCOUNT PAGE (proper component — fixes focus loss) ─────────────────
-function MyAccountPage({session,users,setUsers,upUsers:upUsersExt,setSession:setSessionExt,logActivity:logActivityExt,checkPw,hashPw,actLog,verifyCurrentPassword}){
+function MyAccountPage({session,users,setUsers,upUsers:upUsersExt,setSession:setSessionExt,logActivity:logActivityExt,checkPw,hashPw,actLog,verifyCurrentPassword,onSetServerPw}){
           const[tab,setTab]=useState("password");
           const[curPw,setCurPw]=useState("");
           const[newPw,setNewPw]=useState("");
@@ -2365,6 +2363,12 @@ function MyAccountPage({session,users,setUsers,upUsers:upUsersExt,setSession:set
             if(newPw.length<6){setMsg({type:"error",text:"New password must be at least 6 characters."});return;}
             if(newPw!==confPw){setMsg({type:"error",text:"New passwords do not match."});return;}
             if(newPw===curPw){setMsg({type:"error",text:"New password must be different from current password."});return;}
+            // Write the authoritative bcrypt hash server-side; keep a local
+            // SHA-256 only for offline login continuity.
+            if(onSetServerPw){
+              const ok=await onSetServerPw(u.id,newPw);
+              if(!ok){setMsg({type:"error",text:"Couldn't reach the server to save your new password. Try again."});return;}
+            }
             const newHash=await sha256Hash(newPw,u.username);
             (upUsersExt||setUsers)(us=>us.map(x=>x.id===u.id?{...x,passwordHash:newHash}:x));
             setCurPw(""); setNewPw(""); setConfPw("");
@@ -4917,11 +4921,25 @@ export default function App(){
     qty:Number(r.qty)||0, unit:r.unit||"pcs",
     category:r.category||null, location:r.location||null,
   });
+  // NOTE: password_hash is deliberately NOT written here. The hash column is
+  // owned by the server: it is set only via the set_password() RPC (bcrypt) and
+  // upgraded in place by verify_login() on login. Syncing it from local state
+  // used to clobber the server's bcrypt hash with a stale client-side SHA-256
+  // one on every ordinary user-row sync (approve / deactivate / profile edit),
+  // which could even revert a changed password to an older value. Omitting the
+  // field means an upsert leaves the existing hash untouched.
   const toSbUser = u=>({
     id:u.id, name:u.name||"", username:u.username||"", role:u.role||"Sales",
-    title:u.title||"", status:u.status||"active", password_hash:u.passwordHash||"",
+    title:u.title||"", status:u.status||"active",
     email:u.email||"", created_at:u.createdAt||null,
   });
+  // Set a user's password server-side (bcrypt, in Postgres). Authorization is
+  // enforced inside the RPC against the caller's JWT (Manager, or self).
+  const setPasswordServer = async(id,pw)=>{
+    if(!isSupabaseReady()) return false;
+    try{ const{error}=await supabase.rpc('set_password',{p_user_id:id,p_new_password:pw}); if(error){console.error('set_password:',error.message);return false;} return true; }
+    catch(e){ console.error('set_password:',e); return false; }
+  };
   const toSbBudget = (dealId,b)=>({
     deal_id:dealId, materials:Number(b.Materials)||0, labor:Number(b.Labor)||0,
     overhead:Number(b.Overhead)||0, subcon:Number(b.Subcon)||0, notes:b.notes||"",
@@ -7096,11 +7114,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           viaServer=true;
           u={id:user.id,username:user.username,name:user.name,role:user.role,title:user.title||user.role,status:user.status};
           needsUpgrade=!!user.needs_upgrade;
-        } else if(error && !defUser){
-          return error;   // server rejected credentials and no built-in default to fall back to
+        } else if(error){
+          // Server was REACHABLE and rejected the credentials. Never fall back
+          // to a local/default hash here — doing so let the seeded default
+          // password authenticate even after a user changed their real
+          // (server-side) password. Only a genuinely unreachable server (the
+          // catch below) may fall through to the offline local check.
+          return error;
         }
-        // else: rejected but a DEFAULT_USERS entry exists → fall through to the local check
-      }catch(e){ /* network/offline → fall back to local/default check below */ }
+      }catch(e){ /* network/offline → fall back to local check below */ }
     }
     if(!viaServer){
       let localU=users.find(x=>x.username.toLowerCase()===unameLower);
@@ -7108,9 +7130,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       if(!localU) return "Username not found.";
       if(localU.status==="pending") return "Your account is pending approval by a Manager.";
       if(localU.status==="inactive") return "Your account has been deactivated. Contact Paulo.";
-      const hashToCheck=localU.passwordHash||(defUser?.passwordHash||"");
-      let valid=hashToCheck?await checkPw(password,hashToCheck,localU.username):false;
-      if(!valid&&defUser) valid=await checkPw(password,defUser.passwordHash,localU.username);
+      // Offline only. Check the user's own stored hash — no default-password
+      // fallback (the seeded DEFAULT_USERS carry no password now).
+      const hashToCheck=localU.passwordHash||"";
+      const valid=hashToCheck?await checkPw(password,hashToCheck,localU.username):false;
       if(!valid) return "Incorrect password.";
       needsUpgrade=!hashToCheck.startsWith("sha256:");
       u=localU;
@@ -7118,12 +7141,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(!u) return "Username not found.";
     if(u.status==="pending") return "Your account is pending approval by a Manager.";
     if(u.status==="inactive") return "Your account has been deactivated. Contact Paulo.";
-    // Auto-upgrade legacy btoa hash to SHA-256 on successful login
-    if(needsUpgrade){
+    // Hash upgrade: on the SERVER path this is already done — verify_login()
+    // re-hashes to bcrypt in place on any successful non-bcrypt login. Doing it
+    // again here would overwrite that bcrypt with a client-side SHA-256 hash and
+    // the migration would never stick. So only upgrade locally when we fell back
+    // to the offline/local check (no server involved).
+    if(needsUpgrade && !viaServer){
       const newHash=await sha256Hash(password,u.username);
-      const upgraded={...u,passwordHash:newHash};
-      upUsers(us=>us.map(x=>x.id===u.id?upgraded:x));
-      if(isSupabaseReady()) sbUpsert('user_profiles',toSbUser(upgraded),'id').catch(()=>{});
+      upUsers(us=>us.map(x=>x.id===u.id?{...x,passwordHash:newHash}:x));
     }
     const sess={userId:u.id,username:u.username,name:u.name,role:u.role,title:u.title||u.role};
     setSession(sess); setRole(u.role);
@@ -7173,12 +7198,32 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const rejectUser  =(id)    =>upUsers(us=>us.map(u=>{if(u.id!==id)return u;const n={...u,status:"rejected"};if(isSupabaseReady())sbUpsert('user_profiles',toSbUser(n),'id').catch(()=>{});return n;}));
   const deactivateUser=(id)  =>upUsers(us=>us.map(u=>{if(u.id!==id)return u;const n={...u,status:"inactive"};if(isSupabaseReady())sbUpsert('user_profiles',toSbUser(n),'id').catch(()=>{});return n;}));
   const deleteUser  =(id)    =>{upUsers(us=>us.filter(u=>u.id!==id));if(isSupabaseReady())sbDelete('user_profiles',id).catch(()=>{});};
-  const resetPw     =async(id,pw)=>{const u=users.find(x=>x.id===id);if(!u)return;const n={...u,passwordHash:await sha256Hash(pw,u.username)};upUsers(us=>us.map(x=>x.id===id?n:x));if(isSupabaseReady())sbUpsert('user_profiles',toSbUser(n),'id').catch(()=>{});};
+  const resetPw     =async(id,pw)=>{
+    const u=users.find(x=>x.id===id);if(!u)return false;
+    // Keep a local SHA-256 for offline login continuity; the authoritative
+    // (bcrypt) hash is written server-side via the RPC.
+    const n={...u,passwordHash:await sha256Hash(pw,u.username)};
+    upUsers(us=>us.map(x=>x.id===id?n:x));
+    // Only report failure when the server was reachable but the RPC failed —
+    // offline we intentionally keep just the local hash and still succeed.
+    if(isSupabaseReady() && !(await setPasswordServer(id,pw))) return false;
+    return true;
+  };
   const createUser  =async(name,username,password,role,title)=>{
     const uname=username.toLowerCase().trim();
     const newUser={id:uid(),name:name.trim(),username:uname,passwordHash:await sha256Hash(password,uname),role,title:title.trim()||role,status:"active",createdAt:today};
+    if(isSupabaseReady()){
+      // Insert the row first (toSbUser omits the hash), then set the bcrypt
+      // password server-side. If that RPC fails, roll the row back rather than
+      // leave a passwordless account nobody can ever log into.
+      await sbUpsert('user_profiles',toSbUser(newUser),'id');
+      if(!(await setPasswordServer(newUser.id,password))){
+        sbDelete('user_profiles',newUser.id).catch(()=>{});
+        return {ok:false,error:"Couldn't set the password on the server — account not created. Try again."};
+      }
+    }
     upUsers(us=>[...us,newUser]);
-    if(isSupabaseReady()) sbUpsert('user_profiles',toSbUser(newUser),'id').catch(()=>{});
+    return {ok:true};
   };
   // ── Derived ───────────────────────────────────────────────────────────────
   const wonDeals    =useMemo(()=>deals.filter(d=>WON_STAGES.includes(d.stage)),[deals]);
@@ -15879,7 +15924,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             }} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"10px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>🔄 Reload from Cloud</button>
           </div>
         )}
-        <MyAccountPage session={session} users={users} setUsers={setUsers} upUsers={upUsers} setSession={setSession} logActivity={logActivity} checkPw={checkPw} hashPw={hashPw} actLog={actLog} verifyCurrentPassword={verifyCurrentPassword}/>
+        <MyAccountPage session={session} users={users} setUsers={setUsers} upUsers={upUsers} setSession={setSession} logActivity={logActivity} checkPw={checkPw} hashPw={hashPw} actLog={actLog} verifyCurrentPassword={verifyCurrentPassword} onSetServerPw={setPasswordServer}/>
       </div>
     </Wrap>
   );
@@ -19564,10 +19609,11 @@ function AccountsManager({users,session,onApprove,onReject,onDeactivate,onDelete
   const active   = users.filter(u=>u.status==="active");
   const inactive = users.filter(u=>u.status==="inactive"||u.status==="rejected");
 
-  const submitCreate=()=>{
+  const submitCreate=async()=>{
     if(!cf.name.trim()||!cf.username.trim()||cf.password.length<6){setCreateErr("Name, username, and password (min 6 chars) are required.");return;}
     if(users.some(u=>u.username===cf.username.toLowerCase().trim())){setCreateErr("Username already taken.");return;}
-    onCreateUser(cf.name,cf.username,cf.password,cf.role,cf.title);
+    const res=await onCreateUser(cf.name,cf.username,cf.password,cf.role,cf.title);
+    if(res&&res.ok===false){setCreateErr(res.error||"Couldn't create the account. Try again.");return;}
     setCf({name:"",username:"",password:"",role:"Sales",title:""});
     setCreateErr("");setShowCreate(false);
   };
@@ -19654,7 +19700,7 @@ function AccountsManager({users,session,onApprove,onReject,onDeactivate,onDelete
             {resetId===u.id&&(
               <div style={{marginTop:12,padding:"12px 14px",background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0",display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
                 <FInp type="password" value={newPw} onChange={e=>setNewPw(e.target.value)} placeholder="New password (min 6 chars)" style={{flex:1,minWidth:180,border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 11px",fontFamily:"inherit",fontSize:".83rem",color:"#0f172a"}}/>
-                <button onClick={()=>{if(newPw.length>=6){onResetPw(u.id,newPw);setResetId(null);setResetMsg("Password reset!");}else setResetMsg("Min 6 characters.");}} style={{background:"#1e293b",border:"none",borderRadius:7,padding:"7px 14px",fontWeight:700,fontSize:".78rem",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>Save</button>
+                <button onClick={async()=>{if(newPw.length>=6){const ok=await onResetPw(u.id,newPw);if(ok){setResetId(null);setResetMsg("Password reset!");}else setResetMsg("⚠️ Couldn't reach the server — password not reset. Try again.");}else setResetMsg("Min 6 characters.");}} style={{background:"#1e293b",border:"none",borderRadius:7,padding:"7px 14px",fontWeight:700,fontSize:".78rem",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>Save</button>
                 <button onClick={()=>setResetId(null)} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 12px",fontSize:".75rem",color:"#64748b",cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
                 {resetMsg&&<span style={{fontSize:".75rem",color:"#059669",fontWeight:600}}>{resetMsg}</span>}
               </div>
