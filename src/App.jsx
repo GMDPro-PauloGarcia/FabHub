@@ -17493,6 +17493,32 @@ function PLStatement({billings,exps,payables=[],wonDeals}){
   const fmtSigned=v=>v===0?"—":(v<0?"-":"")+fmt(v);
   const gpColor=v=>v>0?"#059669":v<0?"#ef4444":"#94a3b8";
 
+  // ── Accounting Actuals (audited income statement, entered by Finance) ──
+  // FabHub's operational tables only see revenue that got *billed* inside the
+  // system and costs that got entered as *payables* — so the "monthly" view is
+  // a billing/collections tracker, NOT the real P&L (its GP% reads ~100% when
+  // costs haven't been keyed in). The audited income statement lives in
+  // Accounting's books; Finance imports the monthly totals here so leadership
+  // sees the true numbers. Stored as one JSON blob in app_settings, mirroring
+  // the chart_of_accounts pattern. Shape: { [year]: [{revenue,cogs,opex}, x12] }.
+  const[actuals,setActuals]=useState(()=>{try{return JSON.parse(localStorage.getItem("gmdv5:accountingActuals")||"{}");}catch{return {};}});
+  const[importOpen,setImportOpen]=useState(false);
+  useEffect(()=>{
+    if(!isSupabaseReady())return;
+    let alive=true;
+    supabase.from('app_settings').select('value').eq('key','accounting_actuals').maybeSingle()
+      .then(({data})=>{if(alive&&data&&data.value){setActuals(data.value);try{localStorage.setItem("gmdv5:accountingActuals",JSON.stringify(data.value));}catch{}}})
+      .catch(()=>{});
+    return()=>{alive=false;};
+  },[]);
+  const saveActuals=next=>{
+    setActuals(next);
+    try{localStorage.setItem("gmdv5:accountingActuals",JSON.stringify(next));}catch{}
+    if(isSupabaseReady())sbUpsert('app_settings',{key:'accounting_actuals',value:next,updated_at:new Date().toISOString()},'key').catch(()=>{});
+  };
+  const yearActuals=(actuals[year]||[]);
+  const hasActuals=yearActuals.some(m=>m&&(Number(m.revenue)||Number(m.cogs)||Number(m.opex)));
+
   const revByMonth=useMemo(()=>{
     const arr=Array(12).fill(0);
     billings.forEach(b=>{
@@ -17584,7 +17610,7 @@ function PLStatement({billings,exps,payables=[],wonDeals}){
       {/* Controls row */}
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20,flexWrap:"wrap"}}>
         <div style={{display:"flex",gap:0,background:"#f1f5f9",borderRadius:8,padding:2}}>
-          {[["monthly","📅 Monthly"],["dept","🏷 By Project Type"]].map(([v,l])=>(
+          {[["monthly","📅 Billing & Collections"],["dept","🏷 By Project Type"],["actuals","📒 Accounting Actuals"]].map(([v,l])=>(
             <button key={v} onClick={()=>setView(v)} style={{padding:"6px 14px",borderRadius:6,border:"none",cursor:"pointer",fontSize:".8rem",fontWeight:600,background:view===v?"#fff":"transparent",color:view===v?"#0f172a":"#64748b",boxShadow:view===v?"0 1px 3px rgba(0,0,0,.1)":"none",transition:"all .15s"}}>{l}</button>
           ))}
         </div>
@@ -17601,6 +17627,13 @@ function PLStatement({billings,exps,payables=[],wonDeals}){
 
       {/* Monthly Table */}
       {view==="monthly"&&(
+        <>
+        <div style={{display:"flex",gap:8,alignItems:"flex-start",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:10,padding:"10px 12px",marginBottom:12,fontSize:".78rem",color:"#92400e",lineHeight:1.5}}>
+          <span style={{fontSize:"1rem",lineHeight:1}}>⚠️</span>
+          <div>
+            <b>Operational view — not the audited P&L.</b> "Revenue Billed" = milestones invoiced <i>inside FabHub</i>; "Expenses" = payables keyed into AP only. Costs not yet entered as payables are missing, so <b>Gross Profit / GP% here overstate the real margin</b> (a 100% month just means no costs were logged). For the true income statement — full COGS, OpEx and net income from Accounting's books — use the <b>📒 Accounting Actuals</b> tab.
+          </div>
+        </div>
         <div style={{overflowX:"auto",borderRadius:12,border:"1px solid #e2e8f0"}}>
           <table style={{width:"100%",borderCollapse:"collapse"}}>
             <thead>
@@ -17637,6 +17670,7 @@ function PLStatement({billings,exps,payables=[],wonDeals}){
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {/* Department Table */}
@@ -17677,6 +17711,125 @@ function PLStatement({billings,exps,payables=[],wonDeals}){
           )}
         </div>
       )}
+
+      {/* Accounting Actuals — audited income statement */}
+      {view==="actuals"&&(()=>{
+        const MONS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+        const m=i=>yearActuals[i]||{};
+        const rev=i=>Number(m(i).revenue)||0, cogs=i=>Number(m(i).cogs)||0, opex=i=>Number(m(i).opex)||0;
+        const gp=i=>rev(i)-cogs(i), net=i=>gp(i)-opex(i);
+        const sum=f=>MONS.reduce((s,_,i)=>s+f(i),0);
+        const tRev=sum(rev),tCogs=sum(cogs),tOpex=sum(opex),tGp=tRev-tCogs,tNet=tGp-tOpex;
+        const pct=(a,b)=>b>0?Math.round(a/b*100)+"%":"—";
+        const arows=[
+          {l:"Revenue",       f:rev,  t:tRev,  c:"#3b82f6",bold:false},
+          {l:"Cost of Sales", f:cogs, t:tCogs, c:"#ef4444",bold:false,neg:true},
+          {l:"Gross Profit",  f:gp,   t:tGp,   c:gpColor(tGp),bold:true},
+          {l:"Operating Exp.",f:opex, t:tOpex, c:"#ef4444",bold:false,neg:true},
+          {l:"Net Income",    f:net,  t:tNet,  c:gpColor(tNet),bold:true},
+        ];
+        return(
+          <div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:12,flexWrap:"wrap"}}>
+              <div style={{fontSize:".78rem",color:"#475569",lineHeight:1.5}}>
+                Audited income statement from Accounting's books (accrual basis). This is the <b>real P&L</b> — full COGS, OpEx and net income — independent of what's been billed or keyed into FabHub's AP.
+              </div>
+              <button onClick={()=>setImportOpen(true)} style={{padding:"7px 14px",borderRadius:8,border:"none",cursor:"pointer",fontSize:".8rem",fontWeight:700,background:"#0f172a",color:"#fff",whiteSpace:"nowrap"}}>{hasActuals?"✏️ Edit / Re-import":"⬆️ Import Actuals"}</button>
+            </div>
+            {!hasActuals
+              ?<div style={{padding:40,textAlign:"center",color:"#94a3b8",border:"1px dashed #cbd5e1",borderRadius:12}}>No accounting actuals imported for {year}. Click <b>Import Actuals</b> and paste the monthly Revenue, Cost of Sales and Operating Expenses from the income statement.</div>
+              :(
+              <div style={{overflowX:"auto",borderRadius:12,border:"1px solid #e2e8f0"}}>
+                <table style={{width:"100%",borderCollapse:"collapse"}}>
+                  <thead><tr>
+                    <th style={{...th,textAlign:"left",minWidth:130}}>Metric</th>
+                    {MONS.slice(0,visMonths).map(mo=><th key={mo} style={{...th,textAlign:"right",minWidth:90}}>{mo}</th>)}
+                    <th style={{...th,textAlign:"right",background:"#e2e8f0",minWidth:100}}>YTD</th>
+                  </tr></thead>
+                  <tbody>
+                    {arows.map(r=>(
+                      <tr key={r.l} style={{borderBottom:"1px solid #f1f5f9",background:r.bold?"#f0fdf4":"#fff"}}>
+                        <td style={{...td(false),fontWeight:r.bold?700:500,color:r.bold?"#0f172a":"#374151"}}>{r.l}</td>
+                        {MONS.slice(0,visMonths).map((_,i)=>{const v=r.f(i);return(
+                          <td key={i} style={{...td(),fontWeight:r.bold?700:400,color:v===0?"#cbd5e1":r.c}}>{v===0?"—":(r.neg?"-":"")+fmt(v)}</td>
+                        );})}
+                        <td style={{...td(),fontWeight:800,color:r.c,background:"#f1f5f9"}}>{r.t===0?"—":(r.neg?"-":"")+fmt(r.t)}</td>
+                      </tr>
+                    ))}
+                    <tr style={{borderTop:"2px solid #e2e8f0",background:"#f8fafc"}}>
+                      <td style={{...td(false),fontWeight:600,color:"#64748b",fontSize:".76rem"}}>GP Margin %</td>
+                      {MONS.slice(0,visMonths).map((_,i)=><td key={i} style={{...td(),fontSize:".76rem",color:gpColor(gp(i))}}>{pct(gp(i),rev(i))}</td>)}
+                      <td style={{...td(),fontWeight:700,fontSize:".76rem",color:gpColor(tGp),background:"#f1f5f9"}}>{pct(tGp,tRev)}</td>
+                    </tr>
+                    <tr style={{background:"#f8fafc"}}>
+                      <td style={{...td(false),fontWeight:600,color:"#64748b",fontSize:".76rem"}}>Net Margin %</td>
+                      {MONS.slice(0,visMonths).map((_,i)=><td key={i} style={{...td(),fontSize:".76rem",color:gpColor(net(i))}}>{pct(net(i),rev(i))}</td>)}
+                      <td style={{...td(),fontWeight:700,fontSize:".76rem",color:gpColor(tNet),background:"#f1f5f9"}}>{pct(tNet,tRev)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {importOpen&&(
+        <ActualsImport year={year} initial={yearActuals} fmt={fmt}
+          onClose={()=>setImportOpen(false)}
+          onSave={rows=>{saveActuals({...actuals,[year]:rows});setImportOpen(false);}}/>
+      )}
+    </div>
+  );
+}
+
+// Paste-import for monthly accounting actuals. Finance pastes 12 rows (Jan–Dec),
+// each with Revenue, Cost of Sales, Operating Expenses — tab, comma, or
+// whitespace separated. Non-numeric tokens (month labels, ₱, commas) are
+// stripped. Parses the exact column order of GMD's Income Statement export.
+function ActualsImport({year,initial,fmt,onClose,onSave}){
+  const MONS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const seed=MONS.map((_,i)=>{const m=(initial&&initial[i])||{};return[m.revenue||"",m.cogs||"",m.opex||""];});
+  const[text,setText]=useState("");
+  const[grid,setGrid]=useState(seed);
+  const parseNum=s=>{const n=parseFloat(String(s).replace(/[^0-9.\-]/g,""));return isNaN(n)?"":n;};
+  const applyPaste=()=>{
+    const lines=text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+    const next=seed.map(r=>[...r]);
+    lines.slice(0,12).forEach((line,i)=>{
+      const toks=line.split(/[\t,;]|\s{2,}| (?=[₱\-0-9])/).map(t=>t.trim()).filter(Boolean);
+      const nums=toks.map(parseNum).filter(v=>v!=="");
+      if(nums.length>=1)next[i]=[nums[0]??"",nums[1]??"",nums[2]??""];
+    });
+    setGrid(next);
+  };
+  const setCell=(r,c,v)=>setGrid(g=>g.map((row,ri)=>ri===r?row.map((cell,ci)=>ci===c?parseNum(v):cell):row));
+  const save=()=>onSave(grid.map(([revenue,cogs,opex])=>({revenue:Number(revenue)||0,cogs:Number(cogs)||0,opex:Number(opex)||0})));
+  const th2={padding:"6px 8px",fontSize:".72rem",fontWeight:700,color:"#475569",textAlign:"right"};
+  const inp={width:"100%",padding:"5px 6px",border:"1px solid #e2e8f0",borderRadius:6,fontSize:".78rem",textAlign:"right",fontFamily:"inherit"};
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:16}} onClick={onClose}>
+      <div style={{background:"#fff",borderRadius:14,padding:20,maxWidth:640,width:"100%",maxHeight:"90vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
+        <div style={{fontSize:"1.05rem",fontWeight:800,color:"#0f172a",marginBottom:4}}>Import Accounting Actuals — {year}</div>
+        <div style={{fontSize:".78rem",color:"#64748b",marginBottom:12,lineHeight:1.5}}>Paste 12 rows (Jan→Dec) from the income statement, or type directly below. Each row: <b>Revenue, Cost of Sales, Operating Expenses</b>. Currency symbols and thousands commas are ignored.</div>
+        <textarea value={text} onChange={e=>setText(e.target.value)} placeholder={"9,399,077\t7,285,510\t3,307,652\n9,544,414\t9,155,692\t2,004,692\n…"} rows={4} style={{width:"100%",padding:8,border:"1px solid #e2e8f0",borderRadius:8,fontSize:".78rem",fontFamily:"monospace",marginBottom:8,resize:"vertical"}}/>
+        <button onClick={applyPaste} style={{padding:"6px 12px",borderRadius:8,border:"1px solid #cbd5e1",background:"#f8fafc",cursor:"pointer",fontSize:".78rem",fontWeight:600,marginBottom:14}}>↧ Parse into table</button>
+        <table style={{width:"100%",borderCollapse:"collapse",marginBottom:16}}>
+          <thead><tr><th style={{...th2,textAlign:"left"}}>Month</th><th style={th2}>Revenue</th><th style={th2}>Cost of Sales</th><th style={th2}>Operating Exp.</th></tr></thead>
+          <tbody>
+            {grid.map((row,ri)=>(
+              <tr key={ri}>
+                <td style={{padding:"3px 8px",fontSize:".78rem",fontWeight:600,color:"#334155"}}>{MONS[ri]} {String(year).slice(2)}</td>
+                {row.map((cell,ci)=><td key={ci} style={{padding:"3px 4px"}}><input value={cell} onChange={e=>setCell(ri,ci,e.target.value)} style={inp}/></td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div style={{display:"flex",justifyContent:"flex-end",gap:8}}>
+          <button onClick={onClose} style={{padding:"8px 16px",borderRadius:8,border:"1px solid #cbd5e1",background:"#fff",cursor:"pointer",fontSize:".82rem",fontWeight:600}}>Cancel</button>
+          <button onClick={save} style={{padding:"8px 16px",borderRadius:8,border:"none",background:"#0f172a",color:"#fff",cursor:"pointer",fontSize:".82rem",fontWeight:700}}>Save Actuals</button>
+        </div>
+      </div>
     </div>
   );
 }
