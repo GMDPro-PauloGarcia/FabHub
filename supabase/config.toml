@@ -1,0 +1,12 @@
+# FabHub — Supabase CLI config.
+# The live project ref is provided to CI via the SUPABASE_PROJECT_REF secret and
+# `supabase link`, not hard-coded here.
+project_id = "fabhub-gmd"
+
+[db]
+# Must match the Postgres major version of the live project (fabhub-gmd is on 17).
+major_version = 17
+
+[db.migrations]
+# Apply migration files in lexicographic order of their timestamp prefix.
+schema_paths = []

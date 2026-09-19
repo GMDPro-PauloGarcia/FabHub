@@ -1,6 +1,6 @@
 import React,{useState,useMemo,useEffect,useRef} from "react";
 import {fmt,today,uid,toastEmit,Fld,Inp,Sel,KPI,uiConfirm,uiAlert} from "../shared";
-import {moveNeedsWitness,SCRAP_MOVE_TYPE,emptyPR} from "../core";
+import {moveNeedsWitness,SCRAP_MOVE_TYPE,emptyPR,isProcurementRole} from "../core";
 
 const INV_CATEGORIES = [
   {main:"Sheet Materials",  subs:["Board / Panel","Acrylic / Glass","Foam / Upholstery"]},
@@ -365,8 +365,8 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addPR,addInv
 
   const n=v=>Number(v)||0;
   const fp=v=>v?("₱"+n(v).toLocaleString("en-PH",{minimumFractionDigits:0,maximumFractionDigits:2})):"—";
-  const canEdit=role==="Manager"||role==="Procurement"||role==="Warehouse";
-  const canDelete=role==="Manager"||role==="Procurement"||role==="Warehouse";
+  const canEdit=role==="Manager"||isProcurementRole(role)||role==="Warehouse";
+  const canDelete=role==="Manager"||isProcurementRole(role)||role==="Warehouse";
 
   // ── derive BEG/RECV/OUT from stock movements ──────────────────────────
   const mvMap=useMemo(()=>{

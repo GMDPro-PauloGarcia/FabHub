@@ -6,7 +6,7 @@ import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, isProcurementRole, canonRole, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -210,51 +210,49 @@ const checkPw = async (pw, hash, username="") => {
   if(hash.startsWith("sha256:")) return (await sha256Hash(pw, username)) === hash;
   return legacyHashPw(pw) === hash; // legacy path for migration
 };
-// Synchronous legacy hash still used for DEFAULT_USERS seed data only
-const legacyHashPwSync = pw => legacyHashPw(pw);
 
 const DEFAULT_USERS = [
   // ── Owners / Management ──────────────────────────────────────────────────
-  { id:"u01", name:"Paulo Garcia", title:"CEO",       username:"paulo",    passwordHash:legacyHashPwSync("GMD2026!"),   role:"Manager",      status:"active", createdAt:today },
-  { id:"u02", name:"Mar Mungcal", title:"COO",        username:"mar",      passwordHash:legacyHashPwSync("GMD2026!"),   role:"Manager",      status:"active", createdAt:today },
+  { id:"u01", name:"Paulo Garcia", title:"CEO",       username:"paulo",    passwordHash:"",   role:"Manager",      status:"active", createdAt:today },
+  { id:"u02", name:"Mar Mungcal", title:"COO",        username:"mar",      passwordHash:"",   role:"Manager",      status:"active", createdAt:today },
   // ── Operations ───────────────────────────────────────────────────────────
-  { id:"u03", name:"Arrius Catubay", title:"Operations Director",     username:"arrius",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"Manager",      status:"active", createdAt:today },
-  { id:"u04", name:"Ryon Santiago",      username:"ryon",     passwordHash:legacyHashPwSync("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
-  { id:"u05", name:"David Melendez",     username:"david",    passwordHash:legacyHashPwSync("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
-  { id:"u06", name:"Jay Bernardo",       username:"jay",      passwordHash:legacyHashPwSync("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
-  { id:"u07", name:"Angelo Nogra",       username:"angelo",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
-  { id:"u08", name:"Arvin Jaca",         username:"arvin",    passwordHash:legacyHashPwSync("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
-  { id:"u09", name:"Jessie Singun",      username:"jessie",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
-  { id:"u10", name:"Anthony Nogra",      username:"thony",  passwordHash:legacyHashPwSync("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
-  { id:"u11", name:"Steve Jazmin",       username:"steve",    passwordHash:legacyHashPwSync("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
+  { id:"u03", name:"Arrius Catubay", title:"Operations Director",     username:"arrius",   passwordHash:"",   role:"Manager",      status:"active", createdAt:today },
+  { id:"u04", name:"Ryon Santiago",      username:"ryon",     passwordHash:"",   role:"ProjectMover",   status:"active", createdAt:today },
+  { id:"u05", name:"David Melendez",     username:"david",    passwordHash:"",   role:"ProjectMover",   status:"active", createdAt:today },
+  { id:"u06", name:"Jay Bernardo",       username:"jay",      passwordHash:"",   role:"ProjectMover",   status:"active", createdAt:today },
+  { id:"u07", name:"Angelo Nogra",       username:"angelo",   passwordHash:"",   role:"ProjectMover",   status:"active", createdAt:today },
+  { id:"u08", name:"Arvin Jaca",         username:"arvin",    passwordHash:"",   role:"ProjectMover",   status:"active", createdAt:today },
+  { id:"u09", name:"Jessie Singun",      username:"jessie",   passwordHash:"",   role:"ProjectMover",   status:"active", createdAt:today },
+  { id:"u10", name:"Anthony Nogra",      username:"thony",  passwordHash:"",   role:"ProjectMover",   status:"active", createdAt:today },
+  { id:"u11", name:"Steve Jazmin",       username:"steve",    passwordHash:"",   role:"ProjectMover",   status:"active", createdAt:today },
   // ── Sales ─────────────────────────────────────────────────────────────────
-  { id:"u12", name:"Paolo Gomez", title:"Sales Manager",        username:"paolo",    passwordHash:legacyHashPwSync("GMD2026!"),   role:"Manager",      status:"active", createdAt:today },
-  { id:"u13", name:"Jena De Asis",       username:"jena",     passwordHash:legacyHashPwSync("Sales2026!"), role:"Sales",        status:"active", createdAt:today },
-  { id:"u14", name:"Don Wyn Celmar",     username:"wyn",      passwordHash:legacyHashPwSync("Sales2026!"), role:"Sales",        status:"active", createdAt:today },
-  { id:"u15", name:"April Gail De Ello", username:"gail",     passwordHash:legacyHashPwSync("Sales2026!"), role:"Sales",        status:"active", createdAt:today },
+  { id:"u12", name:"Paolo Gomez", title:"Sales Manager",        username:"paolo",    passwordHash:"",   role:"Manager",      status:"active", createdAt:today },
+  { id:"u13", name:"Jena De Asis",       username:"jena",     passwordHash:"", role:"Sales",        status:"active", createdAt:today },
+  { id:"u14", name:"Don Wyn Celmar",     username:"wyn",      passwordHash:"", role:"Sales",        status:"active", createdAt:today },
+  { id:"u15", name:"April Gail De Ello", username:"gail",     passwordHash:"", role:"Sales",        status:"active", createdAt:today },
   // ── Cost Control ──────────────────────────────────────────────────────────
-  { id:"u16", name:"Aerwin Del Rosario", username:"aerwin",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"Finance",      status:"active", createdAt:today },
-  { id:"u25", name:"Accounting",         username:"accounting",passwordHash:legacyHashPwSync("GMD2026!"),  role:"Accounting",   status:"active", createdAt:today },
-  { id:"u17", name:"Marian Prile",       username:"marian",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"Procurement",  status:"active", createdAt:today },
-  { id:"u27", name:"Mark Acejo",         username:"mark",     passwordHash:legacyHashPwSync("GMD2026!"),   role:"FinanceAssistant", title:"Finance Assistant",          status:"active", createdAt:today },
-  { id:"u29", name:"Jerwin Limon",       username:"jerwin",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"FinanceAssistant", title:"Finance Assistant",          status:"active", createdAt:today },
+  { id:"u16", name:"Aerwin Del Rosario", username:"aerwin",   passwordHash:"",   role:"Finance",      status:"active", createdAt:today },
+  { id:"u25", name:"Accounting",         username:"accounting",passwordHash:"",  role:"Accounting",   status:"active", createdAt:today },
+  { id:"u17", name:"Marian Prile",       username:"marian",   passwordHash:"",   role:"ProcurementManager", title:"Procurement Manager", status:"active", createdAt:today },
+  { id:"u27", name:"Mark Acejo",         username:"mark",     passwordHash:"",   role:"FinanceAssistant", title:"Finance Assistant",          status:"active", createdAt:today },
+  { id:"u29", name:"Jerwin Limon",       username:"jerwin",   passwordHash:"",   role:"FinanceAssistant", title:"Finance Assistant",          status:"active", createdAt:today },
   // ── Sales & Ops Admin ─────────────────────────────────────────────────────
-  { id:"u26", name:"Jessica Castro",     username:"jessica",  passwordHash:legacyHashPwSync("GMD2026!"),   role:"SalesOpsAdmin",    title:"Operations & Sales Admin",   status:"active", createdAt:today },
+  { id:"u26", name:"Jessica Castro",     username:"jessica",  passwordHash:"",   role:"SalesOpsAdmin",    title:"Operations & Sales Admin",   status:"active", createdAt:today },
   // ── QS / Cost Estimator ───────────────────────────────────────────────────
-  { id:"u23", name:"Rodney",             username:"rodney",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"QS",           status:"active", createdAt:today },
+  { id:"u23", name:"Rodney",             username:"rodney",   passwordHash:"",   role:"QS",           status:"active", createdAt:today },
   // ── Warehouse ─────────────────────────────────────────────────────────────
-  { id:"u24", name:"Warehouse",          username:"warehouse",passwordHash:legacyHashPwSync("GMD2026!"),   role:"Warehouse",    status:"active", createdAt:today },
+  { id:"u24", name:"Warehouse",          username:"warehouse",passwordHash:"",   role:"Warehouse",    status:"active", createdAt:today },
   // ── Design ────────────────────────────────────────────────────────────────
-  { id:"u18", name:"Gab Florita",        username:"gab",      passwordHash:legacyHashPwSync("GMD2026!"),   role:"Design",       status:"active", createdAt:today },
-  { id:"u19", name:"Miaa Villoria",      username:"miaa",     passwordHash:legacyHashPwSync("GMD2026!"),   role:"Design",       status:"active", createdAt:today },
-  { id:"u20", name:"Miel Vidallo",       username:"miel",     passwordHash:legacyHashPwSync("GMD2026!"),   role:"Design",       status:"active", createdAt:today },
-  { id:"u21", name:"Adrian Adriano",     username:"adrian",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"Design",       status:"active", createdAt:today },
-  { id:"u22", name:"Tisha Leyva",        username:"tisha",    passwordHash:legacyHashPwSync("GMD2026!"),   role:"Design",       status:"active", createdAt:today },
+  { id:"u18", name:"Gab Florita",        username:"gab",      passwordHash:"",   role:"Design",       status:"active", createdAt:today },
+  { id:"u19", name:"Miaa Villoria",      username:"miaa",     passwordHash:"",   role:"Design",       status:"active", createdAt:today },
+  { id:"u20", name:"Miel Vidallo",       username:"miel",     passwordHash:"",   role:"Design",       status:"active", createdAt:today },
+  { id:"u21", name:"Adrian Adriano",     username:"adrian",   passwordHash:"",   role:"Design",       status:"active", createdAt:today },
+  { id:"u22", name:"Tisha Leyva",        username:"tisha",    passwordHash:"",   role:"Design",       status:"active", createdAt:today },
   // ── Office wall display (65" touchscreen) ────────────────────────────────
   // A dedicated read-only kiosk account. Logging in as this user drops straight
   // into the fullscreen OfficeTVDashboard (no nav, no write actions). Role
   // "Display" is granted SELECT-only RLS in migration 054; it can never write.
-  { id:"u28", name:"Office Display",     username:"tv",       passwordHash:legacyHashPwSync("GMDwall2026!"), role:"Display",   title:"Office Wall Display", status:"active", createdAt:today },
+  { id:"u28", name:"Office Display",     username:"tv",       passwordHash:"", role:"Display",   title:"Office Wall Display", status:"active", createdAt:today },
 ];
 
 // ─── SEED DATA ────────────────────────────────────────────────────────────────
@@ -2347,7 +2345,7 @@ function ActivityDashboard({actLog,users,session,isMobile}){
 }
 
 // ── MY ACCOUNT PAGE (proper component — fixes focus loss) ─────────────────
-function MyAccountPage({session,users,setUsers,upUsers:upUsersExt,setSession:setSessionExt,logActivity:logActivityExt,checkPw,hashPw,actLog,verifyCurrentPassword}){
+function MyAccountPage({session,users,setUsers,upUsers:upUsersExt,setSession:setSessionExt,logActivity:logActivityExt,checkPw,hashPw,actLog,verifyCurrentPassword,onSetServerPw}){
           const[tab,setTab]=useState("password");
           const[curPw,setCurPw]=useState("");
           const[newPw,setNewPw]=useState("");
@@ -2365,6 +2363,12 @@ function MyAccountPage({session,users,setUsers,upUsers:upUsersExt,setSession:set
             if(newPw.length<6){setMsg({type:"error",text:"New password must be at least 6 characters."});return;}
             if(newPw!==confPw){setMsg({type:"error",text:"New passwords do not match."});return;}
             if(newPw===curPw){setMsg({type:"error",text:"New password must be different from current password."});return;}
+            // Write the authoritative bcrypt hash server-side; keep a local
+            // SHA-256 only for offline login continuity.
+            if(onSetServerPw){
+              const ok=await onSetServerPw(u.id,newPw);
+              if(!ok){setMsg({type:"error",text:"Couldn't reach the server to save your new password. Try again."});return;}
+            }
             const newHash=await sha256Hash(newPw,u.username);
             (upUsersExt||setUsers)(us=>us.map(x=>x.id===u.id?{...x,passwordHash:newHash}:x));
             setCurPw(""); setNewPw(""); setConfPw("");
@@ -2493,7 +2497,7 @@ function MyAccountPage({session,users,setUsers,upUsers:upUsersExt,setSession:set
                       🔑 Change Password
                     </button>
                     <div style={{fontSize:".78rem",color:"#94a3b8",textAlign:"center"}}>
-                      Forgot your password? Ask Paulo or Mar to reset it in the Manager → Accounts panel.
+                      Forgot your password? Ask a Manager to reset it in the Manager → Accounts panel.
                     </div>
                   </div>
                 )}
@@ -2980,7 +2984,7 @@ function AuditTrailView({isMobile,fmt,setPage,restoreFinancial,labelFor,Wrap}){
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18,flexWrap:"wrap",gap:10}}>
         <div>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>🕵️ Audit Trail</div>
-          <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>Deleted financial records — who, when, why. Nothing is lost; rows can be restored.</div>
+          <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>Billing edits &amp; deletions — who, when, what changed. Deleted rows can be restored.</div>
         </div>
         <div style={{display:"flex",gap:8}}>
           <button onClick={load} style={{background:"#475569",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>↻ Refresh</button>
@@ -2991,7 +2995,7 @@ function AuditTrailView({isMobile,fmt,setPage,restoreFinancial,labelFor,Wrap}){
         {rows===null?(
           <div style={{padding:30,textAlign:"center",color:"#94a3b8"}}>Loading…</div>
         ):rows.length===0?(
-          <div style={{padding:30,textAlign:"center",color:"#94a3b8"}}>No deleted financial records yet. Deletions of expenses, check vouchers, payables, loans, collections and inflows will appear here.</div>
+          <div style={{padding:30,textAlign:"center",color:"#94a3b8"}}>Nothing recorded yet. Billing edits and deletions — and deletions of expenses, check vouchers, payables, loans, collections and inflows — will appear here.</div>
         ):(
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:isMobile?".72rem":".82rem"}}>
             <thead>
@@ -3000,27 +3004,47 @@ function AuditTrailView({isMobile,fmt,setPage,restoreFinancial,labelFor,Wrap}){
                 <th style={{padding:"9px 12px"}}>Type</th>
                 <th style={{padding:"9px 12px"}}>Action</th>
                 <th style={{padding:"9px 12px"}}>Amount</th>
-                <th style={{padding:"9px 12px"}}>Reason</th>
+                <th style={{padding:"9px 12px"}}>Reason / change</th>
                 <th style={{padding:"9px 12px"}}>By</th>
                 <th style={{padding:"9px 12px"}}></th>
               </tr>
             </thead>
             <tbody>
               {rows.map(r=>{
-                const amt=Number(r.snapshot?.amount);
+                // action → badge label + colors. Older rows have no `action`
+                // set for a delete, so default to Deleted.
+                const badge=({
+                  insert:{t:"Created",bg:"#eff6ff",c:"#2563eb"},
+                  update:{t:"Edited", bg:"#fffbeb",c:"#b45309"},
+                  restore:{t:"Restored",bg:"#f0fdf4",c:"#059669"},
+                  delete:{t:"Deleted", bg:"#fef2f2",c:"#dc2626"},
+                }[r.action])||{t:"Deleted",bg:"#fef2f2",c:"#dc2626"};
+                const newAmt=Number(r.snapshot?.amount);
+                const oldAmt=Number(r.old_snapshot?.amount);
+                const amtChanged=r.action==="update"&&Number.isFinite(oldAmt)&&Number.isFinite(newAmt)&&oldAmt!==newAmt;
                 const when=(r.performed_at||"").replace("T"," ").slice(0,16);
+                // For edits, show which fields changed (amount rendered separately).
+                const changed=(r.changed_fields||[]).filter(f=>!["updated_at","created_at"].includes(f));
                 return(
                   <tr key={r.id} style={{borderTop:"1px solid #f1f5f9"}}>
                     <td style={{padding:"8px 12px",whiteSpace:"nowrap",color:"#475569"}}>{when}</td>
                     <td style={{padding:"8px 12px"}}>{labelFor(r.table_name)}</td>
                     <td style={{padding:"8px 12px"}}>
-                      <span style={{padding:"2px 8px",borderRadius:20,fontSize:".68rem",fontWeight:700,background:r.action==="restore"?"#f0fdf4":"#fef2f2",color:r.action==="restore"?"#059669":"#dc2626"}}>{r.action==="restore"?"Restored":"Deleted"}</span>
+                      <span style={{padding:"2px 8px",borderRadius:20,fontSize:".68rem",fontWeight:700,background:badge.bg,color:badge.c}}>{badge.t}</span>
                     </td>
-                    <td style={{padding:"8px 12px",fontWeight:700,color:"#0f172a"}}>{Number.isFinite(amt)?fmt(amt):"—"}</td>
-                    <td style={{padding:"8px 12px",color:"#475569",maxWidth:260}}>{r.reason||"—"}</td>
+                    <td style={{padding:"8px 12px",fontWeight:700,color:"#0f172a",whiteSpace:"nowrap"}}>
+                      {amtChanged?(
+                        <span><span style={{color:"#94a3b8",textDecoration:"line-through",fontWeight:500}}>{fmt(oldAmt)}</span> → <span style={{color:"#b45309"}}>{fmt(newAmt)}</span></span>
+                      ):Number.isFinite(newAmt)?fmt(newAmt):"—"}
+                    </td>
+                    <td style={{padding:"8px 12px",color:"#475569",maxWidth:260}}>
+                      {r.action==="update"
+                        ? (changed.length?<span>Changed: {changed.join(", ")}</span>:(r.reason||"—"))
+                        : (r.reason||"—")}
+                    </td>
                     <td style={{padding:"8px 12px",color:"#64748b"}}>{r.performed_by||"—"}</td>
                     <td style={{padding:"8px 12px"}}>
-                      {r.action!=="restore"&&(
+                      {r.action==="delete"&&(
                         <button disabled={busy===r.id} onClick={()=>onRestore(r)} style={{background:busy===r.id?"#cbd5e1":"#059669",border:"none",borderRadius:7,padding:"5px 12px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:busy===r.id?"default":"pointer"}}>{busy===r.id?"…":"Restore"}</button>
                       )}
                     </td>
@@ -4148,7 +4172,7 @@ export default function App(){
       const local=JSON.parse(localStorage.getItem(KEYS.botsettings)||"{}");
       // sessionStorage survives refresh within the same tab but clears on browser close — safe for token
       const token=sessionStorage.getItem('fabhub:bottoken')||"";
-      return{token,chatIds:{...{general:"",ops:"",design:"",procurement:"",warehouse:"",sales:"",management:"",financialcontrol:""},...(local.chatIds||{})},hideValueInBots:local.hideValueInBots||false,poApprovers:local.poApprovers||""};
+      return{token,chatIds:{...{general:"",ops:"",design:"",procurement:"",warehouse:"",sales:"",management:"",financialcontrol:""},...(local.chatIds||{})},hideValueInBots:local.hideValueInBots||false,poApprovers:local.poApprovers!==undefined?local.poApprovers:"Marian Prile"};
     }catch{return{token:"",chatIds:{general:"",ops:"",design:"",procurement:"",warehouse:"",sales:"",management:"",financialcontrol:""},hideValueInBots:false,poApprovers:""};}
   });
   const[customClients,setCustomClients]= useState([]);
@@ -4332,7 +4356,7 @@ export default function App(){
             }
             const _exps=data.exps!=null?data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,projectId:e.deal_id||null,receiptNo:e.receipt_no,bankAccount:e.bank_account||"",expDate:e.date||null,poRef:e.po_ref||"",note:e.note||e.description||"",accountCode:e.account_code||"",month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};}) : null;
             if(_exps!=null){setExps(prev=>mlo(_exps,prev));idbE.push([KEYS.expenses,_exps]);}
-            const _prs=data.prs?.length?data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",fromMrId:p.from_mr_id||null,urgency:p.urgency||"Normal",approvedAt:p.approved_at||null,deliveryHistory:p.delivery_history?(() => { try { return JSON.parse(p.delivery_history); } catch(e) { return []; } })():undefined,acctStatus:p.acct_status||"",acctNotes:p.acct_notes||"",acctCheckedBy:p.acct_checked_by||"",acctCheckedAt:p.acct_checked_at||"",paymentBank:p.payment_bank||"",paymentRef:p.payment_ref||"",paymentOrderedBy:p.payment_ordered_by||"",paymentOrderedAt:p.payment_ordered_at||"",paidRef:p.paid_ref||"",paidDate:p.paid_date||"",paidAmt:p.paid_amt!=null?Number(p.paid_amt):null,paidBy:p.paid_by||"",discType:p.disc_type||"none",discValue:Number(p.disc_value)||0,poDiscType:p.po_discount_type||"none",poDiscValue:Number(p.po_discount_value)||0,withVat:p.with_vat||false,accountCode:p.account_code||""})):null;
+            const _prs=data.prs?.length?data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",paymentTerms:p.payment_terms||"",termsText:p.terms_text||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",fromMrId:p.from_mr_id||null,urgency:p.urgency||"Normal",approvedAt:p.approved_at||null,deliveryHistory:p.delivery_history?(() => { try { return JSON.parse(p.delivery_history); } catch(e) { return []; } })():undefined,acctStatus:p.acct_status||"",acctNotes:p.acct_notes||"",acctCheckedBy:p.acct_checked_by||"",acctCheckedAt:p.acct_checked_at||"",paymentBank:p.payment_bank||"",paymentRef:p.payment_ref||"",paymentOrderedBy:p.payment_ordered_by||"",paymentOrderedAt:p.payment_ordered_at||"",paidRef:p.paid_ref||"",paidDate:p.paid_date||"",paidAmt:p.paid_amt!=null?Number(p.paid_amt):null,paidBy:p.paid_by||"",discType:p.disc_type||"none",discValue:Number(p.disc_value)||0,poDiscType:p.po_discount_type||"none",poDiscValue:Number(p.po_discount_value)||0,withVat:p.with_vat||false,accountCode:p.account_code||""})):null;
             if(_prs){setPrs(prev=>{const sbIds=new Set(_prs.map(p=>p.id));const localOnly=prev.filter(p=>!sbIds.has(p.id));return localOnly.length?[..._prs,...localOnly]:_prs;});idbE.push([KEYS.prs,_prs]);}
             const _mreqs=data.mreqs?.length?data.mreqs.map(m=>({...m,dealId:m.deal_id,projectId:m.deal_id,itemName:m.item||"",estimatedCost:Number(m.estimated_cost)||0,estUnitCost:Number(m.estimated_cost)||0,submittedBy:m.submitted_by,requestedBy:m.submitted_by||"",statusChangedAt:m.status_changed_at,urgency:m.urgency||"Normal"})):null;
             if(_mreqs){setMreqs(prev=>mlo(_mreqs,prev));idbE.push([KEYS.mreqs,_mreqs]);}
@@ -4340,7 +4364,7 @@ export default function App(){
             if(_breqs){setBreqs(prev=>mlo(_breqs,prev));idbE.push([KEYS.breqs,_breqs]);}
             const _addenda=data.addenda?.length?data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by,kind:a.kind||"Additive",scopeItems:Array.isArray(a.scope_items)?a.scope_items:[],coBoqData:a.co_boq_data||null,salesOwner:a.sales_owner||"",awardedDate:a.awarded_date||null,subAccount:a.sub_account||null})):null;
             if(_addenda){setAddenda(prev=>mlo(_addenda,prev));idbE.push([KEYS.addenda,_addenda]);}
-            const _checklist=data.checklist?.length?data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note})):null;
+            const _checklist=data.checklist?.length?data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,workDetail:c.work_detail||c.description||c.workDetail||""})):null;
             if(_checklist){setChecklist(prev=>mlo(_checklist,prev));idbE.push([KEYS.checklist,_checklist]);}
             const _swatches=data.swatches?.length?data.swatches.map(s=>({...s,dealId:s.deal_id,refLink:s.ref_link})):null;
             if(_swatches){setSwatches(prev=>mlo(_swatches,prev));idbE.push([KEYS.swatches,_swatches]);}
@@ -4623,7 +4647,7 @@ export default function App(){
         // calendar item showed on first load then vanished the moment the app
         // regained focus (constant on mobile). Keep this in sync with the full
         // checklist mapping in the initial load / loadAllFromSupabase.
-        if(data?.checklist?.length) setChecklist(prev=>mlo(data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,sortOrder:c.sort_order})),prev));
+        if(data?.checklist?.length) setChecklist(prev=>mlo(data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,sortOrder:c.sort_order,workDetail:c.work_detail||c.description||c.workDetail||""})),prev));
       }catch(e){console.warn("Focus refresh:",e.message);}
     };
     const onVisibility=()=>{ if(document.visibilityState==="visible") refresh(); };
@@ -4655,11 +4679,11 @@ export default function App(){
     if(data.exps?.length){const mappedExps=data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,createdBy:e.created_by,bankAccount:e.bank_account||"",expDate:e.date||null,poRef:e.po_ref||"",payee:e.supplier||"",vatable:e.vatable??undefined,inputVat:e.input_vat!=null?Number(e.input_vat):undefined,ewtRate:e.ewt_rate!=null?Number(e.ewt_rate):undefined,ewtAmount:e.ewt_amount!=null?Number(e.ewt_amount):undefined,netAmount:e.net_amount!=null?Number(e.net_amount):undefined,month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};});setExps(prev=>mlo(mappedExps,prev));idbE.push([KEYS.expenses,mappedExps]);}
     if(data.swos?.length){const ws=data.swos.map(swoFromSb);setSwos(prev=>mlo(ws,prev));idbE.push([KEYS.swos,ws]);}
     if(data.inflows?.length){const infs=data.inflows.map(i=>({...i,dealId:i.deal_id,refNo:i.ref_no}));setInfs(prev=>mlo(infs,prev));idbE.push([KEYS.inflows,infs]);}
-    if(data.prs?.length){const ps=data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",acctStatus:p.acct_status||"",acctNotes:p.acct_notes||"",acctCheckedBy:p.acct_checked_by||"",acctCheckedAt:p.acct_checked_at||"",paymentBank:p.payment_bank||"",paymentRef:p.payment_ref||"",paymentOrderedBy:p.payment_ordered_by||"",paymentOrderedAt:p.payment_ordered_at||"",paidRef:p.paid_ref||"",paidDate:p.paid_date||"",paidAmt:p.paid_amt!=null?Number(p.paid_amt):null,paidBy:p.paid_by||"",discType:p.disc_type||"none",discValue:Number(p.disc_value)||0,poDiscType:p.po_discount_type||"none",poDiscValue:Number(p.po_discount_value)||0,withVat:p.with_vat||false,accountCode:p.account_code||""}));setPrs(prev=>mlo(ps,prev));idbE.push([KEYS.prs,ps]);}
+    if(data.prs?.length){const ps=data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",paymentTerms:p.payment_terms||"",termsText:p.terms_text||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",acctStatus:p.acct_status||"",acctNotes:p.acct_notes||"",acctCheckedBy:p.acct_checked_by||"",acctCheckedAt:p.acct_checked_at||"",paymentBank:p.payment_bank||"",paymentRef:p.payment_ref||"",paymentOrderedBy:p.payment_ordered_by||"",paymentOrderedAt:p.payment_ordered_at||"",paidRef:p.paid_ref||"",paidDate:p.paid_date||"",paidAmt:p.paid_amt!=null?Number(p.paid_amt):null,paidBy:p.paid_by||"",discType:p.disc_type||"none",discValue:Number(p.disc_value)||0,poDiscType:p.po_discount_type||"none",poDiscValue:Number(p.po_discount_value)||0,withVat:p.with_vat||false,accountCode:p.account_code||""}));setPrs(prev=>mlo(ps,prev));idbE.push([KEYS.prs,ps]);}
     if(data.mreqs?.length){const ms=data.mreqs.map(m=>({...m,dealId:m.deal_id,projectId:m.deal_id,itemName:m.item||"",estimatedCost:Number(m.estimated_cost)||0,estUnitCost:Number(m.estimated_cost)||0,submittedBy:m.submitted_by,requestedBy:m.submitted_by||"",statusChangedAt:m.status_changed_at}));setMreqs(prev=>mlo(ms,prev));idbE.push([KEYS.mreqs,ms]);}
     if(data.breqs?.length){const bs2=data.breqs.map(b=>({...b,dealId:b.deal_id,projectId:b.deal_id,dateNeeded:b.date_needed,approvedBy:b.approved_by,submittedBy:b.submitted_by,requestedBy:b.submitted_by||"",releasedBy:b.released_by||"",releasedAt:b.released_at,statusChangedAt:b.status_changed_at}));setBreqs(prev=>mlo(bs2,prev));idbE.push([KEYS.breqs,bs2]);}
     if(data.addenda?.length){const as=data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by,kind:a.kind||"Additive",scopeItems:Array.isArray(a.scope_items)?a.scope_items:[],coBoqData:a.co_boq_data||null,salesOwner:a.sales_owner||"",awardedDate:a.awarded_date||null,subAccount:a.sub_account||null}));setAddenda(prev=>mlo(as,prev));idbE.push([KEYS.addenda,as]);}
-    if(data.checklist?.length){const cs=data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,sortOrder:c.sort_order}));setChecklist(prev=>mlo(cs,prev));idbE.push([KEYS.checklist,cs]);}
+    if(data.checklist?.length){const cs=data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,sortOrder:c.sort_order,workDetail:c.work_detail||c.description||c.workDetail||""}));setChecklist(prev=>mlo(cs,prev));idbE.push([KEYS.checklist,cs]);}
     if(data.swatches?.length){const ss=data.swatches.map(s=>({...s,dealId:s.deal_id,refLink:s.ref_link}));setSwatches(prev=>mlo(ss,prev));idbE.push([KEYS.swatches,ss]);}
     if(data.actLog?.length)      setActLog(prev=>mlo(data.actLog.map(a=>({...a,dealId:a.deal_id})),prev));
     // Server is authoritative for cash positions on a successful read (even an
@@ -4844,6 +4868,7 @@ export default function App(){
     qty_delivered:Number(r.qtyDelivered)||0, delivery_date:r.deliveryDate||null,
     dr_no:r.drNo||"", notes:r.notes||"", created_by:r.createdBy||r.requestedBy||"",
     po_number:r.poNumber||"", po_date:r.poDate||null,
+    payment_terms:r.paymentTerms||"", terms_text:r.termsText||"",
     delivery_note:r.deliveryNote||"", requested_by:r.requestedBy||"",
     approved_by:r.approvedBy||"", project_name:r.projectName||"",
     with_vat:r.withVat||false,
@@ -4907,7 +4932,7 @@ export default function App(){
   });
   const toSbChecklist = r=>({
     id:r.id, deal_id:r.dealId||r.projectId||null, type:r.type||"Task", title:r.title||"",
-    description:r.description||"", status:r.status||"Pending",
+    description:r.workDetail||r.description||"", status:r.status||"Pending",
     assigned_to:r.assignedTo||"", due_date:r.dueDate||null,
     risk_note:r.riskNote||"", sort_order:r.sortOrder||0,
     dept:r.dept||"", priority:r.priority||"Normal",
@@ -4916,11 +4941,25 @@ export default function App(){
     qty:Number(r.qty)||0, unit:r.unit||"pcs",
     category:r.category||null, location:r.location||null,
   });
+  // NOTE: password_hash is deliberately NOT written here. The hash column is
+  // owned by the server: it is set only via the set_password() RPC (bcrypt) and
+  // upgraded in place by verify_login() on login. Syncing it from local state
+  // used to clobber the server's bcrypt hash with a stale client-side SHA-256
+  // one on every ordinary user-row sync (approve / deactivate / profile edit),
+  // which could even revert a changed password to an older value. Omitting the
+  // field means an upsert leaves the existing hash untouched.
   const toSbUser = u=>({
     id:u.id, name:u.name||"", username:u.username||"", role:u.role||"Sales",
-    title:u.title||"", status:u.status||"active", password_hash:u.passwordHash||"",
+    title:u.title||"", status:u.status||"active",
     email:u.email||"", created_at:u.createdAt||null,
   });
+  // Set a user's password server-side (bcrypt, in Postgres). Authorization is
+  // enforced inside the RPC against the caller's JWT (Manager, or self).
+  const setPasswordServer = async(id,pw)=>{
+    if(!isSupabaseReady()) return false;
+    try{ const{error}=await supabase.rpc('set_password',{p_user_id:id,p_new_password:pw}); if(error){console.error('set_password:',error.message);return false;} return true; }
+    catch(e){ console.error('set_password:',e); return false; }
+  };
   const toSbBudget = (dealId,b)=>({
     deal_id:dealId, materials:Number(b.Materials)||0, labor:Number(b.Labor)||0,
     overhead:Number(b.Overhead)||0, subcon:Number(b.Subcon)||0, notes:b.notes||"",
@@ -4981,14 +5020,22 @@ export default function App(){
     // means roleCanInsert returns true, matching the server. (Previously listed
     // Manager/ProjectMover only, which wrongly blocked the bulk-sync push for
     // Sales/Design/Finance even though RLS now allows them.)
-    expenses:["Manager","Finance","Accounting","FinanceAssistant"],
+    // Finance cost-entry tables: derive straight from the canonical PERMISSIONS
+    // map (core.js) so this push-gate can't drift out of sync with RLS the way it
+    // did before — expenses was missing SalesOpsAdmin/Procurement (migration 062),
+    // silently dropping their rows on bulk sync, and payables was absent entirely
+    // (unmapped → push attempted for every role → server-rejected "changes NOT
+    // saved" false alarm). PERMISSIONS is transcribed in lock-step with the
+    // migrations, so referencing it keeps one source of truth.
+    expenses:PERMISSIONS.expenses.insert,
+    payables:PERMISSIONS.payables.insert,
     billing_milestones:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"],
     billing_payments:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"],
     commission_payouts:["Manager","Finance","FinanceAssistant"],
-    project_budgets:["Manager","QS"],
+    project_budgets:["Manager","QS","Sales","SalesOpsAdmin"], // award (🏆) auto-writes a starting budget; must match migration 068 INSERT policy
     // activity_log is INSERT=AUTH server-side — any logged-in user may write it.
   };
-  const ROLE_ALIASES={Operations:"ProjectMover",Ops:"ProjectMover","Cost Control":"Finance",Admin:"Manager"};
+  const ROLE_ALIASES={Operations:"ProjectMover",Ops:"ProjectMover","Cost Control":"Finance",Admin:"Manager",ProcurementManager:"Procurement"};
   const roleCanInsert=(table)=>{
     const allowed=INSERT_ROLES[table];
     if(!allowed) return true; // unmapped table → don't change push behavior
@@ -5373,7 +5420,7 @@ export default function App(){
   };
   const deleteSWO=(id)=>{
     const wo=swos.find(w=>w.id===id);
-    if(wo&&role!=="Manager"&&role!=="Procurement"&&wo.requestedBy!==session?.name) return toastEmit&&toastEmit("Only Managers, Procurement, or the creator can delete work orders.","error");
+    if(wo&&role!=="Manager"&&!isProcurementRole(role)&&wo.requestedBy!==session?.name) return toastEmit&&toastEmit("Only Managers, Procurement, or the creator can delete work orders.","error");
     upSwos(ws=>ws.filter(w=>w.id!==id));if(isSupabaseReady()) sbDelete('subcon_work_orders',id).catch(()=>{});
   };
 
@@ -5587,7 +5634,7 @@ export default function App(){
   .notes-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px;font-size:11px;color:#475569;margin-top:8px}
   @media print{body{padding:10px}}
 </style></head><body>
-<div class="logo-area"><div><div class="co-name">GMD Pro Solutions</div><div class="co-sub">Interior Design & Fabrication · info@gmdpro.com.ph</div></div></div>
+<div class="logo-area"><div><div class="co-name">GMD PRODUCTIONS INC</div><div class="co-sub">Interior Design & Fabrication · info@gmdpro.com.ph</div></div></div>
 <div class="doc-title">GOODS RECEIVING NOTE</div>
 <div class="meta-grid">
   <div class="meta-row"><span class="meta-label">GRN / DR No.:</span><span class="meta-val"><strong>${drNo||"— (none)"}</strong></span></div>
@@ -5618,7 +5665,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   <div class="sig-box"><div class="sig-line"><span class="sig-name">&nbsp;</span></div>Supplier Representative</div>
 </div>
 <div style="margin-top:20px;font-size:9px;color:#94a3b8;text-align:center;border-top:1px solid #f1f5f9;padding-top:8px">
-  This document serves as official receiving record. Any discrepancies must be reported within 24 hours. · GMD Pro Solutions · ${recvDate}
+  This document serves as official receiving record. Any discrepancies must be reported within 24 hours. · GMD PRODUCTIONS INC · ${recvDate}
 </div>
 </body></html>`;
     const w=window.open("","_blank","width=800,height=600");
@@ -5629,6 +5676,23 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   const createProjectCard=async(dealId,dealData)=>{
     const card=emptyProjectCard(dealId,dealData);
+    // Never reassign the primary key of a card that already exists for this deal.
+    // emptyProjectCard mints a fresh uid() (and ~39 fresh task uids) on every call.
+    // The write below upserts on the UNIQUE deal_id, so on a re-award (or a second
+    // "create card" pass) the ON CONFLICT(deal_id) DO UPDATE would rewrite
+    // project_cards.id with the new uid — orphaning every existing
+    // project_card_dept_tasks.card_id, since that FK is ON DELETE CASCADE with no
+    // ON UPDATE CASCADE. Postgres rejects it as
+    // project_card_dept_tasks_card_id_fkey, a non-retryable "data" error that sync
+    // drops and surfaces as the red "bad data — redo it" toast on award.
+    // Reuse the existing card's id AND its existing department/task ids so the
+    // deal_id upsert stays a same-PK update and the task upserts (keyed on task id)
+    // don't insert a duplicate checklist. Same id-adoption guard as syncProjectCard.
+    const existing=pcards[dealId];
+    if(existing&&isUUID(existing.id)){
+      card.id=existing.id;
+      if(existing.departments) card.departments=existing.departments;
+    }
     upPcards(ps=>({...ps,[dealId]:card}));
     logActivity(dealId,"Project Card Created",`${dealData?.client} — project card created for all departments`,session?.name);
     if(isSupabaseReady()){
@@ -5908,7 +5972,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           actualCost:Number(rec.actual_cost)||0,actUnitCost:Number(rec.actual_cost)||0,
           budgetCategory:rec.budget_category,qtyDelivered:Number(rec.qty_delivered)||0,
           deliveryDate:rec.delivery_date,deliveryNote:rec.delivery_note||"",drNo:rec.dr_no,
-          createdBy:rec.created_by,poNumber:rec.po_number||"",poDate:rec.po_date||"",
+          createdBy:rec.created_by,poNumber:rec.po_number||"",poDate:rec.po_date||"",paymentTerms:rec.payment_terms||"",termsText:rec.terms_text||"",
           requestedBy:rec.requested_by||rec.created_by||"",approvedBy:rec.approved_by||"",
           projectName:rec.project_name||"",fromMrId:rec.from_mr_id||null,urgency:rec.urgency||"Normal",
           approvedAt:rec.approved_at||null,
@@ -6053,7 +6117,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       const{eventType,new:rec,old:oldRow}=payload;
       if(eventType==='DELETE'){setChecklist(cs=>cs.filter(c=>c.id!==oldRow.id));return;}
       if(rec){
-        const item={...rec,projectId:rec.deal_id,dealId:rec.deal_id,assignedTo:rec.assigned_to,dueDate:rec.due_date,riskNote:rec.risk_note,sortOrder:rec.sort_order};
+        const item={...rec,projectId:rec.deal_id,dealId:rec.deal_id,assignedTo:rec.assigned_to,dueDate:rec.due_date,riskNote:rec.risk_note,sortOrder:rec.sort_order,workDetail:rec.work_detail||rec.description||rec.workDetail||""};
         setChecklist(cs=>eventType==='UPDATE'?cs.map(c=>c.id===rec.id?{...c,...item}:c):cs.find(c=>c.id===rec.id)?cs:[...cs,item]);
       }
     });
@@ -6299,11 +6363,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     sendTelegramNotification("management",msg);
     logActivity(dealId,"Billing Setup Requested",`Jessica notified to set up billing milestones for ${client||"the awarded project"}.`,session?.name||role);
   };
-  const updateMilestone=(id,ch)=>{
+  const updateMilestone=(id,ch,audit)=>{
     if(ch.status==='Fully Paid'){
       const ms=billings.find(b=>b.id===id);
       const msDeal=ms?.dealId?deals.find(d=>d.id===ms.dealId):null;
-      const msg=`✅ <b>Milestone Fully Paid</b>\nClient: <b>${msDeal?.client||ms?.title||"?"}</b>\nMilestone: ${ms?.title||"—"}\nAmount: ₱${Number(ms?.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nUpdated by: ${session?.name||"Finance"}`;
+      const msg=`✅ <b>Milestone Fully Paid</b>\nProject: <b>${msDeal?.contact||ms?.name||ms?.title||"—"}</b>\nClient: ${msDeal?.client||"—"}\nMilestone: ${ms?.name||ms?.title||"—"}\nAmount: ₱${Number(ms?.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nUpdated by: ${session?.name||"Finance"}`;
       sendTelegramNotification("sales",msg);
       sendTelegramNotification("management",msg);
     }
@@ -6353,6 +6417,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         if(isSupabaseReady()) sbSyncOne("deals",nd,toSbDeal);
         return nd;
       }));
+    }
+    // Payment-mutation audit trail (edit / bounce / clear / restore). Deletes are
+    // already archived via confirmFinancialDelete; edits previously left no trace.
+    if(audit&&audit.action){
+      const aMs=billings.find(b=>b.id===id);
+      logActivity(aMs?.dealId||dealId,audit.action,audit.detail||"",session?.name||role);
     }
   };
   const deleteMilestone=async(id)=>{
@@ -6438,7 +6508,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const msTx=calcTax(milestone?.amount||0,milestone?.receiptType??milestone?.receipt_type??payDeal?.receiptType??"OR",milestone?.withholding??payDeal?.withholding??false);
     const totalPaidAfter=(milestone?.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0)+Number(payment.amount||0);
     const isFullyPaid=totalPaidAfter>=msTx.netReceivable;
-    const payMsg=`💵 <b>Payment Received</b>\nClient: <b>${payDeal?.client||milestone?.title||"?"}</b>\nMilestone: ${milestone?.title||"—"}\nAmount: ₱${Number(payment.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nRef: ${payment.refNo||payment.ref_no||"—"}\nRecorded by: ${payment.recordedBy||session?.name||"Finance"}${isFullyPaid?"\n✅ Milestone fully paid!":""}`;
+    // Where the money landed: resolve the stored bank code (e.g. "bpi") to its
+    // short name, then append the method (Bank Transfer / Cheque / Cash…).
+    const payBankCode=payment.bank??payment.bank_id;
+    const payBankRow=(BANKS||[]).find(x=>x.id===payBankCode||x.short===payBankCode||x.name===payBankCode);
+    const payBankLabel=payBankCode==="cash"?"Cash":payBankRow?payBankRow.short:(payBankCode||"—");
+    const payMethod=payment.method||payment.payment_method||"";
+    const depositedTo=`${payBankLabel}${payMethod?` · ${payMethod}`:""}`;
+    // "Credited" = value date (when funds were actually available); fall back to
+    // the date received, then today.
+    const creditedOn=payment.valueDate||payment.value_date||payment.date||today;
+    const payMsg=`💵 <b>Payment Received</b>\nProject: <b>${payDeal?.contact||milestone?.name||milestone?.title||"—"}</b>\nClient: ${payDeal?.client||"—"}\nDeposited to: ${depositedTo}\nAmount: ₱${Number(payment.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nCredited: ${creditedOn}\nRef: ${payment.refNo||payment.ref_no||"—"}\nRecorded by: ${payment.recordedBy||session?.name||"Finance"}${isFullyPaid?"\n✅ Milestone fully paid!":""}`;
     sendTelegramNotification("sales",payMsg);
     sendTelegramNotification("management",payMsg);
     if(dealId) logActivity(dealId,"Payment Received",`₱${Number(payment.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})} on ${milestone?.name||"milestone"}${payment.refNo?` · Ref: ${payment.refNo}`:""}`,payment.recordedBy||session?.name);
@@ -6660,7 +6740,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const mr=mreqs.find(m=>m.id===id);
     if(!mr) return;
     const isOwner=mr.requestedBy&&session?.name&&mr.requestedBy===session.name;
-    if(role!=="Manager"&&role!=="Procurement"&&!isOwner) return toastEmit("Only Managers, Procurement, or the submitter can delete material requests.","error");
+    if(role!=="Manager"&&!isProcurementRole(role)&&!isOwner) return toastEmit("Only Managers, Procurement, or the submitter can delete material requests.","error");
     upMreqs(ms=>ms.filter(m=>m.id!==id));if(isSupabaseReady()) sbDelete('material_requests',id).catch(()=>{});
   };
   const delBR        =(id)=>{
@@ -6781,7 +6861,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   };
   const deletePR   =(id)=>{
     const pr=prs.find(p=>p.id===id);
-    if(pr&&role!=="Manager"&&role!=="Procurement"&&pr.createdBy!==session?.name) return toastEmit("Only Managers, Procurement, or the creator can delete purchase requests.","error");
+    if(pr&&role!=="Manager"&&!isProcurementRole(role)&&pr.createdBy!==session?.name) return toastEmit("Only Managers, Procurement, or the creator can delete purchase requests.","error");
     upPrs(ps=>ps.filter(p=>p.id!==id));
     if(isSupabaseReady()&&isUUID(id)){
       sbDelete('purchase_requests',id).catch(()=>{
@@ -6827,7 +6907,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const upSwatches =useCallback(fn=>setSwatches(p=>{const n=fn(p);persist(KEYS.swatches,n);return n;}),[persist]);
   const delSwatch  =(id)=>{
     const sw=swatches.find(s=>s.id===id);
-    if(sw&&role!=="Manager"&&role!=="Procurement"&&sw.addedBy!==session?.name) return toastEmit("Only Managers, Procurement, or the creator can delete swatch items.","error");
+    if(sw&&role!=="Manager"&&!isProcurementRole(role)&&sw.addedBy!==session?.name) return toastEmit("Only Managers, Procurement, or the creator can delete swatch items.","error");
     upSwatches(ss=>ss.filter(s=>s.id!==id));if(isSupabaseReady()) sbDelete('swatches',id).catch(()=>{});
   };
   const upChecklist=useCallback(fn=>setChecklist(p=>{const n=fn(p);persist(KEYS.checklist,n);return n;}),[persist]);
@@ -7079,11 +7159,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           viaServer=true;
           u={id:user.id,username:user.username,name:user.name,role:user.role,title:user.title||user.role,status:user.status};
           needsUpgrade=!!user.needs_upgrade;
-        } else if(error && !defUser){
-          return error;   // server rejected credentials and no built-in default to fall back to
+        } else if(error){
+          // Server was REACHABLE and rejected the credentials. Never fall back
+          // to a local/default hash here — doing so let the seeded default
+          // password authenticate even after a user changed their real
+          // (server-side) password. Only a genuinely unreachable server (the
+          // catch below) may fall through to the offline local check.
+          return error;
         }
-        // else: rejected but a DEFAULT_USERS entry exists → fall through to the local check
-      }catch(e){ /* network/offline → fall back to local/default check below */ }
+      }catch(e){ /* network/offline → fall back to local check below */ }
     }
     if(!viaServer){
       let localU=users.find(x=>x.username.toLowerCase()===unameLower);
@@ -7091,9 +7175,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       if(!localU) return "Username not found.";
       if(localU.status==="pending") return "Your account is pending approval by a Manager.";
       if(localU.status==="inactive") return "Your account has been deactivated. Contact Paulo.";
-      const hashToCheck=localU.passwordHash||(defUser?.passwordHash||"");
-      let valid=hashToCheck?await checkPw(password,hashToCheck,localU.username):false;
-      if(!valid&&defUser) valid=await checkPw(password,defUser.passwordHash,localU.username);
+      // Offline only. Check the user's own stored hash — no default-password
+      // fallback (the seeded DEFAULT_USERS carry no password now).
+      const hashToCheck=localU.passwordHash||"";
+      const valid=hashToCheck?await checkPw(password,hashToCheck,localU.username):false;
       if(!valid) return "Incorrect password.";
       needsUpgrade=!hashToCheck.startsWith("sha256:");
       u=localU;
@@ -7101,12 +7186,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(!u) return "Username not found.";
     if(u.status==="pending") return "Your account is pending approval by a Manager.";
     if(u.status==="inactive") return "Your account has been deactivated. Contact Paulo.";
-    // Auto-upgrade legacy btoa hash to SHA-256 on successful login
-    if(needsUpgrade){
+    // Hash upgrade: on the SERVER path this is already done — verify_login()
+    // re-hashes to bcrypt in place on any successful non-bcrypt login. Doing it
+    // again here would overwrite that bcrypt with a client-side SHA-256 hash and
+    // the migration would never stick. So only upgrade locally when we fell back
+    // to the offline/local check (no server involved).
+    if(needsUpgrade && !viaServer){
       const newHash=await sha256Hash(password,u.username);
-      const upgraded={...u,passwordHash:newHash};
-      upUsers(us=>us.map(x=>x.id===u.id?upgraded:x));
-      if(isSupabaseReady()) sbUpsert('user_profiles',toSbUser(upgraded),'id').catch(()=>{});
+      upUsers(us=>us.map(x=>x.id===u.id?{...x,passwordHash:newHash}:x));
     }
     const sess={userId:u.id,username:u.username,name:u.name,role:u.role,title:u.title||u.role};
     setSession(sess); setRole(u.role);
@@ -7156,12 +7243,32 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const rejectUser  =(id)    =>upUsers(us=>us.map(u=>{if(u.id!==id)return u;const n={...u,status:"rejected"};if(isSupabaseReady())sbUpsert('user_profiles',toSbUser(n),'id').catch(()=>{});return n;}));
   const deactivateUser=(id)  =>upUsers(us=>us.map(u=>{if(u.id!==id)return u;const n={...u,status:"inactive"};if(isSupabaseReady())sbUpsert('user_profiles',toSbUser(n),'id').catch(()=>{});return n;}));
   const deleteUser  =(id)    =>{upUsers(us=>us.filter(u=>u.id!==id));if(isSupabaseReady())sbDelete('user_profiles',id).catch(()=>{});};
-  const resetPw     =async(id,pw)=>{const u=users.find(x=>x.id===id);if(!u)return;const n={...u,passwordHash:await sha256Hash(pw,u.username)};upUsers(us=>us.map(x=>x.id===id?n:x));if(isSupabaseReady())sbUpsert('user_profiles',toSbUser(n),'id').catch(()=>{});};
+  const resetPw     =async(id,pw)=>{
+    const u=users.find(x=>x.id===id);if(!u)return false;
+    // Keep a local SHA-256 for offline login continuity; the authoritative
+    // (bcrypt) hash is written server-side via the RPC.
+    const n={...u,passwordHash:await sha256Hash(pw,u.username)};
+    upUsers(us=>us.map(x=>x.id===id?n:x));
+    // Only report failure when the server was reachable but the RPC failed —
+    // offline we intentionally keep just the local hash and still succeed.
+    if(isSupabaseReady() && !(await setPasswordServer(id,pw))) return false;
+    return true;
+  };
   const createUser  =async(name,username,password,role,title)=>{
     const uname=username.toLowerCase().trim();
     const newUser={id:uid(),name:name.trim(),username:uname,passwordHash:await sha256Hash(password,uname),role,title:title.trim()||role,status:"active",createdAt:today};
+    if(isSupabaseReady()){
+      // Insert the row first (toSbUser omits the hash), then set the bcrypt
+      // password server-side. If that RPC fails, roll the row back rather than
+      // leave a passwordless account nobody can ever log into.
+      await sbUpsert('user_profiles',toSbUser(newUser),'id');
+      if(!(await setPasswordServer(newUser.id,password))){
+        sbDelete('user_profiles',newUser.id).catch(()=>{});
+        return {ok:false,error:"Couldn't set the password on the server — account not created. Try again."};
+      }
+    }
     upUsers(us=>[...us,newUser]);
-    if(isSupabaseReady()) sbUpsert('user_profiles',toSbUser(newUser),'id').catch(()=>{});
+    return {ok:true};
   };
   // ── Derived ───────────────────────────────────────────────────────────────
   const wonDeals    =useMemo(()=>deals.filter(d=>WON_STAGES.includes(d.stage)),[deals]);
@@ -7442,6 +7549,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[designModal,setDesignModal]=useState(false);
   const[designForm, setDesignForm] =useState({});
   const[confirmDel, setConfirmDel] =useState(null);
+  const[delAck,     setDelAck]     =useState(false);  // forces an explicit tick before deleting a deal that has financial records
   const[stageFilter,  setStageFilter]  = useState(false);  // pipeline stage click filter
   const[pipeSearch,   setPipeSearch]   = useState("");     // pipeline search query
   const[pipeTab,      setPipeTab]      = useState("pipeline"); // "pipeline" | "awarded" | "updates"
@@ -7461,8 +7569,6 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[pipeNoAward,  setPipeNoAward]  = useState(false);  // awarded tab: show only won projects with no award date set
   const[showActChat,  setShowActChat]  = useState(false); // pipeline activity pop-up
   const[rowMenu,      setRowMenu]      = useState(null);   // {deal,x,y} — pipeline row overflow menu
-  const[pipeDragId,   setPipeDragId]   = useState(null);   // deal id being dragged between temperature columns
-  const[pipeDragOver, setPipeDragOver] = useState(null);   // temperature column currently hovered during drag
   const[coldSweepDismissed,setColdSweepDismissed]=useState(false); // hide stale-cold review banner for this session
   const[priceModal,   setPriceModal]   = useState(null);   // {deal} — QS set price modal
   const[quickAddClientOpen,setQuickAddClientOpen]=useState(false);
@@ -7608,6 +7714,19 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // Standby PO umbrellas are intentionally ₱0 (their value lives on the
     // drawdown jobs), so exempt them from the awarded-value requirement.
     if(WON_STAGES.includes(data.stage)&&!data.standbyPO&&(!data.value||Number(data.value)<=0)){toastEmit("Contract value is required for awarded projects.","error");return;}
+    // Awarding a project is exclusively the Award modal's job (it creates the Job
+    // Order, project card and starting budget). The deal edit form must never move
+    // a deal INTO a won stage — doing so marked it "awarded" with none of that
+    // scaffolding. Allowed: editing a deal that is ALREADY in a won stage (Ops
+    // pipeline progress). Blocked: a new deal saved directly at a won stage, or an
+    // edit lifting a pre-award deal into one — use the 🏆 Award button instead.
+    if(WON_STAGES.includes(data.stage)){
+      const prevStage=editDeal?deals.find(d=>d.id===editDeal)?.stage:null;
+      if(!editDeal||!WON_STAGES.includes(prevStage)){
+        toastEmit("🏆 To award a project, use the Award button (🏆) so its Job Order, project card and budget are created. Set the stage back to a pipeline stage to save this edit.","warning",7000);
+        return;
+      }
+    }
     // Placeholder / import-artifact guard. A real contract is never ₱1, and a
     // deal can't carry invoiced/paid amounts with no contract value. Both are the
     // signature of a re-import where the value column didn't map (deals came in at
@@ -7877,6 +7996,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // project card even when the project has addendums, so only parent deals
     // (no parentDealId) get a projs entry on award.
     const staging=deals.find(x=>x.id===id);
+    // Awarding is exclusively the Award modal's job — it issues the Job Order,
+    // project card and starting budget and sends the award notification. Dragging
+    // a deal from a pre-award stage straight into a won stage did NONE of that,
+    // leaving an "awarded" deal Operations never received. Block that one
+    // transition (non-won → won) and point to the 🏆 Award button. Moving BETWEEN
+    // won stages (already-awarded pipeline progress) stays free.
+    if(WON_STAGES.includes(st)&&staging&&!WON_STAGES.includes(staging.stage)){
+      toastEmit("🏆 Use the Award button (🏆) to award a project — it sets up the Job Order, project card and budget. Drag-to-award is disabled.","warning",6000);
+      return;
+    }
     if(WON_STAGES.includes(st)&&!staging?.parentDealId) upProjs(ps=>ps[id]?ps:{...ps,[id]:emptyProject()});
     if(st==="14 · Completed"){
       const d=deals.find(x=>x.id===id);
@@ -8632,7 +8761,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // for payment. Approval is separate from receiving-verification: verification
   // confirms goods/work arrived; approval authorizes the spend. A payable must
   // be Approved before it can be paid or routed to a check voucher.
-  const canApprovePayables=["Manager","Finance"].includes(role);
+  // Named individuals granted payable-approval WITHOUT holding the Finance role,
+  // mirroring the by-username deal-delete grantees (migrations 033/034). Keeps a
+  // FinanceAssistant's role intact while lending them Finance-Manager approval
+  // authority — used for Mark Acejo during Aerwin's turnover. Must stay in sync
+  // with the DB gate in supabase_migration_065 (enforce_payable_approval).
+  const PAYABLE_APPROVAL_GRANTEES=["mark"];
+  const canApprovePayables=["Manager","Finance"].includes(role)
+    || PAYABLE_APPROVAL_GRANTEES.includes((session?.username||"").toLowerCase());
   const payApproved=p=>((p?.approvalStatus)||"Approved")==="Approved"; // legacy rows (no field) treated as approved
   const approvePayable=async(id)=>{
     const p=payables.find(x=>x.id===id); if(!p) return;
@@ -8664,6 +8800,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const recordPayablePayment=(id,payAmt,opts={})=>{
     const p=payables.find(x=>x.id===id);
     if(!p) return;
+    // Approval gate — enforced at the function level, not just by hiding buttons.
+    // Migration 063's DB trigger only guards approval_status, not status/paid, so
+    // the "cannot pay an unapproved payable" rule must live here to hold for every
+    // pay surface (the PO/WO cost view once let a verified-but-unapproved payable
+    // through). Legacy rows with no approvalStatus are treated as approved.
+    if(!payApproved(p)){toastEmit("This payable isn't approved yet — a Manager or Finance Manager must approve it before payment.","error",7000);return;}
     const amount=Number(p.amount)||0;
     const already=Number(p.paidAmount)||0;
     const add=Number(payAmt)||0;
@@ -8688,6 +8830,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   };
   const markPayablePaid=(id)=>{
     const p=payables.find(x=>x.id===id);
+    if(p&&!payApproved(p)){toastEmit("This payable isn't approved yet — approval is required before it can be marked paid.","error",7000);return;}
     const amount=Number(p?.amount)||0;
     upPayables(ps=>ps.map(p=>p.id===id?{...p,status:"Paid",paidAmount:amount,paidDate:today}:p));
     if(isSupabaseReady()) sbUpsert("payables",{id,status:"Paid",paid_amount:amount,paid_date:today},"id").catch(()=>{});
@@ -8721,6 +8864,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const p=payables.find(x=>x.id===id);
     if(!p) return;
     if(p.cvId||p.status==="Check Issued"){toastEmit("This payable already has a check voucher.","info");setPage("checkvouchers");return;}
+    if(!payApproved(p)){toastEmit("This payable isn't approved yet — it must be approved before routing to a check voucher.","error",7000);return;}
     const cvId=uid();
     const nextNo=await claimDocNumber("CV",vouchers.map(v=>v.cvNo),4,true);
     const particulars=`Payment for Invoice ${p.invoiceNumber||p.invoiceRef||"—"}${p.poNumber?` (PO ${p.poNumber})`:""}`;
@@ -8902,7 +9046,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
       {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"BOQ"}]},
       {group:"Warehousing", items:[{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"}]},
-      {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"audit",l:"Audit"},{id:"botsettings",l:"Bot Settings"},{id:"activity",l:"Team Activity"}]},
+      {group:"Admin",       items:[{id:"audit",l:"Audit"},{id:"botsettings",l:"Bot Settings"},{id:"activity",l:"Team Activity"}]},
     ],
     Audit:[
       {group:"Overview", items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
@@ -8912,7 +9056,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     HRAdmin:[
       {group:"Overview", items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
       {group:"Audit",    items:[{id:"audit",l:"Audit"}]},
-      {group:"Admin",    items:[{id:"accounts",l:"Accounts"},{id:"activity",l:"Team Activity"}]},
+      {group:"Admin",    items:[{id:"activity",l:"Team Activity"}]},
     ],
     Accounting:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"acctdash",l:"Accounting"}]},
@@ -8967,6 +9111,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Overview",   items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
       {group:"Finance",    items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"finance-reports",l:"Reports"}]},
       {group:"Accounting", items:[{id:"coa",l:"Chart of Accounts"}]},
+    ],
+    // Procurement Manager sees the same workspace as Procurement — the only
+    // difference is authority (they approve POs), not navigation.
+    ProcurementManager:[
+      {group:"Overview",   items:[{id:"home",l:"Overview"}]},
+      {group:"Orders",     items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
+      {group:"Projects",   items:[{id:"projects",l:"Projects"},{id:"clients",l:"Clients"}]},
     ],
   };
   const Nav=useStableComponent(()=>{
@@ -9439,22 +9590,64 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {/* Global Modals */}
       <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal} deals={deals} addenda={addenda} role={role}/>
       <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={projList} clientName={clientName} chartOfAccounts={chartOfAccounts} suppliers={suppliers} exps={exps} poRefOptions={[...new Set([...prs.map(p=>p.poNumber),...swos.map(w=>w.woNumber)].filter(Boolean))]}/>
-      <Modal open={confirmDel!==null} onClose={()=>setConfirmDel(null)} title="Delete this deal?">
-        {(()=>{const d=deals.find(x=>x.id===confirmDel);return(
+      <Modal open={confirmDel!==null} onClose={()=>{setConfirmDel(null);setDelAck(false);}} title="Delete this deal?">
+        {(()=>{
+          const d=deals.find(x=>x.id===confirmDel);
+          // Compute what's ACTUALLY attached to this deal so the warning reflects
+          // reality instead of a generic list. Deleting a deal with delivered POs,
+          // logged expenses, or received payments erases real financial history
+          // and skews the linked project's margin — so those gate the button.
+          const dMs   =billings.filter(b=>b.dealId===confirmDel);
+          const dPrs  =prs.filter(p=>(p.dealId||p.projectId)===confirmDel);
+          const dExps =exps.filter(e=>(e.projectId||e.dealId)===confirmDel);
+          const dJos  =jos.filter(j=>j.dealId===confirmDel);
+          const payments=dMs.reduce((a,m)=>a.concat(m.payments||[]),[]);
+          const paidTotal=payments.filter(p=>!p.bounced).reduce((s,p)=>s+Number(p.amount||0),0);
+          const poCost=dPrs.reduce((s,p)=>s+(Number(p.actUnitCost)||Number(p.estUnitCost)||0)*(Number(p.qty)||0),0);
+          const expTotal=dExps.reduce((s,e)=>s+Number(e.amount||e.cost||0),0);
+          // "Financial" records are the ones whose loss actually matters on the books.
+          const hasFinancial=dPrs.length>0||dExps.length>0||payments.length>0;
+          const attached=[
+            dMs.length  &&`${dMs.length} billing milestone${dMs.length!==1?"s":""}`,
+            payments.length&&`${payments.length} payment${payments.length!==1?"s":""} (₱${paidTotal.toLocaleString("en-PH",{maximumFractionDigits:0})} received)`,
+            dPrs.length &&`${dPrs.length} purchase order${dPrs.length!==1?"s":""} (₱${poCost.toLocaleString("en-PH",{maximumFractionDigits:0})})`,
+            dExps.length&&`${dExps.length} logged expense${dExps.length!==1?"s":""} (₱${expTotal.toLocaleString("en-PH",{maximumFractionDigits:0})})`,
+            dJos.length &&`${dJos.length} job order${dJos.length!==1?"s":""}`,
+          ].filter(Boolean);
+          const canDelete=!hasFinancial||delAck;
+          return(
           <>
-            <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:10,padding:"12px 16px",marginBottom:16}}>
-              <div style={{fontWeight:700,color:"#dc2626",marginBottom:6,fontSize:".88rem"}}>⚠ This will permanently delete:</div>
-              <ul style={{margin:0,paddingLeft:18,fontSize:".82rem",color:"#7f1d1d",lineHeight:2}}>
-                <li>Deal: <strong>{d?.client}{d?.ceNo?" · "+d.ceNo:""}</strong></li>
-                <li>Project card, JO, and all department checklists</li>
-                <li>All billing milestones and payment records</li>
-                <li>All linked expenses, PRs, DRFs, and addenda</li>
-              </ul>
+            <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:10,padding:"12px 16px",marginBottom:14}}>
+              <div style={{fontWeight:700,color:"#dc2626",marginBottom:6,fontSize:".88rem"}}>⚠ Permanently delete <strong>{d?.client}{d?.ceNo?" · "+d.ceNo:""}</strong> and everything linked to it:</div>
+              {attached.length>0?(
+                <ul style={{margin:"6px 0 0",paddingLeft:18,fontSize:".82rem",color:"#7f1d1d",lineHeight:1.9}}>
+                  {attached.map((t,i)=><li key={i}>{t}</li>)}
+                  <li>Project card, checklists, DRFs, addenda &amp; swatches (if any)</li>
+                </ul>
+              ):(
+                <div style={{fontSize:".82rem",color:"#7f1d1d",marginTop:4}}>No billing, POs, expenses or job orders are attached — safe to remove.</div>
+              )}
             </div>
+            {hasFinancial&&(
+              <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"12px 16px",marginBottom:14}}>
+                <div style={{fontWeight:700,color:"#b45309",fontSize:".82rem",marginBottom:6}}>💰 This deal has financial records.</div>
+                <div style={{fontSize:".78rem",color:"#92400e",marginBottom:10,lineHeight:1.5}}>
+                  If this is a duplicate, the POs / expenses / payments above may belong to the real project. Deleting erases them and can inflate the other project's margin. Consider moving them first (Procurement ▸ reassign PO) before deleting.
+                </div>
+                <label style={{display:"flex",gap:8,alignItems:"flex-start",cursor:"pointer",fontSize:".8rem",color:"#7f1d1d",fontWeight:600}}>
+                  <input type="checkbox" checked={delAck} onChange={e=>setDelAck(e.target.checked)} style={{marginTop:2,cursor:"pointer"}}/>
+                  <span>I understand these financial records will be permanently deleted along with the deal.</span>
+                </label>
+              </div>
+            )}
             <p style={{color:"#64748b",marginBottom:20,fontSize:".85rem"}}>This cannot be undone. Make sure you have a data backup first.</p>
-            <div style={{display:"flex",gap:10}}><Btn variant="danger" onClick={()=>delDeal(confirmDel)}>Yes, Delete Everything</Btn><Btn variant="ghost" onClick={()=>setConfirmDel(null)}>Cancel</Btn></div>
+            <div style={{display:"flex",gap:10}}>
+              <Btn variant="danger" onClick={()=>{if(!canDelete)return;delDeal(confirmDel);setDelAck(false);}} disabled={!canDelete}>Yes, Delete Everything</Btn>
+              <Btn variant="ghost" onClick={()=>{setConfirmDel(null);setDelAck(false);}}>Cancel</Btn>
+            </div>
           </>
-        );})()}
+          );
+        })()}
       </Modal>
       <Modal open={swModal} onClose={()=>setSwModal(false)} title={editSw?"Edit Swatch Item":"Add to Swatchboard"} wide>
         <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
@@ -10065,7 +10258,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   );
 
   // ── PROCUREMENT HOME ──────────────────────────────────────────────────────
-  if(role==="Procurement") return(
+  if(isProcurementRole(role)) return(
     <Wrap>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
         <div>
@@ -12398,7 +12591,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               </div>
               <div>
                 <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{session?.name||"You"}</div>
-                <div style={{fontSize:".68rem",color:"#94a3b8"}}>{session?.role||role}</div>
+                <div style={{fontSize:".68rem",color:"#94a3b8"}}>{roleLabel(session?.role||role)}</div>
               </div>
             </div>
             <div style={{fontSize:".7rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Tag a project (optional)</div>
@@ -13124,12 +13317,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           // setTemp — persist the manual bucket (partial column UPDATE, mirroring the
           // Did Not Win / Cancel pattern so RLS INSERT policies don't clobber it).
           const setTemp=(d,temp)=>{
-            if(!canSetTemp||!DEAL_TEMPS.includes(temp)||tempOf(d)===temp&&d.temperature===temp){setPipeDragId(null);setPipeDragOver(null);return;}
+            if(!canSetTemp||!DEAL_TEMPS.includes(temp)||(tempOf(d)===temp&&d.temperature===temp))return;
             upDeals(ds=>ds.map(x=>x.id===d.id?{...x,temperature:temp}:x));
             if(isSupabaseReady())sbUpdate('deals',d.id,{temperature:temp,updated_at:new Date().toISOString()}).catch(()=>{});
             logActivity(d.id,"Temperature",`${d.contact||d.client} → ${TEMP_META[temp].icon} ${temp}`,session?.name);
             toastEmit(`${TEMP_META[temp].icon} Moved to ${temp}`);
-            setPipeDragId(null);setPipeDragOver(null);
           };
           // Stale-Cold review: Cold parent deals idle ≥ COLD_STALE_DAYS. Surfaced for
           // one-click "Did Not Win" — never auto-written (a slow bid isn't a lost bid).
@@ -13175,7 +13367,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   </div>
                   <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6,flexShrink:0}}>
                     <span style={{fontWeight:700,color:BUDGET_ONLY.includes(role)?"#8b5cf6":"#10b981",fontSize:".9rem"}}>{pipeAmt(d)}</span>
-                    <div style={{display:"flex",gap:4}}>
+                    <div style={{display:"flex",gap:4,flexWrap:"wrap",justifyContent:"flex-end"}}>
+                      {/* Temperature is set via the ⋯ menu (Move to Hot / Almost Awarded / Cold) — the card already sits in its temperature column, so an inline picker was redundant. */}
                       {(role==="Manager"||role==="Sales")&&<button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#475569",cursor:"pointer",fontFamily:"inherit",minHeight:36}}>✏</button>}
                       {role==="QS"&&<button onClick={()=>setPriceModal(d)} style={{background:"#7c3aed",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",minHeight:36}}>₱</button>}
                       {(role==="Manager"||role==="QS"||role==="Sales"||role==="SalesOpsAdmin")&&<button onClick={()=>{setBoqCoId(null);setBoqStandaloneId(null);setBoqDealId(d.id);setPage("boq");}} style={{background:"#0ea5e9",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",minHeight:36}} title="Open BOQ Builder">🧮</button>}
@@ -13187,13 +13380,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               </div>
             );
             return(
-            <div draggable={canSetTemp&&!d.parentDealId}
-              onDragStart={canSetTemp&&!d.parentDealId?(e=>{setPipeDragId(d.id);e.dataTransfer.effectAllowed="move";}):undefined}
-              onDragEnd={()=>{setPipeDragId(null);setPipeDragOver(null);}}
-              style={{display:"flex",gap:8,padding:"7px 12px",borderBottom:i<list.length-1?"1px solid #f1f5f9":"none",alignItems:"center",background:pipeDragId===d.id?"#eff6ff":"#fff",opacity:pipeDragId===d.id?.5:1,cursor:canSetTemp&&!d.parentDealId?"grab":"default",transition:"background .1s"}}
-              onMouseEnter={e=>{if(pipeDragId!==d.id)e.currentTarget.style.background="#f8fafc";}}
-              onMouseLeave={e=>{if(pipeDragId!==d.id)e.currentTarget.style.background="#fff";}}>
-              {canSetTemp&&!d.parentDealId&&<span style={{color:"#cbd5e1",fontSize:".85rem",cursor:"grab",flexShrink:0}} title="Drag to Hot / Almost Awarded / Cold">⠿</span>}
+            <div
+              style={{display:"flex",gap:8,padding:"7px 12px",borderBottom:i<list.length-1?"1px solid #f1f5f9":"none",alignItems:"center",background:"#fff",transition:"background .1s"}}
+              onMouseEnter={e=>{e.currentTarget.style.background="#f8fafc";}}
+              onMouseLeave={e=>{e.currentTarget.style.background="#fff";}}>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap"}}>
                   <span style={{fontWeight:700,color:"#0f172a",fontSize:".8rem"}}>{d.contact||d.client}</span>
@@ -13213,7 +13403,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 </div>
               </div>
               <div style={{fontWeight:700,color:BUDGET_ONLY.includes(role)?"#8b5cf6":"#10b981",fontSize:".8rem",flexShrink:0,minWidth:44,textAlign:"right"}}>{pipeAmt(d)}</div>
-              <div style={{display:"flex",gap:3,flexShrink:0}}>
+              <div style={{display:"flex",gap:3,flexShrink:0,alignItems:"center"}}>
+                {/* Temperature is set via the ⋯ menu (Move to Hot / Almost Awarded / Cold) — the row already sits in its temperature column, so an inline picker was redundant. */}
                 {(role==="Manager"||role==="Sales")&&<button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}} title="Edit">✏</button>}
                 {role==="QS"&&!d.value&&<button onClick={()=>setPriceModal(d)} style={{background:"#7c3aed",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}} title="Set Client Price">₱</button>}
                 {role==="QS"&&d.value&&<button onClick={()=>setPriceModal(d)} style={{background:"#ede9fe",border:"1px solid #c4b5fd",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#7c3aed",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}} title="Update Client Price">₱✏</button>}
@@ -13285,25 +13476,28 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 </div>
               )}
 
-              {/* 🔥 Hot · 🏆 Almost Awarded · 🧊 Cold — drag cards between columns.
-                  Buckets are manual (deal.temperature); unset deals fall back to an
-                  age/stage-derived default. Three columns on desktop, stacked on mobile. */}
+              {/* 🔥 Hot · 🏆 Almost Awarded · 🧊 Cold — set each deal's temperature with
+                  the per-row picker. Buckets are manual (deal.temperature); unset deals
+                  fall back to an age/stage-derived default. Three columns on desktop,
+                  stacked on mobile. */}
               <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(3,1fr)",gap:14,marginBottom:20}}>
                 {[["Hot",hotDeals],["Almost Awarded",almostDeals],["Cold",coldDeals]].map(([temp,list])=>{
-                  const m=TEMP_META[temp];const isOver=pipeDragOver===temp;
+                  const m=TEMP_META[temp];
+                  // Column total = contract value of the parent deals in this column
+                  // plus their nested children (addenda/linked deals carry value too).
+                  // Hidden for BUDGET_ONLY roles (Design/Ops/PM) so contract value never leaks.
+                  const colTotal=list.reduce((s,d)=>s+Number(d.value||0)+childPipeDeals.filter(c=>c.parentDealId===d.id).reduce((cs,c)=>cs+Number(c.value||0),0),0);
                   return(
-                  <div key={temp}
-                    onDragOver={canSetTemp?(e=>{e.preventDefault();if(pipeDragOver!==temp)setPipeDragOver(temp);}):undefined}
-                    onDragLeave={canSetTemp?(e=>{if(e.currentTarget===e.target)setPipeDragOver(null);}):undefined}
-                    onDrop={canSetTemp?(e=>{e.preventDefault();const dd=deals.find(x=>x.id===pipeDragId);if(dd)setTemp(dd,temp);}):undefined}>
-                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:7,display:"flex",alignItems:"center",gap:6}}>
+                  <div key={temp}>
+                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:7,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                       {m.icon} {temp}
                       <span style={{fontWeight:400,color:"#94a3b8",fontSize:".72rem"}}>({list.length})</span>
+                      {!BUDGET_ONLY.includes(role)&&<span style={{marginLeft:"auto",fontWeight:800,color:m.clr,fontSize:".82rem",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:".02em"}}>{fmt(colTotal)}</span>}
                     </div>
-                    <div style={{background:isOver?m.bg:"#fff",borderRadius:12,border:`1.5px solid ${isOver?m.clr:"#e2e8f0"}`,overflow:"hidden",transition:"background .1s,border-color .1s",opacity:list.length||isOver?1:.6}}>
+                    <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",transition:"background .1s,border-color .1s",opacity:list.length?1:.6}}>
                       <PipeTableHeader/>
-                      <div style={{maxHeight:340,overflowY:"auto",minHeight:isOver?90:0}}>
-                        {list.length===0&&<div style={{padding:"16px",textAlign:"center",color:isOver?m.clr:"#94a3b8",fontSize:".78rem"}}>{isOver?`Drop here → ${temp}`:pipeSearch?"No match.":`No deals. ${m.blurb}.`}</div>}
+                      <div style={{maxHeight:340,overflowY:"auto"}}>
+                        {list.length===0&&<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".78rem"}}>{pipeSearch?"No match.":`No deals. ${m.blurb}.`}</div>}
                         {list.map((d,i)=>{
                           const children=childPipeDeals.filter(c=>c.parentDealId===d.id);
                           return(<React.Fragment key={d.id}><PipeRow d={d} list={list} i={i}/>{children.map(c=><div key={c.id} style={{paddingLeft:24,borderLeft:"3px solid #f59e0b",marginLeft:12,background:"#fffbeb"}}><PipeRow d={c} list={children} i={0}/></div>)}</React.Fragment>);
@@ -14909,8 +15103,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         />
       </Wrap>
     );
-    const ROLES=['Manager', 'Sales', 'Finance', 'Procurement', 'QS', 'Operations', 'Design', 'ProjectMover', 'Warehouse', 'SalesOpsAdmin', 'FinanceAssistant'];
-    if(page==="accounts"&&(role==="Manager"||role==="Finance")) return(
+    const ROLES=['Manager', 'Sales', 'Finance', 'Procurement', 'ProcurementManager', 'QS', 'Operations', 'Design', 'ProjectMover', 'Warehouse', 'SalesOpsAdmin', 'FinanceAssistant'];
+    if(page==="accounts"&&role==="Manager") return(
       <Wrap>
         <AccountsManager users={users} session={session} onApprove={approveUser} onReject={rejectUser} onDeactivate={deactivateUser} onDelete={deleteUser} onResetPw={resetPw} onCreateUser={createUser} ROLES={ROLES}/>
         {/* Role Permissions reference (Manager only) — who can view/create/edit/
@@ -15025,7 +15219,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         <BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/>
       </Wrap>
     );
-    if(page==="home"&&role==="Procurement") return(
+    if(page==="home"&&isProcurementRole(role)) return(
       <Wrap>
         <DeptHeader
           name={session?.name?.split(" ")[0]||"Team"}
@@ -15226,7 +15420,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(page==="masters") return(<Wrap><MasterListsView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role} isMobile={isMobile}/></Wrap>);
     if(page==="expenses") return(
       <Wrap>
-        <SecHead title="Expenses" action={<Btn onClick={()=>openAddExp()}>+ Other Payable</Btn>} sub="All logged costs — company-wide and per project"/>
+        <SecHead title="Expense Ledger" action={<Btn onClick={()=>openAddExp()}>+ Other Payable</Btn>} sub="Historical log of costs — company-wide and per project"/>
+        <div style={{display:"flex",gap:8,alignItems:"flex-start",background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:10,padding:"10px 14px",marginBottom:16,fontSize:".8rem",color:"#1e40af",lineHeight:1.45}}>
+          <span style={{fontSize:"1rem",lineHeight:1}}>💡</span>
+          <span>This is the historical expense ledger. To <strong>record a new cost</strong>, use <strong>+ Other Payable</strong> — it enters the AP ledger where it can be approved, verified and paid. Materials &amp; subcon costs come in through their PO / Work Order instead.</span>
+        </div>
         {["all",...projList.map(d=>d.id)].map(filter=>{
           const label=filter==="all"?"All Expenses":clientName(filter);
           const filtered=filter==="all"?exps:exps.filter(e=>e.projectId===filter);
@@ -15253,7 +15451,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   </div>
                 </Card>
               ))}
-              {filter==="all"&&exps.length===0&&<EmptyState icon="📋" msg="No expenses logged yet."/>}
+              {filter==="all"&&exps.length===0&&<EmptyState icon="📋" msg="No legacy expenses here. New costs are recorded as Other Payables in the AP ledger."/>}
             </div>
           );
         })}
@@ -15478,7 +15676,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   if(recvAmt>0&&!isStock&&!alreadyLogged){
                     const expId=uid();
                     const supTerms=(suppliers.find(s=>(s.companyName||"").toLowerCase()===(receivingPr.supplier||"").toLowerCase())||{}).paymentTerms||"";
-                    const due=dueDateFromTerms(supTerms,today);
+                    // PO-level terms (warehouse policy) win over the supplier default — a
+                    // per-PO negotiation (e.g. COD rush from a Net-60 supplier) is honoured.
+                    const effTerms=receivingPr.paymentTerms||supTerms;
+                    const due=dueDateFromTerms(effTerms,today);
                     // Reconcile the PO's existing payable (created when the PO was issued) instead of
                     // creating a duplicate: stamp its due date from the supplier's terms on first
                     // receipt and link this receipt's expense to it. Only fall back to a fresh
@@ -15497,7 +15698,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       payId=uid();
                       // Payment-due tracker: float a payable with a due date computed from the supplier's terms,
                       // so finance can see when it's due. It gets settled later via Check Payable / BizLink.
-                      const payRec={id:payId,vendor:receivingPr.supplier||"—",amount:recvAmt,dueDate:due,projectId:sProjId,category:"Supplier",accountCode:receivingPr.accountCode||"5000",invoiceRef:rxDrNo?`DR ${rxDrNo}`:"",notes:`${receivingPr.itemName||""} · PO ${receivingPr.poNumber||receivingPr.id.slice(-6)}${supTerms?` · Terms: ${supTerms}`:" · No terms on file"}`,status:"Unpaid",poNumber:receivingPr.poNumber||"",poId:receivingPr.id,expenseId:expId,createdAt:today,createdBy:session?.name||""};
+                      const payRec={id:payId,vendor:receivingPr.supplier||"—",amount:recvAmt,dueDate:due,projectId:sProjId,category:"Supplier",accountCode:receivingPr.accountCode||"5000",invoiceRef:rxDrNo?`DR ${rxDrNo}`:"",notes:`${receivingPr.itemName||""} · PO ${receivingPr.poNumber||receivingPr.id.slice(-6)}${effTerms?` · Terms: ${effTerms}${receivingPr.paymentTerms?" (PO)":""}`:" · No terms on file"}`,status:"Unpaid",poNumber:receivingPr.poNumber||"",poId:receivingPr.id,expenseId:expId,createdAt:today,createdBy:session?.name||""};
                       upPayables(ps=>[payRec,...ps]);
                       if(isSupabaseReady()) sbUpsert("payables",payableToSb(payRec),"id").catch(()=>{});
                     }
@@ -15830,7 +16031,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             }} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"10px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>🔄 Reload from Cloud</button>
           </div>
         )}
-        <MyAccountPage session={session} users={users} setUsers={setUsers} upUsers={upUsers} setSession={setSession} logActivity={logActivity} checkPw={checkPw} hashPw={hashPw} actLog={actLog} verifyCurrentPassword={verifyCurrentPassword}/>
+        <MyAccountPage session={session} users={users} setUsers={setUsers} upUsers={upUsers} setSession={setSession} logActivity={logActivity} checkPw={checkPw} hashPw={hashPw} actLog={actLog} verifyCurrentPassword={verifyCurrentPassword} onSetServerPw={setPasswordServer}/>
       </div>
     </Wrap>
   );
@@ -16056,12 +16257,25 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     const mapped=smartImport.rows.map((r,idx)=>{
                       const client=String(r["Client Name"]||r.client||r.Client||r["client_name"]||r.company||"").trim();
                       const ceNo=String(r["CE No"]||r.ceNo||r["CE Number"]||r.ce_no||r["CE No."]||"").trim();
+                      const product=String(r["Project / Product"]||r.product||r.Product||r["Project Name"]||r.project||"").trim();
                       const rawStage=r.Stage||r.stage||r.status||r._defaultStage||"";
-                      const exists=deals.find(d=>ceNo&&d.ceNo&&(d.ceNo===ceNo||d.ceNo==="#"+ceNo.replace(/^#/,"")));
+                      // Match an existing deal by CE number; when the row has NO CE
+                      // number, fall back to an exact client + product match against
+                      // a non-lost deal — otherwise every re-import of a CE-less row
+                      // spawns a fresh duplicate (root cause of the empty Kareila /
+                      // Archives / Diageo stub duplicates).
+                      const exists=deals.find(d=>{
+                        if(ceNo&&d.ceNo&&(d.ceNo===ceNo||d.ceNo==="#"+ceNo.replace(/^#/,""))) return true;
+                        if(!ceNo&&!isLostStage(d.stage)&&client&&d.client&&d.client.toLowerCase()===client.toLowerCase()){
+                          const dprod=String(d.product||d.contact||"").trim().toLowerCase();
+                          if(product&&dprod&&dprod===product.toLowerCase()) return true;
+                        }
+                        return false;
+                      });
                       return{
                         _idx:idx,_exists:!!exists,_existingId:exists?.id,
                         id:exists?.id||uid(),client,
-                        product:String(r["Project / Product"]||r.product||r.Product||r["Project Name"]||r.project||"").trim(),
+                        product,
                         contact:String(r["Contact Person"]||r.contact||r.Contact||"").trim(),
                         ceNo:ceNo||("CE-IMPORT-"+Date.now()+"-"+idx),
                         ceType:normType(r["CE Type"]||r.ceType||r.type||""),
@@ -16465,6 +16679,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         addMilestone={addMilestone} updateMilestone={updateMilestone}
         deleteMilestone={deleteMilestone} deleteProjectBilling={deleteProjectBilling} generateBillingSchedule={generateBillingSchedule} logBillingPayment={logBillingPayment}
         deleteBillingPayment={deleteBillingPayment}
+        setConfirmDel={setConfirmDel} canDeleteDeal={canDeleteDeal}
         nextInvoiceNo={nextInvoiceNo} session={session} role={role}
         clientProfiles={clientProfiles}
         upDeals={upDeals}
@@ -17251,7 +17466,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                         <td style={{...erpTd,whiteSpace:"nowrap"}}>
                           <div style={{display:"flex",gap:4,justifyContent:"flex-end",alignItems:"center"}}>
                             {pay&&!settled&&!pay.verified&&<button onClick={()=>verifyPayable(pay.id)} title={isSub?"Operations: verify % complete":"Warehouse: verify receipt"} style={{background:ERP.gold,border:"none",borderRadius:6,padding:"5px 10px",fontSize:12,color:ERP.navy,cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>✓ Verify</button>}
-                            {pay&&!settled&&pay.verified&&payBal>0&&<button onClick={()=>{setFinTab("payables");setPage("finance");openPayModal(pay);}} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"5px 12px",fontSize:12,color:"#fff",cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>Pay</button>}
+                            {pay&&!settled&&pay.verified&&payBal>0&&!payApproved(pay)&&<span style={{fontSize:11,color:ERP.muted,fontWeight:600}} title="Awaiting Manager / Finance approval before payment">Pending approval</span>}
+                            {pay&&!settled&&pay.verified&&payBal>0&&payApproved(pay)&&<button onClick={()=>{setFinTab("payables");setPage("finance");openPayModal(pay);}} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"5px 12px",fontSize:12,color:"#fff",cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>Pay</button>}
                             {pay&&settled&&<span style={{fontSize:11,color:ERP.ok,fontWeight:700}}>Paid</span>}
                             <button onClick={()=>setPage(r.kind==="wo"?"subconwo":"procurement")} style={{background:"transparent",border:`1px solid ${ERP.line}`,borderRadius:6,padding:"5px 10px",fontSize:12,fontWeight:600,color:ERP.navy,cursor:"pointer",fontFamily:"inherit"}}>Open</button>
                           </div>
@@ -17273,7 +17489,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     <Wrap>
       <ProcurementView2
         prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR}
-        wonDeals={wonDeals} deals={deals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}
+        wonDeals={wonDeals} deals={deals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}
         upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} chartOfAccounts={chartOfAccounts}/>
     </Wrap>
   );
@@ -18263,6 +18479,12 @@ function MyFolderView({session,projList,projs,drfs,updateDRF,deleteDRF,upProj,se
   };
   const[sortBy,setSortBy]=useState("client");
   const[openItem,setOpenItem]=useState(null); // `${kind}:${id}`
+  const[openCat,setOpenCat]=useState({});     // `${member}:${status}` -> expanded
+  // Done / Cancelled are "closed" design statuses. They get their own collapsed
+  // sub-folders so they stop inflating the live project count. Works for both
+  // project cards (DESIGN_STATUSES) and DRFs (DRF_STATUSES) — both share the
+  // Done/Cancelled tokens.
+  const isClosedItem=it=>it.status==="Done"||it.status==="Cancelled";
   const mob=window.innerWidth<768;
   const yearOf=(...cands)=>{for(const c of cands){const m=/(\d{4})/.exec(c||"");if(m)return m[1];}return "Undated";};
 
@@ -18289,6 +18511,120 @@ function MyFolderView({session,projList,projs,drfs,updateDRF,deleteDRF,upProj,se
     return (a.client||"").localeCompare(b.client||"");
   });
 
+  // One collapsible row for a single project/DRF. Reused by the live year
+  // sub-folders and by the Done / Cancelled category sub-folders below.
+  const ItemRow=(it)=>{
+    const isDrf=it.kind==="drf";
+    const c=(isDrf?DRF_CLR[it.status]:DS_CLR[it.status])||"#94a3b8";
+    const key=`${it.kind}:${it.id}`;
+    const open=openItem===key;
+    return(
+      <div key={key} style={{borderBottom:"1px solid #f8fafc"}}>
+        <div onClick={()=>setOpenItem(open?null:key)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",cursor:"pointer",background:open?"#fdf4ff":"#fff"}}>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{isDrf?"🖌️ ":""}{it.title||it.client}</div>
+            <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>{it.client}{it.due?` · due ${it.due}`:""}</div>
+          </div>
+          <span style={{marginLeft:12,fontSize:".68rem",fontWeight:700,color:c,background:c+"18",border:`1px solid ${c}44`,borderRadius:20,padding:"2px 9px",whiteSpace:"nowrap"}}>{it.status}</span>
+          <span style={{marginLeft:10,color:"#94a3b8",fontSize:".7rem"}}>{open?"▲":"▼"}</span>
+        </div>
+        {open&&(
+          <div style={{background:"#faf5ff",borderTop:"1px solid #e9d5ff",padding:"14px 18px"}}>
+            {/* Standardized data card — same Category · Client ·
+                Location · Size block as the DRF list, so a project
+                reads consistently wherever it appears. For a project
+                card the values come from its linked DRF, falling back
+                to the deal's brief. */}
+            {(()=>{
+              const ld=isDrf?it.drf:(drfs||[]).find(r=>r.dealId===it.id);
+              const cat=ld?.category||"";
+              const client=it.client||it.deal?.client||"";
+              const loc=ld?.location||it.deal?.location||"";
+              const size=ld?.size||it.deal?.drfSize||"";
+              return(
+                <div style={{background:"#fff",border:"1px solid #e9d5ff",borderRadius:10,padding:"12px 14px",marginBottom:14}}>
+                  <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(4,1fr)",gap:"10px 16px"}}>
+                    {[["Category",cat],["Client",client],["Location",loc],["Size",size]].map(([l,v])=>(
+                      <div key={l}>
+                        <div style={{fontSize:".62rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".6px",marginBottom:3}}>{l}</div>
+                        <div style={{fontSize:".82rem",color:v?"#0f172a":"#cbd5e1",fontWeight:600}}>{v||"—"}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+            <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:14}}>
+              {/* Project Status */}
+              <div>
+                <div style={{fontSize:".65rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Project Status</div>
+                {isDrf
+                  ?<select value={it.status} onChange={e=>updateDRF(it.id,{status:e.target.value})}
+                     style={{width:"100%",boxSizing:"border-box",border:`1.5px solid ${c}`,borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:c,background:c+"12",fontWeight:700,cursor:"pointer"}}>
+                     {DRF_STATUSES.map(s=><option key={s} value={s} style={{color:"#0f172a",background:"#fff",fontWeight:400}}>{s}</option>)}
+                   </select>
+                  :<select value={it.status} onChange={e=>upProj(it.id,p=>({...p,design:{...p.design,status:e.target.value,statusHistory:[...(p.design?.statusHistory||[]),{status:e.target.value,date:todayL,by:session?.name||"Design"}]}}))}
+                     style={{width:"100%",boxSizing:"border-box",border:`1.5px solid ${c}`,borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:c,background:c+"12",fontWeight:700,cursor:"pointer"}}>
+                     {DESIGN_STATUSES.map(s=><option key={s} value={s} style={{color:"#0f172a",background:"#fff",fontWeight:400}}>{s}</option>)}
+                   </select>
+                }
+              </div>
+              {/* Timeline / Due Date */}
+              <div>
+                <div style={{fontSize:".65rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Timeline / Due Date</div>
+                <input type="date" value={it.due||""}
+                  onChange={e=>{const v=e.target.value;if(isDrf)updateDRF(it.id,{designDeadline:v});else upProj(it.id,p=>({...p,design:{...p.design,dueDate:v}}));}}
+                  style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a"}}/>
+              </div>
+              {/* Project Details — editable */}
+              <div style={{gridColumn:mob?"auto":"1/-1"}}>
+                <div style={{fontSize:".65rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Project Details</div>
+                {isDrf?(
+                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                    <input value={it.drf.projectTitle||""} onChange={e=>updateDRF(it.id,{projectTitle:e.target.value})} placeholder="Project title"
+                      style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a"}}/>
+                    <textarea value={it.drf.notes||""} onChange={e=>updateDRF(it.id,{notes:e.target.value})} placeholder="Notes / details" rows={2}
+                      style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a",resize:"vertical"}}/>
+                  </div>
+                ):(
+                  <textarea value={projs[it.id]?.design?.notes||""} onChange={e=>upProj(it.id,p=>({...p,design:{...p.design,notes:e.target.value}}))} placeholder="Design notes / details" rows={2}
+                    style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a",resize:"vertical"}}/>
+                )}
+              </div>
+            </div>
+            <div style={{display:"flex",gap:8,marginTop:12,alignItems:"center"}}>
+              {!isDrf&&(
+                <button onClick={e=>{e.stopPropagation();setSelProj(it.id);setOpsTab("design");}}
+                  style={{background:"#7c3aed",border:"none",borderRadius:8,padding:"7px 14px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".76rem",cursor:"pointer"}}>Open full design →</button>
+              )}
+              <button onClick={e=>{e.stopPropagation();deleteItem(it);}}
+                style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,padding:"7px 14px",color:"#dc2626",fontFamily:"inherit",fontWeight:700,fontSize:".76rem",cursor:"pointer"}}>✕ Delete</button>
+              <span style={{fontSize:".7rem",color:"#94a3b8"}}>Changes save automatically.</span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // A collapsible category sub-folder (Done / Cancelled), one per member.
+  const ClosedCategory=(member,label,emoji,color,catItems)=>{
+    if(catItems.length===0) return null;
+    const ck=`${member}:${label}`;
+    const expanded=!!openCat[ck];
+    return(
+      <div key={ck}>
+        <div onClick={()=>setOpenCat(p=>({...p,[ck]:!expanded}))}
+          style={{background:"#f8fafc",borderTop:"1px solid #eef2f7",padding:"7px 16px",display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
+          <span style={{fontWeight:800,color,fontSize:".82rem",letterSpacing:".3px"}}>{emoji} {label}</span>
+          <span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:600}}>{catItems.length} project{catItems.length!==1?"s":""}</span>
+          <span style={{marginLeft:"auto",color:"#94a3b8",fontSize:".7rem"}}>{expanded?"▲ Hide":"▼ Show"}</span>
+        </div>
+        {expanded&&sortItems(catItems).map(ItemRow)}
+      </div>
+    );
+  };
+
   return(
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:18,flexWrap:"wrap",gap:12}}>
@@ -18308,9 +18644,15 @@ function MyFolderView({session,projList,projs,drfs,updateDRF,deleteDRF,upProj,se
 
       {folders.map(({member,items})=>{
         const mine=member===me;
-        // Split into year sub-folders, newest year first (Undated last).
+        // Live vs closed. Done / Cancelled drop out of the year sub-folders and
+        // the header count, and get their own collapsed category sub-folders so
+        // "My Projects" reflects active work only.
+        const active=items.filter(it=>!isClosedItem(it));
+        const doneItems=items.filter(it=>it.status==="Done");
+        const cancelledItems=items.filter(it=>it.status==="Cancelled");
+        // Split live items into year sub-folders, newest year first (Undated last).
         const years={};
-        items.forEach(it=>{const y=yearOf(it.due);(years[y]=years[y]||[]).push(it);});
+        active.forEach(it=>{const y=yearOf(it.due);(years[y]=years[y]||[]).push(it);});
         const yearKeys=Object.keys(years).sort((a,b)=>{
           if(a==="Undated") return 1; if(b==="Undated") return -1; return b.localeCompare(a);
         });
@@ -18318,111 +18660,24 @@ function MyFolderView({session,projList,projs,drfs,updateDRF,deleteDRF,upProj,se
           <div key={member} style={{background:"#fff",borderRadius:12,border:`1.5px solid ${mine?"#ec489966":"#e2e8f0"}`,overflow:"hidden",marginBottom:14}}>
             <div style={{background:mine?"#be185d":"#1e293b",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <span style={{fontWeight:700,color:"#fff",fontSize:".9rem"}}>📁 {member}{mine?" (You)":""}</span>
-              <span style={{fontSize:".72rem",color:"rgba(255,255,255,.7)",fontWeight:600}}>{items.length} item{items.length!==1?"s":""}</span>
+              <span style={{fontSize:".72rem",color:"rgba(255,255,255,.7)",fontWeight:600}}>{active.length} active{(doneItems.length||cancelledItems.length)?` · ${doneItems.length+cancelledItems.length} closed`:""}</span>
             </div>
             {items.length===0
               ? <div style={{padding:"18px 16px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No projects assigned yet.</div>
-              : yearKeys.map(yr=>(
-                <div key={yr}>
-                  <div style={{background:"#f8fafc",borderBottom:"1px solid #eef2f7",borderTop:"1px solid #eef2f7",padding:"7px 16px",display:"flex",alignItems:"center",gap:8}}>
-                    <span style={{fontWeight:800,color:"#475569",fontSize:".82rem",letterSpacing:".3px"}}>🗂 {yr}</span>
-                    <span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:600}}>{years[yr].length} project{years[yr].length!==1?"s":""}</span>
+              : <>
+                {active.length===0&&<div style={{padding:"14px 16px",textAlign:"center",color:"#94a3b8",fontSize:".8rem"}}>No active projects — see closed below.</div>}
+                {yearKeys.map(yr=>(
+                  <div key={yr}>
+                    <div style={{background:"#f8fafc",borderBottom:"1px solid #eef2f7",borderTop:"1px solid #eef2f7",padding:"7px 16px",display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{fontWeight:800,color:"#475569",fontSize:".82rem",letterSpacing:".3px"}}>🗂 {yr}</span>
+                      <span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:600}}>{years[yr].length} project{years[yr].length!==1?"s":""}</span>
+                    </div>
+                    {sortItems(years[yr]).map(ItemRow)}
                   </div>
-                  {sortItems(years[yr]).map(it=>{
-                    const isDrf=it.kind==="drf";
-                    const c=(isDrf?DRF_CLR[it.status]:DS_CLR[it.status])||"#94a3b8";
-                    const key=`${it.kind}:${it.id}`;
-                    const open=openItem===key;
-                    return(
-                      <div key={key} style={{borderBottom:"1px solid #f8fafc"}}>
-                        <div onClick={()=>setOpenItem(open?null:key)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",cursor:"pointer",background:open?"#fdf4ff":"#fff"}}>
-                          <div style={{flex:1,minWidth:0}}>
-                            <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{isDrf?"🖌️ ":""}{it.title||it.client}</div>
-                            <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>{it.client}{it.due?` · due ${it.due}`:""}</div>
-                          </div>
-                          <span style={{marginLeft:12,fontSize:".68rem",fontWeight:700,color:c,background:c+"18",border:`1px solid ${c}44`,borderRadius:20,padding:"2px 9px",whiteSpace:"nowrap"}}>{it.status}</span>
-                          <span style={{marginLeft:10,color:"#94a3b8",fontSize:".7rem"}}>{open?"▲":"▼"}</span>
-                        </div>
-                        {open&&(
-                          <div style={{background:"#faf5ff",borderTop:"1px solid #e9d5ff",padding:"14px 18px"}}>
-                            {/* Standardized data card — same Category · Client ·
-                                Location · Size block as the DRF list, so a project
-                                reads consistently wherever it appears. For a project
-                                card the values come from its linked DRF, falling back
-                                to the deal's brief. */}
-                            {(()=>{
-                              const ld=isDrf?it.drf:(drfs||[]).find(r=>r.dealId===it.id);
-                              const cat=ld?.category||"";
-                              const client=it.client||it.deal?.client||"";
-                              const loc=ld?.location||it.deal?.location||"";
-                              const size=ld?.size||it.deal?.drfSize||"";
-                              return(
-                                <div style={{background:"#fff",border:"1px solid #e9d5ff",borderRadius:10,padding:"12px 14px",marginBottom:14}}>
-                                  <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(4,1fr)",gap:"10px 16px"}}>
-                                    {[["Category",cat],["Client",client],["Location",loc],["Size",size]].map(([l,v])=>(
-                                      <div key={l}>
-                                        <div style={{fontSize:".62rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".6px",marginBottom:3}}>{l}</div>
-                                        <div style={{fontSize:".82rem",color:v?"#0f172a":"#cbd5e1",fontWeight:600}}>{v||"—"}</div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              );
-                            })()}
-                            <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:14}}>
-                              {/* Project Status */}
-                              <div>
-                                <div style={{fontSize:".65rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Project Status</div>
-                                {isDrf
-                                  ?<select value={it.status} onChange={e=>updateDRF(it.id,{status:e.target.value})}
-                                     style={{width:"100%",boxSizing:"border-box",border:`1.5px solid ${c}`,borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:c,background:c+"12",fontWeight:700,cursor:"pointer"}}>
-                                     {DRF_STATUSES.map(s=><option key={s} value={s} style={{color:"#0f172a",background:"#fff",fontWeight:400}}>{s}</option>)}
-                                   </select>
-                                  :<select value={it.status} onChange={e=>upProj(it.id,p=>({...p,design:{...p.design,status:e.target.value,statusHistory:[...(p.design?.statusHistory||[]),{status:e.target.value,date:todayL,by:session?.name||"Design"}]}}))}
-                                     style={{width:"100%",boxSizing:"border-box",border:`1.5px solid ${c}`,borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:c,background:c+"12",fontWeight:700,cursor:"pointer"}}>
-                                     {DESIGN_STATUSES.map(s=><option key={s} value={s} style={{color:"#0f172a",background:"#fff",fontWeight:400}}>{s}</option>)}
-                                   </select>
-                                }
-                              </div>
-                              {/* Timeline / Due Date */}
-                              <div>
-                                <div style={{fontSize:".65rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Timeline / Due Date</div>
-                                <input type="date" value={it.due||""}
-                                  onChange={e=>{const v=e.target.value;if(isDrf)updateDRF(it.id,{designDeadline:v});else upProj(it.id,p=>({...p,design:{...p.design,dueDate:v}}));}}
-                                  style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a"}}/>
-                              </div>
-                              {/* Project Details — editable */}
-                              <div style={{gridColumn:mob?"auto":"1/-1"}}>
-                                <div style={{fontSize:".65rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Project Details</div>
-                                {isDrf?(
-                                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                                    <input value={it.drf.projectTitle||""} onChange={e=>updateDRF(it.id,{projectTitle:e.target.value})} placeholder="Project title"
-                                      style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a"}}/>
-                                    <textarea value={it.drf.notes||""} onChange={e=>updateDRF(it.id,{notes:e.target.value})} placeholder="Notes / details" rows={2}
-                                      style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a",resize:"vertical"}}/>
-                                  </div>
-                                ):(
-                                  <textarea value={projs[it.id]?.design?.notes||""} onChange={e=>upProj(it.id,p=>({...p,design:{...p.design,notes:e.target.value}}))} placeholder="Design notes / details" rows={2}
-                                    style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a",resize:"vertical"}}/>
-                                )}
-                              </div>
-                            </div>
-                            <div style={{display:"flex",gap:8,marginTop:12,alignItems:"center"}}>
-                              {!isDrf&&(
-                                <button onClick={e=>{e.stopPropagation();setSelProj(it.id);setOpsTab("design");}}
-                                  style={{background:"#7c3aed",border:"none",borderRadius:8,padding:"7px 14px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".76rem",cursor:"pointer"}}>Open full design →</button>
-                              )}
-                              <button onClick={e=>{e.stopPropagation();deleteItem(it);}}
-                                style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,padding:"7px 14px",color:"#dc2626",fontFamily:"inherit",fontWeight:700,fontSize:".76rem",cursor:"pointer"}}>✕ Delete</button>
-                              <span style={{fontSize:".7rem",color:"#94a3b8"}}>Changes save automatically.</span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              ))
+                ))}
+                {ClosedCategory(member,"Done","✅","#059669",doneItems)}
+                {ClosedCategory(member,"Cancelled","🚫","#dc2626",cancelledItems)}
+              </>
             }
           </div>
         );
@@ -18467,7 +18722,10 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
     }
     return true;
   });
-  const canCreate=["Manager","Sales","Operations","SalesOpsAdmin"].includes(role);
+  // Head designer (Design Manager) can raise a DRF too — server RLS already
+  // permits the Design role to insert design_requests, so this only unhides the
+  // button for the design lead rather than granting any new server access.
+  const canCreate=["Manager","Sales","Operations","SalesOpsAdmin"].includes(role)||isHeadDesigner(session?.name);
   const canAcknowledge=["Manager","Design"].includes(role);
 
   return(
@@ -19454,16 +19712,17 @@ function AccountsManager({users,session,onApprove,onReject,onDeactivate,onDelete
   const[cf,setCf]=useState({name:"",username:"",password:"",role:"Sales",title:""});
   const[createErr,setCreateErr]=useState("");
   const STATUS_CLR = {active:"#10b981",pending:"#f59e0b",inactive:"#94a3b8",rejected:"#ef4444"};
-  const ALL_ROLES=["Sales","Finance","Accounting","Procurement","QS","Operations","Design","Warehouse","ProjectMover","SalesOpsAdmin","Audit","HRAdmin","Manager"];
+  const ALL_ROLES=["Sales","Finance","Accounting","Procurement","ProcurementManager","QS","Operations","Design","Warehouse","ProjectMover","SalesOpsAdmin","Audit","HRAdmin","Manager"];
 
   const pending  = users.filter(u=>u.status==="pending");
   const active   = users.filter(u=>u.status==="active");
   const inactive = users.filter(u=>u.status==="inactive"||u.status==="rejected");
 
-  const submitCreate=()=>{
+  const submitCreate=async()=>{
     if(!cf.name.trim()||!cf.username.trim()||cf.password.length<6){setCreateErr("Name, username, and password (min 6 chars) are required.");return;}
     if(users.some(u=>u.username===cf.username.toLowerCase().trim())){setCreateErr("Username already taken.");return;}
-    onCreateUser(cf.name,cf.username,cf.password,cf.role,cf.title);
+    const res=await onCreateUser(cf.name,cf.username,cf.password,cf.role,cf.title);
+    if(res&&res.ok===false){setCreateErr(res.error||"Couldn't create the account. Try again.");return;}
     setCf({name:"",username:"",password:"",role:"Sales",title:""});
     setCreateErr("");setShowCreate(false);
   };
@@ -19550,7 +19809,7 @@ function AccountsManager({users,session,onApprove,onReject,onDeactivate,onDelete
             {resetId===u.id&&(
               <div style={{marginTop:12,padding:"12px 14px",background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0",display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
                 <FInp type="password" value={newPw} onChange={e=>setNewPw(e.target.value)} placeholder="New password (min 6 chars)" style={{flex:1,minWidth:180,border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 11px",fontFamily:"inherit",fontSize:".83rem",color:"#0f172a"}}/>
-                <button onClick={()=>{if(newPw.length>=6){onResetPw(u.id,newPw);setResetId(null);setResetMsg("Password reset!");}else setResetMsg("Min 6 characters.");}} style={{background:"#1e293b",border:"none",borderRadius:7,padding:"7px 14px",fontWeight:700,fontSize:".78rem",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>Save</button>
+                <button onClick={async()=>{if(newPw.length>=6){const ok=await onResetPw(u.id,newPw);if(ok){setResetId(null);setResetMsg("Password reset!");}else setResetMsg("⚠️ Couldn't reach the server — password not reset. Try again.");}else setResetMsg("Min 6 characters.");}} style={{background:"#1e293b",border:"none",borderRadius:7,padding:"7px 14px",fontWeight:700,fontSize:".78rem",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>Save</button>
                 <button onClick={()=>setResetId(null)} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 12px",fontSize:".75rem",color:"#64748b",cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
                 {resetMsg&&<span style={{fontSize:".75rem",color:"#059669",fontWeight:600}}>{resetMsg}</span>}
               </div>
@@ -19775,7 +20034,10 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
   const[editClient, setEditClient] = useState(null);
   const[editName,   setEditName]   = useState("");
   const[addOpen,    setAddOpen]    = useState(false);
-  const EMPTY_ADD={name:"",contactPerson:"",email:"",phone:"",mobile:"",website:"",billingAddress:"",city:"",province:"",zipCode:"",country:"Philippines",tin:"",paymentTerms:"Due on receipt",notes:""};
+  const EMPTY_ADD={name:"",parentGroup:"",contactPerson:"",email:"",phone:"",mobile:"",website:"",billingAddress:"",city:"",province:"",zipCode:"",country:"Philippines",tin:"",paymentTerms:"Due on receipt",notes:""};
+  // Existing parent groups already in use — offered as suggestions so people
+  // pick a consistent spelling instead of inventing "Diageo" / "Diageo PH" / etc.
+  const knownGroups=useMemo(()=>[...new Set(Object.values(clientProfiles||{}).map(p=>p?.parentGroup).filter(Boolean))].sort(),[clientProfiles]);
   const[addForm,    setAddForm]    = useState(EMPTY_ADD);
   const fa=(k,v)=>setAddForm(p=>({...p,[k]:v}));
   const doAddClient=()=>{
@@ -19784,7 +20046,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
     const allC=[...GMD_CLIENTS,...(customClients||[])];
     if(allC.find(c=>c.name.toLowerCase()===name.toLowerCase())){alert("Client already exists.");return;}
     if(addNewClient) addNewClient(name); else GMD_CLIENTS.push({name,id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today});
-    const prof={contactPerson:addForm.contactPerson,email:addForm.email,phone:addForm.phone,mobile:addForm.mobile,website:addForm.website,billingAddress:addForm.billingAddress,city:addForm.city,province:addForm.province,zipCode:addForm.zipCode,country:addForm.country,tin:addForm.tin,paymentTerms:addForm.paymentTerms,notes:addForm.notes};
+    const prof={parentGroup:(addForm.parentGroup||"").trim(),contactPerson:addForm.contactPerson,email:addForm.email,phone:addForm.phone,mobile:addForm.mobile,website:addForm.website,billingAddress:addForm.billingAddress,city:addForm.city,province:addForm.province,zipCode:addForm.zipCode,country:addForm.country,tin:addForm.tin,paymentTerms:addForm.paymentTerms,notes:addForm.notes};
     if(saveClientProfile&&Object.values(prof).some(v=>v)) saveClientProfile(name,prof);
     setAddForm(EMPTY_ADD);
     setAddOpen(false);
@@ -19795,7 +20057,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
   const[,forceUpdate]              = useState(0);
   const fp2=(k,v)=>setProfileForm(p=>({...p,[k]:v}));
   const openProfile=(name)=>{
-    setProfileForm({...({contactPerson:"",email:"",phone:"",mobile:"",website:"",billingAddress:"",city:"",province:"",zipCode:"",country:"Philippines",tin:"",paymentTerms:"Due on receipt",notes:""}),...((clientProfiles||{})[name]||{})});
+    setProfileForm({...({parentGroup:"",contactPerson:"",email:"",phone:"",mobile:"",website:"",billingAddress:"",city:"",province:"",zipCode:"",country:"Philippines",tin:"",paymentTerms:"Due on receipt",notes:""}),...((clientProfiles||{})[name]||{})});
     setProfileModal(name);
   };
   const saveProfile=()=>{
@@ -19867,6 +20129,36 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
         ))}
       </div>
 
+      {/* Consolidated rollup by parent group (e.g. all Diageo departments) */}
+      {(()=>{
+        const g={};
+        deals.forEach(d=>{
+          const grp=(clientProfiles||{})[d.client]?.parentGroup;
+          if(!grp) return;
+          g[grp]=g[grp]||{group:grp,clients:new Set(),value:0,collected:0};
+          g[grp].clients.add(d.client);
+          if(WON_STAGES.includes(d.stage)) g[grp].value+=Number(d.value||0);
+          g[grp].collected+=Number(d.amountPaid||0);
+        });
+        const rows=Object.values(g).sort((a,b)=>b.value-a.value);
+        if(!rows.length) return null;
+        return(
+          <div style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"14px 18px",marginBottom:16}}>
+            <div style={{fontSize:".65rem",fontWeight:700,textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginBottom:10}}>Consolidated by Group</div>
+            <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(auto-fill,minmax(220px,1fr))",gap:10}}>
+              {rows.map(r=>(
+                <div key={r.group} style={{background:"#f8fafc",borderRadius:10,padding:"11px 14px",border:"1px solid #eef2f7"}}>
+                  <div style={{fontWeight:800,color:"#0f172a",fontSize:".92rem"}}>{r.group}</div>
+                  <div style={{fontSize:".7rem",color:"#94a3b8",margin:"1px 0 6px"}}>{r.clients.size} account{r.clients.size>1?"s":""}</div>
+                  <div style={{fontSize:".74rem",color:"#64748b"}}>Awarded: <strong style={{color:"#0f172a"}}>₱{r.value.toLocaleString("en-PH",{maximumFractionDigits:0})}</strong></div>
+                  <div style={{fontSize:".74rem",color:"#64748b"}}>Collected: <strong style={{color:"#059669"}}>₱{r.collected.toLocaleString("en-PH",{maximumFractionDigits:0})}</strong></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Open balances alert */}
       {allClients.filter(c=>c.balance>0).length>0&&(
         <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:12,padding:"12px 18px",marginBottom:16,display:"flex",gap:16,flexWrap:"wrap",alignItems:"center"}}>
@@ -19937,6 +20229,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
                     ):(
                       <>
                         <span style={{fontWeight:600,color:"#0f172a",fontSize:".88rem"}}>{c.name}</span>
+                        {(clientProfiles||{})[c.name]?.parentGroup&&<span style={{fontSize:".62rem",background:"#eef2ff",color:"#4338ca",border:"1px solid #c7d2fe",borderRadius:20,padding:"1px 7px",fontWeight:700}} title="Parent group">🏛 {(clientProfiles||{})[c.name].parentGroup}</span>}
                         {vvipClients?.has(c.name)&&<span style={{fontSize:".65rem",background:"#fef3c7",color:"#d97706",border:"1px solid #fde68a",borderRadius:20,padding:"1px 7px",fontWeight:700}}>VVIP</span>}
                         {(role==="Manager")&&<button onClick={e=>{e.stopPropagation();setEditClient(c.name);setEditName(c.name);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:".75rem",color:"#94a3b8",padding:"0 2px"}} title="Edit client name">✏️</button>}
                         {saveClientProfile&&<button onClick={e=>{e.stopPropagation();openProfile(c.name);}} style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:5,padding:"1px 7px",cursor:"pointer",fontSize:".65rem",color:"#3b82f6",fontWeight:700}} title="Edit client profile">👤 Profile</button>}
@@ -20048,6 +20341,11 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
             <div style={{background:"#f0fdf4",borderRadius:10,padding:"14px 16px",marginBottom:12,border:"1.5px solid #6ee7b7"}}>
               <div style={{fontWeight:700,fontSize:".8rem",color:"#059669",marginBottom:8}}>Company / Client Name <span style={{color:"#ef4444"}}>*</span></div>
               <Inp autoFocus value={addForm.name} onChange={e=>fa("name",e.target.value)} onKeyDown={e=>e.key==="Enter"&&doAddClient()} placeholder="Full company or client name…"/>
+              <div style={{marginTop:10}}>
+                <div style={{fontWeight:700,fontSize:".75rem",color:"#475569",marginBottom:4}}>Parent Group <span style={{fontWeight:400,color:"#94a3b8"}}>(optional — e.g. “Diageo” for a department/subsidiary)</span></div>
+                <input list="clientGroupOpts" value={addForm.parentGroup} onChange={e=>fa("parentGroup",e.target.value)} placeholder="Leave blank for a standalone client…" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 11px",fontFamily:"inherit",fontSize:".85rem",color:"#1e293b",outline:"none",boxSizing:"border-box"}}/>
+                <datalist id="clientGroupOpts">{knownGroups.map(g=><option key={g} value={g}/>)}</datalist>
+              </div>
             </div>
             <div style={{background:"#f8fafc",borderRadius:10,padding:"14px 16px",marginBottom:12,border:"1px solid #e2e8f0"}}>
               <div style={{fontWeight:700,fontSize:".8rem",color:"#475569",marginBottom:10}}>📇 Name & Contact</div>
@@ -20101,6 +20399,10 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
             <div style={{background:"#f8fafc",borderRadius:10,padding:"14px 16px",marginBottom:12,border:"1px solid #e2e8f0"}}>
               <div style={{fontWeight:700,fontSize:".8rem",color:"#475569",marginBottom:10}}>📇 Name & Contact</div>
               <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10}}>
+                <Fld label="Parent Group" hint="e.g. “Diageo” — groups departments/subsidiaries for consolidated reporting">
+                  <input list="clientGroupOpts" value={profileForm.parentGroup||""} onChange={e=>fp2("parentGroup",e.target.value)} placeholder="Blank = standalone client" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 11px",fontFamily:"inherit",fontSize:".85rem",color:"#1e293b",outline:"none",boxSizing:"border-box"}}/>
+                  <datalist id="clientGroupOpts">{knownGroups.map(g=><option key={g} value={g}/>)}</datalist>
+                </Fld>
                 <Fld label="Contact Person"><Inp value={profileForm.contactPerson||""} onChange={e=>fp2("contactPerson",e.target.value)} placeholder="e.g. Juan dela Cruz"/></Fld>
                 <Fld label="Email"><Inp type="email" value={profileForm.email||""} onChange={e=>fp2("email",e.target.value)} placeholder="accounts@company.com"/></Fld>
                 <Fld label="Phone"><Inp value={profileForm.phone||""} onChange={e=>fp2("phone",e.target.value)} placeholder="+63 2 8xxx xxxx"/></Fld>
@@ -21039,7 +21341,7 @@ function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,subc
   const fmt=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:0});
   const ACCT_CLR={"For Accounting":"#d97706","Checked":"#2563eb","Payment Ordered":"#059669"};
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
-  const canManage=role==="Manager"||role==="Procurement";
+  const canManage=role==="Manager"||isProcurementRole(role);
   const woDirect=canApprovePO(role,session?.name||"",session?.name||"",poApprovers);
   // Where a WO sits in the engage → complete → pay chain (Policy v2.0). Derived
   // from the WO's own workflow + accounting fields: a subcontractor is only
@@ -21466,7 +21768,7 @@ function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,subc
   @media print{body{padding:20px}}
 </style></head><body>
 <div class="hdr">
-  <div><div class="co">GMD Pro</div><div class="co-sub">Fabrication &amp; Project Management</div></div>
+  <div><div class="co">GMD PRODUCTIONS INC</div><div class="co-sub">Fabrication &amp; Project Management</div></div>
   <div style="text-align:right"><div class="doc-title">SUBCON WORK ORDER</div><div class="doc-sub">${esc(w.woNumber)} · ${esc(w.woDate)||""}</div></div>
 </div>
 <div class="meta">
@@ -21936,7 +22238,7 @@ function PoDocumentationQueue({prs,swos,updatePR,updateSWO,wonDeals,session,role
   @media print{body{padding:20px}}
 </style></head><body>
 <div class="hdr">
-  <div><div class="co">GMD Pro</div><div class="co-sub">Fabrication &amp; Project Management</div></div>
+  <div><div class="co">GMD PRODUCTIONS INC</div><div class="co-sub">Fabrication &amp; Project Management</div></div>
   <div style="text-align:right"><div class="doc-title">PAYMENT ORDER</div><div class="doc-sub">${esc(d.number)} · ${esc(a.paymentOrderedAt)||today}</div></div>
 </div>
 <table>
@@ -22103,9 +22405,32 @@ ${a.acctNotes?`<div class="trail"><b>Accounting notes:</b><br>${esc(a.acctNotes)
 // ─── COSTING STUDY ────────────────────────────────────────────────────────────
 
 // ─── PROCUREMENT VIEW 2 (Full PO → Multi-item → Delivery) ───────────────────
-function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allDeals,budgets,exps,swos,session,role,toastEmit,suppliers,addSupplier,upPayables,payables,sendTelegramNotification,isSupabaseReady,sbUpsert,payableToSb,syncPoPayable,chartOfAccounts=[]}){
+function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allDeals,budgets,exps,swos,session,role,toastEmit,suppliers,addSupplier,poApprovers="",upPayables,payables,sendTelegramNotification,isSupabaseReady,sbUpsert,payableToSb,syncPoPayable,chartOfAccounts=[]}){
   const activeDeals=React.useMemo(()=>(allDeals||wonDeals||[]).filter(d=>!isLostStage(d.stage)),[allDeals,wonDeals]);
   const today=new Date().toISOString().split("T")[0];
+  // ── PO approval gate ────────────────────────────────────────────────────────
+  // Segregation of duties: a PO may only be moved to "PO Issued" by a Manager or
+  // by a designated PO approver (botSettings.poApprovers, e.g. "Marian Prile").
+  // The person who prepared/created the PO cannot self-approve it. Anyone without
+  // authority who selects "PO Issued" is held at "Pending Approval" with no
+  // approver stamp, so the printed PO never shows the preparer as the approver.
+  // Same helper (canApprovePO) already gates Subcon Work Orders.
+  const canApproveFor=requestedBy=>canApprovePO(role,session?.name||"",requestedBy,poApprovers);
+  // Apply a status change to one PR, enforcing the issue gate. onDone(patch)
+  // runs after the update with the patch that was actually written.
+  const changePoStatus=(pr,st,onDone)=>{
+    let patch={status:st};
+    if(st==="PO Issued"&&pr.status!=="PO Issued"){
+      if(!canApproveFor(pr.requestedBy)){
+        toastEmit&&toastEmit("Needs a Manager or the designated PO approver — held at Pending Approval.","error");
+        patch={status:"Pending Approval"};
+      }else{
+        patch={status:st,approvedBy:session?.name||"",approvedAt:today};
+      }
+    }
+    updatePR(pr.id,patch);
+    onDone&&onDone(patch);
+  };
   const[mode,setMode]=useState("list");
   const[editingId,setEditingId]=useState(null);
   const[editForm,setEditForm]=useState(emptyPR());
@@ -22127,6 +22452,8 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
   const[poLevelDiscValue,setPoLevelDiscValue]=useState("");
   const[poWithVat,setPoWithVat]=useState(false);
   const[poAccountCode,setPoAccountCode]=useState(""); // Chart-of-Accounts code for the PO (flows to the payable)
+  const[poTerms,setPoTerms]=useState(""); // Warehouse payment terms — COD / N days; drives the payable due date on receipt
+  const[poTermsText,setPoTermsText]=useState(""); // Free-text Terms & Conditions printed on the PO PDF (blank = standard boilerplate)
   const[editingPrIds,setEditingPrIds]=useState(null);
   const[selectedPOs,setSelectedPOs]=useState(()=>new Set()); // groupKeys picked for bulk delete
 
@@ -22157,7 +22484,8 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
   const openNewPO=()=>{
     setPoSupplier(""); setPoNumber(previewPoNo()); setPoNumberAuto(true); setPoDate(new Date().toISOString().split("T")[0]);
     setPoStatus("PO Issued"); setPoExpectedDelivery(""); setPoItems([emptyPoItem()]);
-    setPoLevelDiscType("none"); setPoLevelDiscValue(""); setPoWithVat(false); setPoAccountCode("");
+    setPoLevelDiscType("none"); setPoLevelDiscValue(""); setPoWithVat(false); setPoAccountCode(""); setPoTerms("");
+    setPoTermsText(PO_TERMS_DEFAULT);
     setEditingPrIds(null); setMode("newpo");
   };
 
@@ -22172,6 +22500,8 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
     setPoLevelDiscValue(String(first.poDiscValue||""));
     setPoWithVat(first.withVat||false);
     setPoAccountCode(first.accountCode||"");
+    setPoTerms(first.paymentTerms||"");
+    setPoTermsText(first.termsText||PO_TERMS_DEFAULT);
     setPoItems(items.map(pr=>({
       _id:Math.random().toString(36).slice(2),
       _existingId:pr.id,
@@ -22195,8 +22525,16 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
     const grandTotal=subtotal-poDisc;
     const vatAmt=withVat?grandTotal*0.12:0;
     const totalWithVat=grandTotal+vatAmt;
+    // Effective terms for the printed PO: the PO's own term wins; if left on
+    // "supplier default" (blank), fall back to the supplier's terms so the
+    // supplier reads the terms that actually apply, not a dash.
+    const supTermsPrint=(suppliers||[]).find(s=>(s.companyName||s.company_name||"").toLowerCase()===(supplierName||"").toLowerCase())?.paymentTerms||"";
+    const effTermsPrint=items[0]?.paymentTerms||supTermsPrint;
+    const termsSrc=(items[0]?.termsText||"").trim()||PO_TERMS_DEFAULT;
+    const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    const termsItems=termsSrc.split("\n").map(t=>t.trim()).filter(Boolean).map(t=>`<li>${esc(t)}</li>`).join("");
     const preparedBy=items[0]?.requestedBy||items[0]?.createdBy||"";
-    const approvedBy="Marian Prile";
+    const approvedBy=items[0]?.approvedBy||"";
     const receivedBy=supplierName||"";
     const allProjDeals=[...activeDeals,...(wonDeals||[])];
     const projectList=[...new Set(items.map(i=>{if(i.projectId==="__gmd_stocks__"||i.projectName==="GMD Stocks")return"GMD Stocks";const d=allProjDeals.find(x=>x.id===i.projectId);return d?projDisplayName(d):(i.projectName||"");}).filter(Boolean))].join(" / ")||"—";
@@ -22215,7 +22553,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
   .co-sub{font-size:11px;color:#64748b;margin-top:2px}
   .po-title{font-size:20px;font-weight:800;color:#1e293b}
   .po-sub{font-size:11px;color:#64748b;margin-top:3px}
-  .meta{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:8px;background:#f8fafc;padding:14px 16px;border-radius:8px 8px 0 0;border:1px solid #e2e8f0;border-bottom:none}
+  .meta{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:8px;background:#f8fafc;padding:14px 16px;border-radius:8px 8px 0 0;border:1px solid #e2e8f0;border-bottom:none}
   .meta-item label{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:#94a3b8;margin-bottom:3px}
   .meta-item span{font-weight:700;font-size:13px}
   .meta-proj{background:#f8fafc;padding:10px 16px 14px;border-radius:0 0 8px 8px;border:1px solid #e2e8f0;margin-bottom:20px;border-top:1px dashed #e2e8f0}
@@ -22226,18 +22564,23 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
   td{padding:8px 10px;border-bottom:1px solid #f1f5f9;vertical-align:top}
   tr:nth-child(even) td{background:#f8fafc}
   .total-row td{font-weight:800;background:#eff6ff;color:#1e40af;border-top:2px solid #1e293b}
+  .terms{margin-top:28px;border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px;background:#fafafa}
+  .terms h4{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:#64748b;margin-bottom:8px}
+  .terms ol{margin:0;padding-left:18px}
+  .terms li{font-size:10px;color:#334155;margin-bottom:5px;line-height:1.5}
   .sig{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-top:48px}
   .sig-box{font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
   @media print{body{padding:20px}}
 </style></head><body>
 <div class="hdr">
-  <div><div class="co">GMD Pro</div><div class="co-sub">Fabrication & Project Management</div></div>
+  <div><div class="co">GMD PRODUCTIONS INC</div><div class="co-sub">Fabrication & Project Management</div></div>
   <div style="text-align:right"><div class="po-title">PURCHASE ORDER</div><div class="po-sub">${poNo} · ${poD||""}</div></div>
 </div>
 <div class="meta">
   <div class="meta-item"><label>Supplier</label><span>${supplierName||"—"}</span></div>
   <div class="meta-item"><label>PO Number</label><span>${poNo}</span></div>
   <div class="meta-item"><label>Date Issued</label><span>${poD||"—"}</span></div>
+  <div class="meta-item"><label>Payment Terms</label><span>${effTermsPrint||"—"}</span></div>
 </div>
 <div class="meta-proj"><label>Project(s)</label><span>${projectList}</span></div>
 <table>
@@ -22246,8 +22589,9 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
   ${poDisc>0?`<tr style="background:#f0fdf4"><td colspan="6" style="text-align:right;font-size:11px;color:#059669">PO-Level Discount (${poDiscType==="pct"?poDiscVal+"%":"Fixed"})</td><td style="text-align:right;color:#059669;font-weight:700">−${fmt(poDisc)}</td></tr>`:""}
   ${withVat?`<tr style="background:#f8fafc"><td colspan="6" style="text-align:right;font-size:11px;color:#64748b">Ex-VAT Amount</td><td style="text-align:right;color:#64748b">${fmt(grandTotal)}</td></tr><tr style="background:#fffbeb"><td colspan="6" style="text-align:right;font-size:11px;color:#b45309;font-weight:700">VAT 12% (OR)</td><td style="text-align:right;color:#b45309;font-weight:700">+${fmt(vatAmt)}</td></tr>`:""}
   <tr class="total-row"><td colspan="6" style="text-align:right">${withVat?"TOTAL (VAT Inclusive)":"Grand Total"}</td><td style="text-align:right">${fmt(totalWithVat)}</td></tr>
-  ${withVat?`<tr><td colspan="7" style="font-size:9px;color:#94a3b8;text-align:right;padding-top:4px">Official Receipt (OR) — VAT Registered Supplier · TIN of GMD Pro Solutions applies</td></tr>`:""}
+  ${withVat?`<tr><td colspan="7" style="font-size:9px;color:#94a3b8;text-align:right;padding-top:4px">Official Receipt (OR) — VAT Registered Supplier · TIN of GMD PRODUCTIONS INC applies</td></tr>`:""}
 </table>
+${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems}</ol></div>`:""}
 <div class="sig">
   <div class="sig-box">Prepared by<br><br><br><div style="border-top:1px solid #94a3b8;padding-top:6px;margin-top:4px"><strong style="font-size:11px;color:#0f172a">${preparedBy||"&nbsp;"}</strong><br>Procurement</div></div>
   <div class="sig-box">Approved by<br><br><br><div style="border-top:1px solid #94a3b8;padding-top:6px;margin-top:4px"><strong style="font-size:11px;color:#0f172a">${approvedBy||"&nbsp;"}</strong><br>Manager / Authorized</div></div>
@@ -22278,6 +22622,12 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
     // preview; a manually-typed or edited number is kept as-is.
     let poNo=poNumber.trim();
     if(!editingPrIds&&poNumberAuto){const claimed=await nextPoNo();if(claimed)poNo=claimed;}
+    // PO issue gate on save: only a Manager or the designated PO approver may
+    // create/save a PO already in "PO Issued". Everyone else (the preparer) is
+    // held at "Pending Approval" so they can't self-approve their own PO.
+    const canIssueNow=canApproveFor(session?.name||"");
+    const effStatus=(poStatus==="PO Issued"&&!canIssueNow)?"Pending Approval":poStatus;
+    if(poStatus==="PO Issued"&&!canIssueNow) toastEmit&&toastEmit("Saved as Pending Approval — a Manager or the designated PO approver must issue it.","info");
     const buildUpdate=(item)=>{
       // Resolve against all active deals, not just awarded ones — procurement
       // often buys swatches/materials for deals that haven't been won yet, and
@@ -22287,10 +22637,10 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
         qty:Number(item.qty)||1,unit:item.unit,estUnitCost:Number(item.estUnitCost)||0,
         discType:"none",discValue:0,
         poDiscType:poLevelDiscType,poDiscValue:poLevelDiscValue,withVat:poWithVat,
-        accountCode:poAccountCode,
+        accountCode:poAccountCode,paymentTerms:poTerms,termsText:poTermsText,
         projectId:item.projectId,projectName:deal?.client||item.projectName||"",
         supplier:poSupplier,poNumber:poNo,poDate:poDate,
-        status:poStatus,deliveryDate:poExpectedDelivery||""};
+        status:effStatus,deliveryDate:poExpectedDelivery||""};
     };
     if(editingPrIds){
       const updatedIds=poItems.filter(i=>i._existingId).map(i=>i._existingId);
@@ -22305,7 +22655,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
       poItems.forEach(item=>{
         addPR({...emptyPR(),...buildUpdate(item),
           requestedBy:session?.name||"",
-          approvedBy:poStatus==="PO Issued"?session?.name||"":""
+          approvedBy:effStatus==="PO Issued"?session?.name||"":""
         },{silent:true});
       });
       const itemLines=poItems.map(item=>`  • ${item.itemName||"?"} — ${item.qty||"?"} ${item.unit||""} @ ₱${Number(item.estUnitCost||0).toLocaleString("en-PH")}`).join("\n");
@@ -22446,6 +22796,12 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
             <Fld label="Status"><Sel value={editForm.status} onChange={e=>ef("status",e.target.value)}>{PROC_STATUSES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
             <Fld label="PO Number"><Inp value={editForm.poNumber} onChange={e=>ef("poNumber",e.target.value)}/></Fld>
             <Fld label="PO Date"><Inp type="date" value={editForm.poDate} onChange={e=>ef("poDate",e.target.value)}/></Fld>
+            <Fld label="Terms">
+              <Sel value={editForm.paymentTerms||""} onChange={e=>ef("paymentTerms",e.target.value)}>
+                <option value="">— Supplier default —</option>
+                {PO_TERMS.map(t=><option key={t} value={t}>{t}</option>)}
+              </Sel>
+            </Fld>
             <Fld label="Requested By"><Inp value={editForm.requestedBy} onChange={e=>ef("requestedBy",e.target.value)}/></Fld>
             {["PO Issued","Approved"].includes(editForm.status)&&(
               <Fld label="Expected Delivery Date"><Inp type="date" value={editForm.deliveryDate} onChange={e=>ef("deliveryDate",e.target.value)}/></Fld>
@@ -22463,7 +22819,20 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
             <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp value={editForm.notes} onChange={e=>ef("notes",e.target.value)}/></Fld></div>
           </div>
           <div style={{display:"flex",gap:10,marginTop:16}}>
-            <button onClick={()=>{updatePR(editingId,editForm);if(editForm.poNumber&&syncPoPayable)syncPoPayable(editForm.poNumber,prs.map(p=>p.id===editingId?{...p,...editForm}:p));toastEmit&&toastEmit("PR updated","success");setMode("list");setEditingId(null);}} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"10px 22px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:"#fff",cursor:"pointer"}}>Save Changes</button>
+            <button onClick={()=>{
+              const orig=prs.find(p=>p.id===editingId);
+              let patch={...editForm};
+              // Enforce the PO issue gate on edits too — a non-approver cannot
+              // flip an existing PO to "PO Issued" via the edit form.
+              if(editForm.status==="PO Issued"&&orig&&orig.status!=="PO Issued"){
+                if(!canApproveFor(editForm.requestedBy||orig.requestedBy)){
+                  toastEmit&&toastEmit("Needs a Manager or the designated PO approver — held at Pending Approval.","error");
+                  patch={...patch,status:"Pending Approval",approvedBy:"",approvedAt:""};
+                }else{
+                  patch={...patch,approvedBy:session?.name||"",approvedAt:today};
+                }
+              }
+              updatePR(editingId,patch);if(patch.poNumber&&syncPoPayable)syncPoPayable(patch.poNumber,prs.map(p=>p.id===editingId?{...p,...patch}:p));toastEmit&&toastEmit("PR updated","success");setMode("list");setEditingId(null);}} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"10px 22px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:"#fff",cursor:"pointer"}}>Save Changes</button>
             <button onClick={()=>{setMode("list");setEditingId(null);}} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
           </div>
         </div>
@@ -22507,6 +22876,12 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
               <Sel value={poAccountCode} onChange={e=>setPoAccountCode(e.target.value)}>
                 <option value="">— Select account —</option>
                 {[...chartOfAccounts].filter(a=>a.active!==false&&(a.type==="COGS"||a.type==="Expense"||a.type==="Asset")).sort((a,b)=>String(a.code).localeCompare(String(b.code))).map(a=><option key={a.id||a.code} value={a.code}>{a.code} · {a.name}</option>)}
+              </Sel>
+            </Fld>
+            <Fld label="Terms">
+              <Sel value={poTerms} onChange={e=>setPoTerms(e.target.value)}>
+                <option value="">— Supplier default —</option>
+                {PO_TERMS.map(t=><option key={t} value={t}>{t}</option>)}
               </Sel>
             </Fld>
           </div>
@@ -22586,6 +22961,18 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
             {poWithVat
               ?<span style={{fontSize:".78rem",color:"#059669",fontWeight:600}}>🧾 OR — 12% VAT will be added on top of ex-VAT prices</span>
               :<span style={{fontSize:".78rem",color:"#94a3b8"}}>📄 No OR — cash / no receipt, amount is as quoted</span>}
+          </div>
+
+          {/* Terms & Conditions (free text, printed on the PO PDF) */}
+          <div style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"12px 16px",marginBottom:12}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8,flexWrap:"wrap",gap:8}}>
+              <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>Terms &amp; Conditions <span style={{fontWeight:500,color:"#94a3b8"}}>(printed on the PO)</span></div>
+              <button type="button" onClick={()=>setPoTermsText(PO_TERMS_DEFAULT)} style={{background:"none",border:"none",color:"#1d4ed8",fontSize:".72rem",fontWeight:700,cursor:"pointer",padding:0,fontFamily:"inherit"}}>↺ Reset to standard terms</button>
+            </div>
+            <textarea value={poTermsText} onChange={e=>setPoTermsText(e.target.value)} rows={6}
+              placeholder="Terms & conditions for this supplier — one per line…"
+              style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".82rem",color:"#1e293b",background:"#fff",boxSizing:"border-box",outline:"none",resize:"vertical",lineHeight:1.5}}/>
+            <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:4}}>💡 Leave blank to fall back to GMD's standard terms on the printed PO. One line per term.</div>
           </div>
 
           {/* Totals summary */}
@@ -22725,7 +23112,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
       </div>
 
       {grouped.length===0&&<div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8",fontSize:".84rem"}}>No purchase orders yet. Hit + New Purchase Order to start.</div>}
-      {(role==="Manager"||role==="Procurement")&&poListTab==="list"&&poGroupList.length>0&&(
+      {(role==="Manager"||isProcurementRole(role))&&poListTab==="list"&&poGroupList.length>0&&(
         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:10,flexWrap:"wrap"}}>
           <label style={{display:"flex",alignItems:"center",gap:6,fontSize:".78rem",color:"#475569",cursor:"pointer",fontWeight:600}}>
             <input type="checkbox" checked={allPosSelected} onChange={toggleSelectAllPOs} style={{width:16,height:16,cursor:"pointer",accentColor:"#dc2626"}}/>
@@ -22833,7 +23220,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
                 <div {...clickable(()=>setExpandedPo(o=>o===groupKey?null:groupKey))} aria-expanded={open} aria-label={`PO ${poNo}, ${status} — expand line items`} style={{display:"grid",gridTemplateColumns:"90px 1fr 1fr 110px 100px 90px",padding:"9px 14px",gap:8,alignItems:"center",cursor:"pointer",background:open?"#f8fafc":"#fff"}}
                   onMouseEnter={e=>{if(!open)e.currentTarget.style.background="#f8fafc";}} onMouseLeave={e=>{e.currentTarget.style.background=open?"#f8fafc":"#fff";}}>
                   <div style={{fontWeight:700,color:dupPoColors[poNo]||"#6366f1",fontSize:".75rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:4}}>
-                    {(role==="Manager"||role==="Procurement")&&<input type="checkbox" checked={selectedPOs.has(groupKey)} onClick={e=>e.stopPropagation()} onChange={()=>toggleSelectPO(groupKey)} title="Select for bulk delete" style={{width:14,height:14,cursor:"pointer",accentColor:"#dc2626",flexShrink:0,margin:0}}/>}
+                    {(role==="Manager"||isProcurementRole(role))&&<input type="checkbox" checked={selectedPOs.has(groupKey)} onClick={e=>e.stopPropagation()} onChange={()=>toggleSelectPO(groupKey)} title="Select for bulk delete" style={{width:14,height:14,cursor:"pointer",accentColor:"#dc2626",flexShrink:0,margin:0}}/>}
                     {dupPoColors[poNo]&&<span title="Duplicate PO number" style={{width:7,height:7,borderRadius:"50%",background:dupPoColors[poNo],flexShrink:0,display:"inline-block"}}/>}
                     {poNo}
                   </div>
@@ -22843,8 +23230,8 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
                   <div><span style={{fontSize:".62rem",background:STATUS_CLR[status]+"22",color:STATUS_CLR[status],border:`1px solid ${STATUS_CLR[status]}44`,borderRadius:20,padding:"2px 8px",fontWeight:700,whiteSpace:"nowrap"}}>{status}</span></div>
                   <div style={{display:"flex",gap:5,justifyContent:"flex-end"}}>
                     <button aria-label={`Print PO ${poNo}`} title="Print PO" onClick={e=>{e.stopPropagation();printPO(poNo,supplier,poD,items,items[0]?.poDiscType,items[0]?.poDiscValue,items[0]?.withVat);}} style={{background:"#eff6ff",border:"none",borderRadius:6,padding:"3px 8px",fontSize:".68rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨</button>
-                    {(role==="Manager"||role==="Procurement")&&<button aria-label={`Edit PO ${poNo}`} title="Edit PO" onClick={e=>{e.stopPropagation();openEditPO(poNo,items);}} style={{background:"#f0fdf4",border:"none",borderRadius:6,padding:"3px 8px",fontSize:".68rem",color:"#059669",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✏</button>}
-                    {(role==="Manager"||role==="Procurement")&&<button aria-label={`Delete PO ${poNo}`} title="Delete PO" onClick={async e=>{e.stopPropagation();
+                    {(role==="Manager"||isProcurementRole(role))&&<button aria-label={`Edit PO ${poNo}`} title="Edit PO" onClick={e=>{e.stopPropagation();openEditPO(poNo,items);}} style={{background:"#f0fdf4",border:"none",borderRadius:6,padding:"3px 8px",fontSize:".68rem",color:"#059669",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✏</button>}
+                    {(role==="Manager"||isProcurementRole(role))&&<button aria-label={`Delete PO ${poNo}`} title="Delete PO" onClick={async e=>{e.stopPropagation();
                       // Policy v2.0: a PO that has already raised an Accounts Payable
                       // entry can't be deleted silently — deleting the PR leaves the
                       // payable (and any expense) orphaned and breaks the document
@@ -22870,11 +23257,11 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
                             {delivPct>0&&delivPct<100&&<span style={{fontSize:".68rem",color:"#f59e0b",fontWeight:600,marginLeft:8}}>{delivPct}% delivered</span>}
                           </div>
                           <span style={{fontWeight:700,color:"#0f172a",fontSize:".8rem",flexShrink:0}}>{fmt(actTotal)}</span>
-                          <select value={pr.status} onClick={e=>e.stopPropagation()} onChange={e=>{const st=e.target.value;const extra=st==="PO Issued"&&pr.status!=="PO Issued"?{approvedBy:session?.name||"",approvedAt:today}:{};updatePR(pr.id,{status:st,...extra});syncPoPayable&&syncPoPayable(pr.poNumber,items.map(x=>x.id===pr.id?{...x,status:st,...extra}:x));}} style={{border:"1.5px solid #e2e8f0",borderRadius:6,padding:"3px 6px",fontFamily:"inherit",fontSize:".7rem",color:"#0f172a",background:"#fff",cursor:"pointer",flexShrink:0}}>
+                          <select value={pr.status} onClick={e=>e.stopPropagation()} onChange={e=>changePoStatus(pr,e.target.value,patch=>syncPoPayable&&syncPoPayable(pr.poNumber,items.map(x=>x.id===pr.id?{...x,...patch}:x)))} style={{border:"1.5px solid #e2e8f0",borderRadius:6,padding:"3px 6px",fontFamily:"inherit",fontSize:".7rem",color:"#0f172a",background:"#fff",cursor:"pointer",flexShrink:0}}>
                             {PROC_STATUSES.map(s=><option key={s}>{s}</option>)}
                           </select>
                           <button onClick={e=>{e.stopPropagation();setEditForm({...pr});setEditingId(pr.id);setMode("editpr");}} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"3px 8px",fontSize:".7rem",color:"#475569",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>✏</button>
-                          {(role==="Manager"||role==="Procurement")&&<button onClick={async e=>{e.stopPropagation();if((await uiConfirm("Delete this item?")))deletePR(pr.id);}} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"3px 8px",fontSize:".7rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>✕</button>}
+                          {(role==="Manager"||isProcurementRole(role))&&<button onClick={async e=>{e.stopPropagation();if((await uiConfirm("Delete this item?")))deletePR(pr.id);}} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"3px 8px",fontSize:".7rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>✕</button>}
                         </div>
                       );
                     })}
@@ -22895,11 +23282,11 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
                 <div style={{textAlign:"right",fontWeight:800,color:"#10b981",fontSize:".85rem"}}>{fmt(actTotal)}</div>
                 <div><span style={{fontSize:".62rem",background:STATUS_CLR[pr.status]+"22",color:STATUS_CLR[pr.status],border:`1px solid ${STATUS_CLR[pr.status]}44`,borderRadius:20,padding:"2px 8px",fontWeight:700,whiteSpace:"nowrap"}}>{pr.status}</span></div>
                 <div style={{display:"flex",gap:4,justifyContent:"flex-end"}}>
-                  <select value={pr.status} onChange={e=>{const st=e.target.value;const extra=st==="PO Issued"&&pr.status!=="PO Issued"?{approvedBy:session?.name||"",approvedAt:today}:{};updatePR(pr.id,{status:st,...extra});}} style={{border:"1.5px solid #e2e8f0",borderRadius:5,padding:"2px 4px",fontFamily:"inherit",fontSize:".65rem",color:"#0f172a",background:"#fff",cursor:"pointer",maxWidth:40}}>
+                  <select value={pr.status} onChange={e=>changePoStatus(pr,e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:5,padding:"2px 4px",fontFamily:"inherit",fontSize:".65rem",color:"#0f172a",background:"#fff",cursor:"pointer",maxWidth:40}}>
                     {PROC_STATUSES.map(s=><option key={s}>{s}</option>)}
                   </select>
                   <button onClick={()=>{setEditForm({...pr});setEditingId(pr.id);setMode("editpr");}} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
-                  {(role==="Manager"||role==="Procurement")&&<button onClick={async ()=>{if((await uiConfirm(`Delete "${pr.itemName||pr.item||"this request"}"${pr.supplier?` from ${pr.supplier}`:""}?`)))deletePR(pr.id);}} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
+                  {(role==="Manager"||isProcurementRole(role))&&<button onClick={async ()=>{if((await uiConfirm(`Delete "${pr.itemName||pr.item||"this request"}"${pr.supplier?` from ${pr.supplier}`:""}?`)))deletePR(pr.id);}} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
                 </div>
               </div>
             );
@@ -24210,7 +24597,7 @@ function AuditView({findings,addFinding,updateFinding,session,role}){
   );
 }
 
-function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMilestone,updateMilestone,deleteMilestone,deleteProjectBilling,generateBillingSchedule,logBillingPayment,deleteBillingPayment,nextInvoiceNo,session,role,cocDeals,clientProfiles,initialDeal,clearInitialDeal,upDeals,onSaveOnboarding,onOpenPayTerms,projs,overallProg,toastEmit,sendTelegramNotification}){
+function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMilestone,updateMilestone,deleteMilestone,deleteProjectBilling,generateBillingSchedule,logBillingPayment,deleteBillingPayment,setConfirmDel,canDeleteDeal,nextInvoiceNo,session,role,cocDeals,clientProfiles,initialDeal,clearInitialDeal,upDeals,onSaveOnboarding,onOpenPayTerms,projs,overallProg,toastEmit,sendTelegramNotification}){
   const mob=window.innerWidth<768;
   const[selDeal,  setSelDeal]  =useState(initialDeal||null);
   React.useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearInitialDeal&&clearInitialDeal();}},[]);
@@ -24236,6 +24623,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const[billingSearch,setBillingSearch]=useState("");
   const[billingFilter,setBillingFilter]=useState("all"); // all | outstanding | overdue | collected | uncollected | paid
   const[showNotBilled,setShowNotBilled]=useState(false);  // hide 0-milestone "Not billed" projects by default
+  const[billRowMenu,setBillRowMenu]=useState(null);       // ⋯ row-actions menu {id,client,canDeleteSchedule,canRemoveProject,top,right}
   const[forecastRange,setForecastRange]=useState("week"); // today | week | month — collection forecast horizon
 
   const n =v=>Number(String(v||0).replace(/,/g,""))||0;
@@ -24373,8 +24761,10 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     addMilestone({name:"Retention Release",description:`Release of retention withheld across progress billings (${deal.paymentTerms?.retentionRelease||"on completion"}).`,amount:out,dealId:selDeal,isRetentionRelease:true,invoiceNo:await claimInv(),invoiceDate:today,dueDate:"",status:"Draft",receiptType:deal.receiptType||null,withholding:deal.withholding??null,createdBy:session?.name||role});
     toastEmit&&toastEmit(`Retention release drafted: ₱${out.toLocaleString("en-PH")}.`,"success",6000);
   };
-  const submitPay=()=>{
+  const submitPay=async()=>{
     if(!payForm.amount||!showPay) return;
+    const amt=Number(payForm.amount);
+    if(!isFinite(amt)||amt<=0){toastEmit("Enter a payment amount greater than zero.","warning");return;}
     const ms=billings.find(b=>b.id===showPay);
     if(ms){
       const alreadyPaid=(ms.payments||[]).filter(p=>!p.bounced).reduce((s,p)=>s+Number(p.amount||0),0);
@@ -24385,6 +24775,9 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         return;
       }
     }
+    // #4 Date sanity — warn (not block) on illogical dates.
+    if(payForm.date&&payForm.date>today&&!(await uiConfirm("The Date Received is in the future. Save anyway?")))return;
+    if(payForm.date&&payForm.valueDate&&payForm.valueDate<payForm.date&&!(await uiConfirm("The Value Date is before the Date Received (funds credited before payment received?). Save anyway?")))return;
     logBillingPayment(showPay,{...payForm,recordedBy:session?.name||role});
     setPayForm({amount:"",date:today,refNo:"",note:"",valueDate:"",bank:"",method:"Bank Transfer"});
     setShowPay(null);
@@ -24730,7 +25123,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         <p style="margin-top:3px"><b>METROBANK</b>&nbsp;—&nbsp;382-7-38202059-2</p>
       </div>
       <div class="sig">
-        <div><div class="sl2">Prepared by:</div><div class="sn">Aerwin Del Rosario</div><div class="sc">GMD Productions Inc.</div></div>
+        <div><div class="sl2">Prepared by:</div><div class="sn">${esc(preparedBy)||"&nbsp;"}</div><div class="sc">GMD Productions Inc.</div></div>
         <div><div class="sl2">Approved by:</div><div class="sn">Paulo Garcia</div><div class="sc">GMD Productions Inc.</div></div>
       </div>
     </div>
@@ -24972,6 +25365,14 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
               {milestoneCount===0&&<span style={{fontSize:".68rem",color:"#e2e8f0"}}>—</span>}
             </>
           );
+          // Row-menu delete options adapt to the row: a billed project (milestones
+          // present) offers "Delete billing schedule" (archived, reversible); a
+          // "Not billed" 0-milestone project has no schedule to delete, so it
+          // offers "Remove project" instead — the full deal delete, Manager-gated
+          // and routed through the global confirmation modal.
+          const canDeleteSchedule=canEdit&&milestoneCount>0;
+          const canRemoveProject=canDeleteDeal&&milestoneCount===0;
+          const hasRowMenu=canDeleteSchedule||canRemoveProject;
           const actionButtons=(
             <>
               <button onClick={e=>{e.stopPropagation();setSelDeal(d.id);}}
@@ -24982,11 +25383,11 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                 style={{background:"#f97316",border:"none",borderRadius:7,padding:mob?"8px 14px":"5px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#fff",cursor:"pointer",fontWeight:700,flex:mob?1:undefined}}>
                 📄 SOA
               </button>
-              {canEdit&&milestoneCount>0&&(
-                <button onClick={e=>{e.stopPropagation();deleteProjectBilling(d.id);}}
-                  title="Delete this project's billing (archived to Audit Trail)"
-                  style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:7,padding:mob?"8px 12px":"5px 9px",fontFamily:"inherit",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontWeight:700,flex:mob?0:undefined}}>
-                  🗑
+              {hasRowMenu&&(
+                <button onClick={e=>{e.stopPropagation();const r=e.currentTarget.getBoundingClientRect();setBillRowMenu(billRowMenu?.id===d.id?null:{id:d.id,client:d.client,canDeleteSchedule,canRemoveProject,top:r.bottom+4,right:Math.max(8,window.innerWidth-r.right)});}}
+                  title="More actions"
+                  style={{background:billRowMenu?.id===d.id?"#e2e8f0":"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:7,padding:mob?"8px 13px":"5px 10px",fontFamily:"inherit",fontSize:".9rem",lineHeight:1,color:"#64748b",cursor:"pointer",fontWeight:700,flex:mob?0:undefined}}>
+                  ⋯
                 </button>
               )}
             </>
@@ -25055,6 +25456,31 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
           );
         })}
       </div>
+
+      {/* ── Row-actions menu (⋯) — fixed-position so the overflow:auto list
+             doesn't clip it. Anchored to the button that opened it. ─────────── */}
+      {billRowMenu&&(()=>{
+        const menuItem={display:"block",width:"100%",textAlign:"left",background:"#fff",border:"none",borderBottom:"1px solid #f1f5f9",padding:"11px 15px",fontFamily:"inherit",fontSize:".8rem",color:"#dc2626",cursor:"pointer",fontWeight:600,whiteSpace:"nowrap"};
+        return(
+        <>
+          <div onClick={()=>setBillRowMenu(null)} style={{position:"fixed",inset:0,zIndex:60}}/>
+          <div style={{position:"fixed",top:billRowMenu.top,right:billRowMenu.right,zIndex:61,background:"#fff",border:"1px solid #e2e8f0",borderRadius:9,boxShadow:"0 8px 24px rgba(0,0,0,.14)",minWidth:210,overflow:"hidden"}}>
+            {billRowMenu.canDeleteSchedule&&(
+              <button onClick={()=>{const id=billRowMenu.id;setBillRowMenu(null);deleteProjectBilling(id);}}
+                title="Archive this project's billing schedule to the Audit Trail (reversible)" style={menuItem}>
+                🗑 Delete billing schedule
+              </button>
+            )}
+            {billRowMenu.canRemoveProject&&(
+              <button onClick={()=>{const id=billRowMenu.id;setBillRowMenu(null);setConfirmDel(id);}}
+                title="This project has no billing set up. Removing it permanently deletes the whole project and all its records." style={{...menuItem,borderBottom:"none"}}>
+                🗑 Remove project…
+              </button>
+            )}
+          </div>
+        </>
+        );
+      })()}
 
       {/* ── POPUP: Project Billing Detail ──────────────────────────────── */}
       {selDeal&&(
@@ -25428,16 +25854,28 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                                   <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:6}}>
                                     <Fld label="Amount (₱)"><Inp type="number" value={editPayForm.amount??p.amount} onChange={e=>setEditPayForm(f=>({...f,amount:e.target.value}))}/></Fld>
                                     <Fld label="Date"><Inp type="date" value={editPayForm.date??p.date??today} onChange={e=>setEditPayForm(f=>({...f,date:e.target.value}))}/></Fld>
-                                    <Fld label="Bank"><Sel value={editPayForm.bank??p.bank??""} onChange={e=>setEditPayForm(f=>({...f,bank:e.target.value}))}><option value="">— Select bank</option>{BANKS.map(b=><option key={b.id} value={b.id}>{b.short}</option>)}</Sel></Fld>
+                                    <Fld label="Bank"><Sel value={editPayForm.bank??p.bank??""} onChange={e=>setEditPayForm(f=>({...f,bank:e.target.value}))}><option value="">— Select bank</option>{BANKS.map(b=><option key={b.id} value={b.id}>{b.short}</option>)}<option value="cash">Cash</option></Sel></Fld>
                                     <Fld label="Method"><Sel value={editPayForm.method??p.method??"Bank Transfer"} onChange={e=>setEditPayForm(f=>({...f,method:e.target.value}))}>{PAYMENT_METHODS.map(m=><option key={m} value={m}>{m}</option>)}</Sel></Fld>
                                     <Fld label="Value Date"><Inp type="date" value={editPayForm.valueDate??p.valueDate??""} onChange={e=>setEditPayForm(f=>({...f,valueDate:e.target.value}))}/></Fld>
                                     <Fld label="Reference No."><Inp value={editPayForm.refNo??p.refNo??""} onChange={e=>setEditPayForm(f=>({...f,refNo:e.target.value}))} placeholder="Ref…"/></Fld>
                                     <Fld label="Note"><Inp value={editPayForm.note??p.note??""} onChange={e=>setEditPayForm(f=>({...f,note:e.target.value}))} placeholder="Note…"/></Fld>
                                   </div>
                                   <div style={{display:"flex",gap:6,marginTop:6}}>
-                                    <button onClick={()=>{
-                                      const updated={...p,...editPayForm,amount:Number(editPayForm.amount??p.amount)};
-                                      updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?updated:px)});
+                                    <button onClick={async()=>{
+                                      const amt=Number(editPayForm.amount??p.amount);
+                                      if(!isFinite(amt)||amt<=0){toastEmit("Enter a payment amount greater than zero.","warning");return;}
+                                      // #3 Overpayment cap on edit (Add already enforces this).
+                                      const eTx=calcTax(ms.amount,ms.receiptType??deal?.receiptType??"OR",ms.withholding??deal?.withholding??false);
+                                      const otherPaid=(ms.payments||[]).filter(px=>px.id!==p.id&&!px.bounced).reduce((s,px)=>s+Number(px.amount||0),0);
+                                      const eBalance=Math.max(0,eTx.netReceivable-otherPaid);
+                                      if(amt>eBalance+0.01){toastEmit(`Payment ₱${amt.toLocaleString("en-PH")} exceeds the milestone balance of ₱${eBalance.toLocaleString("en-PH")}.`,"warning");return;}
+                                      // #4 Date sanity — warn (not block) on illogical dates.
+                                      const nDate=editPayForm.date??p.date;
+                                      const nVal=editPayForm.valueDate??p.valueDate;
+                                      if(nDate&&nDate>today&&!(await uiConfirm("The Date Received is in the future. Save anyway?")))return;
+                                      if(nDate&&nVal&&nVal<nDate&&!(await uiConfirm("The Value Date is before the Date Received (funds credited before payment received?). Save anyway?")))return;
+                                      const updated={...p,...editPayForm,amount:amt};
+                                      updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?updated:px)},{action:"Payment Edited",detail:`${ms.name||"Milestone"}: ₱${Number(p.amount||0).toLocaleString("en-PH")} → ₱${amt.toLocaleString("en-PH")}`});
                                       setEditPay(null);setEditPayForm({});
                                     }} style={{background:"#1d4ed8",border:"none",borderRadius:6,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#fff",cursor:"pointer"}}>Save</button>
                                     <button onClick={()=>{setEditPay(null);setEditPayForm({});}} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 10px",fontFamily:"inherit",fontSize:".75rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
@@ -25449,7 +25887,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                                     <span>{p.date}</span>
                                     <span style={{fontWeight:700,color:"#059669"}}>₱{n(p.amount).toLocaleString("en-PH")}</span>
                                     {p.method&&<span style={{color:"#64748b"}}>{p.method}</span>}
-                                    {p.bank&&<span style={{color:"#64748b"}}>🏦 {p.bank}</span>}
+                                    {p.bank&&<span style={{color:"#64748b"}}>🏦 {p.bank==="cash"?"Cash":(BANKS.find(x=>x.id===p.bank)?.short||p.bank)}</span>}
                                     {(()=>{
                                       const cd=paymentClearDate(p);
                                       if(p.bounced) return <span style={{fontSize:".65rem",fontWeight:700,padding:"1px 7px",borderRadius:20,background:"#fef2f2",color:"#dc2626"}}>✕ Bounced</span>;
@@ -25462,17 +25900,17 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                                   {canEdit&&(
                                     <div style={{display:"flex",gap:4,flexShrink:0}}>
                                       {!p.bounced&&!isPaymentCleared(p,today)&&(
-                                        <button onClick={()=>updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?{...px,valueDate:today,bounced:false}:px)})}
+                                        <button onClick={()=>updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?{...px,valueDate:today,bounced:false}:px)},{action:"Payment Cleared",detail:`${ms.name||"Milestone"}: ₱${Number(p.amount||0).toLocaleString("en-PH")} marked cleared`})}
                                           title="Mark funds cleared today"
                                           style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:5,padding:"2px 7px",fontFamily:"inherit",fontSize:".65rem",color:"#059669",cursor:"pointer",fontWeight:600}}>✓ Clear</button>
                                       )}
                                       {!p.bounced&&(
-                                        <button onClick={async ()=>{if((await uiConfirm("Mark this collection as bounced? It will stop counting as cleared cash.")))updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?{...px,bounced:true}:px)});}}
+                                        <button onClick={async ()=>{if((await uiConfirm("Mark this collection as bounced? It will stop counting as cleared cash.")))updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?{...px,bounced:true}:px)},{action:"Payment Bounced",detail:`${ms.name||"Milestone"}: ₱${Number(p.amount||0).toLocaleString("en-PH")} marked bounced`});}}
                                           title="Mark cheque bounced"
                                           style={{background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:5,padding:"2px 7px",fontFamily:"inherit",fontSize:".65rem",color:"#c2410c",cursor:"pointer",fontWeight:600}}>⤺</button>
                                       )}
                                       {p.bounced&&(
-                                        <button onClick={()=>updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?{...px,bounced:false}:px)})}
+                                        <button onClick={()=>updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?{...px,bounced:false}:px)},{action:"Payment Restored",detail:`${ms.name||"Milestone"}: ₱${Number(p.amount||0).toLocaleString("en-PH")} un-bounced`})}
                                           title="Un-bounce"
                                           style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:5,padding:"2px 7px",fontFamily:"inherit",fontSize:".65rem",color:"#059669",cursor:"pointer",fontWeight:600}}>↺</button>
                                       )}
@@ -25529,7 +25967,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                             <Fld label="Bank Deposited To">
                               <Sel value={payForm.bank||""} onChange={e=>fp("bank",e.target.value)}>
                                 <option value="">— Select Bank —</option>
-                                {[{v:"bpi",l:"BPI"},{v:"metro",l:"Metrobank"},{v:"china",l:"Chinabank"},{v:"bdo",l:"BDO"},{v:"security",l:"Security Bank"},{v:"union",l:"Unionbank"},{v:"cash",l:"Cash"}].map(b=><option key={b.v} value={b.v}>{b.l}</option>)}
+                                {[...BANKS.map(b=>({v:b.id,l:b.short})),{v:"cash",l:"Cash"}].map(b=><option key={b.v} value={b.v}>{b.l}</option>)}
                               </Sel>
                             </Fld>
                             <Fld label="Payment Method">
@@ -27491,7 +27929,7 @@ function SupplierMasterView({suppliers,addSupplier,updateSupplier,deleteSupplier
   const[filterMat,setFilterMat]=useState("all");
 
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
-  const canEdit=role==="Manager"||role==="Procurement";
+  const canEdit=role==="Manager"||isProcurementRole(role);
 
   const filtered=useMemo(()=>{
     let list=suppliers;
@@ -27700,7 +28138,7 @@ function SubconMasterView({subcons,addSubcon,updateSubcon,deleteSubcon,session,r
   const[filterRating,setFilterRating]=useState("all");
 
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
-  const canEdit=role==="Manager"||role==="Procurement"||role==="Operations";
+  const canEdit=role==="Manager"||isProcurementRole(role)||role==="Operations";
 
   const grouped=useMemo(()=>{
     const map=new Map();

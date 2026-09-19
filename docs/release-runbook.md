@@ -3,6 +3,14 @@
 Keep this short and follow it every time. Two things make a release "standard":
 publishing the code, and telling the team.
 
+## Database changes go through the migration runner
+
+Schema changes are NOT pasted into the SQL editor anymore — that process caused
+the migration-025 billing-payment data loss. They go through
+`supabase/migrations/` and are applied by CI **before** the code deploys. See
+**docs/MIGRATIONS.md**. The rule: **DB before code.** After a billing-touching
+release, run `npm run smoke:billing` to confirm payments reach the server.
+
 ## To release
 
 1. **Publish the code** (however code changes reach the live app today).

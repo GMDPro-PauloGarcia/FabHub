@@ -184,6 +184,22 @@ export const MAT_UNITS       = ["pcs","sheets","meters","kg","sets","rolls","lit
 
 export const PO_UNITS        = ["pcs","sheets","meters","sqm","sqft","lnm","kg","sets","rolls","liters","gallons","bags","boxes","pairs","lengths","bundles","cu.m","lots","units"];
 
+// Warehouse payment-terms policy for POs. COD = due on receipt; the rest are
+// N-day credit terms. dueDateFromTerms() parses these into a payable due date.
+export const PO_TERMS        = ["COD","7 Days","15 Days","30 Days","60 Days","90 Days","120 Days"];
+
+// Standard Terms & Conditions printed on the PO PDF. This is the boilerplate a
+// PO carries when the buyer doesn't type custom terms; the per-PO free-text
+// `termsText` (captured on the form) overrides this when set.
+export const PO_TERMS_DEFAULT = [
+  "Prices are inclusive of delivery to the GMD warehouse or project site unless otherwise stated in writing.",
+  "Supplier shall deliver the full quantity within the agreed lead time; any delay must be advised in writing before the delivery date.",
+  "GMD reserves the right to reject and return items that do not meet the specification, quantity, or quality on this order.",
+  "Payment is released only after complete delivery and receipt of a valid Delivery Receipt and Invoice / Official Receipt.",
+  "Items are warranted against defects per the supplier's standard warranty; defective items are replaced or repaired at the supplier's cost.",
+  "This PO number must be referenced on all invoices, delivery receipts, and correspondence relating to this order.",
+].join("\n");
+
 export const EXP_CATS        = ["Materials","Labor","Overhead","Utilities","Rent","Transport","Marketing","Salaries","Subcontractor","Reimbursement","Other"];
 
 export const SWATCH_CATS     = ["Fabric","Paint","Hardware","Wood","Metal","Glass","Laminate","Tile","Lighting","Fixture","Trim","Adhesive","Other"];
@@ -316,12 +332,23 @@ export const DRF_CLR   = {New:"#94a3b8",Acknowledged:"#3b82f6","In Progress":"#f
 
 export const emptyDRF  = ()=>({dealId:"",client:"",location:"",designer:"",designDeadline:"",projectTitle:"",type:DRF_TYPES[0],category:"",size:"",platform:"",finishes:"",maxHeight:"",brandGuideLink:"",budget:"",description:"",accessories:[],refLinks:["","",""],notes:"",approvedLink:"",status:"New",createdBy:""});
 
-export const ROLE_CLR  = { Manager:"#f59e0b",Sales:"#10b981",Finance:"#3b82f6",Accounting:"#6366f1",Procurement:"#06b6d4",QS:"#8b5cf6",Operations:"#f97316",Design:"#ec4899",ProjectMover:"#0ea5e9",Warehouse:"#64748b",SalesOpsAdmin:"#14b8a6",FinanceAssistant:"#1d4ed8",Audit:"#dc2626",HRAdmin:"#7c3aed" };
+export const ROLE_CLR  = { Manager:"#f59e0b",Sales:"#10b981",Finance:"#3b82f6",Accounting:"#6366f1",Procurement:"#06b6d4",ProcurementManager:"#0891b2",QS:"#8b5cf6",Operations:"#f97316",Design:"#ec4899",ProjectMover:"#0ea5e9",Warehouse:"#64748b",SalesOpsAdmin:"#14b8a6",FinanceAssistant:"#1d4ed8",Audit:"#dc2626",HRAdmin:"#7c3aed" };
+
+// Client mirror of the mint-session ROLE_MAP: app-level role codes that resolve
+// to a canonical RLS role for permission checks. ProcurementManager is a UI/
+// approval-only distinction — server-side it has the exact same access as
+// Procurement, so it MUST canonicalize to Procurement here and in mint-session.
+export const RLS_ROLE_MAP = { Operations:"ProjectMover", Ops:"ProjectMover", "Cost Control":"Finance", Admin:"Manager", ProcurementManager:"Procurement" };
+export const canonRole = r => RLS_ROLE_MAP[r] || r;
+// True for anyone on the procurement desk (buyer or the approving manager).
+// Use this for every UI/ability gate that should cover both; keep === checks
+// only where the manager and the buyer must be told apart (i.e. PO approval).
+export const isProcurementRole = r => r === "Procurement" || r === "ProcurementManager";
 
 // Human-readable labels for role codes that aren't self-explanatory when shown
 // raw (role codes are used directly in ===/object-key comparisons, so we keep
 // them token-safe and map to a friendly label only at display sites).
-export const ROLE_LABEL = { SalesOpsAdmin:"Sales & Ops Admin", FinanceAssistant:"Finance Assistant", HRAdmin:"HR & Admin", Audit:"Audit Team" };
+export const ROLE_LABEL = { SalesOpsAdmin:"Sales & Ops Admin", FinanceAssistant:"Finance Assistant", HRAdmin:"HR & Admin", Audit:"Audit Team", ProcurementManager:"Procurement Manager" };
 export const roleLabel = r => ROLE_LABEL[r] || r;
 
 // ── PERMISSIONS — client-side mirror of the Supabase RLS write policies ───────
@@ -339,7 +366,7 @@ export const roleLabel = r => ROLE_LABEL[r] || r;
 // NOTE: a few tables carry finer server rules than a role list can express — deals
 // DELETE is Manager + the named sales leads (jena/wyn/paolo); design UPDATE/senior
 // reads are username-tiered. Those are flagged in PERM_NOTES and shown as caveats.
-export const PERM_ROLES = ["Manager","Sales","ProjectMover","Finance","FinanceAssistant","Accounting","Procurement","QS","SalesOpsAdmin","Design","Warehouse","Audit","HRAdmin"];
+export const PERM_ROLES = ["Manager","Sales","ProjectMover","Finance","FinanceAssistant","Accounting","Procurement","ProcurementManager","QS","SalesOpsAdmin","Design","Warehouse","Audit","HRAdmin"];
 
 const AUTH = "AUTH";
 export const PERMISSIONS = {
@@ -388,7 +415,10 @@ export const roleCan = (role, action, table) => {
   const t = PERMISSIONS[table];
   if(!t || !t[action]) return true;
   const allowed = t[action];
-  return allowed.includes(AUTH) || allowed.includes(role);
+  // Canonicalize so app-level aliases (e.g. ProcurementManager → Procurement)
+  // resolve to the RLS role the policy lists, even if a caller passed the raw code.
+  const cr = canonRole(role);
+  return allowed.includes(AUTH) || allowed.includes(cr);
 };
 // The roles allowed to perform an action, as a friendly display string.
 export const rolesAllowedLabel = (action, table) => {
@@ -804,7 +834,7 @@ export const emptyPR = () => ({
   id:"", projectId:"", projectName:"",
   itemName:"", category:"Materials", description:"",
   qty:1, unit:"pcs", estUnitCost:0, actUnitCost:0,
-  supplier:"", poNumber:"", poDate:"",
+  supplier:"", poNumber:"", poDate:"", paymentTerms:"", termsText:"",
   qtyDelivered:0, deliveryDate:"", deliveryNote:"",
   status:"Draft", requestedBy:"", approvedBy:"", approvedAt:"",
   budgetCategory:"Materials",  // which budget line this hits
@@ -812,7 +842,8 @@ export const emptyPR = () => ({
 });
 
 export const canApprovePO=(role,sessionName,requestedBy,approvers)=>{
-  if(role==="Manager") return true;
+  // A Manager or a Procurement Manager is an approving authority for POs.
+  if(role==="Manager"||role==="ProcurementManager") return true;
   if(role!=="Procurement"||!sessionName) return false;
   const list=String(approvers||"").split(",").map(s=>s.trim().toLowerCase()).filter(Boolean);
   if(list.length) return list.includes(sessionName.trim().toLowerCase());

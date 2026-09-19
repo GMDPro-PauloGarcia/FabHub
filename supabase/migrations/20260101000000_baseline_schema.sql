@@ -1,3 +1,17 @@
+-- ============================================================================
+-- BASELINE MIGRATION — represents the live FabHub schema as of cutover.
+--
+-- DO NOT run this against the existing production DB. On the live project this
+-- migration is marked ALREADY-APPLIED via `supabase migration repair` (see
+-- docs/MIGRATIONS.md, one-time cutover). Its only real job is to let a FRESH
+-- environment (a new Supabase project, a preview branch, local dev) reconstruct
+-- the schema so new migrations after it apply cleanly.
+--
+-- Everything below is idempotent (CREATE ... IF NOT EXISTS), so re-running is
+-- safe. New changes go in NEW timestamped files after this one — never edit
+-- this baseline.
+-- ============================================================================
+
 -- ============================================================
 --  GMD FabHub — Complete Supabase Schema
 --  Paste this entire file into the Supabase SQL Editor and run.

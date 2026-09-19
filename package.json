@@ -15,7 +15,8 @@
     "build": "react-scripts build",
     "check-imports": "node scripts/check-imports.js",
     "check-schema": "node scripts/check-schema.js",
-    "smoke": "node scripts/smoke.js"
+    "smoke": "node scripts/smoke.js",
+    "smoke:billing": "node scripts/smoke-billing.js"
   },
   "browserslist": {
     "production": [
