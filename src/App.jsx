@@ -5024,7 +5024,7 @@ export default function App(){
     billing_milestones:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"],
     billing_payments:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"],
     commission_payouts:["Manager","Finance","FinanceAssistant"],
-    project_budgets:["Manager","QS"],
+    project_budgets:["Manager","QS","Sales","SalesOpsAdmin"], // award (🏆) auto-writes a starting budget; must match migration 068 INSERT policy
     // activity_log is INSERT=AUTH server-side — any logged-in user may write it.
   };
   const ROLE_ALIASES={Operations:"ProjectMover",Ops:"ProjectMover","Cost Control":"Finance",Admin:"Manager"};
@@ -5668,6 +5668,23 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   const createProjectCard=async(dealId,dealData)=>{
     const card=emptyProjectCard(dealId,dealData);
+    // Never reassign the primary key of a card that already exists for this deal.
+    // emptyProjectCard mints a fresh uid() (and ~39 fresh task uids) on every call.
+    // The write below upserts on the UNIQUE deal_id, so on a re-award (or a second
+    // "create card" pass) the ON CONFLICT(deal_id) DO UPDATE would rewrite
+    // project_cards.id with the new uid — orphaning every existing
+    // project_card_dept_tasks.card_id, since that FK is ON DELETE CASCADE with no
+    // ON UPDATE CASCADE. Postgres rejects it as
+    // project_card_dept_tasks_card_id_fkey, a non-retryable "data" error that sync
+    // drops and surfaces as the red "bad data — redo it" toast on award.
+    // Reuse the existing card's id AND its existing department/task ids so the
+    // deal_id upsert stays a same-PK update and the task upserts (keyed on task id)
+    // don't insert a duplicate checklist. Same id-adoption guard as syncProjectCard.
+    const existing=pcards[dealId];
+    if(existing&&isUUID(existing.id)){
+      card.id=existing.id;
+      if(existing.departments) card.departments=existing.departments;
+    }
     upPcards(ps=>({...ps,[dealId]:card}));
     logActivity(dealId,"Project Card Created",`${dealData?.client} — project card created for all departments`,session?.name);
     if(isSupabaseReady()){
