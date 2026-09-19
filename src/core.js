@@ -188,6 +188,18 @@ export const PO_UNITS        = ["pcs","sheets","meters","sqm","sqft","lnm","kg",
 // N-day credit terms. dueDateFromTerms() parses these into a payable due date.
 export const PO_TERMS        = ["COD","7 Days","15 Days","30 Days","60 Days","90 Days","120 Days"];
 
+// Standard Terms & Conditions printed on the PO PDF. This is the boilerplate a
+// PO carries when the buyer doesn't type custom terms; the per-PO free-text
+// `termsText` (captured on the form) overrides this when set.
+export const PO_TERMS_DEFAULT = [
+  "Prices are inclusive of delivery to the GMD warehouse or project site unless otherwise stated in writing.",
+  "Supplier shall deliver the full quantity within the agreed lead time; any delay must be advised in writing before the delivery date.",
+  "GMD reserves the right to reject and return items that do not meet the specification, quantity, or quality on this order.",
+  "Payment is released only after complete delivery and receipt of a valid Delivery Receipt and Invoice / Official Receipt.",
+  "Items are warranted against defects per the supplier's standard warranty; defective items are replaced or repaired at the supplier's cost.",
+  "This PO number must be referenced on all invoices, delivery receipts, and correspondence relating to this order.",
+].join("\n");
+
 export const EXP_CATS        = ["Materials","Labor","Overhead","Utilities","Rent","Transport","Marketing","Salaries","Subcontractor","Reimbursement","Other"];
 
 export const SWATCH_CATS     = ["Fabric","Paint","Hardware","Wood","Metal","Glass","Laminate","Tile","Lighting","Fixture","Trim","Adhesive","Other"];
@@ -822,7 +834,7 @@ export const emptyPR = () => ({
   id:"", projectId:"", projectName:"",
   itemName:"", category:"Materials", description:"",
   qty:1, unit:"pcs", estUnitCost:0, actUnitCost:0,
-  supplier:"", poNumber:"", poDate:"", paymentTerms:"",
+  supplier:"", poNumber:"", poDate:"", paymentTerms:"", termsText:"",
   qtyDelivered:0, deliveryDate:"", deliveryNote:"",
   status:"Draft", requestedBy:"", approvedBy:"", approvedAt:"",
   budgetCategory:"Materials",  // which budget line this hits
