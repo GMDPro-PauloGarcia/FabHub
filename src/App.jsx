@@ -5020,7 +5020,15 @@ export default function App(){
     // means roleCanInsert returns true, matching the server. (Previously listed
     // Manager/ProjectMover only, which wrongly blocked the bulk-sync push for
     // Sales/Design/Finance even though RLS now allows them.)
-    expenses:["Manager","Finance","Accounting","FinanceAssistant"],
+    // Finance cost-entry tables: derive straight from the canonical PERMISSIONS
+    // map (core.js) so this push-gate can't drift out of sync with RLS the way it
+    // did before — expenses was missing SalesOpsAdmin/Procurement (migration 062),
+    // silently dropping their rows on bulk sync, and payables was absent entirely
+    // (unmapped → push attempted for every role → server-rejected "changes NOT
+    // saved" false alarm). PERMISSIONS is transcribed in lock-step with the
+    // migrations, so referencing it keeps one source of truth.
+    expenses:PERMISSIONS.expenses.insert,
+    payables:PERMISSIONS.payables.insert,
     billing_milestones:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"],
     billing_payments:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"],
     commission_payouts:["Manager","Finance","FinanceAssistant"],
@@ -8792,6 +8800,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const recordPayablePayment=(id,payAmt,opts={})=>{
     const p=payables.find(x=>x.id===id);
     if(!p) return;
+    // Approval gate — enforced at the function level, not just by hiding buttons.
+    // Migration 063's DB trigger only guards approval_status, not status/paid, so
+    // the "cannot pay an unapproved payable" rule must live here to hold for every
+    // pay surface (the PO/WO cost view once let a verified-but-unapproved payable
+    // through). Legacy rows with no approvalStatus are treated as approved.
+    if(!payApproved(p)){toastEmit("This payable isn't approved yet — a Manager or Finance Manager must approve it before payment.","error",7000);return;}
     const amount=Number(p.amount)||0;
     const already=Number(p.paidAmount)||0;
     const add=Number(payAmt)||0;
@@ -8816,6 +8830,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   };
   const markPayablePaid=(id)=>{
     const p=payables.find(x=>x.id===id);
+    if(p&&!payApproved(p)){toastEmit("This payable isn't approved yet — approval is required before it can be marked paid.","error",7000);return;}
     const amount=Number(p?.amount)||0;
     upPayables(ps=>ps.map(p=>p.id===id?{...p,status:"Paid",paidAmount:amount,paidDate:today}:p));
     if(isSupabaseReady()) sbUpsert("payables",{id,status:"Paid",paid_amount:amount,paid_date:today},"id").catch(()=>{});
@@ -8849,6 +8864,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const p=payables.find(x=>x.id===id);
     if(!p) return;
     if(p.cvId||p.status==="Check Issued"){toastEmit("This payable already has a check voucher.","info");setPage("checkvouchers");return;}
+    if(!payApproved(p)){toastEmit("This payable isn't approved yet — it must be approved before routing to a check voucher.","error",7000);return;}
     const cvId=uid();
     const nextNo=await claimDocNumber("CV",vouchers.map(v=>v.cvNo),4,true);
     const particulars=`Payment for Invoice ${p.invoiceNumber||p.invoiceRef||"—"}${p.poNumber?` (PO ${p.poNumber})`:""}`;
@@ -15404,7 +15420,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(page==="masters") return(<Wrap><MasterListsView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role} isMobile={isMobile}/></Wrap>);
     if(page==="expenses") return(
       <Wrap>
-        <SecHead title="Expenses" action={<Btn onClick={()=>openAddExp()}>+ Other Payable</Btn>} sub="All logged costs — company-wide and per project"/>
+        <SecHead title="Expense Ledger" action={<Btn onClick={()=>openAddExp()}>+ Other Payable</Btn>} sub="Historical log of costs — company-wide and per project"/>
+        <div style={{display:"flex",gap:8,alignItems:"flex-start",background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:10,padding:"10px 14px",marginBottom:16,fontSize:".8rem",color:"#1e40af",lineHeight:1.45}}>
+          <span style={{fontSize:"1rem",lineHeight:1}}>💡</span>
+          <span>This is the historical expense ledger. To <strong>record a new cost</strong>, use <strong>+ Other Payable</strong> — it enters the AP ledger where it can be approved, verified and paid. Materials &amp; subcon costs come in through their PO / Work Order instead.</span>
+        </div>
         {["all",...projList.map(d=>d.id)].map(filter=>{
           const label=filter==="all"?"All Expenses":clientName(filter);
           const filtered=filter==="all"?exps:exps.filter(e=>e.projectId===filter);
@@ -15431,7 +15451,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   </div>
                 </Card>
               ))}
-              {filter==="all"&&exps.length===0&&<EmptyState icon="📋" msg="No expenses logged yet."/>}
+              {filter==="all"&&exps.length===0&&<EmptyState icon="📋" msg="No legacy expenses here. New costs are recorded as Other Payables in the AP ledger."/>}
             </div>
           );
         })}
@@ -17446,7 +17466,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                         <td style={{...erpTd,whiteSpace:"nowrap"}}>
                           <div style={{display:"flex",gap:4,justifyContent:"flex-end",alignItems:"center"}}>
                             {pay&&!settled&&!pay.verified&&<button onClick={()=>verifyPayable(pay.id)} title={isSub?"Operations: verify % complete":"Warehouse: verify receipt"} style={{background:ERP.gold,border:"none",borderRadius:6,padding:"5px 10px",fontSize:12,color:ERP.navy,cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>✓ Verify</button>}
-                            {pay&&!settled&&pay.verified&&payBal>0&&<button onClick={()=>{setFinTab("payables");setPage("finance");openPayModal(pay);}} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"5px 12px",fontSize:12,color:"#fff",cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>Pay</button>}
+                            {pay&&!settled&&pay.verified&&payBal>0&&!payApproved(pay)&&<span style={{fontSize:11,color:ERP.muted,fontWeight:600}} title="Awaiting Manager / Finance approval before payment">Pending approval</span>}
+                            {pay&&!settled&&pay.verified&&payBal>0&&payApproved(pay)&&<button onClick={()=>{setFinTab("payables");setPage("finance");openPayModal(pay);}} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"5px 12px",fontSize:12,color:"#fff",cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>Pay</button>}
                             {pay&&settled&&<span style={{fontSize:11,color:ERP.ok,fontWeight:700}}>Paid</span>}
                             <button onClick={()=>setPage(r.kind==="wo"?"subconwo":"procurement")} style={{background:"transparent",border:`1px solid ${ERP.line}`,borderRadius:6,padding:"5px 10px",fontSize:12,fontWeight:600,color:ERP.navy,cursor:"pointer",fontFamily:"inherit"}}>Open</button>
                           </div>
