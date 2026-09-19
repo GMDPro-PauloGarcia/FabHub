@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
+    "@babel/parser": "^7.29.3",
     "@supabase/supabase-js": "^2.106.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -10,9 +11,10 @@
     "xlsx": "^0.18.5"
   },
   "scripts": {
-    "prebuild": "node scripts/check-imports.js",
+    "prebuild": "node scripts/check-imports.js && node scripts/check-schema.js",
     "build": "react-scripts build",
     "check-imports": "node scripts/check-imports.js",
+    "check-schema": "node scripts/check-schema.js",
     "smoke": "node scripts/smoke.js",
     "smoke:billing": "node scripts/smoke-billing.js"
   },
@@ -30,7 +32,6 @@
   },
   "devDependencies": {
     "@babel/core": "^7.29.0",
-    "@babel/parser": "^7.29.3",
     "playwright": "^1.60.0"
   }
 }
