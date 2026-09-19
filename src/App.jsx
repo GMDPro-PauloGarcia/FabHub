@@ -4172,7 +4172,7 @@ export default function App(){
       const local=JSON.parse(localStorage.getItem(KEYS.botsettings)||"{}");
       // sessionStorage survives refresh within the same tab but clears on browser close — safe for token
       const token=sessionStorage.getItem('fabhub:bottoken')||"";
-      return{token,chatIds:{...{general:"",ops:"",design:"",procurement:"",warehouse:"",sales:"",management:"",financialcontrol:""},...(local.chatIds||{})},hideValueInBots:local.hideValueInBots||false,poApprovers:local.poApprovers||""};
+      return{token,chatIds:{...{general:"",ops:"",design:"",procurement:"",warehouse:"",sales:"",management:"",financialcontrol:""},...(local.chatIds||{})},hideValueInBots:local.hideValueInBots||false,poApprovers:local.poApprovers!==undefined?local.poApprovers:"Marian Prile"};
     }catch{return{token:"",chatIds:{general:"",ops:"",design:"",procurement:"",warehouse:"",sales:"",management:"",financialcontrol:""},hideValueInBots:false,poApprovers:""};}
   });
   const[customClients,setCustomClients]= useState([]);
@@ -17400,7 +17400,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     <Wrap>
       <ProcurementView2
         prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR}
-        wonDeals={wonDeals} deals={deals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}
+        wonDeals={wonDeals} deals={deals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}
         upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} chartOfAccounts={chartOfAccounts}/>
     </Wrap>
   );
@@ -22316,9 +22316,32 @@ ${a.acctNotes?`<div class="trail"><b>Accounting notes:</b><br>${esc(a.acctNotes)
 // ─── COSTING STUDY ────────────────────────────────────────────────────────────
 
 // ─── PROCUREMENT VIEW 2 (Full PO → Multi-item → Delivery) ───────────────────
-function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allDeals,budgets,exps,swos,session,role,toastEmit,suppliers,addSupplier,upPayables,payables,sendTelegramNotification,isSupabaseReady,sbUpsert,payableToSb,syncPoPayable,chartOfAccounts=[]}){
+function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allDeals,budgets,exps,swos,session,role,toastEmit,suppliers,addSupplier,poApprovers="",upPayables,payables,sendTelegramNotification,isSupabaseReady,sbUpsert,payableToSb,syncPoPayable,chartOfAccounts=[]}){
   const activeDeals=React.useMemo(()=>(allDeals||wonDeals||[]).filter(d=>!isLostStage(d.stage)),[allDeals,wonDeals]);
   const today=new Date().toISOString().split("T")[0];
+  // ── PO approval gate ────────────────────────────────────────────────────────
+  // Segregation of duties: a PO may only be moved to "PO Issued" by a Manager or
+  // by a designated PO approver (botSettings.poApprovers, e.g. "Marian Prile").
+  // The person who prepared/created the PO cannot self-approve it. Anyone without
+  // authority who selects "PO Issued" is held at "Pending Approval" with no
+  // approver stamp, so the printed PO never shows the preparer as the approver.
+  // Same helper (canApprovePO) already gates Subcon Work Orders.
+  const canApproveFor=requestedBy=>canApprovePO(role,session?.name||"",requestedBy,poApprovers);
+  // Apply a status change to one PR, enforcing the issue gate. onDone(patch)
+  // runs after the update with the patch that was actually written.
+  const changePoStatus=(pr,st,onDone)=>{
+    let patch={status:st};
+    if(st==="PO Issued"&&pr.status!=="PO Issued"){
+      if(!canApproveFor(pr.requestedBy)){
+        toastEmit&&toastEmit("Needs a Manager or the designated PO approver — held at Pending Approval.","error");
+        patch={status:"Pending Approval"};
+      }else{
+        patch={status:st,approvedBy:session?.name||"",approvedAt:today};
+      }
+    }
+    updatePR(pr.id,patch);
+    onDone&&onDone(patch);
+  };
   const[mode,setMode]=useState("list");
   const[editingId,setEditingId]=useState(null);
   const[editForm,setEditForm]=useState(emptyPR());
@@ -22499,6 +22522,12 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
     // preview; a manually-typed or edited number is kept as-is.
     let poNo=poNumber.trim();
     if(!editingPrIds&&poNumberAuto){const claimed=await nextPoNo();if(claimed)poNo=claimed;}
+    // PO issue gate on save: only a Manager or the designated PO approver may
+    // create/save a PO already in "PO Issued". Everyone else (the preparer) is
+    // held at "Pending Approval" so they can't self-approve their own PO.
+    const canIssueNow=canApproveFor(session?.name||"");
+    const effStatus=(poStatus==="PO Issued"&&!canIssueNow)?"Pending Approval":poStatus;
+    if(poStatus==="PO Issued"&&!canIssueNow) toastEmit&&toastEmit("Saved as Pending Approval — a Manager or the designated PO approver must issue it.","info");
     const buildUpdate=(item)=>{
       // Resolve against all active deals, not just awarded ones — procurement
       // often buys swatches/materials for deals that haven't been won yet, and
@@ -22511,7 +22540,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
         accountCode:poAccountCode,paymentTerms:poTerms,
         projectId:item.projectId,projectName:deal?.client||item.projectName||"",
         supplier:poSupplier,poNumber:poNo,poDate:poDate,
-        status:poStatus,deliveryDate:poExpectedDelivery||""};
+        status:effStatus,deliveryDate:poExpectedDelivery||""};
     };
     if(editingPrIds){
       const updatedIds=poItems.filter(i=>i._existingId).map(i=>i._existingId);
@@ -22526,7 +22555,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
       poItems.forEach(item=>{
         addPR({...emptyPR(),...buildUpdate(item),
           requestedBy:session?.name||"",
-          approvedBy:poStatus==="PO Issued"?session?.name||"":""
+          approvedBy:effStatus==="PO Issued"?session?.name||"":""
         },{silent:true});
       });
       const itemLines=poItems.map(item=>`  • ${item.itemName||"?"} — ${item.qty||"?"} ${item.unit||""} @ ₱${Number(item.estUnitCost||0).toLocaleString("en-PH")}`).join("\n");
@@ -22690,7 +22719,20 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
             <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp value={editForm.notes} onChange={e=>ef("notes",e.target.value)}/></Fld></div>
           </div>
           <div style={{display:"flex",gap:10,marginTop:16}}>
-            <button onClick={()=>{updatePR(editingId,editForm);if(editForm.poNumber&&syncPoPayable)syncPoPayable(editForm.poNumber,prs.map(p=>p.id===editingId?{...p,...editForm}:p));toastEmit&&toastEmit("PR updated","success");setMode("list");setEditingId(null);}} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"10px 22px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:"#fff",cursor:"pointer"}}>Save Changes</button>
+            <button onClick={()=>{
+              const orig=prs.find(p=>p.id===editingId);
+              let patch={...editForm};
+              // Enforce the PO issue gate on edits too — a non-approver cannot
+              // flip an existing PO to "PO Issued" via the edit form.
+              if(editForm.status==="PO Issued"&&orig&&orig.status!=="PO Issued"){
+                if(!canApproveFor(editForm.requestedBy||orig.requestedBy)){
+                  toastEmit&&toastEmit("Needs a Manager or the designated PO approver — held at Pending Approval.","error");
+                  patch={...patch,status:"Pending Approval",approvedBy:"",approvedAt:""};
+                }else{
+                  patch={...patch,approvedBy:session?.name||"",approvedAt:today};
+                }
+              }
+              updatePR(editingId,patch);if(patch.poNumber&&syncPoPayable)syncPoPayable(patch.poNumber,prs.map(p=>p.id===editingId?{...p,...patch}:p));toastEmit&&toastEmit("PR updated","success");setMode("list");setEditingId(null);}} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"10px 22px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:"#fff",cursor:"pointer"}}>Save Changes</button>
             <button onClick={()=>{setMode("list");setEditingId(null);}} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
           </div>
         </div>
@@ -23103,7 +23145,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
                             {delivPct>0&&delivPct<100&&<span style={{fontSize:".68rem",color:"#f59e0b",fontWeight:600,marginLeft:8}}>{delivPct}% delivered</span>}
                           </div>
                           <span style={{fontWeight:700,color:"#0f172a",fontSize:".8rem",flexShrink:0}}>{fmt(actTotal)}</span>
-                          <select value={pr.status} onClick={e=>e.stopPropagation()} onChange={e=>{const st=e.target.value;const extra=st==="PO Issued"&&pr.status!=="PO Issued"?{approvedBy:session?.name||"",approvedAt:today}:{};updatePR(pr.id,{status:st,...extra});syncPoPayable&&syncPoPayable(pr.poNumber,items.map(x=>x.id===pr.id?{...x,status:st,...extra}:x));}} style={{border:"1.5px solid #e2e8f0",borderRadius:6,padding:"3px 6px",fontFamily:"inherit",fontSize:".7rem",color:"#0f172a",background:"#fff",cursor:"pointer",flexShrink:0}}>
+                          <select value={pr.status} onClick={e=>e.stopPropagation()} onChange={e=>changePoStatus(pr,e.target.value,patch=>syncPoPayable&&syncPoPayable(pr.poNumber,items.map(x=>x.id===pr.id?{...x,...patch}:x)))} style={{border:"1.5px solid #e2e8f0",borderRadius:6,padding:"3px 6px",fontFamily:"inherit",fontSize:".7rem",color:"#0f172a",background:"#fff",cursor:"pointer",flexShrink:0}}>
                             {PROC_STATUSES.map(s=><option key={s}>{s}</option>)}
                           </select>
                           <button onClick={e=>{e.stopPropagation();setEditForm({...pr});setEditingId(pr.id);setMode("editpr");}} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"3px 8px",fontSize:".7rem",color:"#475569",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>✏</button>
@@ -23128,7 +23170,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
                 <div style={{textAlign:"right",fontWeight:800,color:"#10b981",fontSize:".85rem"}}>{fmt(actTotal)}</div>
                 <div><span style={{fontSize:".62rem",background:STATUS_CLR[pr.status]+"22",color:STATUS_CLR[pr.status],border:`1px solid ${STATUS_CLR[pr.status]}44`,borderRadius:20,padding:"2px 8px",fontWeight:700,whiteSpace:"nowrap"}}>{pr.status}</span></div>
                 <div style={{display:"flex",gap:4,justifyContent:"flex-end"}}>
-                  <select value={pr.status} onChange={e=>{const st=e.target.value;const extra=st==="PO Issued"&&pr.status!=="PO Issued"?{approvedBy:session?.name||"",approvedAt:today}:{};updatePR(pr.id,{status:st,...extra});}} style={{border:"1.5px solid #e2e8f0",borderRadius:5,padding:"2px 4px",fontFamily:"inherit",fontSize:".65rem",color:"#0f172a",background:"#fff",cursor:"pointer",maxWidth:40}}>
+                  <select value={pr.status} onChange={e=>changePoStatus(pr,e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:5,padding:"2px 4px",fontFamily:"inherit",fontSize:".65rem",color:"#0f172a",background:"#fff",cursor:"pointer",maxWidth:40}}>
                     {PROC_STATUSES.map(s=><option key={s}>{s}</option>)}
                   </select>
                   <button onClick={()=>{setEditForm({...pr});setEditingId(pr.id);setMode("editpr");}} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
