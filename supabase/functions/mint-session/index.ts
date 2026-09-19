@@ -23,6 +23,9 @@ const ROLE_MAP: Record<string, string> = {
   "Ops": "ProjectMover",
   "Cost Control": "Finance",
   "Admin": "Manager",
+  // Procurement Manager is an app-level distinction (PO approver); server-side it
+  // gets the exact same RLS access as Procurement. Mirror in core.js RLS_ROLE_MAP.
+  "ProcurementManager": "Procurement",
 };
 
 const CORS = {
