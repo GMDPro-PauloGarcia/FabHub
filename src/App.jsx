@@ -1650,7 +1650,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
               <div style={{fontSize:".82rem",fontWeight:700,color:form.addendumStatus==="Approved"?"#047857":"#92400e",marginBottom:4}}>
                 {form.addendumStatus==="Approved"?"✅ Addendum approved by client":"⏳ Addendum — awaiting client approval"}
               </div>
-              <div style={{fontSize:".72rem",color:"#94a3b8",marginBottom:9}}>Pending addendums stay out of the project's Total Contract (shown under “If pending approved”). Approve once the client signs off — it rolls into Total Contract and follows the parent project's stage.</div>
+              <div style={{fontSize:".72rem",color:"#94a3b8",marginBottom:9}}>While Pending it's invisible to Billing & Design and stays out of Total Contract (shown under “If pending approved”). Approve once the client signs off — it rolls into Total Contract, follows the parent project's stage, and unlocks billing & design.</div>
               <div style={{display:"flex",gap:8}}>
                 {["Pending","Approved"].map(st=>{
                   const on=(form.addendumStatus||"Pending")===st;
@@ -1711,7 +1711,9 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
           requester flags that design work is needed, the Design lead picks who
           on the team handles it (see DRFView "Assign" action) instead of the
           requester naming a specific designer up front. */}
-      {!editId&&(
+      {/* Hidden for a pending addendum — Design can't be requested on scope the
+          client hasn't approved yet (it unlocks once the addendum is approved). */}
+      {!editId&&!(form.parentDealId&&form.addendumStatus!=="Approved")&&(
       <div style={{background:"#faf5ff",borderRadius:12,padding:"14px 16px",marginTop:8,border:"1.5px solid #ddd6fe"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
           <div>
@@ -7897,7 +7899,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       // design_requests' foreign key to deals.id. If the deal write itself failed,
       // it's already queued for retry — the DRF stays local-only rather than
       // risk an unwinnable, permanently-dropped FK violation.
-      if(!editDeal && data.drfReqCreate && dealSynced){
+      // Never auto-create a Design Request for a PENDING addendum — Design must
+      // not start on scope the client hasn't approved. Once approved, design is
+      // requested through the normal project flow.
+      if(!editDeal && data.drfReqCreate && dealSynced && !(rec.parentDealId&&rec.addendumStatus!=="Approved")){
         const drfOk=await addDRF({
           dealId:rec.id, client:rec.client, location:"",
           designer:"", designDeadline:data.drfDeadline||"",
@@ -13792,7 +13797,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 // Standby PO umbrellas contribute 0 (their value lives on the
                 // drawdown jobs) so the total reflects charged work, never the PO
                 // ceiling stacked on top of the jobs drawn against it.
-                const grandTotal=activeWon.reduce((s,d)=>s+((d.standbyPO&&!d.parentDealId)?0:Number(d.value||0)),0);
+                // A pending addendum still shows as a context row under its parent
+                // (with a ⏳ chip) but is NOT awarded money yet, so its value is
+                // excluded from the awarded grand total until the client approves.
+                const grandTotal=activeWon.reduce((s,d)=>s+(((d.standbyPO&&!d.parentDealId)||(d.parentDealId&&d.addendumStatus==="Pending"))?0:Number(d.value||0)),0);
                 return(<>
                   {/* Active Awarded — flat table with a project-type filter */}
                   <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:10,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
@@ -25222,7 +25230,10 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   // Per-project summary for list — includes addendum child deals
   const _baseDeals=wonDeals;
   const _baseIds=new Set(_baseDeals.map(d=>d.id));
-  const _addendumDeals=deals.filter(d=>d.parentDealId&&_baseIds.has(d.parentDealId)&&!_baseIds.has(d.id));
+  // Pending addendums are awaiting client approval — they must NOT surface as
+  // billable line items (nothing to bill until the client signs off). Only
+  // approved addendums appear in billing; on approval they flow in automatically.
+  const _addendumDeals=deals.filter(d=>d.parentDealId&&_baseIds.has(d.parentDealId)&&!_baseIds.has(d.id)&&d.addendumStatus!=="Pending");
   const _allSummaries=[..._baseDeals,..._addendumDeals].map(d=>{
     const ms=billings.filter(b=>b.dealId===d.id);
     const active=ms.filter(m=>m.status!=="Cancelled");
