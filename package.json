@@ -11,7 +11,8 @@
     "xlsx": "^0.18.5"
   },
   "scripts": {
-    "prebuild": "node scripts/check-imports.js && node scripts/check-schema.js",
+    "prebuild": "node scripts/check-imports.js && node scripts/check-schema.js && node scripts/check-undef.js",
+    "check-undef": "node scripts/check-undef.js",
     "build": "react-scripts build",
     "check-imports": "node scripts/check-imports.js",
     "check-schema": "node scripts/check-schema.js",
