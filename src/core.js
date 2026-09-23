@@ -881,6 +881,9 @@ export const emptyDeal={
   progressBilled:0,progressPaid:0,finalBilled:0,finalPaid:0,
   // GMD fields
   ceNo:"",ceType:"Fabrication / General",salesOwner:"",dateAcquired:today,temperature:null,
+  // Addendum approval: null for standalone deals; "Pending"/"Approved" once a
+  // parent deal is linked (see saveDeal + ContractBreakdown).
+  addendumStatus:null,
   assignedAE:"",bizDevSource:"",leadOrigin:DEFAULT_LEAD_ORIGIN,location:"",
   // File links (Drive + FabHub)
   salesRepoLink:"",proposalFolderLink:"",salesRepoNote:"",
