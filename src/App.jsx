@@ -31,7 +31,17 @@ const useStableComponent=(impl)=>{
 // the Suspense boundary into the binding itself, so every existing render
 // site keeps working unchanged.
 const PageLoading=()=><div style={{padding:"24px 20px",maxWidth:1100,margin:"0 auto"}}><PageSkeleton/></div>;
-const _lazyView=(load)=>{const L=React.lazy(load);return function LazyView(props){return <React.Suspense fallback={<PageLoading/>}><L {...props}/></React.Suspense>;};};
+// After a deploy, a tab still running the old bundle asks for chunk hashes that
+// no longer exist ("Loading chunk 608 failed" in client_errors). Reload once to
+// pick up the new build; the sessionStorage stamp stops a reload loop if the
+// chunk is genuinely unreachable (offline), letting the error surface instead.
+const _loadChunk=(load)=>()=>load().catch(err=>{
+  const isChunk=err?.name==="ChunkLoadError"||/Loading (CSS )?chunk .* failed/i.test(err?.message||"");
+  let last=0;try{last=Number(sessionStorage.getItem("fabhub:chunkReload"))||0;}catch{}
+  if(isChunk&&Date.now()-last>60000){try{sessionStorage.setItem("fabhub:chunkReload",String(Date.now()));}catch{}window.location.reload();return new Promise(()=>{});}
+  throw err;
+});
+const _lazyView=(load)=>{const L=React.lazy(_loadChunk(load));return function LazyView(props){return <React.Suspense fallback={<PageLoading/>}><L {...props}/></React.Suspense>;};};
 const ConstructionCalendar=_lazyView(()=>import('./views/ConstructionCalendar'));
 const PermissionsMatrix=_lazyView(()=>import('./views/PermissionsMatrix'));
 const BOQBuilder=_lazyView(()=>import('./views/BOQBuilder'));
@@ -26275,13 +26285,19 @@ function TATSetter({deal,card,onSet,refTable,ceType}){
 // ─── INVENTORY VIEW ───────────────────────────────────────────────────────────
 function ProjectCards({syncProjectCard,pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,prs=[],exps=[],isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,upDeals,ceReqs,toastEmit,sendTelegramNotification,initialDeal,clearJump,initialFilter,clearJumpFilter,loadChecklistTemplate,swos=[],addPmUpdate,setConfirmDel,customMembers=[],setCustomMembers=()=>{},setPage=()=>{},setJumpDeal=()=>{}}){
   const todayStr=new Date().toISOString().split("T")[0];
-  const[selDeal,setSelDeal]=useState(initialDeal||null);
+  const[selDealRaw,setSelDeal]=useState(initialDeal||null);
+  // A selection whose deal isn't loaded/won (deleted, moved to a lost stage, or a
+  // jump-link opened before data arrived) counts as no selection. Derived during
+  // render, because the clean-up effect below only runs AFTER a render — and that
+  // one render against deal===undefined crashed the Projects page on deal.id.
+  const deal=wonDeals.find(d=>d.id===selDealRaw)||completedDeals.find(d=>d.id===selDealRaw);
+  const selDeal=deal?selDealRaw:null;
   useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearJump&&clearJump();}},[]);
   useEffect(()=>{if(initialFilter){setPcFilter(initialFilter);clearJumpFilter&&clearJumpFilter();}},[]);
   // If the open project was deleted (e.g. via the delete button below → the
   // global confirm modal → delDeal), it vanishes from wonDeals/completedDeals;
-  // fall back to the grid so the detail view never renders against a missing deal.
-  useEffect(()=>{if(selDeal&&!wonDeals.some(d=>d.id===selDeal)&&!completedDeals.some(d=>d.id===selDeal))setSelDeal(null);},[selDeal,wonDeals,completedDeals]);
+  // fall back to the grid (selDeal above already renders it as unselected).
+  useEffect(()=>{if(selDealRaw&&!deal)setSelDeal(null);},[selDealRaw,deal]);
   const[viewMode,setViewMode]=useState("card");
   const[showTeamLoad,setShowTeamLoad]=useState(false);
   const[teamLoadTab,setTeamLoadTab]=useState("pm");
@@ -26330,7 +26346,6 @@ function ProjectCards({syncProjectCard,pcards,wonDeals,completedDeals,deals,togg
 
   const today2=new Date();
   const card=selDeal?pcards[selDeal]:null;
-  const deal=wonDeals.find(d=>d.id===selDeal)||completedDeals.find(d=>d.id===selDeal);
   const jo=jos.find(j=>j.dealId===selDeal);
 
   const PHASES=[
