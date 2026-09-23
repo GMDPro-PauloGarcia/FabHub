@@ -13319,6 +13319,63 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           );
         })()}
 
+        {/* ── ⏳ ADDENDUMS AWAITING CLIENT APPROVAL ──────────────────────────
+            Pending addendums usually hang off an already-awarded parent, so they
+            otherwise sit as an easy-to-miss sub-row. Surface them here as an
+            action list: parent, value, days waiting (red "chase client" past 14
+            days), and a one-click Approve. A pending addendum stays out of Total
+            Contract, billing, and design until it's approved here. */}
+        {(()=>{
+          const q=(pipeSearch||"").toLowerCase();
+          const STALE=14;
+          const pend=deals.filter(d=>d.parentDealId&&d.addendumStatus==="Pending"&&!isLostStage(d.stage)
+              &&(pipeAE==="all"||d.salesOwner===pipeAE)
+              &&(!q||[d.client,d.contact,d.ceNo,d.salesOwner,d.product].join(" ").toLowerCase().includes(q)))
+            .map(d=>({...d,_wait:d.dateAcquired?Math.floor((new Date(today)-new Date(d.dateAcquired))/864e5):0}))
+            .sort((a,b)=>b._wait-a._wait);
+          if(!pend.length) return null;
+          const totalPend=pend.reduce((s,d)=>s+Math.abs(Number(d.value)||0),0);
+          const canApprove=role==="Manager"||role==="Sales";
+          const money=v=>"₱"+Math.abs(Number(v)||0).toLocaleString("en-PH");
+          const approve=async(c)=>{
+            const parent=deals.find(d=>d.id===c.parentDealId);
+            const pname=parent?.contact||parent?.client||"the project";
+            if(!(await uiConfirm(`Approve this addendum?\n\n${c.contact||c.client} — ${money(c.value)}\n\nThis marks it client-approved: it rolls into ${pname}'s Total Contract and unlocks billing & design. Reversible from the deal's edit screen.`))) return;
+            const newStage=(parent&&!isLostStage(parent.stage))?parent.stage:c.stage;
+            const prob=WON_STAGES.includes(newStage)?100:c.probability;
+            upDeals(ds=>ds.map(d=>d.id===c.id?{...d,addendumStatus:"Approved",stage:newStage,probability:prob}:d));
+            if(isSupabaseReady()) sbUpdate('deals',c.id,{addendum_status:"Approved",stage:newStage,probability:prob,updated_at:new Date().toISOString()}).catch(()=>{});
+            logActivity(c.id,"Addendum approved",`${c.contact||c.client} — addendum approved by client (${money(c.value)}) → rolled into ${pname}`,session?.name);
+            toastEmit&&toastEmit(`✅ Addendum approved — ${money(c.value)} now in ${pname}'s contract`,"success",6000);
+          };
+          return(
+            <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:12,padding:"12px 16px",marginBottom:16}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:6}}>
+                <span style={{fontWeight:800,color:"#92400e",fontSize:".9rem"}}>⏳ {pend.length} addendum{pend.length>1?"s":""} awaiting client approval</span>
+                {!BUDGET_ONLY.includes(role)&&<span style={{marginLeft:"auto",fontWeight:800,color:"#d97706",fontSize:".9rem",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:".02em"}}>{fmt(totalPend)}</span>}
+              </div>
+              <div style={{fontSize:".72rem",color:"#a16207",marginBottom:10}}>Not yet in Total Contract, billing, or design — approve once the client signs off.</div>
+              {pend.map(c=>{
+                const parent=deals.find(d=>d.id===c.parentDealId);
+                const stale=c._wait>STALE;
+                return(
+                  <div key={c.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",background:"#fff",borderRadius:8,marginBottom:6,border:`1px solid ${stale?"#fecaca":"#fde68a"}`,flexWrap:"wrap"}}>
+                    <div style={{flex:1,minWidth:120,cursor:"pointer"}} onClick={()=>openEditDeal(c)}>
+                      <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.contact||c.client}</div>
+                      <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                        {c.ceNo&&<span style={{fontWeight:600,color:"#6366f1",marginRight:6}}>{c.ceNo}</span>}↳ {parent?(parent.contact||parent.client):"—"}
+                      </div>
+                    </div>
+                    {!BUDGET_ONLY.includes(role)&&<div style={{fontFamily:"'IBM Plex Mono',monospace",fontWeight:700,fontSize:".8rem",color:"#d97706",whiteSpace:"nowrap"}}>{money(c.value)}</div>}
+                    <span title={`Waiting ${c._wait} day${c._wait!==1?"s":""} since acquired`} style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".64rem",fontWeight:700,padding:"2px 8px",borderRadius:20,whiteSpace:"nowrap",background:stale?"#fef2f2":"#f8fafc",color:stale?"#dc2626":"#64748b",border:`1px solid ${stale?"#fecaca":"#e2e8f0"}`}}>{stale?"⚠ ":""}{c._wait}d{stale?" · chase client":""}</span>
+                    {canApprove&&<button onClick={()=>approve(c)} style={{background:"#059669",border:"none",borderRadius:7,padding:"6px 14px",fontSize:".78rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700,flexShrink:0}}>✅ Approve</button>}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
+
         {/* ── SEARCH ALL DEALS — shows hidden matches (won/closed/child) ── */}
         {pipeSearch&&pipeSearch.length>=2&&(()=>{
           const q=pipeSearch.toLowerCase();
