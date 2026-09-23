@@ -346,6 +346,7 @@
   "deals": [
     "added_at",
     "added_by",
+    "addendum_status",
     "amount_paid",
     "award_request_data",
     "billing_generated",

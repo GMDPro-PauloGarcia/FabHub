@@ -1639,6 +1639,34 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
             />
           </Fld>
         </div>
+        {/* Addendum approval — shown only when this deal is linked to a parent.
+            The flag (not the workflow stage) drives the contract roll-up:
+            Pending sits in "If pending approved" and never inflates the parent's
+            Total Contract; Approved rolls in and the addendum then follows the
+            parent project's stage (see saveDeal + ContractBreakdown). */}
+        {form.parentDealId&&(
+          <div style={{gridColumn:"1/-1"}}>
+            <div style={{background:form.addendumStatus==="Approved"?"#ecfdf5":"#fffbeb",borderRadius:12,padding:"12px 14px",border:`1.5px solid ${form.addendumStatus==="Approved"?"#a7f3d0":"#fde68a"}`}}>
+              <div style={{fontSize:".82rem",fontWeight:700,color:form.addendumStatus==="Approved"?"#047857":"#92400e",marginBottom:4}}>
+                {form.addendumStatus==="Approved"?"✅ Addendum approved by client":"⏳ Addendum — awaiting client approval"}
+              </div>
+              <div style={{fontSize:".72rem",color:"#94a3b8",marginBottom:9}}>Pending addendums stay out of the project's Total Contract (shown under “If pending approved”). Approve once the client signs off — it rolls into Total Contract and follows the parent project's stage.</div>
+              <div style={{display:"flex",gap:8}}>
+                {["Pending","Approved"].map(st=>{
+                  const on=(form.addendumStatus||"Pending")===st;
+                  const clr=st==="Approved"?"#059669":"#d97706";
+                  return(
+                    <button type="button" key={st} onClick={()=>f("addendumStatus",st)}
+                      style={{flex:1,padding:"7px 12px",borderRadius:8,cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",
+                        border:`1.5px solid ${on?clr:"#e2e8f0"}`,background:on?clr:"#fff",color:on?"#fff":"#64748b"}}>
+                      {st==="Approved"?"✅ Approved":"⏳ Pending"}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
         {/* Standby PO / Adhoc umbrella — only for parent (non-linked) deals. Marks
             this deal as a client PO / standby fund: the umbrella carries no
             contract revenue of its own (value pinned to 0), and its child jobs
@@ -4310,7 +4338,7 @@ export default function App(){
           console.info("[FabHub] sbLoadAll result — deals:",data?.deals?.length||0,"jos:",data?.jos?.length||0,"users:",data?.users?.length||0);
           if(data){
             const idbE=[];
-            const _deals=data.deals?.length?data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,standbyPO:d.standby_po||false,poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})):null;
+            const _deals=data.deals?.length?data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,standbyPO:d.standby_po||false,poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})):null;
             if(_deals){
               // Reconcile legacy non-UUID "ghost" deals against the server.
               // Before the deals.id → UUID migration, deals were keyed by local
@@ -4638,7 +4666,7 @@ export default function App(){
         // once/30s) — far more often than a manual page refresh — so a blind
         // overwrite here was the single biggest way to lose a just-added record
         // that hadn't synced yet (e.g. still in flight when the user tabbed away).
-        if(data?.deals?.length) setDeals(prev=>mlo(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,standbyPO:d.standby_po||false,poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})),prev));
+        if(data?.deals?.length) setDeals(prev=>mlo(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,standbyPO:d.standby_po||false,poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})),prev));
         if(data?.jos?.length) setJos(prev=>mlo(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no})),prev));
         if(Object.keys(data?.pcards||{}).length) setPcards(prev=>mergeLocalOnlyObj(data.pcards,prev));
         // Map the same camelCase fields the initial load does. Omitting dueDate
@@ -4778,6 +4806,7 @@ export default function App(){
     added_by:r.addedBy||"", added_at:r.addedAt||null,
     award_request_data:r.awardRequestData||null,
     parent_deal_id:r.parentDealId||null,
+    addendum_status:r.parentDealId?(r.addendumStatus||"Pending"):null,
     standby_po:!!r.standbyPO, po_budget:r.standbyPO?(Number(r.poBudget)||0):0,
     billing_generated:r.billingGenerated||false,
     // Receivables policy §2.1 onboarding facts + §2.3/§3 satisfaction
@@ -7765,6 +7794,30 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       addedBy:editDeal?(data.addedBy||""):(session?.name||""),
       addedAt:editDeal?(data.addedAt||today):today,
     };
+    // ── Addendum approval normalization ──────────────────────────────────────
+    // A child deal (parentDealId set) carries an explicit approval flag that
+    // drives the contract roll-up, independent of the workflow stage:
+    //   • Pending (default): park it at "05 · For Approval" so it reads as
+    //     awaiting client sign-off — never left in raw "01 · BizDev" — and
+    //     default its board temperature to "Almost Awarded". It stays OUT of
+    //     the parent's Total Contract until approved.
+    //   • Approved: it now follows the parent project — inherit the parent's
+    //     current (non-lost) stage so the two track together, and it rolls into
+    //     Total Contract via ContractBreakdown (which keys off the flag).
+    // Standalone deals keep addendumStatus null.
+    if(rec.parentDealId){
+      const _parent=deals.find(d=>d.id===rec.parentDealId);
+      if(rec.addendumStatus==="Approved"){
+        if(_parent&&!isLostStage(_parent.stage)) rec.stage=_parent.stage;
+        rec.probability=WON_STAGES.includes(rec.stage)?100:rec.probability;
+      }else{
+        rec.addendumStatus="Pending";
+        if(!WON_STAGES.includes(rec.stage)) rec.stage="05 · For Approval";
+        if(!DEAL_TEMPS.includes(rec.temperature)) rec.temperature="Almost Awarded";
+      }
+    }else{
+      rec.addendumStatus=null;
+    }
     // Guard: block the same change order being recorded as BOTH a linked child
     // deal AND an addendum on the same parent (double-counts awarded value).
     if(!editDeal && !skipDupCheck && rec.parentDealId){
@@ -7777,6 +7830,19 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // Ops keeps the single parent project card. Only parent deals do.
     if(WON_STAGES.includes(data.stage) && !editDeal && !rec.parentDealId) upProjs(ps=>ps[rec.id]?ps:{...ps,[rec.id]:emptyProject()});
     upDeals(ds=>editDeal?ds.map(d=>d.id===editDeal?rec:d):[...ds,rec]);
+    // Keep approved addendums in step with their parent's stage: if this edit
+    // is a PARENT deal whose stage changed, cascade the new stage to any of its
+    // approved children (pending children stay parked at "For Approval").
+    if(editDeal && !rec.parentDealId){
+      const _prevStage=deals.find(d=>d.id===editDeal)?.stage;
+      if(_prevStage!==rec.stage){
+        const _kids=deals.filter(d=>d.parentDealId===editDeal&&d.addendumStatus==="Approved"&&!isLostStage(d.stage)).map(d=>d.id);
+        if(_kids.length){
+          upDeals(ds=>ds.map(d=>_kids.includes(d.id)?{...d,stage:rec.stage}:d));
+          if(isSupabaseReady()) _kids.forEach(cid=>sbUpdate('deals',cid,{stage:rec.stage}).catch(()=>{}));
+        }
+      }
+    }
     // Await the deal's own write before firing the DRF auto-create below, which
     // references rec.id by foreign key — firing it unawaited let the design
     // request occasionally reach the server before the deal committed, failing
@@ -13599,7 +13665,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                         </div>
                       </td>
                       <td style={{padding:cp,verticalAlign:"middle",whiteSpace:"nowrap"}}>
-                        <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:600,letterSpacing:".05em",textTransform:"uppercase",padding:"3px 8px",borderRadius:4,background:sc+"18",color:sc,border:`1px solid ${sc}44`}}>{stageLabel}</span>
+                        {isChild&&d.addendumStatus!=="Approved"?(
+                          // Pending addendum: show approval status, not the raw
+                          // workflow stage — it's awaiting client sign-off and is
+                          // not yet in the project's Total Contract.
+                          <span title="Awaiting client approval — not yet in Total Contract" style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:700,letterSpacing:".05em",textTransform:"uppercase",padding:"3px 8px",borderRadius:4,background:"#fffbeb",color:"#d97706",border:"1px solid #fde68a"}}>⏳ Pending</span>
+                        ):isChild?(
+                          <span title="Client-approved addendum — follows the parent project's stage" style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:700,letterSpacing:".05em",textTransform:"uppercase",padding:"3px 8px",borderRadius:4,background:"#ecfdf5",color:"#059669",border:"1px solid #a7f3d0"}}>✅ {stageLabel}</span>
+                        ):(
+                          <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:600,letterSpacing:".05em",textTransform:"uppercase",padding:"3px 8px",borderRadius:4,background:sc+"18",color:sc,border:`1px solid ${sc}44`}}>{stageLabel}</span>
+                        )}
                       </td>
                       <td style={{padding:cp,fontSize:metaFs,fontWeight:500,color:"#0d1117",verticalAlign:"middle",whiteSpace:"nowrap"}}>{pc?.aeAssigned||jo?.aeAssigned||d.salesOwner||<span style={{color:"#cbd5e1"}}>—</span>}</td>
                       <td style={{padding:cp,fontSize:metaFs,fontWeight:500,color:"#0d1117",verticalAlign:"middle",whiteSpace:"nowrap"}}>{pc?.pm1||jo?.pm1||<span style={{color:"#cbd5e1"}}>—</span>}</td>
@@ -17821,12 +17896,21 @@ function ContractBreakdown({deal,addenda,deals,compact}){
   //     deals and are NEVER rolled into the parent's value; they add on top.
   //     A child in a won stage is an approved addendum; otherwise it's pending.
   const coItems=(addenda||[]).filter(a=>(a.dealId||a.projectId)===deal.id&&a.status!=="Rejected");
-  const childItems=(deals||[]).filter(d=>d.parentDealId===deal.id&&!isLostStage(d.stage)).map(d=>({
-    id:d.id,title:d.contact||d.client||"Addendum",ceNo:d.ceNo||"",
-    value:Math.abs(Number(d.value)||0),
-    status:WON_STAGES.includes(d.stage)?"Approved":d.stage,
-    _child:true,_won:WON_STAGES.includes(d.stage),
-  }));
+  const childItems=(deals||[]).filter(d=>d.parentDealId===deal.id&&!isLostStage(d.stage)).map(d=>{
+    // Approval is driven by the explicit addendumStatus flag (the single source
+    // of truth), NOT by the workflow stage: an approved addendum inherits its
+    // parent project's stage — which may not be a "won" stage — so keying the
+    // roll-up off the stage alone would under-count. Legacy children saved
+    // before this flag existed (addendumStatus null) fall back to the old
+    // stage-based rule so nothing changes for them.
+    const approved = d.addendumStatus==="Approved" || (d.addendumStatus==null && WON_STAGES.includes(d.stage));
+    return {
+      id:d.id,title:d.contact||d.client||"Addendum",ceNo:d.ceNo||"",
+      value:Math.abs(Number(d.value)||0),
+      status:approved?"Approved":(d.addendumStatus==="Pending"?"Pending client approval":d.stage),
+      _child:true,_won:approved,
+    };
+  });
   const items=[...coItems,...childItems];
   if(compact&&!items.length) return null;
   // Legacy COs are already inside deal.value; child deals are additive on top.
@@ -26852,8 +26936,11 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                       const outstanding=Math.round((Number(deal.invoiced||0)-Number(deal.amountPaid||0))*100)/100;
                       if(outstanding>0.5 && !(await uiConfirm(`⚠️ This project still has ₱${outstanding.toLocaleString("en-PH",{minimumFractionDigits:2})} outstanding (collected is below billed).\n\nMark Completed anyway? Do this only if the balance is retention or a written-off amount.`))) return;
                     }
-                    upDeals(ds=>ds.map(d=>d.id===selDeal?{...d,stage:st}:d));
-                    if(isSupabaseReady()) sbUpdate('deals',selDeal,{stage:st}).catch(()=>{});
+                    // Approved addendums follow their parent's stage — cascade
+                    // the new stage to them too (pending children stay parked).
+                    const _approvedKids=deals.filter(d=>d.parentDealId===selDeal&&d.addendumStatus==="Approved"&&!isLostStage(d.stage)).map(d=>d.id);
+                    upDeals(ds=>ds.map(d=>(d.id===selDeal||_approvedKids.includes(d.id))?{...d,stage:st}:d));
+                    if(isSupabaseReady()){ sbUpdate('deals',selDeal,{stage:st}).catch(()=>{}); _approvedKids.forEach(cid=>sbUpdate('deals',cid,{stage:st}).catch(()=>{})); }
                     logActivity(selDeal,"Stage Change",`Stage → ${st}`,session?.name);
                     // Auto-stamp the award date the first time a deal enters a WON stage so the
                     // awarded / sales-value reports never silently miss it. Only stamps when the
