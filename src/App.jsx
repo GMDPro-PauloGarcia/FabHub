@@ -8,7 +8,7 @@ import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, isProcurementRole, canonRole, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, isProcurementRole, canonRole, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -1118,9 +1118,9 @@ function AwardReqModal({deal,session,today,onClose,onSubmit}){
 // 100%, every row has a name, each retention row has a release condition and
 // the payment due period is chosen. The amounts come from
 // buildMilestoneSchedule (centavo rounding, last row takes the remainder).
-function MilestoneBuilder({deal,contractVal,onClose,onCreate}){
+function MilestoneBuilder({deal,contractVal,schedCtx,onClose,onCreate}){
   const val=Number(contractVal)||0;
-  const blank=()=>({key:uid(),name:"",pct:"",retention:false,release:""});
+  const blank=()=>({key:uid(),name:"",pct:"",type:"",retention:false,release:"",plannedDate:"",dateTouched:false});
   const[rows,setRows]=useState(()=>[blank(),blank()]);
   const[netDays,setNetDays]=useState("");
   const[notes,setNotes]=useState("");
@@ -1128,14 +1128,18 @@ function MilestoneBuilder({deal,contractVal,onClose,onCreate}){
   const sch=buildMilestoneSchedule(val,rows);
   const problems=[...sch.problems,...(netDays===""?[{kind:"net",msg:"Choose when payment is due after each invoice."}]:[])];
   const ok=problems.length===0&&val>0;
-  const upd=(key,ch)=>setRows(rs=>rs.map(r=>r.key===key?{...r,...ch}:r));
+  // Type or release changes re-derive the default "Bill on" date from the
+  // project schedule, unless staff typed their own date for that row.
+  const withDefaults=rs=>{const seen={};return rs.map(r=>{const nth=seen[r.type]||0;seen[r.type]=nth+1;if(r.dateTouched||!r.type)return r;return{...r,plannedDate:defaultBillDate(r.type,nth,schedCtx,r.release).date};});};
+  const upd=(key,ch)=>setRows(rs=>withDefaults(rs.map(r=>r.key===key?{...r,...ch}:r)));
+  const hintFor=(r,i)=>{if(!r.type)return"";const nth=rows.slice(0,i).filter(x=>x.type===r.type).length;const d=defaultBillDate(r.type,nth,schedCtx,r.release);return r.dateTouched?"set by hand":d.source;};
   const peso=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
   const first=problems[0];
   const tone=!first?{bg:"#ecfdf5",bd:"#a7f3d0",tx:"#047857"}:first.kind==="over"?{bg:"#fef2f2",bd:"#fecaca",tx:"#b91c1c"}:first.kind==="empty"?{bg:"#eff6ff",bd:"#bfdbfe",tx:"#1d4ed8"}:{bg:"#fffbeb",bd:"#fde68a",tx:"#92400e"};
   const pctTotal=sch.pctTotal;
   const meterClr=pctTotal===100?"#059669":pctTotal>100?"#ef4444":"#f59e0b";
   const inp={border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".84rem",color:"#0f172a",background:"#fff",width:"100%",boxSizing:"border-box"};
-  const cols="minmax(170px,1.6fr) 84px minmax(120px,1fr) 96px 30px";
+  const cols="minmax(150px,1.4fr) 124px 76px minmax(112px,1fr) 136px 30px";
   const save=async()=>{
     if(!ok||saving) return;
     setSaving(true);
@@ -1161,9 +1165,9 @@ function MilestoneBuilder({deal,contractVal,onClose,onCreate}){
           ))}
         </div>
         <div style={{overflowX:"auto"}}>
-          <div style={{minWidth:560,display:"grid",gap:8}}>
+          <div style={{minWidth:700,display:"grid",gap:8}}>
             <div style={{display:"grid",gridTemplateColumns:cols,gap:8,fontSize:".6rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".08em"}}>
-              <div>Milestone name</div><div style={{textAlign:"right"}}>%</div><div style={{textAlign:"right"}}>Amount (VAT-ex)</div><div>Retention</div><div/>
+              <div>Milestone name</div><div>Type</div><div style={{textAlign:"right"}}>%</div><div style={{textAlign:"right"}}>Amount (VAT-ex)</div><div>Bill on</div><div/>
             </div>
             {rows.map((r,i)=>{
               const p=Number(r.pct)||0;
@@ -1172,17 +1176,22 @@ function MilestoneBuilder({deal,contractVal,onClose,onCreate}){
                 <React.Fragment key={r.key}>
                   <div style={{display:"grid",gridTemplateColumns:cols,gap:8,alignItems:"center"}}>
                     <input id={`msb-name-${r.key}`} aria-label="Milestone name" value={r.name} placeholder="e.g. Down Payment" onChange={e=>upd(r.key,{name:e.target.value})} style={{...inp,borderColor:missName?"#fecaca":"#e2e8f0",background:missName?"#fef2f2":"#fff"}}/>
+                    <select aria-label="Milestone type" value={r.type} onChange={e=>upd(r.key,{type:e.target.value,retention:e.target.value==="Retention",release:e.target.value==="Retention"?r.release:""})} style={{...inp,padding:"8px 6px",borderColor:p>0&&!r.type?"#fecaca":"#e2e8f0",background:p>0&&!r.type?"#fef2f2":"#fff"}}>
+                      <option value="">Type…</option>
+                      {MILESTONE_TYPES.map(t=><option key={t}>{t}</option>)}
+                    </select>
                     <input id={`msb-pct-${r.key}`} aria-label="Percent of contract" type="number" min={0} max={100} step="0.01" value={r.pct} placeholder="%" onChange={e=>upd(r.key,{pct:e.target.value})} style={{...inp,textAlign:"right",fontFamily:"'IBM Plex Mono',monospace"}}/>
                     <div style={{textAlign:"right",fontFamily:"'IBM Plex Mono',monospace",fontWeight:700,fontSize:".84rem",color:p>0?"#0f172a":"#cbd5e1"}}>
                       {p>0?peso(sch.amounts[i]):"—"}
                       {sch.adjusted===i&&<div style={{fontSize:".6rem",fontWeight:500,color:"#94a3b8"}}>+ leftover centavo</div>}
                     </div>
-                    <label style={{display:"flex",alignItems:"center",gap:6,fontSize:".74rem",color:"#475569",cursor:"pointer"}}>
-                      <input type="checkbox" checked={r.retention} onChange={e=>upd(r.key,{retention:e.target.checked,release:e.target.checked?r.release:""})}/> Retention
-                    </label>
+                    <div>
+                      <input aria-label="Bill on" type="date" value={r.plannedDate||""} onChange={e=>upd(r.key,{plannedDate:e.target.value,dateTouched:!!e.target.value})} style={{...inp,padding:"7px 6px",fontSize:".78rem"}}/>
+                      {r.type&&<div style={{fontSize:".58rem",color:r.plannedDate?"#94a3b8":"#d97706",marginTop:2,lineHeight:1.2}}>{hintFor(r,i)}</div>}
+                    </div>
                     <button type="button" aria-label="Remove row" onClick={()=>setRows(rs=>rs.length>1?rs.filter(x=>x.key!==r.key):[blank()])} style={{width:30,height:30,borderRadius:7,border:"1px solid #e2e8f0",background:"#fff",color:"#94a3b8",cursor:"pointer"}}>✕</button>
                   </div>
-                  {r.retention&&(
+                  {r.type==="Retention"&&(
                     <div style={{display:"flex",gap:8,alignItems:"center",background:"#f5f3ff",border:"1px solid #ddd6fe",borderRadius:8,padding:"6px 10px",fontSize:".74rem",color:"#6d28d9"}}>
                       <span>Released when</span>
                       <select aria-label="Retention release condition" value={r.release} onChange={e=>upd(r.key,{release:e.target.value})} style={{...inp,width:"auto",padding:"5px 8px",fontSize:".76rem"}}>
@@ -1196,9 +1205,10 @@ function MilestoneBuilder({deal,contractVal,onClose,onCreate}){
             })}
             <div style={{display:"grid",gridTemplateColumns:cols,gap:8,alignItems:"center",borderTop:"1.5px solid #e2e8f0",paddingTop:10}}>
               <div style={{fontWeight:800,fontSize:".8rem"}}>Total</div>
+              <div/>
               <div style={{textAlign:"right",fontFamily:"'IBM Plex Mono',monospace",fontWeight:800}}>{pctTotal}%</div>
               <div style={{textAlign:"right",fontFamily:"'IBM Plex Mono',monospace",fontWeight:800}}>{peso(sch.amountTotal)}</div>
-              <div style={{gridColumn:"4 / 6",height:8,borderRadius:99,background:"#f1f5f9",overflow:"hidden"}}><div style={{height:"100%",width:`${Math.min(100,Math.max(0,pctTotal))}%`,background:meterClr,borderRadius:99}}/></div>
+              <div style={{gridColumn:"5 / 7",height:8,borderRadius:99,background:"#f1f5f9",overflow:"hidden"}}><div style={{height:"100%",width:`${Math.min(100,Math.max(0,pctTotal))}%`,background:meterClr,borderRadius:99}}/></div>
             </div>
           </div>
         </div>
@@ -1219,7 +1229,8 @@ function MilestoneBuilder({deal,contractVal,onClose,onCreate}){
             <input aria-label="Notes" value={notes} onChange={e=>setNotes(e.target.value)} placeholder="e.g. PDC on DP, retention waived per client" style={inp}/>
           </div>
         </div>
-        <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:10}}>Milestones are created as Drafts with the next free invoice numbers. Each due date is set when the invoice is marked sent.</div>
+        <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:10}}>Milestones are created as Drafts with the next free invoice numbers. "Bill on" is when the invoice should go out — a Draft still unsent 3 days after it shows in Billing Check. The payment due date is set when the invoice is marked sent.</div>
+        {(()=>{const missing=sch.active.filter(r=>!r.plannedDate).length;return missing>0&&<div style={{fontSize:".72rem",color:"#b45309",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"6px 10px",marginTop:8}}>{missing} milestone{missing===1?" has":"s have"} no "Bill on" date. You can still save; fill the project schedule dates (or type a date) so nobody forgets to bill {missing===1?"it":"them"}.</div>;})()}
         <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:16}}>
           <button onClick={onClose} style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 20px",fontFamily:"inherit",fontSize:".84rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
           <button onClick={save} disabled={!ok||saving} style={{background:ok&&!saving?"#0f172a":"#e2e8f0",border:"none",borderRadius:10,padding:"10px 24px",fontFamily:"inherit",fontSize:".84rem",fontWeight:700,color:ok&&!saving?"#fff":"#94a3b8",cursor:ok&&!saving?"pointer":"not-allowed"}}>{saving?"Creating…":"Create milestones"}</button>
@@ -4444,7 +4455,7 @@ export default function App(){
             if(_jos){setJos(prev=>mlo(_jos,prev));idbE.push([KEYS.jos,_jos]);}
             if(Object.keys(data.pcards||{}).length){setPcards(prev=>mergeLocalOnlyObj(data.pcards,prev));idbE.push([KEYS.pcards,data.pcards]);}
             const mapSbPayment=p=>({...p,milestoneId:p.milestone_id??p.milestoneId,refNo:p.ref_no??p.refNo,recordedBy:p.recorded_by??p.recordedBy,valueDate:p.value_date??p.valueDate,method:p.payment_method??p.method,bounced:!!(p.bounced??false)});
-            const _billings=data.billings?.length?data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by,receiptType:m.receipt_type||null,withholding:m.withholding??null,retentionHeld:m.retention_held!=null?Number(m.retention_held):undefined,isRetentionRelease:m.is_retention_release||undefined,payments:(m.payments||[]).map(mapSbPayment)})):null;
+            const _billings=data.billings?.length?data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by,receiptType:m.receipt_type||null,withholding:m.withholding??null,retentionHeld:m.retention_held!=null?Number(m.retention_held):undefined,isRetentionRelease:m.is_retention_release||undefined,plannedDate:m.planned_bill_date||undefined,msType:m.ms_type||undefined,payments:(m.payments||[]).map(mapSbPayment)})):null;
             if(_billings){
               // Merge: preserve any locally-recorded payments that didn't sync to Supabase yet
               const idbBilMap=Object.fromEntries((idb[KEYS.billings]||[]).map(b=>[b.id,b]));
@@ -4779,7 +4790,7 @@ export default function App(){
     if(data.deals?.length){const ds=data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",awardRequestData:d.award_request_data||null,boqData:d.boq_data||null,bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null}));setDeals(prev=>mlo(ds,prev));idbE.push([KEYS.deals,ds]);}
     if(data.jos?.length){const js=data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned}));setJos(prev=>mlo(js,prev));idbE.push([KEYS.jos,js]);}
     if(Object.keys(data.pcards||{}).length){setPcards(data.pcards);idbE.push([KEYS.pcards,data.pcards]);}
-    if(data.billings?.length){const bs=data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by,retentionHeld:m.retention_held!=null?Number(m.retention_held):undefined,isRetentionRelease:m.is_retention_release||undefined,payments:(m.payments||[]).map(p=>({...p,milestoneId:p.milestone_id??p.milestoneId,refNo:p.ref_no??p.refNo,recordedBy:p.recorded_by??p.recordedBy,valueDate:p.value_date??p.valueDate,method:p.payment_method??p.method,bounced:!!(p.bounced??false)}))}));setBillings(prev=>mlo(bs,prev));idbE.push([KEYS.billings,bs]);}
+    if(data.billings?.length){const bs=data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by,retentionHeld:m.retention_held!=null?Number(m.retention_held):undefined,isRetentionRelease:m.is_retention_release||undefined,plannedDate:m.planned_bill_date||undefined,msType:m.ms_type||undefined,payments:(m.payments||[]).map(p=>({...p,milestoneId:p.milestone_id??p.milestoneId,refNo:p.ref_no??p.refNo,recordedBy:p.recorded_by??p.recordedBy,valueDate:p.value_date??p.valueDate,method:p.payment_method??p.method,bounced:!!(p.bounced??false)}))}));setBillings(prev=>mlo(bs,prev));idbE.push([KEYS.billings,bs]);}
     if(data.exps?.length){const mappedExps=data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,createdBy:e.created_by,bankAccount:e.bank_account||"",expDate:e.date||null,poRef:e.po_ref||"",payee:e.supplier||"",vatable:e.vatable??undefined,inputVat:e.input_vat!=null?Number(e.input_vat):undefined,ewtRate:e.ewt_rate!=null?Number(e.ewt_rate):undefined,ewtAmount:e.ewt_amount!=null?Number(e.ewt_amount):undefined,netAmount:e.net_amount!=null?Number(e.net_amount):undefined,month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};});setExps(prev=>mlo(mappedExps,prev));idbE.push([KEYS.expenses,mappedExps]);}
     if(data.swos?.length){const ws=data.swos.map(swoFromSb);setSwos(prev=>mlo(ws,prev));idbE.push([KEYS.swos,ws]);}
     if(data.inflows?.length){const infs=data.inflows.map(i=>({...i,dealId:i.deal_id,refNo:i.ref_no}));setInfs(prev=>mlo(infs,prev));idbE.push([KEYS.inflows,infs]);}
@@ -4926,6 +4937,9 @@ export default function App(){
     // runs (the retry queue syncs them once the columns exist).
     if(r.retentionHeld!=null) base.retention_held=Number(r.retentionHeld)||0;
     if(r.isRetentionRelease) base.is_retention_release=true;
+    // Builder fields (migration 070) — only when set, like retention above.
+    if(r.plannedDate!==undefined) base.planned_bill_date=r.plannedDate||null;
+    if(r.msType) base.ms_type=r.msType;
     return base;
   };
   const toSbPayment = r=>({
@@ -6020,7 +6034,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       if(payload.eventType==='INSERT'||payload.eventType==='UPDATE'){
         const rec=payload.new;
         const mapped={...rec,dealId:rec.deal_id,invoiceNo:rec.invoice_no,
-          invoiceDate:rec.invoice_date,dueDate:rec.due_date,createdBy:rec.created_by};
+          invoiceDate:rec.invoice_date,dueDate:rec.due_date,createdBy:rec.created_by,
+          plannedDate:rec.planned_bill_date||undefined,msType:rec.ms_type||undefined};
         setBillings(bs=>{const ex=bs.find(b=>b.id===rec.id);
           // Preserve existing payments array — billing_milestones RT event doesn't carry payments
           return ex?bs.map(b=>b.id===rec.id?{...b,...mapped,payments:b.payments||[]}:b):[...bs,{...mapped,payments:[]}];});
@@ -6413,7 +6428,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       const invoiceNo=await claimDocNumber("INV",[...known,...recs.map(r=>r.invoiceNo)]);
       recs.push({
         id:uid(),dealId,name:String(m.name).trim(),amount:m.amount,
-        description:m.retention?`Retention (${m.pct}% of contract). Release condition: ${m.release}`:`${m.pct}% of contract`,
+        description:m.type==="Retention"||m.retention?`Retention (${m.pct}% of contract). Release condition: ${m.release}`:`${m.type} — ${m.pct}% of contract`,
+        msType:m.type||undefined,plannedDate:m.plannedDate||"",
         invoiceNo,invoiceDate:today,dueDate:"",status:"Draft",
         receiptType:_deal.receiptType||null,withholding:_deal.withholding??null,
         createdBy:session?.name||role,deductions:[],createdDate:today,
@@ -16924,7 +16940,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         projs={projs} overallProg={overallProg}
         toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification}/>
     </Wrap>
-    {payTermsModal&&(()=>{const _d=deals.find(d=>d.id===payTermsModal);return _d?<MilestoneBuilder deal={_d} contractVal={_d.originalValue!=null?_d.originalValue:_d.value} onClose={()=>setPayTermsModal(null)} onCreate={async(active,netDays,notes)=>{if(await createMilestoneSchedule(payTermsModal,active,netDays,notes))setPayTermsModal(null);}}/>:null;})()}
+    {payTermsModal&&(()=>{const _d=deals.find(d=>d.id===payTermsModal);const _src=_d&&_d.parentDealId?(deals.find(x=>x.id===_d.parentDealId)||_d):_d;return _d?<MilestoneBuilder deal={_d} contractVal={_d.originalValue!=null?_d.originalValue:_d.value} schedCtx={{awardDate:pcards?.[_d.id]?.awardDate||_d.dateAcquired||pcards?.[_src.id]?.awardDate||"",stageDates:projs?.[_src.id]?.stageDates||projs?.[_d.id]?.stageDates||{}}} onClose={()=>setPayTermsModal(null)} onCreate={async(active,netDays,notes)=>{if(await createMilestoneSchedule(payTermsModal,active,netDays,notes))setPayTermsModal(null);}}/>:null;})()}
     </>
   );
 
@@ -24853,7 +24869,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   // Billing Check: double-billing / integrity scan over every project (see
   // billingIntegrityIssues in core.js). Recomputed whenever billing data changes.
   const[showCheck,setShowCheck]=useState(false);
-  const checkIssues=useMemo(()=>billingIntegrityIssues({deals,billings,addenda}),[deals,billings,addenda]);
+  const checkIssues=useMemo(()=>billingIntegrityIssues({deals,billings,addenda,today}),[deals,billings,addenda]);
   const[showNotBilled,setShowNotBilled]=useState(false);  // hide 0-milestone "Not billed" projects by default
   const[billRowMenu,setBillRowMenu]=useState(null);       // ⋯ row-actions menu {id,client,canDeleteSchedule,canRemoveProject,top,right}
   const[forecastRange,setForecastRange]=useState("week"); // today | week | month — collection forecast horizon
@@ -25018,7 +25034,9 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const saveEditMs=async()=>{
     if(!editMs) return;
     if(invTaken(editMsForm.invoiceNo,editMs)){toastEmit&&toastEmit(`${String(editMsForm.invoiceNo).trim()} is already used on another milestone. Use a different invoice number.`,"error",8000);return;}
-    if(!String(editMsForm.dueDate||"").trim()){
+    // A Draft with a "Bill on" date gets its due date when it's sent — don't
+    // push staff to set one now (that is what made unsent Drafts show overdue).
+    if(!String(editMsForm.dueDate||"").trim()&&!(editMsForm.isDraft&&editMsForm.plannedDate)){
       const ok=await uiConfirm({title:"No due date set",tone:"warning",confirmLabel:"Save without due date",cancelLabel:"Go back & set it",
         message:"This billing milestone has no due date, so the Cash-Flow Forecast will treat its expected collection as due now instead of scheduling it. Set a due date for an accurate projection.\n\nSave anyway?"});
       if(!ok) return;
@@ -25027,6 +25045,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       name:editMsForm.name,description:editMsForm.description,
       amount:Number(editMsForm.amount)||0,
       invoiceNo:editMsForm.invoiceNo,invoiceDate:editMsForm.invoiceDate,
+      ...(editMsForm.isDraft?{plannedDate:editMsForm.plannedDate||""}:{}),
       dueDate:editMsForm.dueDate,
       receiptType:editMsForm.receiptType??null,
       withholding:editMsForm.withholding??null,
@@ -25394,7 +25413,8 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     const balance  =Math.max(0,collectible-collected);
     const hasOverdue=ms.some(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled");
     const fullyPaid=total>0&&balance===0;
-    return{d,ms,grossBase,vat,total,collected,collectible,balance,hasOverdue,fullyPaid,milestoneCount:ms.length};
+    const toBill=ms.filter(m=>m.status==="Draft"&&m.plannedDate&&m.plannedDate<today).length;
+    return{d,ms,grossBase,vat,total,collected,collectible,balance,hasOverdue,fullyPaid,toBill,milestoneCount:ms.length};
   });
   // Count of awarded projects with no billing set up yet — hidden by default.
   const notBilledCount=_allSummaries.filter(s=>s.milestoneCount===0).length;
@@ -25482,14 +25502,14 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         <div style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"14px 16px",marginBottom:16}}>
           <div style={{display:"flex",justifyContent:"space-between",gap:10,flexWrap:"wrap",alignItems:"baseline",marginBottom:10}}>
             <div style={{fontWeight:800,fontSize:".9rem",color:"#0f172a"}}>Billing Check</div>
-            <div style={{fontSize:".7rem",color:"#94a3b8"}}>Billed over contract · no contract value · duplicate invoice numbers · duplicate milestones · change orders billed twice · sub-centavo amounts</div>
+            <div style={{fontSize:".7rem",color:"#94a3b8"}}>Billed over contract · no contract value · Drafts past their bill-on date · duplicate invoice numbers · duplicate milestones · change orders billed twice · sub-centavo amounts</div>
           </div>
           {checkIssues.length===0?(
             <div style={{fontSize:".8rem",color:"#047857",fontWeight:600}}>✓ No double billing or numbering problems found across {new Set(billings.map(b=>b.dealId)).size} projects.</div>
           ):(
             <div style={{display:"grid",gap:6,maxHeight:360,overflowY:"auto"}}>
               {checkIssues.map((x,k)=>{
-                const KIND={over:"Over contract",novalue:"No contract value",dupinv:"Duplicate invoice no.",dupms:"Duplicate milestone",coDouble:"Change order",centavo:"Centavo rounding"};
+                const KIND={tobill:"Not yet billed",over:"Over contract",novalue:"No contract value",dupinv:"Duplicate invoice no.",dupms:"Duplicate milestone",coDouble:"Change order",centavo:"Centavo rounding"};
                 const hi=x.severity==="high";
                 return(
                   <div key={k} style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",border:`1px solid ${hi?"#fecaca":"#e2e8f0"}`,background:hi?"#fef2f2":"#f8fafc",borderRadius:9,padding:"8px 12px"}}>
@@ -25677,7 +25697,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
               </div>
             );
           }
-          const {d,ms,grossBase,vat,total,collected,collectible,balance,hasOverdue,fullyPaid,milestoneCount,groupOverdue,childOf,addendumCount}=row;
+          const {d,ms,grossBase,vat,total,collected,collectible,balance,hasOverdue,fullyPaid,toBill,milestoneCount,groupOverdue,childOf,addendumCount}=row;
           const statusBadge=(
             <>
               {hasOverdue&&<span style={{fontSize:".68rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Overdue</span>}
@@ -25735,6 +25755,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
               <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:1}}>
                 {d.ceNo||"No CE"} · {milestoneCount} milestone{milestoneCount!==1?"s":""}
                 {addendumCount>0&&!childOf&&` · ${addendumCount} addend${addendumCount===1?"um":"a"}`}
+                {toBill>0&&<span title="Draft milestones past their Bill-on date" style={{color:"#d97706",fontWeight:700,marginLeft:6}}>⏰ {toBill} to bill</span>}
                 {fullyPaid&&<span style={{color:"#059669",fontWeight:700,marginLeft:6}}>✓ Fully Paid</span>}
               </div>
             </div>
@@ -26146,6 +26167,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                         <span><span style={{color:"#94a3b8"}}>Paid: </span><strong style={{color:"#059669"}}>₱{paidTotal.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>
                         {balance>0&&<span><span style={{color:"#94a3b8"}}>Balance: </span><strong style={{color:"#ef4444"}}>₱{balance.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>}
                         {ms.dueDate&&<span style={{color:isOverdue?"#ef4444":"#64748b",fontWeight:isOverdue?700:400}}>Due: {ms.dueDate}</span>}
+                        {ms.status==="Draft"&&ms.plannedDate&&<span style={{color:ms.plannedDate<today?"#d97706":"#64748b",fontWeight:ms.plannedDate<today?700:400}}>{ms.plannedDate<today?"⏰ ":""}Bill on: {ms.plannedDate}</span>}
                         <span title="Month this revenue is counted in the chart. Click Edit to change.">
                           <span style={{color:"#94a3b8"}}>Rev. Period: </span>
                           <strong style={{color:"#8b5cf6"}}>{(()=>{const d=new Date(ms.invoiceDate||ms.dueDate||"");return isNaN(d.getTime())?"Not set":d.toLocaleDateString("en-PH",{month:"short",year:"numeric"});})()}</strong>
@@ -26248,6 +26270,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                             <Fld label="Amount (₱)"><Inp type="number" value={editMsForm.amount||""} onChange={e=>fme("amount",e.target.value)} placeholder="0.00"/></Fld>
                             <Fld label="Invoice No"><Inp value={editMsForm.invoiceNo||""} onChange={e=>fme("invoiceNo",e.target.value)} placeholder="INV-0001"/></Fld>
                             <Fld label="Invoice Date"><Inp type="date" value={editMsForm.invoiceDate||""} onChange={e=>fme("invoiceDate",e.target.value)}/></Fld>
+                            {editMsForm.isDraft&&<Fld label="Bill on" hint="When this invoice should go out. Billing Check flags it 3 days after."><Inp type="date" value={editMsForm.plannedDate||""} onChange={e=>fme("plannedDate",e.target.value)}/></Fld>}
                             <Fld label="Due Date" required hint={!editMsForm.dueDate?"Recommended — drives the cash-flow forecast.":undefined}><Inp type="date" value={editMsForm.dueDate||""} onChange={e=>fme("dueDate",e.target.value)}/></Fld>
                             <Fld label="Description"><Inp value={editMsForm.description||""} onChange={e=>fme("description",e.target.value)} placeholder="Optional details…"/></Fld>
                             <Fld label="Receipt Type" hint={`Deal default: ${deal?.receiptType||"OR"}`}>
@@ -26340,7 +26363,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                       {canEdit&&ms.status!=="Fully Paid"&&ms.status!=="Cancelled"&&(
                         <button onClick={()=>{const opening=showPay!==ms.id;setShowPay(showPay===ms.id?null:ms.id);if(opening){const totalPaid=(ms.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);const bal=tx.netReceivable-totalPaid;setPayForm(p=>({...p,amount:bal>0?bal:tx.netReceivable}));}}} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#059669",cursor:"pointer"}}>+ Payment</button>
                       )}
-                      {canEdit&&<button onClick={()=>{setEditMs(editMs===ms.id?null:ms.id);setEditMsForm({name:ms.name,description:ms.description||"",amount:String(ms.amount||""),invoiceNo:ms.invoiceNo||"",invoiceDate:ms.invoiceDate||today,dueDate:ms.dueDate||"",receiptType:ms.receiptType??null,withholding:ms.withholding??null});setShowPay(null);}} style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#1d4ed8",cursor:"pointer"}}>✏ Edit</button>}
+                      {canEdit&&<button onClick={()=>{setEditMs(editMs===ms.id?null:ms.id);setEditMsForm({name:ms.name,description:ms.description||"",amount:String(ms.amount||""),invoiceNo:ms.invoiceNo||"",invoiceDate:ms.invoiceDate||today,dueDate:ms.dueDate||"",plannedDate:ms.plannedDate||"",isDraft:ms.status==="Draft",receiptType:ms.receiptType??null,withholding:ms.withholding??null});setShowPay(null);}} style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#1d4ed8",cursor:"pointer"}}>✏ Edit</button>}
                       {canEdit&&<select value={ms.status} onChange={e=>updateMilestone(ms.id,{status:e.target.value})} style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 8px",fontFamily:"inherit",fontSize:".72rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>{BILLING_STATUSES.map(s=><option key={s}>{s}</option>)}</select>}
                       {canEdit&&<button onClick={()=>deleteMilestone(ms.id)} title="Delete this milestone (archived to Audit Trail)" style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:7,padding:"5px",fontFamily:"inherit",fontWeight:600,fontSize:".7rem",color:"#dc2626",cursor:"pointer"}}>Delete</button>}
                     </div>

@@ -650,6 +650,33 @@ export const RETENTION_RELEASE_OPTIONS = [
   "Project Completion","COC Issued","6 Months After Completion","1 Year Warranty Period","Client Approval",
 ];
 const _c2 = (v) => Math.round(v * 100) / 100;
+export const MILESTONE_TYPES = ["Down payment","Progress","Final","Retention","Other"];
+const _addDays = (iso, n) => { if (!iso) return ""; const d = new Date(String(iso).slice(0, 10) + "T00:00:00Z"); if (isNaN(d)) return ""; d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+const RELEASE_OFFSET_DAYS = { "Project Completion": 0, "COC Issued": 0, "6 Months After Completion": 182, "1 Year Warranty Period": 365 };
+// Default target billing date for a builder row, from the project schedule.
+// ctx: {awardDate, stageDates:{Fabrication:{e},Delivery:{e},Installation:{e},Punchlist:{e}}}
+// nth: 0-based index of this row among rows of the same type (Progress 1, 2, …).
+// Returns {date, source}; date is "" when the schedule doesn't have the date yet
+// — it never guesses, the hint says what to fill in on the project card.
+export const defaultBillDate = (type, nth = 0, ctx = {}, release = "") => {
+  const sd = ctx.stageDates || {};
+  const punch = sd.Punchlist && sd.Punchlist.e;
+  if (type === "Down payment") return ctx.awardDate ? { date: _addDays(ctx.awardDate, 3), source: "award date + 3 days" } : { date: "", source: "no award date on the project card" };
+  if (type === "Progress") {
+    const steps = [["Fabrication", "fabrication end"], ["Delivery", "delivery end"], ["Installation", "installation end"]];
+    const avail = steps.filter(([k]) => sd[k] && sd[k].e);
+    const pick = avail[Math.min(nth, avail.length - 1)];
+    return pick ? { date: String(sd[pick[0]].e).slice(0, 10), source: pick[1] } : { date: "", source: "set fabrication end date on the project" };
+  }
+  if (type === "Final") return punch ? { date: String(punch).slice(0, 10), source: "punchlist sign-off" } : { date: "", source: "set punchlist end date on the project" };
+  if (type === "Retention") {
+    if (!release) return { date: "", source: "choose the release condition" };
+    const off = RELEASE_OFFSET_DAYS[release];
+    if (off == null) return { date: "", source: `set by hand (${release})` };
+    return punch ? { date: _addDays(punch, off), source: off ? `punchlist sign-off + ${off} days` : "punchlist sign-off" } : { date: "", source: "set punchlist end date on the project" };
+  }
+  return { date: "", source: "set by hand" };
+};
 export const buildMilestoneSchedule = (contractVal, rows = []) => {
   const val = Number(contractVal) || 0;
   const pcts = rows.map(r => Number(r && r.pct) || 0);
@@ -671,22 +698,22 @@ export const buildMilestoneSchedule = (contractVal, rows = []) => {
   else if (pctTotal < 100) problems.push({ kind: "under", msg: `${_c2(100 - pctTotal)}% not scheduled (₱${_c2(val - amountTotal).toLocaleString("en-PH", { minimumFractionDigits: 2 })} of the contract has no milestone yet).` });
   if (pcts.some(p => p < 0)) problems.push({ kind: "negative", msg: "A % can't be negative." });
   if (active.some(r => !String(r.name || "").trim())) problems.push({ kind: "name", msg: "Give every milestone a name. It prints on the invoice." });
-  if (active.some(r => r.retention && !r.release)) problems.push({ kind: "release", msg: "Choose when the retention is released." });
+  if (active.some(r => !r.type)) problems.push({ kind: "type", msg: "Choose a type for every milestone." });
+  if (active.some(r => (r.retention || r.type === "Retention") && !r.release)) problems.push({ kind: "release", msg: "Choose when the retention is released." });
   return { amounts, pctTotal, amountTotal, adjusted, active, problems, ok: problems.length === 0 };
 };
 // Terms record derived from a built schedule, in the legacy {dp,progress,final,
 // retention} shape the rest of the app reads (progress-claim retention,
 // retention release, onboarding gate, chips), plus the exact rows.
 export const termsFromSchedule = (active = [], netDays = null) => {
-  const ret = active.filter(r => r.retention);
-  const main = active.filter(r => !r.retention);
-  const dp = main.length ? main[0].pct : 0;
-  const final = main.length > 1 ? main[main.length - 1].pct : 0;
-  const progress = _c2(main.slice(1, main.length > 1 ? -1 : undefined).reduce((s, r) => s + r.pct, 0));
+  const isRet = r => r.retention || r.type === "Retention";
+  const sum = f => _c2(active.filter(f).reduce((s, r) => s + r.pct, 0));
+  const ret = active.filter(isRet);
   return {
-    dp, progress, final, retention: _c2(ret.reduce((s, r) => s + r.pct, 0)),
+    dp: sum(r => r.type === "Down payment"), progress: sum(r => r.type === "Progress"),
+    final: sum(r => r.type === "Final" || r.type === "Other"), retention: sum(isRet),
     retentionRelease: ret[0]?.release || "", netDays,
-    schedule: active.map(r => ({ name: String(r.name).trim(), pct: r.pct, retention: !!r.retention, release: r.retention ? r.release : "" })),
+    schedule: active.map(r => ({ name: String(r.name).trim(), type: r.type || "", pct: r.pct, retention: isRet(r), release: isRet(r) ? r.release : "", plannedDate: r.plannedDate || "" })),
     notes: "",
   };
 };
@@ -708,8 +735,9 @@ export const scheduleSummary = (terms) => {
 //   dupinv    — the same invoice number on more than one milestone
 //   dupms     — same name AND amount twice on one project (duplicate set)
 //   coDouble  — change-order milestone duplicating an addendum / orphaned
+//   tobill    — Draft still unsent 3+ days after its target billing date
 //   centavo   — amount with more than 2 decimals
-export const billingIntegrityIssues = ({ deals = [], billings = [], addenda = [] } = {}) => {
+export const billingIntegrityIssues = ({ deals = [], billings = [], addenda = [], today = "" } = {}) => {
   const issues = [];
   const byId = new Map(deals.map(d => [d.id, d]));
   const live = billings.filter(b => b && b.status !== "Cancelled");
@@ -730,6 +758,9 @@ export const billingIntegrityIssues = ({ deals = [], billings = [], addenda = []
         ? `${x.milestone.invoiceNo || x.milestone.name} bills a change order that addendum ${x.child.ceNo || x.child.contact || ""} already bills.`
         : `${x.milestone.invoiceNo || x.milestone.name} is a change-order milestone with no change order behind it.`,
     }));
+    // Draft past its target billing date (only milestones with a planned date —
+    // older Drafts' invoice_date is just the setup day and would flood this).
+    if (today) ms.forEach(m => { if (m.status === "Draft" && m.plannedDate && _addDays(m.plannedDate, 3) < today) issues.push({ kind: "tobill", severity: "medium", deal: d, milestones: [m], msg: `${m.invoiceNo || m.name} (${m.name}) was due to be billed on ${m.plannedDate} and is still a Draft.` }); });
     ms.forEach(m => { const a = Number(m.amount) || 0; if (Math.abs(a * 100 - Math.round(a * 100)) > 1e-6) issues.push({ kind: "centavo", severity: "low", deal: d, milestones: [m], msg: `${m.invoiceNo || m.name}: ₱${a} has a fraction of a centavo — re-save it as ₱${_c2(a).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.` }); });
   });
   const inv = new Map();
