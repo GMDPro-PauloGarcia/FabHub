@@ -8,7 +8,7 @@ import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, isProcurementRole, canonRole, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, isProcurementRole, canonRole, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -1115,7 +1115,12 @@ function AwardReqModal({deal,session,today,onClose,onSubmit}){
 function PaymentTermsModal({dealId,deals,onClose,onSave,session}){
   const deal=(deals||[]).find(d=>d.id===dealId)||{};
   const val=Number(deal.value||0);
-  const existing=deal.paymentTerms||{};
+  // An addendum with no terms of its own starts from its parent contract's terms
+  // (change orders normally follow the main contract, retention included) —
+  // still editable, and nothing is saved until the user confirms.
+  const parent=!deal.paymentTerms&&deal.parentDealId?(deals||[]).find(d=>d.id===deal.parentDealId):null;
+  const inherited=!!parent?.paymentTerms;
+  const existing=deal.paymentTerms||parent?.paymentTerms||{};
   const[f,setF]=useState({dp:existing.dp??30,progress:existing.progress??40,final:existing.final??20,retention:existing.retention??10,netDays:existing.netDays??30,retentionRelease:existing.retentionRelease||"Project Completion",notes:existing.notes||""});
   const upd=(k,v)=>setF(p=>({...p,[k]:v}));
   const total=(Number(f.dp)||0)+(Number(f.progress)||0)+(Number(f.final)||0)+(Number(f.retention)||0);
@@ -1129,6 +1134,11 @@ function PaymentTermsModal({dealId,deals,onClose,onSave,session}){
         <div style={{background:"#f0fdf4",border:"1.5px solid #86efac",borderRadius:10,padding:"10px 14px",marginBottom:18,fontSize:".74rem",color:"#15803d",fontWeight:600}}>
           These terms will auto-generate the billing schedule in Finance. Total must equal 100%.
         </div>
+        {inherited&&(
+          <div style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:10,padding:"10px 14px",marginBottom:18,fontSize:".74rem",color:"#1d4ed8",fontWeight:600}}>
+            Pre-filled from the parent contract{parent.ceNo?` (${parent.ceNo})`:""}. Change them only if the change order was signed on different terms.
+          </div>
+        )}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:16}}>
           {[["dp","Down Payment %"],["progress","Progress Billing %"],["final","Final Billing %"],["retention","Retention %"]].map(([k,lbl])=>(
             <div key={k}>
@@ -6306,8 +6316,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const dealNetDue=(dealId,msList,dealObj)=>(msList||[])
     .filter(b=>b.dealId===dealId&&b.status!=='Cancelled')
     .reduce((s,b)=>s+calcTax(Number(b.amount)||0,b.receiptType??b.receipt_type??dealObj?.receiptType??"OR",b.withholding??dealObj?.withholding??false).netReceivable,0);
+  // Invoices are issued in centavos — a % split like 50% of ₱804,720.07 gives
+  // ₱402,360.035, which no BIR invoice can carry and never foots back to the
+  // contract. Round every entered amount to 2 decimals at the write boundary.
+  const toCentavos=v=>v===""||v==null||isNaN(Number(v))?v:Math.round(Number(v)*100)/100;
   const addMilestone=(ms)=>{
     const rec={...ms,id:uid(),createdDate:today};
+    if(rec.amount!==undefined) rec.amount=toCentavos(rec.amount);
     upBillings(bs=>[...bs,rec]);
     if(!isSupabaseReady()) toastEmit("⚠️ Billing saved on this device only — no server connection. It won't appear on other devices until reconnected.","warning",9000);
     else if(rec.dealId&&!isUUID(rec.dealId)) toastEmit("⚠️ This billing can't sync — the project has an invalid ID. Saved on this device only.","warning",9000);
@@ -6363,6 +6378,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       terms.retention>0&&{name:`Retention (${terms.retention}%) — Release: ${terms.retentionRelease||"Project Completion"}`,amount:share(terms.retention),description:`Held as retention. Release condition: ${terms.retentionRelease||"Project Completion"}`},
     ].filter(Boolean);
     if(!milestones.length) return;
+    // Per-share rounding can still drift a centavo (50/50 of ₱804,720.07 →
+    // 2 × ₱402,360.04 = ₱804,720.08). When the terms cover 100%, the last
+    // milestone absorbs the remainder so the schedule foots exactly.
+    const pctSum=(Number(terms.dp)||0)+(Number(terms.progress)||0)+(Number(terms.final)||0)+(Number(terms.retention)||0);
+    if(pctSum===100){const rest=milestones.slice(0,-1).reduce((s,m)=>s+m.amount,0);milestones[milestones.length-1].amount=Math.round((val-rest)*100)/100;}
     // Add the whole batch in one state update and do ONE deal.invoiced recompute
     // from the complete set — calling addMilestone in a loop would have each
     // call sync deal.invoiced from a stale, pre-batch `billings` closure, so
@@ -6426,6 +6446,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     upBillings(bs=>bs.map(b=>{
       if(b.id!==id) return b;
       const n={...b,...ch};
+      if(Object.prototype.hasOwnProperty.call(ch,"amount")) n.amount=toCentavos(n.amount);
       // auto-set invoiceDate and sentDate when status changes to "Sent to Client"
       if(ch.status==='Sent to Client'){if(!n.invoiceDate)n.invoiceDate=today;if(!n.sentDate)n.sentDate=today;}
       // Recompute status from the non-bounced paid total unless the caller set it explicitly.
@@ -6693,13 +6714,24 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // never taxed on a different basis than its project.
   const syncCoBilling=(co,shouldExist)=>{
     const dealId=co.dealId||co.projectId;
-    const existing=billings.find(b=>b.coId===co.id);
+    // coId is never persisted (billing_milestones has no co_id column), so after
+    // any reload the link is gone. Fall back to the parent + milestone name the
+    // CO created — otherwise un-approving/deleting the CO left its milestone
+    // behind (orphan), and re-approving created a second one (double billing).
+    const existing=billings.find(b=>b.coId===co.id)||billings.find(b=>b.dealId===dealId&&!b.coId&&coMilestoneMatches(b,co));
     if(shouldExist&&!existing&&dealId){
+      // Never bill the same scope twice: if this change order is already an
+      // approved linked addendum deal, it bills on its own project.
+      const childDup=deals.find(d=>d.parentDealId===dealId&&isApprovedAddendumDeal(d)&&Math.abs(Math.abs(Number(d.value)||0)-Math.abs(coSignedValue(co)))<0.5);
+      if(childDup){toastEmit(`Change order not added to billing — it's already billed on addendum project ${childDup.ceNo||childDup.contact||""}.`,"warning",9000);return;}
       const parentDeal=deals.find(d=>d.id===dealId);
       const invMax=billings.reduce((m,b)=>{const x=parseInt(String(b.invoiceNo||"").replace(/\D/g,""))||0;return Math.max(m,x);},0);
-      addMilestone({name:`Change Order — ${co.title||"Scope Change"}`,description:co.description||co.desc||"",amount:coSignedValue(co),dealId,coId:co.id,invoiceNo:`INV-${String(invMax+1).padStart(4,"0")}`,invoiceDate:today,dueDate:"",status:"Draft",receiptType:parentDeal?.receiptType||co.receiptType||null,withholding:parentDeal?.withholding??co.withholding??null,createdBy:session?.name||role,deductions:[]});
+      addMilestone({name:`${CO_MILESTONE_PREFIX}${co.title||"Scope Change"}`,description:co.description||co.desc||"",amount:coSignedValue(co),dealId,coId:co.id,invoiceNo:`INV-${String(invMax+1).padStart(4,"0")}`,invoiceDate:today,dueDate:"",status:"Draft",receiptType:parentDeal?.receiptType||co.receiptType||null,withholding:parentDeal?.withholding??co.withholding??null,createdBy:session?.name||role,deductions:[]});
     }else if(!shouldExist&&existing){
-      upBillings(bs=>bs.filter(b=>b.coId!==co.id));
+      // Only a Draft is removed automatically — once it has been sent or paid,
+      // silently deleting it would hide a real invoice. Flag it for Finance.
+      if(existing.status!=="Draft"||(existing.payments||[]).length){toastEmit(`Change order milestone ${existing.invoiceNo||""} was already ${existing.status} — cancel or credit it in Billing.`,"warning",9000);return;}
+      upBillings(bs=>bs.filter(b=>b.id!==existing.id));
       if(isSupabaseReady()) sbDelete('billing_milestones',existing.id).catch(()=>{});
     }
   };
@@ -25668,6 +25700,9 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
             const pctOfContract=contractBase>0?Math.round(billedBase/contractBase*100):0;
             const overBilled=diff>0.5;                 // sums to more than the contract
             const underBilled=diff<-0.5&&ms.some(m=>m.status!=="Cancelled"); // short, but has milestones
+            // Change-order milestones on this project that duplicate an addendum
+            // billed on its own project, or whose change order no longer exists.
+            const coIssues=findAddendumDoubleBilling({dealId:selDeal,billings,deals,addenda});
             return(
               <>
               <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:overBilled||underBilled?10:16}}>
@@ -25683,6 +25718,16 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                   </div>
                 ))}
               </div>
+              {coIssues.map(({milestone:m,child,reason})=>(
+                <div key={m.id} style={{background:"#fef2f2",border:"1.5px solid #fca5a5",borderRadius:10,padding:"10px 14px",marginBottom:10,display:"flex",alignItems:"center",gap:10}}>
+                  <span style={{fontSize:"1rem"}}>🚫</span>
+                  <span style={{fontSize:".8rem",color:"#b91c1c"}}>
+                    {reason==="duplicate"
+                      ?<><strong>Double-billed addendum: {m.invoiceNo||m.name} ({fmt(n(m.amount))}).</strong> This change order is already billed on its own addendum project {child.ceNo||child.contact||""}. Addenda bill on their own project only — {m.status==="Draft"?"delete":"cancel"} {m.invoiceNo||"this milestone"} here.</>
+                      :<><strong>Orphaned change-order milestone: {m.invoiceNo||m.name} ({fmt(n(m.amount))}).</strong> No change order on this project backs it any more. Confirm whether it was billed elsewhere before sending, then {m.status==="Draft"?"delete":"cancel"} it.</>}
+                  </span>
+                </div>
+              ))}
               {overBilled&&(
                 <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:10,padding:"10px 14px",marginBottom:16,display:"flex",alignItems:"center",gap:10}}>
                   <span style={{fontSize:"1rem"}}>⚠️</span>

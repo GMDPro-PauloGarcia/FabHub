@@ -605,6 +605,39 @@ export const findCrossMechanismCO = ({ parentId, value, deals = [], addenda = []
   return null;
 };
 
+// Billing-side twin of findCrossMechanismCO. A legacy CO record bills through a
+// "Change Order — <title>" milestone on the PARENT project (syncCoBilling); a
+// linked addendum deal bills on its OWN project. billing_milestones has no co_id
+// column, so the CO↔milestone link is lost on reload and the parent milestone
+// can outlive its CO (the Filbars SMNE CO#1 case: CO converted, then undone and
+// re-entered as a linked deal — the parent kept INV-1698 while the addendum
+// project billed the same ₱804,720.07 again). Returns the parent's CO milestones
+// that are either:
+//   - "duplicate": same amount as an approved linked addendum deal (billed twice)
+//   - "orphan":    no live (non-rejected) CO record on this project backs it
+export const CO_MILESTONE_PREFIX = "Change Order — ";
+export const isCoMilestone = (b) => !!(b && (b.coId || String(b.name || "").startsWith(CO_MILESTONE_PREFIX)));
+export const coMilestoneMatches = (b, co) => !!(b && co && (b.coId
+  ? b.coId === co.id
+  : String(b.name || "") === CO_MILESTONE_PREFIX + (co.title || "Scope Change")));
+export const isApprovedAddendumDeal = (d) => !!(d && d.parentDealId && !isLostStage(d.stage) &&
+  (d.addendumStatus === "Approved" || (d.addendumStatus == null && WON_STAGES.includes(d.stage))));
+export const findAddendumDoubleBilling = ({ dealId, billings = [], deals = [], addenda = [] } = {}) => {
+  if (!dealId) return [];
+  const children = deals.filter(d => d && d.parentDealId === dealId && isApprovedAddendumDeal(d));
+  const cos = addenda.filter(a => a && (a.dealId || a.projectId) === dealId && a.status !== "Rejected");
+  return billings
+    .filter(b => b && b.dealId === dealId && b.status !== "Cancelled" && isCoMilestone(b))
+    .map(b => {
+      const amt = Math.abs(Number(b.amount) || 0);
+      const child = children.find(c => Math.abs(Math.abs(Number(c.value) || 0) - amt) < 0.5);
+      if (child) return { milestone: b, child, reason: "duplicate" };
+      if (!cos.some(co => coMilestoneMatches(b, co))) return { milestone: b, child: null, reason: "orphan" };
+      return null;
+    })
+    .filter(Boolean);
+};
+
 export const ADDENDUM_STATUS_CLR = {
   "Discovered":"#94a3b8",
   "Sales Notified":"#f59e0b",
