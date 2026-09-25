@@ -8,7 +8,7 @@ import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, isProcurementRole, canonRole, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, isProcurementRole, canonRole, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -24954,6 +24954,15 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       if(!ok) return;
     }
     if(invTaken(msForm.invoiceNo)){toastEmit&&toastEmit(`${String(msForm.invoiceNo).trim()} is already used on another milestone. Leave Invoice No. blank to get the next free number.`,"error",8000);return;}
+    // A ₱0 main contract is an umbrella: its addenda carry the billing. A
+    // milestone here usually re-bills an addendum (Diageo CE-2026-1216).
+    const msDeal=deals.find(d=>d.id===selDeal);
+    if(msDeal&&!(Number(msDeal.value)>0)){
+      const kids=deals.filter(d=>d.parentDealId===selDeal).length;
+      const ok=await uiConfirm({title:"This contract has no value",tone:"warning",confirmLabel:"Add milestone anyway",cancelLabel:"Go back",
+        message:`${msDeal.ceNo||"This project"} has a ₱0 contract value${kids?` and ${kids} addend${kids===1?"um":"a"} that carry their own billing`:""}. A milestone here is billed on top of those and can double-count billing and collections.\n\nSet the contract value first, or bill on the addendum instead. Add anyway?`});
+      if(!ok) return;
+    }
     addMilestone({...msForm,dealId:selDeal,invoiceNo:String(msForm.invoiceNo||"").trim()||await claimInv(),createdBy:session?.name||role});
     setMsForm({name:"",description:"",amount:"",invoiceNo:"",invoiceDate:today,dueDate:"",status:"Draft",receiptType:null,withholding:null});
     setMsGrossStr("");
@@ -25027,6 +25036,15 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     // #4 Date sanity — warn (not block) on illogical dates.
     if(payForm.date&&payForm.date>today&&!(await uiConfirm("The Date Received is in the future. Save anyway?")))return;
     if(payForm.date&&payForm.valueDate&&payForm.valueDate<payForm.date&&!(await uiConfirm("The Value Date is before the Date Received (funds credited before payment received?). Save anyway?")))return;
+    // Same money already logged on this contract or one of its addenda? One
+    // cheque on two milestones double-counts Collected (Diageo CE-2026-1216).
+    const dupPays=ms?findDuplicatePayments({dealId:ms.dealId,payment:{amount:amt,date:payForm.date,refNo:payForm.refNo},billings,deals}):[];
+    if(dupPays.length){
+      const lines=dupPays.map(x=>`• ${x.deal?.ceNo||"No CE"} ${x.deal?.contact||x.deal?.client||""} — ${x.milestone.invoiceNo||x.milestone.name}: ₱${Number(x.payment.amount||0).toLocaleString("en-PH",{minimumFractionDigits:2})} on ${x.payment.date||"—"}${x.payment.refNo?` (Ref ${x.payment.refNo})`:""}`).join("\n");
+      const ok=await uiConfirm({title:"This payment may already be recorded",tone:"warning",confirmLabel:"Record it anyway",cancelLabel:"Go back",
+        message:`A payment with the same amount and date (or the same reference no.) is already logged on this contract family:\n\n${lines}\n\nRecording it again double-counts Collected. Only continue if the client really paid twice.`});
+      if(!ok) return;
+    }
     logBillingPayment(showPay,{...payForm,recordedBy:session?.name||role});
     setPayForm({amount:"",date:today,refNo:"",note:"",valueDate:"",bank:"",method:"Bank Transfer"});
     setShowPay(null);
@@ -25509,16 +25527,17 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
           ):(
             <div style={{display:"grid",gap:6,maxHeight:360,overflowY:"auto"}}>
               {checkIssues.map((x,k)=>{
-                const KIND={tobill:"Not yet billed",over:"Over contract",novalue:"No contract value",dupinv:"Duplicate invoice no.",dupms:"Duplicate milestone",coDouble:"Change order",centavo:"Centavo rounding"};
+                const KIND={tobill:"Not yet billed",over:"Over contract",novalue:"No contract value",dupinv:"Duplicate invoice no.",dupms:"Duplicate milestone",coDouble:"Change order",centavo:"Centavo rounding",duppay:"Duplicate payment"};
+                const multi=x.kind==="dupinv"||x.kind==="duppay";
                 const hi=x.severity==="high";
                 return(
                   <div key={k} style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",border:`1px solid ${hi?"#fecaca":"#e2e8f0"}`,background:hi?"#fef2f2":"#f8fafc",borderRadius:9,padding:"8px 12px"}}>
                     <span style={{fontSize:".62rem",fontWeight:800,textTransform:"uppercase",letterSpacing:".05em",color:hi?"#b91c1c":"#64748b",minWidth:130}}>{KIND[x.kind]||x.kind}</span>
                     <span style={{flex:1,minWidth:220,fontSize:".78rem",color:"#0f172a"}}>
-                      {x.deal&&x.kind!=="dupinv"&&<b>{x.deal.ceNo||"No CE"} · {x.deal.client}{x.deal.contact?` — ${x.deal.contact}`:""}: </b>}
+                      {x.deal&&!multi&&<b>{x.deal.ceNo||"No CE"} · {x.deal.client}{x.deal.contact?` — ${x.deal.contact}`:""}: </b>}
                       {x.msg}
                     </span>
-                    {x.kind==="dupinv"?(
+                    {multi?(
                       <span style={{display:"flex",gap:4,flexWrap:"wrap"}}>
                         {[...new Set(x.milestones.map(m=>m.dealId))].map(id=>{const dd=deals.find(z=>z.id===id);return <button key={id} onClick={()=>{setSelDeal(id);setShowCheck(false);}} style={{background:"#fff",border:"1px solid #e2e8f0",borderRadius:6,padding:"3px 8px",fontFamily:"inherit",fontSize:".7rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>{dd?.ceNo||"Open"}</button>;})}
                       </span>

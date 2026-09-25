@@ -726,6 +726,34 @@ export const scheduleSummary = (terms) => {
   return rows.join(", ") + (net ? ` · ${net.label}` : "");
 };
 
+// ── Duplicate collections ────────────────────────────────────────────────────
+// One cheque/transfer recorded against two milestones in the same contract
+// family (the main contract and its addenda) double-counts Collected. Real case:
+// Diageo CE-2026-1216's "Full Payment" carried the ₱842,319.50 already logged on
+// addendum CE-2026-091 — same amount, same date. A match is the same amount
+// (to the centavo) on the same received date, or the same non-empty reference
+// number. Bounced payments are ignored. Pure — returns [{ milestone, payment, deal }].
+const _familyRoot = (dealId, byId) => { const d = byId.get(dealId); return d?.parentDealId || dealId; };
+export const findDuplicatePayments = ({ dealId, payment, billings = [], deals = [], excludePaymentId = null } = {}) => {
+  if (!dealId || !payment) return [];
+  const byId = new Map(deals.map(d => [d.id, d]));
+  const root = _familyRoot(dealId, byId);
+  const amt = _c2(Number(payment.amount) || 0);
+  const date = String(payment.date || "");
+  const ref = String(payment.refNo ?? payment.ref_no ?? "").trim().toUpperCase();
+  const out = [];
+  billings.forEach(m => {
+    if (!m || m.status === "Cancelled" || _familyRoot(m.dealId, byId) !== root) return;
+    (m.payments || []).forEach(p => {
+      if (!p || p.bounced || (excludePaymentId && p.id === excludePaymentId)) return;
+      const pRef = String(p.refNo ?? p.ref_no ?? "").trim().toUpperCase();
+      const sameAmtDate = amt > 0 && Math.abs(_c2(Number(p.amount) || 0) - amt) < 0.005 && date && String(p.date || "") === date;
+      if (sameAmtDate || (ref && pRef === ref)) out.push({ milestone: m, payment: p, deal: byId.get(m.dealId) || null });
+    });
+  });
+  return out;
+};
+
 // ── Billing Check ────────────────────────────────────────────────────────────
 // Project-level double-billing / integrity checks. Pure: pass the loaded deals,
 // billings and addenda. Returns one issue per problem, most severe first.
@@ -737,6 +765,8 @@ export const scheduleSummary = (terms) => {
 //   coDouble  — change-order milestone duplicating an addendum / orphaned
 //   tobill    — Draft still unsent 3+ days after its target billing date
 //   centavo   — amount with more than 2 decimals
+//   duppay    — one collection recorded on two milestones of the same contract
+//               family (same amount + date, or same reference no.)
 export const billingIntegrityIssues = ({ deals = [], billings = [], addenda = [], today = "" } = {}) => {
   const issues = [];
   const byId = new Map(deals.map(d => [d.id, d]));
@@ -770,6 +800,18 @@ export const billingIntegrityIssues = ({ deals = [], billings = [], addenda = []
     const ces = [...new Set(list.map(b => byId.get(b.dealId)?.ceNo || "?"))];
     issues.push({ kind: "dupinv", severity: "high", deal: byId.get(list[0].dealId) || null, milestones: list, invoiceNo: k, msg: `${k} is used ${list.length}× (${ces.join(", ")}). Invoice numbers must be unique.` });
   });
+  // Duplicate collections across a contract family — each pair reported once.
+  const seenPay = new Set();
+  live.forEach(m => (m.payments || []).forEach(p => {
+    if (!p || p.bounced || seenPay.has(p.id)) return;
+    const dups = findDuplicatePayments({ dealId: m.dealId, payment: p, billings: live, deals, excludePaymentId: p.id });
+    if (!dups.length) return;
+    seenPay.add(p.id); dups.forEach(x => seenPay.add(x.payment.id));
+    const list = [m, ...dups.map(x => x.milestone)];
+    const ces = [...new Set(list.map(b => byId.get(b.dealId)?.ceNo || "?"))];
+    issues.push({ kind: "duppay", severity: "high", deal: byId.get(m.dealId) || null, milestones: list, amount: _c2(Number(p.amount) || 0),
+      msg: `₱${(Number(p.amount) || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} received ${p.date || "(no date)"} is recorded ${dups.length + 1}× (${list.map(b => `${byId.get(b.dealId)?.ceNo || "?"} ${b.invoiceNo || b.name}`).join(", ")}) — Collected is double-counted${ces.length > 1 ? " across the main contract and its addenda" : ""}.` });
+  }));
   const rank = { high: 0, medium: 1, low: 2 };
   return issues.sort((a, b) => rank[a.severity] - rank[b.severity]);
 };
