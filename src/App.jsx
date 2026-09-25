@@ -4299,7 +4299,8 @@ export default function App(){
   // Sales users explicitly granted deal-delete rights (for clearing duplicate /
   // double-entered deals). Kept to named individuals rather than the whole Sales
   // role; the server-side RLS in migration 033 mirrors this exact allow-list.
-  const DEAL_DELETE_USERS=["jena","wyn","paolo"];
+  // Must stay in sync with the deals_del RLS policy (migrations 033/034/071).
+  const DEAL_DELETE_USERS=["jena","wyn","paolo","jessica"];
   const canDeleteDeal=role==="Manager"||DEAL_DELETE_USERS.includes(session?.username);
   const[deals,    setDeals]   = useState([]);
   const[projs,    setProjs]   = useState({});
@@ -5302,6 +5303,8 @@ export default function App(){
     inflows:        {label:"cash inflow",      toSb:inflowToSb},
     billing_payments:{label:"collection",     toSb:r=>toSbPayment(r)},
     billing_milestones:{label:"billing milestone", toSb:toSbBilling},
+    // Restore a deleted deal BEFORE its milestones (milestones FK to deals).
+    deals:          {label:"deal",             toSb:toSbDeal},
   };
   // Write to audit_log via the raw client (not sbInsert) so a missing-table /
   // audit-only failure doesn't trip the app-wide "you're offline" warning.
@@ -8107,6 +8110,18 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // as "delete didn't close but the deal was deleted".
     setConfirmDel(null);
     const deal=deals.find(d=>d.id===id);
+    // Snapshot the deal and its billing (milestones cascade at the DB, taking
+    // invoice numbers and recorded payments with them) to Finance ▸ Audit Trail
+    // so a wrong delete can be restored. Fire-and-forget: the snapshots are
+    // taken from state now, before any of it is cleared below.
+    if(isSupabaseReady()&&deal){
+      const why=`Deal deleted by ${session?.name||role}`;
+      archiveFinancial("deals",toSbDeal(deal),deal.id,why);
+      billings.filter(b=>b.dealId===id).forEach(ms=>{
+        archiveFinancial("billing_milestones",toSbBilling(ms),ms.id,why);
+        (ms.payments||[]).forEach(p=>archiveFinancial("billing_payments",toSbPayment({...p,milestoneId:ms.id}),p.id,why));
+      });
+    }
     try{
       // Cascade-clear all related local state
       const dealMsIds=billings.filter(b=>b.dealId===id).map(b=>b.id);
@@ -9769,12 +9784,18 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           const dPrs  =prs.filter(p=>(p.dealId||p.projectId)===confirmDel);
           const dExps =exps.filter(e=>(e.projectId||e.dealId)===confirmDel);
           const dJos  =jos.filter(j=>j.dealId===confirmDel);
+          // Issued invoice numbers disappear from the sequence with the deal, and
+          // payables link by project_id with NO foreign key, so they would be left
+          // in AP pointing at a deal that no longer exists.
+          const dInv  =dMs.filter(m=>m.invoiceNo);
+          const dAps  =payables.filter(p=>p.projectId===confirmDel&&p.status!=="Paid"&&p.status!=="Cancelled");
+          const apTotal=dAps.reduce((s,p)=>s+Math.max(0,Number(p.amount||0)-Number(p.paidAmount||0)),0);
           const payments=dMs.reduce((a,m)=>a.concat(m.payments||[]),[]);
           const paidTotal=payments.filter(p=>!p.bounced).reduce((s,p)=>s+Number(p.amount||0),0);
           const poCost=dPrs.reduce((s,p)=>s+(Number(p.actUnitCost)||Number(p.estUnitCost)||0)*(Number(p.qty)||0),0);
           const expTotal=dExps.reduce((s,e)=>s+Number(e.amount||e.cost||0),0);
           // "Financial" records are the ones whose loss actually matters on the books.
-          const hasFinancial=dPrs.length>0||dExps.length>0||payments.length>0;
+          const hasFinancial=dPrs.length>0||dExps.length>0||payments.length>0||dInv.length>0||dAps.length>0;
           const attached=[
             dMs.length  &&`${dMs.length} billing milestone${dMs.length!==1?"s":""}`,
             payments.length&&`${payments.length} payment${payments.length!==1?"s":""} (₱${paidTotal.toLocaleString("en-PH",{maximumFractionDigits:0})} received)`,
@@ -9782,6 +9803,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             dExps.length&&`${dExps.length} logged expense${dExps.length!==1?"s":""} (₱${expTotal.toLocaleString("en-PH",{maximumFractionDigits:0})})`,
             dJos.length &&`${dJos.length} job order${dJos.length!==1?"s":""}`,
           ].filter(Boolean);
+          const invNos=dInv.map(m=>m.invoiceNo).join(", ");
           const canDelete=!hasFinancial||delAck;
           return(
           <>
@@ -9802,6 +9824,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 <div style={{fontSize:".78rem",color:"#92400e",marginBottom:10,lineHeight:1.5}}>
                   If this is a duplicate, the POs / expenses / payments above may belong to the real project. Deleting erases them and can inflate the other project's margin. Consider moving them first (Procurement ▸ reassign PO) before deleting.
                 </div>
+                {dInv.length>0&&(
+                  <div style={{fontSize:".78rem",color:"#92400e",marginBottom:8,lineHeight:1.5}}>
+                    🧾 <strong>Issued invoice{dInv.length!==1?"s":""}: {invNos}.</strong> If {dInv.length!==1?"these were":"this was"} sent to the client, void {dInv.length!==1?"them":"it"} instead of deleting, or the invoice sequence gets a gap with no record of why. Milestones are archived to Finance ▸ Audit Trail either way.
+                  </div>
+                )}
+                {dAps.length>0&&(
+                  <div style={{fontSize:".78rem",color:"#b91c1c",marginBottom:8,lineHeight:1.5,fontWeight:600}}>
+                    📤 {dAps.length} open payable{dAps.length!==1?"s":""} ({dAps.map(p=>p.apNumber||p.invoiceRef||p.vendor).join(", ")}, ₱{apTotal.toLocaleString("en-PH",{maximumFractionDigits:2})}) will NOT be deleted — {dAps.length!==1?"they stay":"it stays"} in Accounts Payable unlinked. Cancel {dAps.length!==1?"them":"it"} in Payables and tell the supplier if the PO is void.
+                  </div>
+                )}
                 <label style={{display:"flex",gap:8,alignItems:"flex-start",cursor:"pointer",fontSize:".8rem",color:"#7f1d1d",fontWeight:600}}>
                   <input type="checkbox" checked={delAck} onChange={e=>setDelAck(e.target.checked)} style={{marginTop:2,cursor:"pointer"}}/>
                   <span>I understand these financial records will be permanently deleted along with the deal.</span>
