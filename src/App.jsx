@@ -13923,6 +13923,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                         <button onClick={e=>{e.stopPropagation();openEditDeal(d);}} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
                         {(role==="Manager"||role==="QS"||role==="Sales"||role==="SalesOpsAdmin")&&<button onClick={e=>{e.stopPropagation();setBoqCoId(null);setBoqStandaloneId(null);setBoqDealId(d.id);setPage("boq");}} title={isChild?"Open BOQ Builder for this addendum":"Open BOQ Builder for this project"} style={{background:"#0ea5e9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>🧮</button>}
                         <button onClick={e=>{e.stopPropagation();setJumpDeal(isChild?(d.parentDealId||d.id):d.id);setPage("projects");}} title={isChild?"Open the parent project card":"Open Project Card"} style={{background:"#eff6ff",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#2563eb",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>📋</button>
+                        {/* Row menu (Cancel Project / Delete Deal). Awarded deals never
+                            render as PipeRow, so without this the menu was unreachable
+                            for every awarded project. */}
+                        {(canDeleteDeal||role==="Manager"||role==="Sales"||role==="SalesOpsAdmin")&&<button onClick={e=>{e.stopPropagation();const r=e.currentTarget.getBoundingClientRect();setRowMenu(rowMenu&&rowMenu.deal.id===d.id?null:{deal:d,top:r.bottom+4,right:Math.max(8,window.innerWidth-r.right)});}} title="More actions" style={{background:rowMenu&&rowMenu.deal.id===d.id?"#e2e8f0":"#f8fafc",border:"1px solid #e2e8f0",borderRadius:5,padding:"2px 7px",fontSize:".65rem",color:"#64748b",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>⋯</button>}
                       </td>
                     </tr>
                   );
@@ -14170,32 +14174,52 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         // stage: the CE record, award value, billing and history all stay intact and
         // it drops out of active Awarded totals. A reason is REQUIRED and the action
         // is logged, so cancelling an awarded project is a deliberate, auditable step.
-        if((role==="Manager"||role==="Sales")&&isWonDeal) items.push({icon:"⊘",label:"Cancel Project",color:"#b45309",onClick:async ()=>{
+        if((role==="Manager"||role==="Sales"||role==="SalesOpsAdmin")&&isWonDeal) items.push({icon:"⊘",label:"Cancel Project",color:"#b45309",onClick:async ()=>{
           const reason=(await uiPrompt("Cancelling an AWARDED project — this is logged and removes it from active projects.\n\nReason for cancellation (required):"));
           if(reason===null) return;                                                   // dialog dismissed
           if(!reason.trim()){ toastEmit("A reason is required to cancel a project.","error"); return; }
-          // Warn if money is already in motion — cancelling does NOT reverse billing.
+          // A Cancelled project drops out of Billing (it is no longer a won deal),
+          // so any invoice left open would keep counting as receivable / overdue
+          // with no screen left to clear it. Void the UNPAID ones here; invoices
+          // with recorded payments stay for Finance to refund or forfeit.
           const collected=dealCollected(d);
           const activeMs=billings.filter(b=>b.dealId===d.id&&b.status!=='Cancelled');
+          const msPaid=b=>(b.payments||[]).filter(p=>!p.bounced).reduce((s,p)=>s+Number(p.amount||0),0);
+          const toVoid=activeMs.filter(b=>msPaid(b)===0);
+          const keep=activeMs.filter(b=>msPaid(b)>0);
           if(collected>0||activeMs.length>0){
-            const warn=`⚠️ This project has money in motion:\n\n`
-              +(activeMs.length?`• ${activeMs.length} active billing milestone${activeMs.length===1?"":"s"}\n`:"")
-              +(collected>0?`• ₱${Number(collected).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2})} already collected\n`:"")
-              +`\nCancelling moves the project to Cancelled but does NOT reverse or refund any billing. Handle refunds/forfeiture separately in Finance.\n\nCancel this project anyway?`;
+            const warn=`⚠️ This project has billing on it:\n\n`
+              +(toVoid.length?`• ${toVoid.length} unpaid invoice${toVoid.length===1?"":"s"} (${toVoid.map(b=>b.invoiceNo||b.name||"—").join(", ")}) will be marked Cancelled\n`:"")
+              +(keep.length?`• ${keep.length} invoice${keep.length===1?"":"s"} with payments recorded will be left as is\n`:"")
+              +(collected>0?`• ₱${Number(collected).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2})} already collected — handle refund/forfeiture in Finance\n`:"")
+              +`\nOpen POs and payables are NOT touched — cancel those with Procurement/Finance.\n\nCancel this project?`;
             if(!(await uiConfirm(warn))) return;
           }
           const stamp=new Date().toISOString().slice(0,10);
+          const voidIds=new Set(toVoid.map(b=>b.id));
+          if(voidIds.size){
+            upBillings(bs=>bs.map(b=>{
+              if(!voidIds.has(b.id)) return b;
+              const n={...b,status:"Cancelled",description:((b.description||"")+` [VOID ${stamp}: project cancelled — ${reason.trim()}]`).trim()};
+              if(isSupabaseReady()) sbSyncOne("billing_milestones",n,toSbBilling);
+              return n;
+            }));
+          }
+          const invoiced=keep.reduce((s,b)=>s+Number(b.amount||0),0);
           upDeals(ds=>ds.map(x=>{
             if(x.id!==d.id) return x;
             const notes=(x.notes||"")+"\n[CANCELLED "+stamp+"]: "+reason.trim();
             // Partial column UPDATE (like Did Not Win), NOT a full-row upsert — an
             // upsert routes through the RLS INSERT/WITH CHECK policy and can silently
             // keep the old stage for some roles, pulling the deal back into pipeline.
-            if(isSupabaseReady())sbUpdate('deals',x.id,{stage:"Cancelled",probability:0,notes,updated_at:new Date().toISOString()}).catch(()=>{});
-            return{...x,stage:"Cancelled",probability:0,notes};
+            if(isSupabaseReady())sbUpdate('deals',x.id,{stage:"Cancelled",probability:0,notes,invoiced,updated_at:new Date().toISOString()}).catch(()=>{});
+            return{...x,stage:"Cancelled",probability:0,notes,invoiced};
           }));
-          logActivity(d.id,"Project Cancelled",d.client+" — project cancelled");
-          toastEmit("Project moved to Cancelled.");
+          logActivity(d.id,"Project Cancelled",`${d.client} — project cancelled: ${reason.trim()}${voidIds.size?` · voided ${toVoid.map(b=>b.invoiceNo||b.name).join(", ")}`:""}`,session?.name||role);
+          const tg=`❌ <b>Project Cancelled</b>\nClient: <b>${d.client}</b>\n${d.contact?`Project: ${d.contact}\n`:""}${d.ceNo?`CE: ${d.ceNo}\n`:""}Reason: ${reason.trim()}\nBy: ${session?.name||role}`;
+          sendTelegramNotification("management",tg);
+          sendTelegramNotification("sales",tg);
+          toastEmit(voidIds.size?`Project moved to Cancelled · ${voidIds.size} unpaid invoice${voidIds.size===1?"":"s"} voided.`:"Project moved to Cancelled.");
           setRowMenu(null);
         }});
         if(canDeleteDeal) items.push({icon:"🗑",label:"Delete Deal",color:"#dc2626",onClick:()=>{setConfirmDel(d.id);setRowMenu(null);}});
