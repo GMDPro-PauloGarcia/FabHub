@@ -4299,7 +4299,8 @@ export default function App(){
   // Sales users explicitly granted deal-delete rights (for clearing duplicate /
   // double-entered deals). Kept to named individuals rather than the whole Sales
   // role; the server-side RLS in migration 033 mirrors this exact allow-list.
-  const DEAL_DELETE_USERS=["jena","wyn","paolo"];
+  // Must stay in sync with the deals_del RLS policy (migrations 033/034/071).
+  const DEAL_DELETE_USERS=["jena","wyn","paolo","jessica"];
   const canDeleteDeal=role==="Manager"||DEAL_DELETE_USERS.includes(session?.username);
   const[deals,    setDeals]   = useState([]);
   const[projs,    setProjs]   = useState({});
@@ -5302,6 +5303,8 @@ export default function App(){
     inflows:        {label:"cash inflow",      toSb:inflowToSb},
     billing_payments:{label:"collection",     toSb:r=>toSbPayment(r)},
     billing_milestones:{label:"billing milestone", toSb:toSbBilling},
+    // Restore a deleted deal BEFORE its milestones (milestones FK to deals).
+    deals:          {label:"deal",             toSb:toSbDeal},
   };
   // Write to audit_log via the raw client (not sbInsert) so a missing-table /
   // audit-only failure doesn't trip the app-wide "you're offline" warning.
@@ -8107,6 +8110,18 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // as "delete didn't close but the deal was deleted".
     setConfirmDel(null);
     const deal=deals.find(d=>d.id===id);
+    // Snapshot the deal and its billing (milestones cascade at the DB, taking
+    // invoice numbers and recorded payments with them) to Finance ▸ Audit Trail
+    // so a wrong delete can be restored. Fire-and-forget: the snapshots are
+    // taken from state now, before any of it is cleared below.
+    if(isSupabaseReady()&&deal){
+      const why=`Deal deleted by ${session?.name||role}`;
+      archiveFinancial("deals",toSbDeal(deal),deal.id,why);
+      billings.filter(b=>b.dealId===id).forEach(ms=>{
+        archiveFinancial("billing_milestones",toSbBilling(ms),ms.id,why);
+        (ms.payments||[]).forEach(p=>archiveFinancial("billing_payments",toSbPayment({...p,milestoneId:ms.id}),p.id,why));
+      });
+    }
     try{
       // Cascade-clear all related local state
       const dealMsIds=billings.filter(b=>b.dealId===id).map(b=>b.id);
@@ -9769,12 +9784,18 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           const dPrs  =prs.filter(p=>(p.dealId||p.projectId)===confirmDel);
           const dExps =exps.filter(e=>(e.projectId||e.dealId)===confirmDel);
           const dJos  =jos.filter(j=>j.dealId===confirmDel);
+          // Issued invoice numbers disappear from the sequence with the deal, and
+          // payables link by project_id with NO foreign key, so they would be left
+          // in AP pointing at a deal that no longer exists.
+          const dInv  =dMs.filter(m=>m.invoiceNo);
+          const dAps  =payables.filter(p=>p.projectId===confirmDel&&p.status!=="Paid"&&p.status!=="Cancelled");
+          const apTotal=dAps.reduce((s,p)=>s+Math.max(0,Number(p.amount||0)-Number(p.paidAmount||0)),0);
           const payments=dMs.reduce((a,m)=>a.concat(m.payments||[]),[]);
           const paidTotal=payments.filter(p=>!p.bounced).reduce((s,p)=>s+Number(p.amount||0),0);
           const poCost=dPrs.reduce((s,p)=>s+(Number(p.actUnitCost)||Number(p.estUnitCost)||0)*(Number(p.qty)||0),0);
           const expTotal=dExps.reduce((s,e)=>s+Number(e.amount||e.cost||0),0);
           // "Financial" records are the ones whose loss actually matters on the books.
-          const hasFinancial=dPrs.length>0||dExps.length>0||payments.length>0;
+          const hasFinancial=dPrs.length>0||dExps.length>0||payments.length>0||dInv.length>0||dAps.length>0;
           const attached=[
             dMs.length  &&`${dMs.length} billing milestone${dMs.length!==1?"s":""}`,
             payments.length&&`${payments.length} payment${payments.length!==1?"s":""} (₱${paidTotal.toLocaleString("en-PH",{maximumFractionDigits:0})} received)`,
@@ -9782,6 +9803,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             dExps.length&&`${dExps.length} logged expense${dExps.length!==1?"s":""} (₱${expTotal.toLocaleString("en-PH",{maximumFractionDigits:0})})`,
             dJos.length &&`${dJos.length} job order${dJos.length!==1?"s":""}`,
           ].filter(Boolean);
+          const invNos=dInv.map(m=>m.invoiceNo).join(", ");
           const canDelete=!hasFinancial||delAck;
           return(
           <>
@@ -9802,6 +9824,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 <div style={{fontSize:".78rem",color:"#92400e",marginBottom:10,lineHeight:1.5}}>
                   If this is a duplicate, the POs / expenses / payments above may belong to the real project. Deleting erases them and can inflate the other project's margin. Consider moving them first (Procurement ▸ reassign PO) before deleting.
                 </div>
+                {dInv.length>0&&(
+                  <div style={{fontSize:".78rem",color:"#92400e",marginBottom:8,lineHeight:1.5}}>
+                    🧾 <strong>Issued invoice{dInv.length!==1?"s":""}: {invNos}.</strong> If {dInv.length!==1?"these were":"this was"} sent to the client, void {dInv.length!==1?"them":"it"} instead of deleting, or the invoice sequence gets a gap with no record of why. Milestones are archived to Finance ▸ Audit Trail either way.
+                  </div>
+                )}
+                {dAps.length>0&&(
+                  <div style={{fontSize:".78rem",color:"#b91c1c",marginBottom:8,lineHeight:1.5,fontWeight:600}}>
+                    📤 {dAps.length} open payable{dAps.length!==1?"s":""} ({dAps.map(p=>p.apNumber||p.invoiceRef||p.vendor).join(", ")}, ₱{apTotal.toLocaleString("en-PH",{maximumFractionDigits:2})}) will NOT be deleted — {dAps.length!==1?"they stay":"it stays"} in Accounts Payable unlinked. Cancel {dAps.length!==1?"them":"it"} in Payables and tell the supplier if the PO is void.
+                  </div>
+                )}
                 <label style={{display:"flex",gap:8,alignItems:"flex-start",cursor:"pointer",fontSize:".8rem",color:"#7f1d1d",fontWeight:600}}>
                   <input type="checkbox" checked={delAck} onChange={e=>setDelAck(e.target.checked)} style={{marginTop:2,cursor:"pointer"}}/>
                   <span>I understand these financial records will be permanently deleted along with the deal.</span>
@@ -13794,6 +13826,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   const isOverP=dLeftP!==null&&dLeftP<0;
                   // Addendum (child) rows render in a compact style so the parent deal
                   // reads as the primary row and its addenda sit visually beneath it.
+                  // Project card to open: an addendum rolls into its parent's card, but a
+                  // Standby PO job IS the card (the umbrella itself is hidden in Projects).
+                  const cardDealId=isChild&&d.parentDealId&&!deals.find(x=>x.id===d.parentDealId)?.standbyPO?d.parentDealId:d.id;
                   const cp=isChild?"2px 14px":"5px 14px";        // cell padding (compact)
                   const cpA=isChild?"2px 10px":"5px 10px";       // action-cell padding (compact)
                   const nameFs=isChild?".66rem":".82rem";        // project/client name
@@ -13806,7 +13841,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   const childBgHover="#fde68a";                  // amber-200
                   return(
                     <tr style={{borderBottom:"1px solid #e2e8f0",cursor:"pointer",background:isChild?childBg:""}}
-                      onClick={()=>{setJumpDeal(d.id);setPage("projects");}}
+                      onClick={()=>{setJumpDeal(cardDealId);setPage("projects");}}
                       onMouseEnter={e=>e.currentTarget.style.background=isChild?childBgHover:"#f8fafc"}
                       onMouseLeave={e=>e.currentTarget.style.background=isChild?childBg:""}>
                       <td style={{width:4,padding:0,background:isChild?"#f59e0b":sc}}></td>
@@ -13890,7 +13925,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       <td style={{padding:cpA,verticalAlign:"middle",display:"flex",gap:4,alignItems:"center"}}>
                         <button onClick={e=>{e.stopPropagation();openEditDeal(d);}} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
                         {(role==="Manager"||role==="QS"||role==="Sales"||role==="SalesOpsAdmin")&&<button onClick={e=>{e.stopPropagation();setBoqCoId(null);setBoqStandaloneId(null);setBoqDealId(d.id);setPage("boq");}} title={isChild?"Open BOQ Builder for this addendum":"Open BOQ Builder for this project"} style={{background:"#0ea5e9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>🧮</button>}
-                        <button onClick={e=>{e.stopPropagation();setJumpDeal(isChild?(d.parentDealId||d.id):d.id);setPage("projects");}} title={isChild?"Open the parent project card":"Open Project Card"} style={{background:"#eff6ff",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#2563eb",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>📋</button>
+                        <button onClick={e=>{e.stopPropagation();setJumpDeal(cardDealId);setPage("projects");}} title={cardDealId!==d.id?"Open the parent project card":"Open Project Card"} style={{background:"#eff6ff",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#2563eb",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>📋</button>
+                        {/* Row menu (Cancel Project / Delete Deal). Awarded deals never
+                            render as PipeRow, so without this the menu was unreachable
+                            for every awarded project. */}
+                        {(canDeleteDeal||role==="Manager"||role==="Sales"||role==="SalesOpsAdmin")&&<button onClick={e=>{e.stopPropagation();const r=e.currentTarget.getBoundingClientRect();setRowMenu(rowMenu&&rowMenu.deal.id===d.id?null:{deal:d,top:r.bottom+4,right:Math.max(8,window.innerWidth-r.right)});}} title="More actions" style={{background:rowMenu&&rowMenu.deal.id===d.id?"#e2e8f0":"#f8fafc",border:"1px solid #e2e8f0",borderRadius:5,padding:"2px 7px",fontSize:".65rem",color:"#64748b",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>⋯</button>}
                       </td>
                     </tr>
                   );
@@ -14138,32 +14177,52 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         // stage: the CE record, award value, billing and history all stay intact and
         // it drops out of active Awarded totals. A reason is REQUIRED and the action
         // is logged, so cancelling an awarded project is a deliberate, auditable step.
-        if((role==="Manager"||role==="Sales")&&isWonDeal) items.push({icon:"⊘",label:"Cancel Project",color:"#b45309",onClick:async ()=>{
+        if((role==="Manager"||role==="Sales"||role==="SalesOpsAdmin")&&isWonDeal) items.push({icon:"⊘",label:"Cancel Project",color:"#b45309",onClick:async ()=>{
           const reason=(await uiPrompt("Cancelling an AWARDED project — this is logged and removes it from active projects.\n\nReason for cancellation (required):"));
           if(reason===null) return;                                                   // dialog dismissed
           if(!reason.trim()){ toastEmit("A reason is required to cancel a project.","error"); return; }
-          // Warn if money is already in motion — cancelling does NOT reverse billing.
+          // A Cancelled project drops out of Billing (it is no longer a won deal),
+          // so any invoice left open would keep counting as receivable / overdue
+          // with no screen left to clear it. Void the UNPAID ones here; invoices
+          // with recorded payments stay for Finance to refund or forfeit.
           const collected=dealCollected(d);
           const activeMs=billings.filter(b=>b.dealId===d.id&&b.status!=='Cancelled');
+          const msPaid=b=>(b.payments||[]).filter(p=>!p.bounced).reduce((s,p)=>s+Number(p.amount||0),0);
+          const toVoid=activeMs.filter(b=>msPaid(b)===0);
+          const keep=activeMs.filter(b=>msPaid(b)>0);
           if(collected>0||activeMs.length>0){
-            const warn=`⚠️ This project has money in motion:\n\n`
-              +(activeMs.length?`• ${activeMs.length} active billing milestone${activeMs.length===1?"":"s"}\n`:"")
-              +(collected>0?`• ₱${Number(collected).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2})} already collected\n`:"")
-              +`\nCancelling moves the project to Cancelled but does NOT reverse or refund any billing. Handle refunds/forfeiture separately in Finance.\n\nCancel this project anyway?`;
+            const warn=`⚠️ This project has billing on it:\n\n`
+              +(toVoid.length?`• ${toVoid.length} unpaid invoice${toVoid.length===1?"":"s"} (${toVoid.map(b=>b.invoiceNo||b.name||"—").join(", ")}) will be marked Cancelled\n`:"")
+              +(keep.length?`• ${keep.length} invoice${keep.length===1?"":"s"} with payments recorded will be left as is\n`:"")
+              +(collected>0?`• ₱${Number(collected).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2})} already collected — handle refund/forfeiture in Finance\n`:"")
+              +`\nOpen POs and payables are NOT touched — cancel those with Procurement/Finance.\n\nCancel this project?`;
             if(!(await uiConfirm(warn))) return;
           }
           const stamp=new Date().toISOString().slice(0,10);
+          const voidIds=new Set(toVoid.map(b=>b.id));
+          if(voidIds.size){
+            upBillings(bs=>bs.map(b=>{
+              if(!voidIds.has(b.id)) return b;
+              const n={...b,status:"Cancelled",description:((b.description||"")+` [VOID ${stamp}: project cancelled — ${reason.trim()}]`).trim()};
+              if(isSupabaseReady()) sbSyncOne("billing_milestones",n,toSbBilling);
+              return n;
+            }));
+          }
+          const invoiced=keep.reduce((s,b)=>s+Number(b.amount||0),0);
           upDeals(ds=>ds.map(x=>{
             if(x.id!==d.id) return x;
             const notes=(x.notes||"")+"\n[CANCELLED "+stamp+"]: "+reason.trim();
             // Partial column UPDATE (like Did Not Win), NOT a full-row upsert — an
             // upsert routes through the RLS INSERT/WITH CHECK policy and can silently
             // keep the old stage for some roles, pulling the deal back into pipeline.
-            if(isSupabaseReady())sbUpdate('deals',x.id,{stage:"Cancelled",probability:0,notes,updated_at:new Date().toISOString()}).catch(()=>{});
-            return{...x,stage:"Cancelled",probability:0,notes};
+            if(isSupabaseReady())sbUpdate('deals',x.id,{stage:"Cancelled",probability:0,notes,invoiced,updated_at:new Date().toISOString()}).catch(()=>{});
+            return{...x,stage:"Cancelled",probability:0,notes,invoiced};
           }));
-          logActivity(d.id,"Project Cancelled",d.client+" — project cancelled");
-          toastEmit("Project moved to Cancelled.");
+          logActivity(d.id,"Project Cancelled",`${d.client} — project cancelled: ${reason.trim()}${voidIds.size?` · voided ${toVoid.map(b=>b.invoiceNo||b.name).join(", ")}`:""}`,session?.name||role);
+          const tg=`❌ <b>Project Cancelled</b>\nClient: <b>${d.client}</b>\n${d.contact?`Project: ${d.contact}\n`:""}${d.ceNo?`CE: ${d.ceNo}\n`:""}Reason: ${reason.trim()}\nBy: ${session?.name||role}`;
+          sendTelegramNotification("management",tg);
+          sendTelegramNotification("sales",tg);
+          toastEmit(voidIds.size?`Project moved to Cancelled · ${voidIds.size} unpaid invoice${voidIds.size===1?"":"s"} voided.`:"Project moved to Cancelled.");
           setRowMenu(null);
         }});
         if(canDeleteDeal) items.push({icon:"🗑",label:"Delete Deal",color:"#dc2626",onClick:()=>{setConfirmDel(d.id);setRowMenu(null);}});
@@ -26465,7 +26524,10 @@ function ProjectCards({syncProjectCard,pcards,wonDeals,completedDeals,deals,togg
   // one render against deal===undefined crashed the Projects page on deal.id.
   const deal=wonDeals.find(d=>d.id===selDealRaw)||completedDeals.find(d=>d.id===selDealRaw);
   const selDeal=deal?selDealRaw:null;
-  useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearJump&&clearJump();}},[]);
+  // An addendum (child deal) has no project card of its own — it rolls into its
+  // parent's card — so a jump-link carrying the child's id opens the parent.
+  // Standby PO jobs are the exception: they ARE the cards (umbrella is hidden).
+  useEffect(()=>{if(initialDeal){const all=[...wonDeals,...completedDeals];const jd=all.find(d=>d.id===initialDeal);const par=jd?.parentDealId?all.find(d=>d.id===jd.parentDealId):null;const pid=par&&!par.standbyPO?par.id:initialDeal;setSelDeal(pid);clearJump&&clearJump();}},[]);
   useEffect(()=>{if(initialFilter){setPcFilter(initialFilter);clearJumpFilter&&clearJumpFilter();}},[]);
   // If the open project was deleted (e.g. via the delete button below → the
   // global confirm modal → delDeal), it vanishes from wonDeals/completedDeals;
