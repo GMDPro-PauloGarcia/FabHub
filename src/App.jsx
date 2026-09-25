@@ -13826,6 +13826,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   const isOverP=dLeftP!==null&&dLeftP<0;
                   // Addendum (child) rows render in a compact style so the parent deal
                   // reads as the primary row and its addenda sit visually beneath it.
+                  // Project card to open: an addendum rolls into its parent's card, but a
+                  // Standby PO job IS the card (the umbrella itself is hidden in Projects).
+                  const cardDealId=isChild&&d.parentDealId&&!deals.find(x=>x.id===d.parentDealId)?.standbyPO?d.parentDealId:d.id;
                   const cp=isChild?"2px 14px":"5px 14px";        // cell padding (compact)
                   const cpA=isChild?"2px 10px":"5px 10px";       // action-cell padding (compact)
                   const nameFs=isChild?".66rem":".82rem";        // project/client name
@@ -13838,7 +13841,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   const childBgHover="#fde68a";                  // amber-200
                   return(
                     <tr style={{borderBottom:"1px solid #e2e8f0",cursor:"pointer",background:isChild?childBg:""}}
-                      onClick={()=>{setJumpDeal(d.id);setPage("projects");}}
+                      onClick={()=>{setJumpDeal(cardDealId);setPage("projects");}}
                       onMouseEnter={e=>e.currentTarget.style.background=isChild?childBgHover:"#f8fafc"}
                       onMouseLeave={e=>e.currentTarget.style.background=isChild?childBg:""}>
                       <td style={{width:4,padding:0,background:isChild?"#f59e0b":sc}}></td>
@@ -13922,7 +13925,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       <td style={{padding:cpA,verticalAlign:"middle",display:"flex",gap:4,alignItems:"center"}}>
                         <button onClick={e=>{e.stopPropagation();openEditDeal(d);}} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
                         {(role==="Manager"||role==="QS"||role==="Sales"||role==="SalesOpsAdmin")&&<button onClick={e=>{e.stopPropagation();setBoqCoId(null);setBoqStandaloneId(null);setBoqDealId(d.id);setPage("boq");}} title={isChild?"Open BOQ Builder for this addendum":"Open BOQ Builder for this project"} style={{background:"#0ea5e9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>🧮</button>}
-                        <button onClick={e=>{e.stopPropagation();setJumpDeal(isChild?(d.parentDealId||d.id):d.id);setPage("projects");}} title={isChild?"Open the parent project card":"Open Project Card"} style={{background:"#eff6ff",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#2563eb",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>📋</button>
+                        <button onClick={e=>{e.stopPropagation();setJumpDeal(cardDealId);setPage("projects");}} title={cardDealId!==d.id?"Open the parent project card":"Open Project Card"} style={{background:"#eff6ff",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#2563eb",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>📋</button>
                         {/* Row menu (Cancel Project / Delete Deal). Awarded deals never
                             render as PipeRow, so without this the menu was unreachable
                             for every awarded project. */}
@@ -26521,7 +26524,10 @@ function ProjectCards({syncProjectCard,pcards,wonDeals,completedDeals,deals,togg
   // one render against deal===undefined crashed the Projects page on deal.id.
   const deal=wonDeals.find(d=>d.id===selDealRaw)||completedDeals.find(d=>d.id===selDealRaw);
   const selDeal=deal?selDealRaw:null;
-  useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearJump&&clearJump();}},[]);
+  // An addendum (child deal) has no project card of its own — it rolls into its
+  // parent's card — so a jump-link carrying the child's id opens the parent.
+  // Standby PO jobs are the exception: they ARE the cards (umbrella is hidden).
+  useEffect(()=>{if(initialDeal){const all=[...wonDeals,...completedDeals];const jd=all.find(d=>d.id===initialDeal);const par=jd?.parentDealId?all.find(d=>d.id===jd.parentDealId):null;const pid=par&&!par.standbyPO?par.id:initialDeal;setSelDeal(pid);clearJump&&clearJump();}},[]);
   useEffect(()=>{if(initialFilter){setPcFilter(initialFilter);clearJumpFilter&&clearJumpFilter();}},[]);
   // If the open project was deleted (e.g. via the delete button below → the
   // global confirm modal → delDeal), it vanishes from wonDeals/completedDeals;
