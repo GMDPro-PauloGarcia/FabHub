@@ -1,5 +1,5 @@
 import React,{useState,useMemo,useEffect,useRef} from "react";
-import {today,uid,BANKS,emptyBankRow,emptyDayPosition,uiConfirm} from "../shared";
+import {today,uid,BANKS,emptyBankRow,emptyDayPosition,uiConfirm,uiPrompt,addDaysLocalISO,CASH_PREFILL_DAYS} from "../shared";
 
 // ── Currency input: shows grouped digits, edits raw ────────────────────────────
 const CurrInp=({value,onChange,placeholder="—",style:sx={}})=>{
@@ -43,6 +43,8 @@ function DailyCashPosition({
   const[dirty,setDirty]    =useState(false);   // unsaved local edits on the current day
   const[histOpen,setHistOpen]=useState(false);
   const[hideAcct,setHideAcct]=useState(true);    // account no./branch/type hidden by default (screen-share friendly)
+  const[lateClears,setLateClears]=useState(0);   // checks shown cleared here because an earlier day cleared them
+  const maxDate=addDaysLocalISO(today,CASH_PREFILL_DAYS);
   const dirtyRef=useRef(false);                 // mirror of `dirty` readable inside the load effect
   const saveRef =useRef(()=>{});                // always points at the latest persistDay (for unmount auto-save)
   const loadedSavedAtRef=useRef(null);          // savedAt of the version currently open — to detect a newer save landing elsewhere
@@ -58,6 +60,27 @@ function DailyCashPosition({
   cashStaleRef.current=cashStale;
 
   const normPos=(p,date)=>p?.banks?p:{...emptyDayPosition(date||today),...(p||{})};
+
+  // Each day stores its own copy of the floating-check list, so marking a check
+  // cleared on an earlier day never reached days already saved after it — that
+  // later sheet kept showing it as floating. Reconcile by check id: a check
+  // cleared on any earlier day (on or before `date`) shows cleared here too,
+  // unless someone deliberately re-opened it on this day (`reopened`).
+  const applyEarlierClears=(checks,date)=>{
+    const cleared={};
+    Object.keys(cashPositions).filter(k=>k<date).forEach(k=>{
+      (cashPositions[k]?.floatingChecks||[]).forEach(c=>{
+        if(c?.id&&c.cleared&&(!c.clearedDate||c.clearedDate<=date)&&!cleared[c.id]) cleared[c.id]=c.clearedDate||k;
+      });
+    });
+    let count=0;
+    const out=(checks||[]).map(c=>{
+      if(c.cleared||c.reopened||!c.id||!cleared[c.id]) return c;
+      count++;
+      return {...c,cleared:true,clearedDate:cleared[c.id]};
+    });
+    return {checks:out,count};
+  };
   const[pos,setPos]=useState(()=>normPos(cashPositions[today],today));
 
   const mob=typeof window!=="undefined"&&window.innerWidth<820;
@@ -75,13 +98,19 @@ function DailyCashPosition({
       const endN=Number(r.end)||Number(r.book)||Number(r.beg)||0;
       newBanks[b.id]={...emptyBankRow(),beg:endN?String(endN):""};
     });
-    const carriedFloat=(prev.floatingChecks||[]).filter(c=>!c.cleared).map(c=>({...c,carried:true}));
+    const carriedFloat=applyEarlierClears((prev.floatingChecks||[]).filter(c=>!c.cleared),date).checks
+      .filter(c=>!c.cleared).map(c=>{const{reopened,...rest}=c;return {...rest,carried:true};});
     return {...base,banks:newBanks,floatingChecks:carriedFloat};
   };
 
   const loadDay=(d)=>{
-    if(cashPositions[d]){setPos(normPos(cashPositions[d],d));setSaved(true);loadedSavedAtRef.current=cashPositions[d].savedAt||null;}
-    else{setPos(carryFrom(d));setSaved(false);loadedSavedAtRef.current=null;}
+    if(cashPositions[d]){
+      const p=normPos(cashPositions[d],d);
+      const {checks,count}=applyEarlierClears(p.floatingChecks,d);
+      setPos(count?{...p,floatingChecks:checks}:p);setLateClears(count);
+      setSaved(!count);loadedSavedAtRef.current=cashPositions[d].savedAt||null;
+    }
+    else{setPos(carryFrom(d));setSaved(false);setLateClears(0);loadedSavedAtRef.current=null;}
     clearDirty();
   };
 
@@ -103,10 +132,18 @@ function DailyCashPosition({
   // not when the user clicks another view (this component just unmounts and its
   // in-memory day would be lost). So on unmount, if the current day still has unsaved
   // edits, auto-save them — same save-by-default policy used when switching dates.
-  useEffect(()=>()=>{ if(dirtyRef.current&&!cashStaleRef.current){ try{ saveRef.current(); }catch(_){} } },[]);
+  const brokenRef=useRef(false);                // day has missing carried checks → never auto-save it
+  useEffect(()=>()=>{ if(dirtyRef.current&&!cashStaleRef.current&&!brokenRef.current){ try{ saveRef.current(); }catch(_){} } },[]);
 
   const switchDate=async (d)=>{
-    if(d===selDate) return;
+    if(!d||d===selDate) return;
+    // The date picker's max isn't enforced on typed input. A far-future date is
+    // how 09/01's sheet ended up saved as 09/28 — refuse it outright.
+    if(d>maxDate){
+      await uiConfirm({title:"Date is too far ahead",tone:"warning",confirmLabel:"OK",
+        message:`${fmtDate(d)} is more than ${CASH_PREFILL_DAYS} days ahead. Cash positions can only be prepared up to ${fmtDate(maxDate)}. Check the date you picked.`});
+      return;
+    }
     // Non-destructive switch: never silently drop unsaved finance data. If the
     // current day has unsaved edits, SAVE them by default before leaving — the
     // old behaviour discarded on switch, which is how a full day of collections,
@@ -135,6 +172,11 @@ function DailyCashPosition({
         `• Cancel = Discard the changes and open ${fmtDate(d)}`
       ));
       if(save){
+        if(continuity.missing.length){
+          await uiConfirm({title:"Can't auto-save this day",tone:"warning",confirmLabel:"OK",
+            message:`${continuity.missing.length} floating check(s) from ${fmtDate(continuity.prevDayKey)} are missing on ${fmtDate(selDate)}. Use Save Position to review them first.`});
+          return;
+        }
         persistDay();           // persists selDate + appends an audit entry (switch already confirmed)
       }else if(!(await uiConfirm(`Discard all unsaved changes for ${fmtDate(selDate)}? This cannot be undone.`))){
         return;                 // second Cancel = stay put, keep editing
@@ -190,6 +232,44 @@ function DailyCashPosition({
   const untaggedDisb =manualDisb.filter(isUntagged).reduce((s,r)=>s+n(r.amount),0);
   const untaggedFloat=openFloat.filter(isUntagged).reduce((s,r)=>s+n(r.amount),0);
   const untaggedTotal=untaggedColl+untaggedDisb+untaggedFloat;
+
+  // ── Day-to-day continuity check ──────────────────────────────────────────
+  // Catches the OUTCOME of any break (a wrong-date save, a stale tab, a row
+  // deleted by mistake) rather than one cause:
+  //  • HARD — a check still floating on the previous saved day must be on this
+  //    day too (floating, or marked cleared). A check that silently vanished is
+  //    how ₱2.4M of floats disappeared on 09/28. Saving needs a typed reason.
+  //  • SOFT — per bank, Beginning should equal the previous Ending minus the
+  //    checks cleared today on that bank (that is exactly how BDO reconciles in
+  //    the Sept data). Anything left over is an unexplained movement — shown and
+  //    logged, not blocked, since bank credits/charges legitimately cause it.
+  const prevDayKey=useMemo(()=>Object.keys(cashPositions).filter(k=>k<selDate).sort().reverse()[0]||null,[cashPositions,selDate]);
+  const continuity=useMemo(()=>{
+    const prev=prevDayKey?cashPositions[prevDayKey]:null;
+    if(!prev) return {prevDayKey:null,missing:[],missingTotal:0,unexplained:[]};
+    const key=(c)=>`${String(c.checkNo||"").trim()}|${n(c.amount).toFixed(2)}|${c.bank||""}`;
+    const ids=new Set(floatChecks.map(c=>c.id).filter(Boolean));
+    const keys=new Set(floatChecks.filter(c=>String(c.checkNo||"").trim()).map(key));
+    const missing=(prev.floatingChecks||[]).filter(c=>!c.cleared&&n(c.amount)>0)
+      .filter(c=>!(c.id&&ids.has(c.id))&&!(String(c.checkNo||"").trim()&&keys.has(key(c))));
+    const clearedToday=(id)=>floatChecks.filter(c=>c.cleared&&c.clearedDate===selDate&&c.bank===id).reduce((s,c)=>s+n(c.amount),0);
+    const unexplained=[];
+    BANKS.forEach(b=>{
+      const r=prev.banks?.[b.id]||{};
+      const prevEnd=Number(r.end)||Number(r.book)||Number(r.beg)||0;
+      const beg=n(bankRow(b.id).beg);
+      if(!beg&&!prevEnd) return;
+      const expected=prevEnd-clearedToday(b.id);
+      const diff=beg-expected;
+      if(Math.abs(diff)>0.005) unexplained.push({bank:b.id,name:b.name,prevEnd,cleared:clearedToday(b.id),beg,diff});
+    });
+    return {prevDayKey,missing,missingTotal:missing.reduce((s,c)=>s+n(c.amount),0),unexplained};
+    // eslint-disable-next-line
+  },[prevDayKey,cashPositions,floatChecks,pos.banks,selDate]);
+  const restoreMissing=()=>{
+    if(!continuity.missing.length) return;
+    f("floatingChecks",[...floatChecks,...continuity.missing.map(c=>{const{reopened,...rest}=c;return {...rest,carried:true};})]);
+  };
 
   // ── Ending Bank Balance & Book Balance — AUTO-COMPUTED per bank ──
   // Ending = Beginning + Collections − Disbursements (cash that actually moved through the bank).
@@ -281,7 +361,7 @@ function DailyCashPosition({
 
   // Actually persist the current day (no prompts). Used by the button after
   // confirmation, and directly by the silent auto-save paths (unmount, date-switch).
-  const persistDay=()=>{
+  const persistDay=(override=null)=>{
     const at=new Date().toISOString();
     // Materialize the computed Ending & Book into the saved banks so the next day carries
     // the right beginning balance and CSV/history export the reconciled figures.
@@ -296,9 +376,12 @@ function DailyCashPosition({
       if(prior.notes!==now.notes) changes.push({field:"Notes",note:true});
     }
     const entry={at,by:userName||"—",action:prior?"Edited":"Created",changes};
+    // Record any continuity break that was saved through, with the reason given.
+    if(override) entry.override=override;
+    else if(continuity.unexplained.length) entry.unexplained=continuity.unexplained.map(u=>({bank:u.name,diff:u.diff}));
     // Only log an edit if something actually changed; always log the first save.
     const priorAudit=Array.isArray(pos.audit)?pos.audit:[];
-    const audit=(!prior||changes.length>0)?[...priorAudit,entry]:priorAudit;
+    const audit=(!prior||changes.length>0||override)?[...priorAudit,entry]:priorAudit;
     saveDayPos(selDate,{...pos,banks:banksOut,collections:{...pos.collections,total:collTotal},audit,savedAt:at});
     setSaved(true);clearDirty();
     loadedSavedAtRef.current=at;   // this save is now the baseline for the open day
@@ -326,6 +409,12 @@ function DailyCashPosition({
       });
       if(!proceed) return;
     }
+    if(selDate>maxDate) return;   // unreachable via switchDate; belt-and-braces
+    if(selDate>today){
+      const ahead=await uiConfirm({title:`Save a FUTURE date — ${fmtDate(selDate)}?`,tone:"warning",confirmLabel:`Yes, save as ${fmtDate(selDate)}`,
+        message:`Today is ${fmtDate(today)}, but this sheet is dated ${fmtDate(selDate)}.\n\nOnly continue if you are pre-filling that banking day on purpose. If you meant today, cancel and change the date first.`});
+      if(!ahead) return;
+    }
     const stored=cashPositions[selDate];
     const remoteSavedAt=stored?.savedAt||null;
     const conflict=remoteSavedAt&&remoteSavedAt!==loadedSavedAtRef.current;
@@ -344,11 +433,25 @@ function DailyCashPosition({
       message:`Please confirm the figures for ${fmtDate(selDate)} are the most up-to-date before saving.`
     });
     if(!ok) return;
-    persistDay();
+    let override=null;
+    if(continuity.missing.length){
+      const list=continuity.missing.slice(0,8).map(c=>`• #${c.checkNo||"—"} ${(c.particulars||c.payee||"").trim()} ${peso(c.amount)}`).join("\n");
+      const reason=await uiPrompt({
+        title:`${continuity.missing.length} floating check${continuity.missing.length!==1?"s":""} from ${fmtDate(continuity.prevDayKey)} missing`,
+        tone:"warning",confirmLabel:"Save with this reason",
+        message:
+          `These checks were still floating on ${fmtDate(continuity.prevDayKey)} but are not on ${fmtDate(selDate)} (${peso(continuity.missingTotal)}):\n\n${list}${continuity.missing.length>8?`\n…and ${continuity.missing.length-8} more`:""}\n\n`+
+          `If they cleared, cancel and use "Restore missing checks", then Mark cleared. If they were voided/cancelled on purpose, type the reason — it is saved in the Audit Trail.`
+      });
+      if(!reason||!String(reason).trim()) return;
+      override={reason:String(reason).trim(),vsDay:continuity.prevDayKey,missing:continuity.missing.map(c=>({checkNo:c.checkNo||"",payee:(c.particulars||c.payee||"").trim(),amount:n(c.amount)}))};
+    }
+    persistDay(override);
   };
   // Keep the unmount auto-save pointed at the current render's persistDay (it closes
   // over the latest pos/computed figures), so leaving the page never loses the day.
-  saveRef.current=persistDay;
+  saveRef.current=()=>persistDay();
+  brokenRef.current=continuity.missing.length>0;
 
   const histDates=Object.keys(cashPositions).sort().reverse().slice(0,30);
 
@@ -452,11 +555,35 @@ function DailyCashPosition({
           {cashStale&&<span title="The latest cash positions couldn't be loaded from the server — you're viewing a locally-cached copy. Reconnect and tap the 🔄 sync button." style={{fontSize:".72rem",fontWeight:800,color:"#b91c1c",background:"#fef2f2",border:"1px solid #fecaca",borderRadius:6,padding:"3px 9px",display:"inline-flex",alignItems:"center",gap:4}}>⚠ Offline copy — not synced</span>}
           {dirty&&<span style={{fontSize:".72rem",fontWeight:700,color:"#b45309",display:"inline-flex",alignItems:"center",gap:4}}>● Unsaved</span>}
           <button onClick={exportCSV} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>
-          <input type="date" value={selDate} onChange={e=>switchDate(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".84rem",color:"#0f172a",cursor:"pointer"}}/>
+          <input type="date" value={selDate} max={maxDate} onChange={e=>switchDate(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".84rem",color:"#0f172a",cursor:"pointer"}}/>
           <button onClick={()=>setHistOpen(h=>!h)} style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".78rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>📅 History ({histDates.length})</button>
           <button onClick={handleSave} style={{background:(saved&&!dirty)?"#f0fdf4":C.navy,border:`1.5px solid ${(saved&&!dirty)?"#6ee7b7":C.navy}`,borderRadius:8,padding:"8px 18px",fontFamily:"inherit",fontSize:".82rem",color:(saved&&!dirty)?"#059669":"#fff",cursor:"pointer",fontWeight:700}}>{(saved&&!dirty)?"✓ Saved":"Save Position"}</button>
         </div>
       </div>
+
+      {continuity.missing.length>0&&(
+        <div style={{background:"#fef2f2",border:"1.5px solid #fca5a5",borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:".78rem",color:"#991b1b",lineHeight:1.5}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+            <span>⛔ <b>{continuity.missing.length} floating check{continuity.missing.length!==1?"s":""} ({peso(continuity.missingTotal)})</b> still open on {fmtDate(continuity.prevDayKey)} {continuity.missing.length!==1?"are":"is"} missing from {fmtDate(selDate)}. They were not marked cleared — they just aren't here.</span>
+            <button onClick={restoreMissing} style={{background:"#991b1b",border:"none",borderRadius:7,padding:"6px 12px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".74rem",cursor:"pointer"}}>Restore missing checks</button>
+          </div>
+          <div style={{marginTop:6,fontSize:".7rem",color:"#b91c1c"}}>
+            {continuity.missing.slice(0,6).map(c=>`#${c.checkNo||"—"} ${(c.particulars||c.payee||"").trim()} ${peso(c.amount)}`).join(" · ")}{continuity.missing.length>6?` · +${continuity.missing.length-6} more`:""}
+          </div>
+        </div>
+      )}
+      {continuity.unexplained.length>0&&(
+        <div style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:10,padding:"9px 14px",marginBottom:14,fontSize:".74rem",color:"#92400e",lineHeight:1.5}}>
+          ⚠ <b>Beginning balance doesn't follow from {fmtDate(continuity.prevDayKey)}</b> (previous Ending − checks cleared today):{" "}
+          {continuity.unexplained.map(u=><span key={u.bank} style={{marginRight:10}}><b>{u.name}</b> {u.diff>0?"+":"−"}{peso(Math.abs(u.diff))}{u.cleared>0&&Math.abs(u.diff-u.cleared)<0.005?" (Beginning not yet reduced for checks cleared today)":""}</span>)}
+          <div style={{fontSize:".68rem",color:"#b45309",marginTop:2}}>Fine if it's a bank credit, charge or interest — otherwise a check probably cleared without being marked, or a figure was mistyped. Saved to the Audit Trail with this day.</div>
+        </div>
+      )}
+      {lateClears>0&&(
+        <div style={{background:"#ecfdf5",border:"1px solid #a7f3d0",borderRadius:10,padding:"9px 14px",marginBottom:14,fontSize:".76rem",color:"#065f46",lineHeight:1.5}}>
+          ✓ <b>{lateClears} check{lateClears!==1?"s":""}</b> marked cleared on an earlier day {lateClears!==1?"were":"was"} still saved as floating on {fmtDate(selDate)}. {lateClears!==1?"They now show":"It now shows"} as cleared here — review and <b>Save Position</b> to record it.
+        </div>
+      )}
 
       {histOpen&&histDates.length>0&&(
         <div style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,padding:14,marginBottom:14,animation:"fadeIn .2s"}}>
@@ -759,11 +886,11 @@ function DailyCashPosition({
                   {row.cleared
                     ?<span style={{display:"inline-flex",alignItems:"center",gap:5}}>
                       <span title={row.clearedDate?`Cleared ${fmtDate(row.clearedDate)}`:"Cleared"} style={{fontSize:".64rem",fontWeight:800,padding:"2px 8px",borderRadius:20,color:"#047857",background:"#dcfce7",border:"1px solid #86efac"}}>✓ Cleared{row.clearedDate?` · ${fmtDate(row.clearedDate)}`:""}</span>
-                      <button onClick={()=>set({cleared:false,clearedDate:null})} title="Mark as still floating" style={{background:"none",border:"none",color:"#64748b",cursor:"pointer",fontSize:".66rem",padding:0}}>undo</button>
+                      <button onClick={()=>set({cleared:false,clearedDate:null,reopened:selDate})} title="Mark as still floating" style={{background:"none",border:"none",color:"#64748b",cursor:"pointer",fontSize:".66rem",padding:0}}>undo</button>
                     </span>
                     :<span style={{display:"inline-flex",alignItems:"center",gap:5}}>
                       <span style={{fontSize:".64rem",fontWeight:800,padding:"2px 8px",borderRadius:20,color:"#b45309",background:"#fef3c7",border:"1px solid #fde68a"}}>● Floating{row.carried?" · carried":""}</span>
-                      <button onClick={()=>set({cleared:true,clearedDate:selDate})} title="Mark this check cleared" style={{background:"#ecfdf5",border:"1px solid #a7f3d0",borderRadius:5,padding:"2px 7px",color:"#047857",cursor:"pointer",fontSize:".64rem",fontWeight:700,fontFamily:"inherit"}}>Mark cleared</button>
+                      <button onClick={()=>set({cleared:true,clearedDate:selDate,reopened:null})} title="Mark this check cleared" style={{background:"#ecfdf5",border:"1px solid #a7f3d0",borderRadius:5,padding:"2px 7px",color:"#047857",cursor:"pointer",fontSize:".64rem",fontWeight:700,fontFamily:"inherit"}}>Mark cleared</button>
                     </span>}
                 </td>
                 <td style={{...td,padding:2,textAlign:"center",border:"none"}}>{delBtn(()=>f("floatingChecks",floatChecks.filter((_,j)=>j!==ri)))}</td>
@@ -870,6 +997,8 @@ function DailyCashPosition({
                              ))}
                            </div>
                           :<div style={{fontSize:".72rem",color:"#64748b",marginTop:2}}>Re-saved (no figure changes).</div>}
+                      {e.override&&<div style={{fontSize:".72rem",color:"#991b1b",marginTop:3}}>⛔ Saved with {e.override.missing?.length||0} check(s) from {fmtDate(e.override.vsDay)} missing — reason: <b>{e.override.reason}</b></div>}
+                      {Array.isArray(e.unexplained)&&e.unexplained.length>0&&<div style={{fontSize:".7rem",color:"#b45309",marginTop:2}}>⚠ Unexplained beginning movement: {e.unexplained.map(u=>`${u.bank} ${u.diff>0?"+":"−"}${peso(Math.abs(u.diff))}`).join(" · ")}</div>}
                     </div>
                   </div>
                 );
