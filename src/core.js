@@ -516,6 +516,35 @@ export const dealFinancials = (d={}) => {
   };
 };
 
+// ── Accounts receivable, one calculation for every screen ────────────────────
+// A billing milestone's `amount` is the VAT-EXCLUSIVE base; its payments are CASH
+// (gross − EWT). So a milestone's open balance is its cash receivable minus the
+// good payments on it — never `amount − payments` (net − cash), which understates
+// AR by ~10% and overstates the collection rate. Bounced payments never landed and
+// Cancelled milestones aren't owed. Receipt type / EWT fall back to the deal's.
+export const milestoneReceivable = (b={}, deal) => {
+  const rt = b.receiptType || b.receipt_type || (deal && deal.receiptType) || "OR";
+  const wh = b.withholding != null ? !!b.withholding : !!(deal && deal.withholding);
+  return calcTax(Number(b.amount)||0, rt, wh).netReceivable;
+};
+export const milestonePaid = (b={}) =>
+  (b.payments||[]).filter(p=>!p.bounced).reduce((s,p)=>s+(Number(p.amount)||0),0);
+export const milestoneBalance = (b={}, deal) =>
+  b.status==="Cancelled" ? 0 : Math.max(0, milestoneReceivable(b,deal) - milestonePaid(b));
+// Portfolio totals over a list of milestones. `dealOf(dealId)` returns the deal (or
+// undefined) so receipt type / EWT can fall back to it.
+export const arSummary = (billings=[], dealOf=()=>undefined) => {
+  let billed=0, receivable=0, collected=0, outstanding=0, open=0;
+  billings.forEach(b=>{
+    if(b.status==="Cancelled") return;
+    const d=dealOf(b.dealId), r=milestoneReceivable(b,d), p=milestonePaid(b), bal=Math.max(0,r-p);
+    billed+=Number(b.amount)||0; receivable+=r; collected+=p; outstanding+=bal; if(bal>0.005) open++;
+  });
+  const r2=x=>Math.round(x*100)/100;
+  return { billed:r2(billed), receivable:r2(receivable), collected:r2(collected), outstanding:r2(outstanding),
+           openMilestones:open, collectionRate: receivable>0 ? collected/receivable : 0 };
+};
+
 export const calcInputTax = (gross, vatable=false, ewtRate=0) => {
   const g = Number(gross)||0;
   const net = vatable ? Math.round(g/1.12*100)/100 : g;

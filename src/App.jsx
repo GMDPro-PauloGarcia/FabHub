@@ -8,7 +8,7 @@ import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDa
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, isProcurementRole, canonRole, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, arSummary, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, isProcurementRole, canonRole, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -3314,9 +3314,8 @@ function DueDateBackfillModal({open,onClose,billings,payables,deals,updateMilest
   const peso=v=>"₱"+Math.round(Number(v)||0).toLocaleString("en-PH");
   const missBill=useMemo(()=>(billings||[]).filter(b=>{
     if(b.status==="Cancelled"||b.status==="Fully Paid") return false;
-    const paid=(b.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
-    return (Number(b.amount||0)-paid)>0.5 && !b.dueDate;
-  }),[billings]);
+    return milestoneBalance(b,(deals||[]).find(d=>d.id===b.dealId))>0.5 && !b.dueDate;
+  }),[billings,deals]);
   const missPay=useMemo(()=>(payables||[]).filter(p=>p.status!=="Paid"&&p.status!=="Cancelled"&&Number(p.amount)>0&&!p.dueDate),[payables]);
   const[edits,setEdits]=useState({});
   useEffect(()=>{ if(open) setEdits({}); },[open]);
@@ -3345,8 +3344,7 @@ function DueDateBackfillModal({open,onClose,billings,payables,deals,updateMilest
         These unpaid items have <b>no due date</b>, so the Cash-Flow Forecast can't place them in the right week and treats them as due now. Set a date to fix the projection.
       </div>
       {sect("Expected Collections — Billings","#047857",missBill,b=>{
-        const paid=(b.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
-        const out=Number(b.amount||0)-paid;
+        const out=milestoneBalance(b,(deals||[]).find(d=>d.id===b.dealId));
         return(
           <div key={b.id} style={rowStyle}>
             <div style={{minWidth:0}}>
@@ -3380,7 +3378,7 @@ function DueDateBackfillModal({open,onClose,billings,payables,deals,updateMilest
 // Forward view of working cash: projects expected collections (outstanding
 // billings) against expected payments (payables, uncleared checks, loan
 // amortizations) week by week, flagging when the projected balance runs short.
-function CashFlowView({billings,payables,vouchers,loans,cashPositions,setPage,Wrap,isMobile,onFixDueDates}){
+function CashFlowView({billings,payables,vouchers,loans,cashPositions,setPage,Wrap,isMobile,onFixDueDates,deals=[]}){
   const money=v=>(v<0?"−₱":"₱")+Math.round(Math.abs(Number(v)||0)).toLocaleString("en-PH");
   const DAY=86400000, WEEKS=8;
   const start=new Date(); start.setHours(0,0,0,0);
@@ -3396,8 +3394,8 @@ function CashFlowView({billings,payables,vouchers,loans,cashPositions,setPage,Wr
 
   const flows=[];
   billings.filter(m=>m.status!=="Cancelled").forEach(m=>{
-    const paid=(m.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
-    const out=Math.round((Number(m.amount||0)-paid)*100)/100;
+    // Expected CASH in: the milestone's receivable (VAT in, EWT out) less good payments.
+    const out=Math.round(milestoneBalance(m,deals.find(d=>d.id===m.dealId))*100)/100;
     if(out>0.5) flows.push({date:parse(m.dueDate),amt:out,dir:"in",label:m.name||"Billing",ref:m.invoiceNo||""});
   });
   (payables||[]).filter(p=>p.status!=="Paid"&&Number(p.amount)>0).forEach(p=>{
@@ -7547,9 +7545,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // Billed-but-unpaid for one deal, like-for-like in CASH terms: what the client
   // was invoiced (VAT-ex `invoiced` grossed up for VAT, less EWT) minus what the
   // billing ledger shows collected. Never `invoiced − collected` (net − cash).
-  const dealOutstanding=(d)=>Math.max(0,calcTax(Number(d.invoiced)||0,d.receiptType||"OR",!!d.withholding).netReceivable-dealCollected(d));
+  const dealOutstanding=(d)=>{
+    const ms=billings.filter(b=>b.dealId===d.id);
+    if(ms.length) return ms.reduce((s,b)=>s+milestoneBalance(b,d),0);
+    return Math.max(0,calcTax(Number(d.invoiced)||0,d.receiptType||"OR",!!d.withholding).netReceivable-dealCollected(d));
+  };
   const totColl   =useMemo(()=>wonDeals.reduce((s,d)=>s+dealCollected(d),0),[wonDeals,billings]);
-  const totOut    =useMemo(()=>Math.max(0,wonDeals.reduce((s,d)=>s+Number(d.invoiced||0)-dealCollected(d),0)),[wonDeals,billings]);
+  // Company-wide AR, same basis everywhere (see arSummary in core.js).
+  const dealById  =useMemo(()=>{const m=new Map();deals.forEach(d=>m.set(d.id,d));return m;},[deals]);
+  const arTot     =useMemo(()=>arSummary(billings,id=>dealById.get(id)),[billings,dealById]);
+  const totOut    =arTot.outstanding;
 
   // Auto-mark overdue billing milestones — runs once when billings load, then daily
   useEffect(()=>{
@@ -7593,7 +7598,6 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const addendaAlertCnt=useMemo(()=>addenda.filter(a=>!a.salesNotified&&a.status!=="Rejected").length,[addenda]);
   const activeJOCnt    =useMemo(()=>jos.filter(j=>j.status==="Active").length,[jos]);
   const pendingPRCnt   =useMemo(()=>prs.filter(p=>p.status==="Pending Approval").length,[prs]);
-  const billOutstanding=useMemo(()=>Math.max(0,billings.reduce((s,m)=>s+Number(m.amount||0)-(m.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0)),[billings]);
   const overdueInvMs   =useMemo(()=>billings.filter(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled").length,[billings]);
   const breqPendingCnt =useMemo(()=>breqs.filter(b=>b.status==="Pending").length,[breqs]);
   const openPOCnt      =useMemo(()=>prs.filter(p=>["Pending Approval","Approved","PO Issued"].includes(p.status)).length,[prs]);
@@ -10176,7 +10180,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const activePipe=deals.filter(d=>isActivePipeline(d.stage));
         const pendingCE=ceReqs.filter(r=>r.status!=="Done");
         const allMs=billings.filter(b=>b.dealId);
-        const outstanding=Math.max(0,allMs.reduce((s,m)=>s+Number(m.amount||0)-(m.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0));
+        const outstanding=arSummary(allMs,id=>dealById.get(id)).outstanding;
         const activeProjects=wonDeals.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed");
         const fmtK2=v=>v>=1000000?"₱"+Math.round(v/1000000*10)/10+"M":"₱"+Math.round(v/1000)+"K";
         return(
@@ -10245,9 +10249,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {/* KPI row */}
       {(()=>{
         const allMs=billings.filter(b=>b.dealId);
-        const totalBilled=allMs.reduce((s,m)=>s+Number(m.amount||0),0);
-        const totalPaid=allMs.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
-        const totalOutstanding=totalBilled-totalPaid;
+        const _ar=arSummary(allMs,id=>dealById.get(id));
+        const totalBilled=_ar.billed;
+        const totalPaid=_ar.collected;
+        const totalOutstanding=_ar.outstanding;
         const today2=new Date();
         const overdue30=allMs.filter(m=>m.dueDate&&new Date(m.dueDate)<today2&&m.status!=="Fully Paid");
         const todayCash=Object.values(cashPositions).find(c=>c.date===today)||null;
@@ -10311,8 +10316,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               return od.map((m,i)=>{
                 const d=wonDeals.find(x=>x.id===m.dealId);
                 const days=Math.floor((today2-new Date(m.dueDate))/(1000*60*60*24));
-                const paid=(m.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
-                const bal=Number(m.amount||0)-paid;
+                const bal=milestoneBalance(m,d);
                 return(
                   <div key={m.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 14px",borderBottom:i<4?"1px solid #f8fafc":"",flexWrap:"wrap",gap:4}}>
                     <div>
@@ -11291,17 +11295,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
       {(()=>{
         const allMs = billings;
-        const totalBilled   = allMs.reduce((s,m)=>s+Number(m.amount||0),0);
-        const totalPaid     = allMs.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
-        const outstanding   = totalBilled - totalPaid;
+        const totalBilled   = arTot.billed;
+        const totalPaid     = arTot.collected;
+        const outstanding   = arTot.outstanding;
         const today2        = new Date();
         const overdue       = allMs.filter(m=>m.dueDate&&new Date(m.dueDate)<today2&&m.status!=="Fully Paid");
-        const overdueValue  = overdue.reduce((s,m)=>{const p=(m.payments||[]).reduce((ps,py)=>ps+Number(py.amount||0),0);return s+Math.max(0,Number(m.amount||0)-p);},0);
+        const overdueValue  = overdue.reduce((s,m)=>s+milestoneBalance(m,dealById.get(m.dealId)),0);
         const _cash         = bankCashSummary(cashPositions,today);
         const latestCash    = _cash.latest;
         const totalCash     = _cash.total;
         const noBilling     = wonDeals.filter(d=>!billings.find(b=>b.dealId===d.id));
-        const collRate      = totalBilled>0?Math.round(totalPaid/totalBilled*100):0;
+        const collRate      = Math.round(arTot.collectionRate*100);
         const totalPipeVal  = deals.filter(d=>isActivePipeline(d.stage)).reduce((s,d)=>s+Number(d.value||0),0);
 
         return(<div style={{display:"flex",flexDirection:"column",gap:16}}>
@@ -11349,8 +11353,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 ?<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>✅ No overdue invoices</div>
                 :overdue.sort((a,b)=>new Date(a.dueDate)-new Date(b.dueDate)).slice(0,5).map((m,i)=>{
                   const d=wonDeals.find(x=>x.id===m.dealId);
-                  const paid=(m.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
-                  const bal=Number(m.amount||0)-paid;
+                  const bal=milestoneBalance(m,d);
                   const days=Math.floor((today2-new Date(m.dueDate))/(1000*60*60*24));
                   return(<div key={m.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 14px",borderBottom:i<4?"1px solid #f8fafc":"",flexWrap:"wrap",gap:4}}>
                     <div>
@@ -11585,8 +11588,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const thisMonth=new Date().toISOString().slice(0,7);
         const newThisMonth=deals.filter(d=>d.dateAcquired?.slice(0,7)===thisMonth);
         const allMs=billings;
-        const totalPaid=allMs.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
-        const outstanding=allMs.reduce((s,m)=>s+Number(m.amount||0),0)-totalPaid;
+        const totalPaid=arTot.collected;
+        const outstanding=arTot.outstanding;
         const newScope=addenda.filter(a=>a.status==="Discovered"||a.status==="Sales Notified");
         const overdue=allMs.filter(m=>m.dueDate&&new Date(m.dueDate)<today2&&m.status!=="Fully Paid");
 
@@ -11649,8 +11652,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 ?<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>✅ No overdue collections</div>
                 :overdue.sort((a,b)=>new Date(a.dueDate)-new Date(b.dueDate)).slice(0,5).map((m,i)=>{
                   const d=wonDeals.find(x=>x.id===m.dealId);
-                  const paid=(m.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
-                  const bal=Number(m.amount||0)-paid;
+                  const bal=milestoneBalance(m,d);
                   const days=Math.floor((today2-new Date(m.dueDate))/(1000*60*60*24));
                   return(<div key={m.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 14px",borderBottom:i<4?"1px solid #f8fafc":"",flexWrap:"wrap",gap:4}}>
                     <div>
@@ -11721,7 +11723,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         }
         if(overdueInvCnt){
           const ov=billings.filter(b=>b.dueDate&&b.dueDate<today&&b.status!=="Fully Paid"&&b.status!=="Cancelled");
-          const rows=ov.map(b=>{const d=attnWonMap.get(b.dealId);const paid=(b.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);return{name:d?.contact||d?.client||b.client||"Invoice",sub:`${b.name||b.label||"Invoice"} · due ${b.dueDate}`,amt:Math.max(0,Number(b.amount||0)-paid),id:b.dealId};});
+          const rows=ov.map(b=>{const d=attnWonMap.get(b.dealId);return{name:d?.contact||d?.client||b.client||"Invoice",sub:`${b.name||b.label||"Invoice"} · due ${b.dueDate}`,amt:milestoneBalance(b,d),id:b.dealId};});
           items.push({icon:"🚨",n:overdueInvCnt,l:"Overdue Invoices",sub:"past due date",tone:"crit",rows,unit:"invoice",fullPage:()=>setPage("billing"),fullPageLabel:"Open Billing →"});
         }
         if(overdueTATCnt){
@@ -11969,8 +11971,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
       {/* ── FINANCIAL SNAPSHOT ──────────────────────────────────────── */}
       {(()=>{
-        const totColl=billings.reduce((s,b)=>s+(b.payments||[]).reduce((a,p)=>a+Number(p.amount||0),0),0);
-        const totOut=Math.max(0,totRev-totColl);
+        // Billed-but-unpaid on one basis (cash receivable − good payments); was
+        // contract value (ex-VAT) − every payment incl. bounced, which is neither AR
+        // nor like-for-like.
+        const totColl=arTot.collected;
         const fmtM=v=>v>=1000000?"₱"+Math.round(v/100000)/10+"M":v>=1000?"₱"+Math.round(v/1000)+"K":"₱"+Math.round(v||0);
         const cells=[
           {l:"Revenue (won)", v:fmtM(totRev), c:"#6366f1", action:()=>setPage("pipeline")},
@@ -14554,13 +14558,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         {finTab==="overview"&&role!=="Accounting"&&(()=>{
           const now=new Date();
           const cy=now.getFullYear();
-          const totalBilled=billings.filter(b=>b.status!=="Cancelled").reduce((s,b)=>s+Number(b.amount||0),0);
-          const totalCollected=billings.reduce((s,b)=>(b.payments||[]).reduce((ss,p)=>ss+Number(p.amount||0),s),0);
+          // Billed stays VAT-ex (the invoice base); collected / outstanding / rate / DSO
+          // are cash-basis from arSummary so they compare like with like.
+          const totalBilled=arTot.billed;
+          const totalCollected=arTot.collected;
           const totalExpenses=exps.reduce((s,e)=>s+Number(e.amount||0),0);
           const grossProfit=totalCollected-totalExpenses;
           const grossMargin=totalCollected>0?Math.round(grossProfit/totalCollected*100):0;
-          const collectionRate=totalBilled>0?Math.round(totalCollected/totalBilled*100):0;
-          const outstanding=Math.max(0,totalBilled-totalCollected);
+          const collectionRate=Math.round(arTot.collectionRate*100);
+          const outstanding=arTot.outstanding;
           const dso=totalCollected>0?Math.round(outstanding/(totalCollected/365)):0;
           const backlog=wonDeals.reduce((s,d)=>{
             const billed=billings.filter(b=>b.dealId===d.id&&b.status!=="Cancelled").reduce((bs,b)=>bs+Number(b.amount||0),0);
@@ -14598,10 +14604,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
           // Build digest alerts list
           const digestAlerts=[];
-          if(overdueBillings.length>0) digestAlerts.push({icon:"🚨",level:"danger",text:`${overdueBillings.length} overdue invoice${overdueBillings.length!==1?"s":""} — ₱${Number(overdueBillings.reduce((s,m)=>{const p=(m.payments||[]).reduce((ps,x)=>ps+Number(x.amount||0),0);return s+Math.max(0,Number(m.amount||0)-p);},0)).toLocaleString("en-PH",{maximumFractionDigits:0})} uncollected`});
+          if(overdueBillings.length>0) digestAlerts.push({icon:"🚨",level:"danger",text:`${overdueBillings.length} overdue invoice${overdueBillings.length!==1?"s":""} — ₱${Number(overdueBillings.reduce((s,m)=>s+milestoneBalance(m,dealById.get(m.dealId)),0)).toLocaleString("en-PH",{maximumFractionDigits:0})} uncollected`});
           if(grossMargin<25) digestAlerts.push({icon:"📉",level:"warning",text:`Gross margin at ${grossMargin}% — below 25% target`});
           if(dso>90) digestAlerts.push({icon:"⏳",level:"warning",text:`DSO is ${dso} days — clients are paying very slowly`});
-          if(outstanding>0) digestAlerts.push({icon:"💰",level:"info",text:`Outstanding AR: ${fmtM(outstanding)} across ${overdueBillings.length} milestone${overdueBillings.length!==1?"s":""}`});
+          if(outstanding>0) digestAlerts.push({icon:"💰",level:"info",text:`Outstanding AR: ${fmtM(outstanding)} across ${arTot.openMilestones} milestone${arTot.openMilestones!==1?"s":""}`});
           if(unbilledProjects.length>0) digestAlerts.push({icon:"📋",level:"warning",text:`${unbilledProjects.length} awarded project${unbilledProjects.length!==1?"s":""} with no milestones billed yet`});
           if(overduePayables>0) digestAlerts.push({icon:"📤",level:"warning",text:`${overduePayables} overdue payable${overduePayables!==1?"s":""} — ₱${Number(payables.filter(p=>p.status==="Unpaid"&&p.dueDate&&p.dueDate<today).reduce((s,p)=>s+Number(p.amount||0),0)).toLocaleString("en-PH",{maximumFractionDigits:0})}`});
           if(backlog>0) digestAlerts.push({icon:"🏗",level:"info",text:`Contract backlog: ${fmtM(backlog)} in awarded work not yet billed`});
@@ -14616,7 +14622,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
           // ── 4 REVIEW SECTIONS ────────────────────────────────────────────
           // 1. Collections / AR
-          const arOverdueAmt=overdueBillings.reduce((s,m)=>{const p=(m.payments||[]).reduce((ps,x)=>ps+Number(x.amount||0),0);return s+Math.max(0,Number(m.amount||0)-p);},0);
+          const arOverdueAmt=overdueBillings.reduce((s,m)=>s+milestoneBalance(m,dealById.get(m.dealId)),0);
           const arAge30 =overdueBillings.filter(m=>{const d=Math.floor((now-new Date(m.dueDate))/(864e5));return d<=30;}).length;
           const arAge60 =overdueBillings.filter(m=>{const d=Math.floor((now-new Date(m.dueDate))/(864e5));return d>30&&d<=60;}).length;
           const arAge90p=overdueBillings.filter(m=>{const d=Math.floor((now-new Date(m.dueDate))/(864e5));return d>60;}).length;
@@ -17032,7 +17038,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     <>
     <Wrap>
       {/* Missing due-date nudge — keeps the cash-flow forecast accurate */}
-      {(()=>{const miss=billings.filter(b=>{if(b.status==="Cancelled"||b.status==="Fully Paid")return false;const paid=(b.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);return (Number(b.amount||0)-paid)>0.5&&!b.dueDate;}).length;
+      {(()=>{const miss=billings.filter(b=>{if(b.status==="Cancelled"||b.status==="Fully Paid")return false;return milestoneBalance(b,dealById.get(b.dealId))>0.5&&!b.dueDate;}).length;
         return miss>0?(
           <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"10px 14px",marginBottom:14,display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
             <span style={{flex:1,minWidth:200,fontSize:".82rem",color:"#92400e",fontWeight:600}}>⚠️ {miss} unpaid billing{miss===1?"":"s"} missing a due date — the cash-flow forecast can't schedule {miss===1?"it":"them"}.</span>
@@ -17044,7 +17050,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const now=new Date();
         const aging={current:0,d30:0,d60:0,d90:0,over90:0};
         billings.forEach(b=>{
-          const outstanding=Math.max(0,Number(b.amount||0)-(b.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0));
+          const outstanding=milestoneBalance(b,dealById.get(b.dealId));
           if(outstanding<=0||b.status==="Paid"||b.status==="Fully Paid") return;
           const days=b.dueDate?Math.floor((now-new Date(b.dueDate))/(1000*60*60*24)):0;
           if(days<=0)       aging.current+=outstanding;
@@ -17078,7 +17084,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const today2=new Date();
         const callList=wonDeals.map(d=>{
           const ms=billings.filter(b=>b.dealId===d.id&&b.status!=="Cancelled"&&b.status!=="Fully Paid");
-          const totalDue=ms.reduce((s,m)=>{const p=(m.payments||[]).reduce((ps,pay)=>ps+Number(pay.amount||0),0);return s+Math.max(0,Number(m.amount||0)-p);},0);
+          const totalDue=ms.reduce((s,m)=>s+milestoneBalance(m,d),0);
           const mostOverdue=ms.filter(m=>m.dueDate&&m.dueDate<today).sort((a,b)=>new Date(a.dueDate)-new Date(b.dueDate))[0];
           const daysOverdue=mostOverdue?Math.floor((today2-new Date(mostOverdue.dueDate))/(1000*60*60*24)):null;
           return{d,totalDue,daysOverdue,msCount:ms.length};
@@ -17521,7 +17527,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     <WIPView wonDeals={wonDeals} projs={projs} billings={billings} exps={exps} prs={prs} overallProg={overallProg} setPage={setPage} Wrap={Wrap} isMobile={isMobile}/>
   );
   if(page==="cashflow"&&(role==="Finance"||role==="Manager"||role==="Accounting"||role==="FinanceAssistant")) return(
-    <CashFlowView billings={billings} payables={payables} vouchers={vouchers} loans={loans} cashPositions={cashPositions} setPage={setPage} Wrap={Wrap} isMobile={isMobile} onFixDueDates={()=>setDueDateFixOpen(true)}/>
+    <CashFlowView deals={deals} billings={billings} payables={payables} vouchers={vouchers} loans={loans} cashPositions={cashPositions} setPage={setPage} Wrap={Wrap} isMobile={isMobile} onFixDueDates={()=>setDueDateFixOpen(true)}/>
   );
   if(page==="weeklycashflow"&&(role==="Finance"||role==="Manager"||role==="Accounting")) return(
     <Wrap><WeeklyCashFlow cashPositions={cashPositions} billings={billings} exps={exps} chartOfAccounts={chartOfAccounts} setPage={setPage}/></Wrap>
@@ -25659,7 +25665,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     billings.forEach(b=>{
       const d=wonDeals.find(x=>x.id===b.dealId)||deals.find(x=>x.id===b.dealId);
       const totalPaid=(b.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
-      const outstanding=Math.max(0,Number(b.amount||0)-totalPaid);
+      const outstanding=milestoneBalance(b,d);
       const paymentsSummary=(b.payments||[]).map(p=>`${p.date||""}:₱${Number(p.amount||0).toLocaleString()}`).join(" | ");
       const banks=[...new Set((b.payments||[]).map(p=>p.bank).filter(Boolean))].join("/");
       rows.push([
@@ -29000,7 +29006,7 @@ function FinanceDigestPanel({billings=[],exps=[],wonDeals=[],completedDeals=[],d
   const cpTotalEnd=cpBanks.reduce((s,b)=>s+(b.end||b.book||b.beg),0);
   const cpCollections=(todayPos?.collections?.manualCollections||[]).reduce((s,c)=>s+Number(c.amount||0),0);
   const cpNetMove=cpTotalEnd-cpTotalBeg;
-  const arOverdueAmt=overdueBillings.reduce((s,m)=>{const p=(m.payments||[]).reduce((ps,x)=>ps+Number(x.amount||0),0);return s+Math.max(0,Number(m.amount||0)-p);},0);
+  const arOverdueAmt=overdueBillings.reduce((s,m)=>s+milestoneBalance(m,(deals||[]).find(d=>d.id===m.dealId)),0);
   const arAge30 =overdueBillings.filter(m=>{const d=Math.floor((now-new Date(m.dueDate))/(864e5));return d<=30;}).length;
   const arAge60 =overdueBillings.filter(m=>{const d=Math.floor((now-new Date(m.dueDate))/(864e5));return d>30&&d<=60;}).length;
   const arAge90p=overdueBillings.filter(m=>{const d=Math.floor((now-new Date(m.dueDate))/(864e5));return d>60;}).length;
