@@ -542,7 +542,39 @@ export const arSummary = (billings=[], dealOf=()=>undefined) => {
   });
   const r2=x=>Math.round(x*100)/100;
   return { billed:r2(billed), receivable:r2(receivable), collected:r2(collected), outstanding:r2(outstanding),
+           collectedBase:r2(receivable>0 ? collected*billed/receivable : 0),   // collections restated VAT-ex
            openMilestones:open, collectionRate: receivable>0 ? collected/receivable : 0 };
+};
+
+// ── Costs: AP-ledger basis, VAT-exclusive ────────────────────────────────────
+// Every project/company cost = all payables (the AP ledger) + legacy expenses NOT
+// already routed to a payable or check voucher (no double count) — the basis the
+// account-code Income Statement already used. Cost is taken NET of input VAT, so
+// margin compares VAT-ex revenue with VAT-ex cost: recorded input VAT is removed,
+// a row flagged vatable without an amount is grossed down by 1.12, and a row
+// with neither is taken as-is (no VAT to strip).
+const _amt = v => Number(String(v==null?0:v).replace(/,/g,""))||0;
+export const costNet = (x={}) => {
+  const amt=_amt(x.amount), iv=_amt(x.inputVat!=null?x.inputVat:x.input_vat);
+  if(iv>0) return Math.round((amt-iv)*100)/100;
+  if(x.vatable) return Math.round(amt/1.12*100)/100;
+  return amt;
+};
+export const ledgerCosts = (exps=[], payables=[]) => [
+  ...(payables||[]).filter(p=>!["Cancelled","Void"].includes(p.status)).map(p=>({
+    projectId:p.projectId||p.project_id||null, date:p.invoiceDate||p.invoice_date||p.createdAt||p.created_at||null,
+    gross:_amt(p.amount), net:costNet(p), vatTracked:!!(p.vatable||_amt(p.inputVat!=null?p.inputVat:p.input_vat)>0), src:"payable" })),
+  ...(exps||[]).filter(e=>!e.payableId&&!e.cvId).map(e=>({
+    projectId:e.projectId||e.dealId||null,
+    date:e.date||(e.year!=null&&e.month!=null?`${e.year}-${String(Number(e.month)+1).padStart(2,"0")}-01`:null),
+    gross:_amt(e.amount), net:costNet(e), vatTracked:!!(e.vatable||_amt(e.inputVat)>0), src:"expense" })),
+];
+export const costSummary = (exps=[], payables=[]) => {
+  const rows=ledgerCosts(exps,payables), byProject=new Map();
+  let gross=0, net=0, tracked=0;
+  rows.forEach(r=>{ gross+=r.gross; net+=r.net; if(r.vatTracked) tracked++;
+    if(r.projectId) byProject.set(r.projectId,(byProject.get(r.projectId)||0)+r.net); });
+  return { rows, gross:Math.round(gross*100)/100, net:Math.round(net*100)/100, count:rows.length, vatTracked:tracked, byProject };
 };
 
 export const calcInputTax = (gross, vatable=false, ewtRate=0) => {
