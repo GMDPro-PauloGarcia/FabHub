@@ -1,5 +1,5 @@
 import React,{useState,useMemo,useEffect,useRef} from "react";
-import {today,uid,BANKS,emptyBankRow,emptyDayPosition,uiConfirm,uiPrompt,addDaysLocalISO,CASH_PREFILL_DAYS} from "../shared";
+import {today,uid,BANKS,emptyBankRow,emptyDayPosition,uiConfirm,uiPrompt,addDaysLocalISO,CASH_PREFILL_DAYS,payeeOf,particularsOf} from "../shared";
 
 // ── Currency input: shows grouped digits, edits raw ────────────────────────────
 const CurrInp=({value,onChange,placeholder="—",style:sx={}})=>{
@@ -198,6 +198,8 @@ function DailyCashPosition({
   };
 
   const n=(v)=>Number(String(v).replace(/,/g,""))||0;
+  // One-line label for a check in banners, prompts and the Audit Trail.
+  const whoOf=(c)=>[payeeOf(c),particularsOf(c)].filter(Boolean).join(" — ");
   const fmt2=(v)=>n(v).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
   const peso=(v)=>"₱"+n(v).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
   const fmtDate=(iso)=>{const[y,m,d]=String(iso).split("-");return m&&d?`${m}/${d}/${y}`:iso;};
@@ -266,6 +268,51 @@ function DailyCashPosition({
     return {prevDayKey,missing,missingTotal:missing.reduce((s,c)=>s+n(c.amount),0),unexplained};
     // eslint-disable-next-line
   },[prevDayKey,cashPositions,floatChecks,pos.banks,selDate]);
+  // ── Possible duplicate checks ────────────────────────────────────────────
+  // SOFT warning (never blocks). Real Sept cases it catches:
+  //  • the same ₱110,000 Marjorie Y. Santiago check entered twice — once with no
+  //    check no. (09/14), once as #87749 (09/16). #87749 was cleared on 09/17 and
+  //    the blank copy kept floating, understating Book by ₱110k until 09/23.
+  //  • check #86711 recorded for BOTH Stella Garcia and Rafael Garcia.
+  // Rules, for every OPEN check on this day:
+  //  1. same bank + same check no. as another check (open on this day, or
+  //     cleared here or on an earlier day), with a different id;
+  //  2. same bank + amount + payee as another such check when either one has no
+  //     check no. — distinct numbered checks (3× Globe ₱599) are left alone.
+  const duplicates=useMemo(()=>{
+    const pk=(c)=>payeeOf(c).toLowerCase().replace(/\b[a-z]\b/g,"").replace(/[^a-z0-9]/g,"");
+    // Only a real cheque number counts: "DEBIT" (auto-debits, e.g. the monthly
+    // Security Bank loan) and "#" are placeholders, not numbers.
+    const no=(c)=>{const v=String(c.checkNo||"").trim().toLowerCase();return /\d/.test(v)?v:"";};
+    const amt=(c)=>n(c.amount).toFixed(2);
+    const open=floatChecks.filter(c=>!c.cleared&&n(c.amount)>0);
+    if(!open.length) return [];
+    // Pool: today's rows plus checks cleared on earlier days (last 90 days).
+    const since=addDaysLocalISO(selDate,-90);
+    const pool=floatChecks.map(c=>({c,day:selDate}));
+    const seen=new Set(floatChecks.map(c=>c.id).filter(Boolean));
+    Object.keys(cashPositions).filter(k=>k<selDate&&k>=since).sort().reverse().forEach(k=>{
+      (cashPositions[k]?.floatingChecks||[]).forEach(c=>{
+        if(c?.cleared&&c.id&&!seen.has(c.id)){seen.add(c.id);pool.push({c,day:k});}
+      });
+    });
+    const out=[];const pairKeys=new Set();
+    open.forEach(a=>{
+      pool.forEach(({c:b,day})=>{
+        if(a===b||(a.id&&b.id&&a.id===b.id)||(a.bank||"")!==(b.bank||"")) return;
+        let why=null;
+        if(no(a)&&no(a)===no(b)) why="sameNo";
+        else if((!no(a)||!no(b))&&amt(a)===amt(b)&&pk(a)&&pk(a)===pk(b)) why="noNumber";
+        if(!why) return;
+        const key=[a.id||a.checkNo,b.id||b.checkNo].sort().join("|");
+        if(pairKeys.has(key)) return; pairKeys.add(key);
+        out.push({why,a,b,bCleared:!!b.cleared,bDay:b.cleared?(b.clearedDate||day):null});
+      });
+    });
+    return out;
+    // eslint-disable-next-line
+  },[floatChecks,cashPositions,selDate]);
+
   const restoreMissing=()=>{
     if(!continuity.missing.length) return;
     f("floatingChecks",[...floatChecks,...continuity.missing.map(c=>{const{reopened,...rest}=c;return {...rest,carried:true};})]);
@@ -379,6 +426,7 @@ function DailyCashPosition({
     // Record any continuity break that was saved through, with the reason given.
     if(override) entry.override=override;
     else if(continuity.unexplained.length) entry.unexplained=continuity.unexplained.map(u=>({bank:u.name,diff:u.diff}));
+    if(duplicates.length) entry.duplicates=duplicates.map(d=>({why:d.why,a:`#${d.a.checkNo||"—"} ${whoOf(d.a)} ${n(d.a.amount).toFixed(2)}`,b:`#${d.b.checkNo||"—"} ${whoOf(d.b)} ${n(d.b.amount).toFixed(2)}${d.bCleared?` (cleared ${d.bDay})`:""}`}));
     // Only log an edit if something actually changed; always log the first save.
     const priorAudit=Array.isArray(pos.audit)?pos.audit:[];
     const audit=(!prior||changes.length>0||override)?[...priorAudit,entry]:priorAudit;
@@ -435,7 +483,7 @@ function DailyCashPosition({
     if(!ok) return;
     let override=null;
     if(continuity.missing.length){
-      const list=continuity.missing.slice(0,8).map(c=>`• #${c.checkNo||"—"} ${(c.particulars||c.payee||"").trim()} ${peso(c.amount)}`).join("\n");
+      const list=continuity.missing.slice(0,8).map(c=>`• #${c.checkNo||"—"} ${whoOf(c)} ${peso(c.amount)}`).join("\n");
       const reason=await uiPrompt({
         title:`${continuity.missing.length} floating check${continuity.missing.length!==1?"s":""} from ${fmtDate(continuity.prevDayKey)} missing`,
         tone:"warning",confirmLabel:"Save with this reason",
@@ -444,7 +492,7 @@ function DailyCashPosition({
           `If they cleared, cancel and use "Restore missing checks", then Mark cleared. If they were voided/cancelled on purpose, type the reason — it is saved in the Audit Trail.`
       });
       if(!reason||!String(reason).trim()) return;
-      override={reason:String(reason).trim(),vsDay:continuity.prevDayKey,missing:continuity.missing.map(c=>({checkNo:c.checkNo||"",payee:(c.particulars||c.payee||"").trim(),amount:n(c.amount)}))};
+      override={reason:String(reason).trim(),vsDay:continuity.prevDayKey,missing:continuity.missing.map(c=>({checkNo:c.checkNo||"",payee:whoOf(c),amount:n(c.amount)}))};
     }
     persistDay(override);
   };
@@ -479,16 +527,16 @@ function DailyCashPosition({
     rows.push([],["COLLECTIONS DETAIL (FOR THE DAY)"],["Bank","Particulars","Amount"]);
     manualColl.forEach(r=>{const bk=BANKS.find(x=>x.id===r.bank);rows.push([bk?bk.name:"",r.particulars??r.note??"",n(r.amount).toFixed(2)]);});
     rows.push(["TOTAL","",collTotal.toFixed(2)]);
-    rows.push([],["DISBURSEMENTS DETAIL (FOR THE DAY)"],["Bank","Payee / Particulars","Amount"]);
-    manualDisb.forEach(r=>{const bk=BANKS.find(x=>x.id===r.bank);rows.push([bk?bk.name:"",r.particulars||"",n(r.amount).toFixed(2)]);});
-    rows.push(["TOTAL","",disbTotal.toFixed(2)]);
-    rows.push([],["FLOATING CHECKS (UNCLEARED)"],["Bank","Payee / Particulars","Check No.","Amount","Status"]);
-    openFloat.forEach(r=>{const bk=BANKS.find(x=>x.id===r.bank);rows.push([bk?bk.name:"",r.particulars||r.payee||"",r.checkNo||"",n(r.amount).toFixed(2),"Floating"]);});
-    rows.push(["TOTAL","","",floatingTotal.toFixed(2),"(uncleared)"]);
+    rows.push([],["DISBURSEMENTS DETAIL (FOR THE DAY)"],["Bank","Payee","Particulars","Amount"]);
+    manualDisb.forEach(r=>{const bk=BANKS.find(x=>x.id===r.bank);rows.push([bk?bk.name:"",payeeOf(r),particularsOf(r),n(r.amount).toFixed(2)]);});
+    rows.push(["TOTAL","","",disbTotal.toFixed(2)]);
+    rows.push([],["FLOATING CHECKS (UNCLEARED)"],["Bank","Payee","Particulars","Check No.","Amount","Status"]);
+    openFloat.forEach(r=>{const bk=BANKS.find(x=>x.id===r.bank);rows.push([bk?bk.name:"",payeeOf(r),particularsOf(r),r.checkNo||"",n(r.amount).toFixed(2),"Floating"]);});
+    rows.push(["TOTAL","","","",floatingTotal.toFixed(2),"(uncleared)"]);
     if(clearedFloat.length){
-      rows.push([],["CLEARED CHECKS"],["Bank","Payee / Particulars","Check No.","Amount","Status"]);
-      clearedFloat.forEach(r=>{const bk=BANKS.find(x=>x.id===r.bank);rows.push([bk?bk.name:"",r.particulars||r.payee||"",r.checkNo||"",n(r.amount).toFixed(2),`Cleared ${r.clearedDate||""}`.trim()]);});
-      rows.push(["TOTAL","","",clearedTotal.toFixed(2),"(cleared)"]);
+      rows.push([],["CLEARED CHECKS"],["Bank","Payee","Particulars","Check No.","Amount","Status"]);
+      clearedFloat.forEach(r=>{const bk=BANKS.find(x=>x.id===r.bank);rows.push([bk?bk.name:"",payeeOf(r),particularsOf(r),r.checkNo||"",n(r.amount).toFixed(2),`Cleared ${r.clearedDate||""}`.trim()]);});
+      rows.push(["TOTAL","","","",clearedTotal.toFixed(2),"(cleared)"]);
     }
     const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
     const a=document.createElement("a");
@@ -568,8 +616,21 @@ function DailyCashPosition({
             <button onClick={restoreMissing} style={{background:"#991b1b",border:"none",borderRadius:7,padding:"6px 12px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".74rem",cursor:"pointer"}}>Restore missing checks</button>
           </div>
           <div style={{marginTop:6,fontSize:".7rem",color:"#b91c1c"}}>
-            {continuity.missing.slice(0,6).map(c=>`#${c.checkNo||"—"} ${(c.particulars||c.payee||"").trim()} ${peso(c.amount)}`).join(" · ")}{continuity.missing.length>6?` · +${continuity.missing.length-6} more`:""}
+            {continuity.missing.slice(0,6).map(c=>`#${c.checkNo||"—"} ${whoOf(c)} ${peso(c.amount)}`).join(" · ")}{continuity.missing.length>6?` · +${continuity.missing.length-6} more`:""}
           </div>
+        </div>
+      )}
+      {duplicates.length>0&&(
+        <div style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:10,padding:"9px 14px",marginBottom:14,fontSize:".74rem",color:"#92400e",lineHeight:1.5}}>
+          ⚠ <b>{duplicates.length} possible duplicate check{duplicates.length!==1?"s":""}</b> — a duplicate floating check overstates Float and understates Book:
+          <ul style={{margin:"4px 0 0",paddingLeft:18}}>
+            {duplicates.map((d,i)=>{
+              const lbl=(c)=>`#${c.checkNo||"(no check no.)"} ${whoOf(c)} ${peso(c.amount)}`;
+              return <li key={i}>{d.why==="sameNo"
+                ?<><b>Check #{d.a.checkNo}</b> is used twice: {lbl(d.a)} and {lbl(d.b)}{d.bCleared?` (cleared ${fmtDate(d.bDay)})`:""}. One check number can't be two checks — fix the wrong number.</>
+                :<><b>{lbl(d.a)}</b> matches {lbl(d.b)}{d.bCleared?`, already cleared ${fmtDate(d.bDay)}`:""}. One has no check number — if it's the same check, delete the extra row.</>}</li>;
+            })}
+          </ul>
         </div>
       )}
       {continuity.unexplained.length>0&&(
@@ -818,23 +879,27 @@ function DailyCashPosition({
         {/* DISBURSEMENTS DETAIL */}
         {sectionHdr("Disbursements Detail (for the day)","#7c2d12")}
         <div style={{padding:"10px 12px 14px"}}>
-          <table style={{borderCollapse:"collapse",width:"100%",maxWidth:720}}>
+          <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
+          <table style={{borderCollapse:"collapse",width:"100%",maxWidth:920,minWidth:mob?620:0}}>
             <thead>
               <tr>
-                <th style={{...th,textAlign:"left",width:mob?120:220}}>Bank</th>
-                <th style={{...th,textAlign:"left"}}>Payee / Particulars</th>
-                <th style={{...th,width:mob?110:170}}>Amount</th>
+                <th style={{...th,textAlign:"left",width:mob?120:200}}>Bank</th>
+                <th style={{...th,textAlign:"left"}}>Payee</th>
+                <th style={{...th,textAlign:"left"}}>Particulars</th>
+                <th style={{...th,width:mob?110:160}}>Amount</th>
                 <th style={{...th,width:40,background:"#fff",border:"none"}}></th>
               </tr>
             </thead>
             <tbody>
               {manualDisb.length===0&&(
-                <tr><td colSpan={4} style={{...td,color:"#94a3b8",fontStyle:"italic",padding:"10px"}}>No disbursements for {fmtDate(selDate)}. Add rows below.</td></tr>
+                <tr><td colSpan={5} style={{...td,color:"#94a3b8",fontStyle:"italic",padding:"10px"}}>No disbursements for {fmtDate(selDate)}. Add rows below.</td></tr>
               )}
               {manualDisb.map((row,ri)=>(
                 <tr key={row.id||ri} style={{background:ri%2?C.zebra:"#fff"}}>
                   <td style={{...td,padding:2}}>{isUntagged(row)&&<span style={{color:"#dc2626",fontWeight:700,fontSize:".62rem",marginLeft:4}}>⚠</span>}{bankSelect(row.bank,v=>{const md=[...manualDisb];md[ri]={...md[ri],bank:v};f("disbursements.manual",md);})}</td>
-                  <td style={{...td,padding:2}}>{textCell(row.particulars??"",v=>{const md=[...manualDisb];md[ri]={...md[ri],particulars:v};f("disbursements.manual",md);},"Payee / particulars")}</td>
+                  {/* Editing either field saves both, moving an old one-text row to the split format */}
+                  <td style={{...td,padding:2}}>{textCell(payeeOf(row),v=>{const md=[...manualDisb];md[ri]={...md[ri],payee:v,particulars:particularsOf(md[ri])};f("disbursements.manual",md);},"Payee")}</td>
+                  <td style={{...td,padding:2}}>{textCell(particularsOf(row),v=>{const md=[...manualDisb];md[ri]={...md[ri],payee:payeeOf(md[ri]),particulars:v};f("disbursements.manual",md);},"e.g. Office payroll Sept 20")}</td>
                   <td style={{...td,padding:2}}>
                     <CurrInp value={row.amount||""} onChange={e=>{const md=[...manualDisb];md[ri]={...md[ri],amount:e.target.value};f("disbursements.manual",md);}} style={{textAlign:"right",fontSize:".8rem",padding:"5px 8px"}}/>
                   </td>
@@ -842,13 +907,14 @@ function DailyCashPosition({
                 </tr>
               ))}
               <tr style={{background:"#f1e9e2"}}>
-                <td style={{...td,fontWeight:900,color:"#7c2d12"}} colSpan={2}>TOTAL</td>
+                <td style={{...td,fontWeight:900,color:"#7c2d12"}} colSpan={3}>TOTAL</td>
                 <td style={{...td,...numCell,fontWeight:900,color:"#b45309"}}>{fmt2(disbTotal)}</td>
                 <td style={{...td,border:"none",background:"#fff"}}></td>
               </tr>
             </tbody>
           </table>
-          <button onClick={()=>f("disbursements.manual",[...manualDisb,{id:uid(),bank:"",particulars:"",amount:""}])} style={{marginTop:10,background:"#f8fafc",border:"1.5px dashed #cbd5e1",borderRadius:8,padding:"5px 14px",fontFamily:"inherit",fontSize:".76rem",fontWeight:700,color:"#475569",cursor:"pointer"}}>+ Add disbursement</button>
+          </div>
+          <button onClick={()=>f("disbursements.manual",[...manualDisb,{id:uid(),bank:"",payee:"",particulars:"",amount:""}])} style={{marginTop:10,background:"#f8fafc",border:"1.5px dashed #cbd5e1",borderRadius:8,padding:"5px 14px",fontFamily:"inherit",fontSize:".76rem",fontWeight:700,color:"#475569",cursor:"pointer"}}>+ Add disbursement</button>
 
           {/* Cash-movement reconciliation */}
           {tot.end!==0&&(
@@ -877,7 +943,9 @@ function DailyCashPosition({
             return(
               <tr key={row.id||ri} style={{background:row.cleared?"#f0fdf4":zebra%2?C.zebra:"#fff",opacity:row.cleared?.85:1}}>
                 <td style={{...td,padding:2}}>{isUntagged(row)&&!row.cleared&&<span style={{color:"#dc2626",fontWeight:700,fontSize:".62rem",marginLeft:4}}>⚠</span>}{bankSelect(row.bank,v=>set({bank:v}))}</td>
-                <td style={{...td,padding:2}}>{textCell(row.particulars??row.payee??"",v=>set({particulars:v}),"Payee / particulars")}</td>
+                {/* Editing either field saves both, moving an old one-text row to the split format */}
+                <td style={{...td,padding:2}}>{textCell(payeeOf(row),v=>set({payee:v,particulars:particularsOf(row)}),"Payee")}</td>
+                <td style={{...td,padding:2}}>{textCell(particularsOf(row),v=>set({payee:payeeOf(row),particulars:v}),"e.g. Supplier payment, PO #")}</td>
                 <td style={{...td,padding:2}}>{textCell(row.checkNo??"",v=>set({checkNo:v}),"#")}</td>
                 <td style={{...td,padding:2}}>
                   <CurrInp value={row.amount||""} onChange={e=>set({amount:e.target.value})} style={{textAlign:"right",fontSize:".8rem",padding:"5px 8px"}}/>
@@ -899,9 +967,10 @@ function DailyCashPosition({
           };
           const headRow=(
             <tr>
-              <th style={{...th,textAlign:"left",width:mob?110:180}}>Bank</th>
-              <th style={{...th,textAlign:"left"}}>Payee / Particulars</th>
-              <th style={{...th,width:mob?80:120}}>Check No.</th>
+              <th style={{...th,textAlign:"left",width:mob?110:170}}>Bank</th>
+              <th style={{...th,textAlign:"left"}}>Payee</th>
+              <th style={{...th,textAlign:"left"}}>Particulars</th>
+              <th style={{...th,width:mob?80:110}}>Check No.</th>
               <th style={{...th,width:mob?100:150}}>Amount</th>
               <th style={{...th,width:mob?96:150}}>Status</th>
               <th style={{...th,width:40,background:"#fff",border:"none"}}></th>
@@ -917,21 +986,21 @@ function DailyCashPosition({
               <span style={{fontWeight:800,fontSize:".72rem",color:"#fff"}}>{peso(floatingTotal)}</span>
             )}
             <div style={{padding:"10px 12px 14px"}}>
-              <table style={{borderCollapse:"collapse",width:"100%",maxWidth:820}}>
+              <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch"}}><table style={{borderCollapse:"collapse",width:"100%",maxWidth:1000,minWidth:mob?720:0}}>
                 <thead>{headRow}</thead>
                 <tbody>
                   {openRows.length===0&&(
-                    <tr><td colSpan={6} style={{...td,color:"#94a3b8",fontStyle:"italic",padding:"10px"}}>No floating checks. Add released cheques below — they stay here every day until you mark them cleared.</td></tr>
+                    <tr><td colSpan={7} style={{...td,color:"#94a3b8",fontStyle:"italic",padding:"10px"}}>No floating checks. Add released cheques below — they stay here every day until you mark them cleared.</td></tr>
                   )}
                   {openRows.map(({row,ri},i)=>checkRow(row,ri,i))}
                   <tr style={{background:"#f1e9e2"}}>
-                    <td style={{...td,fontWeight:900,color:"#7c2d12"}} colSpan={3}>TOTAL FLOATING (uncleared)</td>
+                    <td style={{...td,fontWeight:900,color:"#7c2d12"}} colSpan={4}>TOTAL FLOATING (uncleared)</td>
                     <td style={{...td,...numCell,fontWeight:900,color:"#b45309"}}>{fmt2(floatingTotal)}</td>
                     <td style={{...td,border:"none",background:"#fff"}} colSpan={2}></td>
                   </tr>
                 </tbody>
-              </table>
-              <button onClick={()=>f("floatingChecks",[...floatChecks,{id:uid(),bank:"",particulars:"",checkNo:"",amount:"",cleared:false}])} style={{marginTop:10,background:"#f8fafc",border:"1.5px dashed #cbd5e1",borderRadius:8,padding:"5px 14px",fontFamily:"inherit",fontSize:".76rem",fontWeight:700,color:"#475569",cursor:"pointer"}}>+ Add floating check</button>
+              </table></div>
+              <button onClick={()=>f("floatingChecks",[...floatChecks,{id:uid(),bank:"",payee:"",particulars:"",checkNo:"",amount:"",cleared:false}])} style={{marginTop:10,background:"#f8fafc",border:"1.5px dashed #cbd5e1",borderRadius:8,padding:"5px 14px",fontFamily:"inherit",fontSize:".76rem",fontWeight:700,color:"#475569",cursor:"pointer"}}>+ Add floating check</button>
               <div style={{marginTop:8,fontSize:".68rem",color:"#94a3b8",fontStyle:"italic",lineHeight:1.5}}>
                 Uncleared checks feed the <b>Float Check</b> column and lower the <b>Book</b> balance. They carry into each new day automatically until you click <b>Mark cleared</b> — clearing simply drops the check from Float; adjust the affected bank's Beginning balance to reflect the cash leaving.
               </div>
@@ -943,17 +1012,17 @@ function DailyCashPosition({
                 <span style={{fontWeight:800,fontSize:".72rem",color:"#fff"}}>{peso(clearedTotal)}</span>
               )}
               <div style={{padding:"10px 12px 14px"}}>
-                <table style={{borderCollapse:"collapse",width:"100%",maxWidth:820}}>
+                <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch"}}><table style={{borderCollapse:"collapse",width:"100%",maxWidth:1000,minWidth:mob?720:0}}>
                   <thead>{headRow}</thead>
                   <tbody>
                     {clearedRows.map(({row,ri},i)=>checkRow(row,ri,i))}
                     <tr style={{background:"#e7f5ef"}}>
-                      <td style={{...td,fontWeight:900,color:"#065f46"}} colSpan={3}>TOTAL CLEARED</td>
+                      <td style={{...td,fontWeight:900,color:"#065f46"}} colSpan={4}>TOTAL CLEARED</td>
                       <td style={{...td,...numCell,fontWeight:900,color:"#047857"}}>{fmt2(clearedTotal)}</td>
                       <td style={{...td,border:"none",background:"#fff"}} colSpan={2}></td>
                     </tr>
                   </tbody>
-                </table>
+                </table></div>
                 <div style={{marginTop:8,fontSize:".68rem",color:"#94a3b8",fontStyle:"italic",lineHeight:1.5}}>
                   These checks have been marked cleared — they no longer feed the <b>Float Check</b> column and do not carry into the next day. Click <b>undo</b> to move one back to floating.
                 </div>
@@ -998,6 +1067,7 @@ function DailyCashPosition({
                            </div>
                           :<div style={{fontSize:".72rem",color:"#64748b",marginTop:2}}>Re-saved (no figure changes).</div>}
                       {e.override&&<div style={{fontSize:".72rem",color:"#991b1b",marginTop:3}}>⛔ Saved with {e.override.missing?.length||0} check(s) from {fmtDate(e.override.vsDay)} missing — reason: <b>{e.override.reason}</b></div>}
+                      {Array.isArray(e.duplicates)&&e.duplicates.length>0&&<div style={{fontSize:".7rem",color:"#b45309",marginTop:2}}>⚠ Saved with {e.duplicates.length} possible duplicate check{e.duplicates.length!==1?"s":""}: {e.duplicates.map(d=>`${d.a} ↔ ${d.b}`).join(" · ")}</div>}
                       {Array.isArray(e.unexplained)&&e.unexplained.length>0&&<div style={{fontSize:".7rem",color:"#b45309",marginTop:2}}>⚠ Unexplained beginning movement: {e.unexplained.map(u=>`${u.bank} ${u.diff>0?"+":"−"}${peso(Math.abs(u.diff))}`).join(" · ")}</div>}
                     </div>
                   </div>

@@ -86,6 +86,17 @@ export const isPhantomCashDay=(p,date)=>{
   const saved=cashDayLastSavedISO(p);
   return !!(saved&&date&&addDaysLocalISO(saved,CASH_PREFILL_DAYS)<String(date));
 };
+// ── Payee vs particulars (disbursements & floating checks) ──────────────────
+// Both tables used to have one "Payee / Particulars" text (`particulars`).
+// Paolo asked for two columns. Rows saved before the split have no `payee` key:
+// their old text is almost always the payee (335 of 373 Sept disbursements are
+// a plain name; all 799 floating-check rows use the old field), so it is shown
+// as the Payee. A row gets both fields the first time it is edited. Old rows
+// are never rewritten automatically — the "/" in them means different things
+// ("GMD PRODUCTION INC / PAYROLL" vs "ARDRIN/RENZ" vs "PAULO GARCIA / UNION BANK").
+export const payeeOf=(r)=>String((r&&Object.prototype.hasOwnProperty.call(r,"payee"))?(r.payee??""):(r?.particulars??"")).trim();
+export const particularsOf=(r)=>String((r&&Object.prototype.hasOwnProperty.call(r,"payee"))?(r.particulars??""):"").trim();
+
 export const dropPhantomCashDays=(obj)=>{
   const out={};
   Object.entries(obj||{}).forEach(([d,p])=>{ if(!isPhantomCashDay(p,d)) out[d]=p; });
