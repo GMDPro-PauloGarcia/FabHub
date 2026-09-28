@@ -516,6 +516,67 @@ export const dealFinancials = (d={}) => {
   };
 };
 
+// ── Accounts receivable, one calculation for every screen ────────────────────
+// A billing milestone's `amount` is the VAT-EXCLUSIVE base; its payments are CASH
+// (gross − EWT). So a milestone's open balance is its cash receivable minus the
+// good payments on it — never `amount − payments` (net − cash), which understates
+// AR by ~10% and overstates the collection rate. Bounced payments never landed and
+// Cancelled milestones aren't owed. Receipt type / EWT fall back to the deal's.
+export const milestoneReceivable = (b={}, deal) => {
+  const rt = b.receiptType || b.receipt_type || (deal && deal.receiptType) || "OR";
+  const wh = b.withholding != null ? !!b.withholding : !!(deal && deal.withholding);
+  return calcTax(Number(b.amount)||0, rt, wh).netReceivable;
+};
+export const milestonePaid = (b={}) =>
+  (b.payments||[]).filter(p=>!p.bounced).reduce((s,p)=>s+(Number(p.amount)||0),0);
+export const milestoneBalance = (b={}, deal) =>
+  b.status==="Cancelled" ? 0 : Math.max(0, milestoneReceivable(b,deal) - milestonePaid(b));
+// Portfolio totals over a list of milestones. `dealOf(dealId)` returns the deal (or
+// undefined) so receipt type / EWT can fall back to it.
+export const arSummary = (billings=[], dealOf=()=>undefined) => {
+  let billed=0, receivable=0, collected=0, outstanding=0, open=0;
+  billings.forEach(b=>{
+    if(b.status==="Cancelled") return;
+    const d=dealOf(b.dealId), r=milestoneReceivable(b,d), p=milestonePaid(b), bal=Math.max(0,r-p);
+    billed+=Number(b.amount)||0; receivable+=r; collected+=p; outstanding+=bal; if(bal>0.005) open++;
+  });
+  const r2=x=>Math.round(x*100)/100;
+  return { billed:r2(billed), receivable:r2(receivable), collected:r2(collected), outstanding:r2(outstanding),
+           collectedBase:r2(receivable>0 ? collected*billed/receivable : 0),   // collections restated VAT-ex
+           openMilestones:open, collectionRate: receivable>0 ? collected/receivable : 0 };
+};
+
+// ── Costs: AP-ledger basis, VAT-exclusive ────────────────────────────────────
+// Every project/company cost = all payables (the AP ledger) + legacy expenses NOT
+// already routed to a payable or check voucher (no double count) — the basis the
+// account-code Income Statement already used. Cost is taken NET of input VAT, so
+// margin compares VAT-ex revenue with VAT-ex cost: recorded input VAT is removed,
+// a row flagged vatable without an amount is grossed down by 1.12, and a row
+// with neither is taken as-is (no VAT to strip).
+const _amt = v => Number(String(v==null?0:v).replace(/,/g,""))||0;
+export const costNet = (x={}) => {
+  const amt=_amt(x.amount), iv=_amt(x.inputVat!=null?x.inputVat:x.input_vat);
+  if(iv>0) return Math.round((amt-iv)*100)/100;
+  if(x.vatable) return Math.round(amt/1.12*100)/100;
+  return amt;
+};
+export const ledgerCosts = (exps=[], payables=[]) => [
+  ...(payables||[]).filter(p=>!["Cancelled","Void"].includes(p.status)).map(p=>({
+    projectId:p.projectId||p.project_id||null, date:p.invoiceDate||p.invoice_date||p.createdAt||p.created_at||null,
+    gross:_amt(p.amount), net:costNet(p), vatTracked:!!(p.vatable||_amt(p.inputVat!=null?p.inputVat:p.input_vat)>0), src:"payable" })),
+  ...(exps||[]).filter(e=>!e.payableId&&!e.cvId).map(e=>({
+    projectId:e.projectId||e.dealId||null,
+    date:e.date||(e.year!=null&&e.month!=null?`${e.year}-${String(Number(e.month)+1).padStart(2,"0")}-01`:null),
+    gross:_amt(e.amount), net:costNet(e), vatTracked:!!(e.vatable||_amt(e.inputVat)>0), src:"expense" })),
+];
+export const costSummary = (exps=[], payables=[]) => {
+  const rows=ledgerCosts(exps,payables), byProject=new Map();
+  let gross=0, net=0, tracked=0;
+  rows.forEach(r=>{ gross+=r.gross; net+=r.net; if(r.vatTracked) tracked++;
+    if(r.projectId) byProject.set(r.projectId,(byProject.get(r.projectId)||0)+r.net); });
+  return { rows, gross:Math.round(gross*100)/100, net:Math.round(net*100)/100, count:rows.length, vatTracked:tracked, byProject };
+};
+
 export const calcInputTax = (gross, vatable=false, ewtRate=0) => {
   const g = Number(gross)||0;
   const net = vatable ? Math.round(g/1.12*100)/100 : g;

@@ -1,5 +1,6 @@
 import React,{useState,useMemo,useEffect,useRef} from "react";
 import {today,uid,BANKS,emptyBankRow,emptyDayPosition,uiConfirm,uiPrompt,addDaysLocalISO,CASH_PREFILL_DAYS,payeeOf,particularsOf} from "../shared";
+import {arSummary} from "../core";
 
 // ── Currency input: shows grouped digits, edits raw ────────────────────────────
 const CurrInp=({value,onChange,placeholder="—",style:sx={}})=>{
@@ -35,7 +36,7 @@ const CurrInp=({value,onChange,placeholder="—",style:sx={}})=>{
 // are computed from three manual entry tables below the report. Floating checks
 // carry from day to day until they are marked cleared.
 function DailyCashPosition({
-  cashPositions={},saveDayPos=()=>{},billings=[],payables=[],loans=[],userName="",
+  cashPositions={},saveDayPos=()=>{},billings=[],wonDeals=[],payables=[],loans=[],userName="",
   cashStale=false
 }){
   const[selDate,setSelDate]=useState(today);
@@ -350,10 +351,12 @@ function DailyCashPosition({
   const outstandingLoan=loanMetrics.totalBalance;
 
   // ── Running memo balances (mirror the daily sheet's top-right block) ──
-  const runningAR=useMemo(()=>(billings||[]).filter(b=>b.status!=="Cancelled").reduce((s,b)=>{
-    const paid=(b.payments||[]).reduce((a,p)=>a+Number(p.amount||0),0);
-    return s+Math.max(0,Number(b.amount||0)-paid);
-  },0),[billings]);
+  // Cash still owed on issued billings, same basis as every other AR figure
+  // (milestone receivable incl. VAT, less EWT, minus good payments).
+  const runningAR=useMemo(()=>{
+    const byId=new Map((wonDeals||[]).map(d=>[d.id,d]));
+    return arSummary(billings||[],id=>byId.get(id)).outstanding;
+  },[billings,wonDeals]);
 
   // Open payables = anything not settled or cancelled. Running Payables must count
   // the OUTSTANDING BALANCE (amount − paid_amount), not the gross invoice — a Partial
