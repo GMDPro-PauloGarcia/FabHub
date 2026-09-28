@@ -1,5 +1,5 @@
 import React,{useState,useMemo} from "react";
-import {today,BANKS} from "../shared";
+import {today,BANKS,payeeOf,particularsOf} from "../shared";
 import {paymentClearDate} from "../core";
 
 // ─── WEEKLY CASH FLOW SUMMARY — Owners' Review (weekly roll-up of the daily data) ───
@@ -50,9 +50,13 @@ function WeeklyCashFlow({cashPositions={},billings=[],setPage,mode="weekly"}){
   // collections feed Collections below; previously Expenses read only the
   // separate Expenses module (rows marked "Paid"), which owners don't use, so
   // the whole Expenses column showed 0 even though disbursements were recorded.
-  // Each row: {bank, particulars/payee, amount}.
+  // Each row: {bank, payee, particulars, amount}. Rows saved before the payee /
+  // particulars split carry only `particulars`, which is treated as the payee.
+  // Expenses group by payee; particulars (e.g. "Office payroll Sept 20") vary
+  // row to row and would scatter one vendor across many lines.
   const disbFor=(date)=>(cashPositions[date]?.disbursements?.manual||[]);
-  const disbLabel=(r)=>{const t=String(r.particulars??r.payee??"").trim();return t||"Uncategorized";};
+  const disbLabel=(r)=>payeeOf(r)||particularsOf(r)||"Uncategorized";
+  const disbText=(r)=>`${payeeOf(r)} ${particularsOf(r)}`;
   const collectionsFor=(date)=>{
     let s=0;
     (billings||[]).forEach(b=>{if(b.status==="Cancelled")return;(b.payments||[]).forEach(p=>{if(!p.bounced&&paymentClearDate(p)===date)s+=Number(p.amount||0);});});
@@ -89,7 +93,7 @@ function WeeklyCashFlow({cashPositions={},billings=[],setPage,mode="weekly"}){
     // eslint-disable-next-line
   },[dates,cashPositions]);
   const loanRepayment=useMemo(()=>{let s=0;
-    dates.forEach(d=>disbFor(d).forEach(r=>{if(/loan|repay/i.test(disbLabel(r)))s+=n(r.amount);}));
+    dates.forEach(d=>disbFor(d).forEach(r=>{if(/loan|repay/i.test(disbText(r)))s+=n(r.amount);}));
     return s;
     // eslint-disable-next-line
   },[dates,cashPositions]);
@@ -134,7 +138,7 @@ function WeeklyCashFlow({cashPositions={},billings=[],setPage,mode="weekly"}){
       ["DAILY CASH FLOW TREND"],["Date","Collections","Expenses","Net"]];
     daily.forEach(r=>rows.push([r.date,r.coll.toFixed(2),r.exp.toFixed(2),r.net.toFixed(2)]));
     rows.push(["TOTAL",totColl.toFixed(2),totExp.toFixed(2),netChange.toFixed(2)],[],
-      ["EXPENSES BY PAYEE (FROM DAILY DISBURSEMENTS)"],["Payee / Particulars","Amount","% of Total"]);
+      ["EXPENSES BY PAYEE (FROM DAILY DISBURSEMENTS)"],["Payee","Amount","% of Total"]);
     byCat.arr.forEach(r=>rows.push([r.name,r.amount.toFixed(2),byCat.total>0?(r.amount/byCat.total*100).toFixed(1)+"%":"0%"]));
     rows.push(["TOTAL",byCat.total.toFixed(2),"100.0%"]);
     const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
@@ -297,7 +301,7 @@ function WeeklyCashFlow({cashPositions={},billings=[],setPage,mode="weekly"}){
             {sectionHdr("Expenses by Payee (from Daily Disbursements)")}
             <div style={{padding:"10px 12px 12px",overflowX:"auto"}}>
               <table style={{borderCollapse:"collapse",width:"100%"}}>
-                <thead><tr><th style={{...th,textAlign:"left"}}>Payee / Particulars</th><th style={th}>Amount (PHP)</th><th style={{...th,width:90}}>% of Total</th></tr></thead>
+                <thead><tr><th style={{...th,textAlign:"left"}}>Payee</th><th style={th}>Amount (PHP)</th><th style={{...th,width:90}}>% of Total</th></tr></thead>
                 <tbody>
                   {byCat.arr.length===0&&<tr><td colSpan={3} style={{...td,color:"#94a3b8",fontStyle:"italic"}}>No disbursements in range.</td></tr>}
                   {byCat.arr.map((r,i)=>(
