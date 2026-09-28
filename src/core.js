@@ -209,22 +209,39 @@ export const SWATCH_STATUS   = ["To Buy","Ordered","Received","Client Approved",
 export const PAY_STATUS      = ["Unpaid","Partial","Deposited","Paid"];
 
 // ── Sales commission (v1) ────────────────────────────────────────────────────
-// Commission accrues on CASH COLLECTED (deal.amountPaid) — not on award and not
-// on invoiced value. A peso is only commissionable once the client has actually
-// paid it, so the earned figure moves as payments land in the billing ledger.
+// Commission accrues on what the client has COLLECTED — not on award and not on
+// invoiced value — measured VAT-exclusive (see collectedBase). A peso is only
+// commissionable once the client has actually paid it, so the earned figure moves
+// as payments land in the billing ledger.
 // The rate depends on how the client came to the sales team:
-//   • Self-sourced (the AE brought the client in)  → 1.5%
-//   • Given (client handed to the sales team)      → 0.5%
-// Lead origin is declared per-deal on `deal.leadOrigin`. Until that field is set
-// (the explicit deal flag ships in a follow-up), it defaults to "Given" — the
-// conservative lower rate — so no deal is ever over-credited by omission.
+//   • Self-sourced (the AE brought the client in, Manager-approved) → 1.5%
+//   • Given (client handed to the sales team)                       → 0.5%
+// Lead origin is declared per-deal on `deal.leadOrigin` and defaults to "Given" —
+// the conservative lower rate — so no deal is ever over-credited by omission.
 export const LEAD_ORIGINS       = ["Given","Self-sourced"];
 export const DEFAULT_LEAD_ORIGIN= "Given";
 export const COMMISSION_RATE    = { "Self-sourced":0.015, "Given":0.005 };
 export const leadOriginOf       = (deal)=>LEAD_ORIGINS.includes(deal&&deal.leadOrigin)?deal.leadOrigin:DEFAULT_LEAD_ORIGIN;
-export const commissionRate     = (deal)=>COMMISSION_RATE[leadOriginOf(deal)];
-// Earned so far = rate × cash actually collected; projected = rate × full contract value.
-export const commissionEarned   = (deal)=>Math.round((Number(deal&&deal.amountPaid)||0)*commissionRate(deal));
+// Lead-origin approval (migration 072): a "Self-sourced" claim triples the rate, so
+// it only pays 1.5% once a Manager has approved it. Until then the deal earns the
+// Given rate. "Given" never needs approval. The DB trigger enforces who may approve.
+export const LEAD_ORIGIN_STATUSES = ["Pending","Approved"];
+export const leadOriginPending  = (deal)=>leadOriginOf(deal)==="Self-sourced"&&(deal&&deal.leadOriginStatus)!=="Approved";
+export const effectiveLeadOrigin= (deal)=>leadOriginPending(deal)?"Given":leadOriginOf(deal);
+export const commissionRate     = (deal)=>COMMISSION_RATE[effectiveLeadOrigin(deal)];
+// Commission is VAT-EXCLUSIVE. `value` is already the VAT-ex contract base, but
+// collections are CASH (gross incl. 12% VAT, minus the client's 2% EWT). Convert
+// cash back to the VAT-ex base it pays off before applying the rate — EWT is a tax
+// credit, not a shortfall, so it counts as collected. At full collection Earned
+// equals Projected. `collectedCash` defaults to deal.amountPaid; pass the billing
+// ledger figure (dealCollected) where it's available.
+export const collectedBase = (deal, collectedCash)=>{
+  const cash=Number(collectedCash!==undefined?collectedCash:(deal&&deal.amountPaid))||0;
+  const t=calcTax(100,(deal&&deal.receiptType)||"OR",!!(deal&&deal.withholding));
+  return Math.round(cash*(t.base/t.netReceivable)*100)/100;
+};
+// Earned so far = rate × VAT-ex collected; projected = rate × VAT-ex contract value.
+export const commissionEarned   = (deal, collectedCash)=>Math.round(collectedBase(deal,collectedCash)*commissionRate(deal));
 export const commissionProjected= (deal)=>Math.round((Number(deal&&deal.value)||0)*commissionRate(deal));
 
 // ── Commission payouts (what's actually been disbursed to the rep) ───────────

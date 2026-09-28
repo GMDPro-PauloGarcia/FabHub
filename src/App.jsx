@@ -8,7 +8,7 @@ import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, isProcurementRole, canonRole, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, isProcurementRole, canonRole, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -1704,6 +1704,14 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
           <Sel value={form.leadOrigin||DEFAULT_LEAD_ORIGIN} onChange={e=>f("leadOrigin",e.target.value)}>
             {LEAD_ORIGINS.map(o=><option key={o} value={o}>{o==="Self-sourced"?"Self-sourced (AE brought the client) · 1.5%":"Given to the sales team · 0.5%"}</option>)}
           </Sel>
+          {form.leadOrigin==="Self-sourced"&&(()=>{
+            const orig=editId?deals.find(d=>d.id===editId):null;
+            const approved=orig&&leadOriginOf(orig)==="Self-sourced"&&!leadOriginPending(orig);
+            const txt=approved?`✅ Approved${orig.leadOriginApprovedBy?` by ${orig.leadOriginApprovedBy}`:""} — earns 1.5%`
+              :role==="Manager"?"Saving as Manager approves the 1.5% rate."
+              :"⏳ Needs Manager approval — earns 0.5% until approved.";
+            return <div style={{fontSize:".7rem",marginTop:4,fontWeight:600,color:approved?"#047857":role==="Manager"?"#475569":"#b45309"}}>{txt}</div>;
+          })()}
         </Fld>
         <Fld label="Date Acquired"><Inp type="date" value={form.dateAcquired||today} onChange={e=>f("dateAcquired",e.target.value)}/></Fld>
         <div style={{gridColumn:"1/-1"}}>
@@ -4426,7 +4434,7 @@ export default function App(){
           console.info("[FabHub] sbLoadAll result — deals:",data?.deals?.length||0,"jos:",data?.jos?.length||0,"users:",data?.users?.length||0);
           if(data){
             const idbE=[];
-            const _deals=data.deals?.length?data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,standbyPO:d.standby_po||false,poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})):null;
+            const _deals=data.deals?.length?data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,standbyPO:d.standby_po||false,poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})):null;
             if(_deals){
               // Reconcile legacy non-UUID "ghost" deals against the server.
               // Before the deals.id → UUID migration, deals were keyed by local
@@ -4754,7 +4762,7 @@ export default function App(){
         // once/30s) — far more often than a manual page refresh — so a blind
         // overwrite here was the single biggest way to lose a just-added record
         // that hadn't synced yet (e.g. still in flight when the user tabbed away).
-        if(data?.deals?.length) setDeals(prev=>mlo(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,standbyPO:d.standby_po||false,poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})),prev));
+        if(data?.deals?.length) setDeals(prev=>mlo(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,standbyPO:d.standby_po||false,poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})),prev));
         if(data?.jos?.length) setJos(prev=>mlo(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no})),prev));
         if(Object.keys(data?.pcards||{}).length) setPcards(prev=>mergeLocalOnlyObj(data.pcards,prev));
         // Map the same camelCase fields the initial load does. Omitting dueDate
@@ -4788,7 +4796,7 @@ export default function App(){
     // clicks it is right after a save looked stuck, which is also the exact
     // moment a blind overwrite would erase the very record they're trying to
     // recover.
-    if(data.deals?.length){const ds=data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",awardRequestData:d.award_request_data||null,boqData:d.boq_data||null,bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null}));setDeals(prev=>mlo(ds,prev));idbE.push([KEYS.deals,ds]);}
+    if(data.deals?.length){const ds=data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,standbyPO:d.standby_po||false,poBudget:d.standby_po?(Number(d.po_budget)||0):"",leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,boqData:d.boq_data||null,bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null}));setDeals(prev=>mlo(ds,prev));idbE.push([KEYS.deals,ds]);}
     if(data.jos?.length){const js=data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned}));setJos(prev=>mlo(js,prev));idbE.push([KEYS.jos,js]);}
     if(Object.keys(data.pcards||{}).length){setPcards(data.pcards);idbE.push([KEYS.pcards,data.pcards]);}
     if(data.billings?.length){const bs=data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by,retentionHeld:m.retention_held!=null?Number(m.retention_held):undefined,isRetentionRelease:m.is_retention_release||undefined,plannedDate:m.planned_bill_date||undefined,msType:m.ms_type||undefined,payments:(m.payments||[]).map(p=>({...p,milestoneId:p.milestone_id??p.milestoneId,refNo:p.ref_no??p.refNo,recordedBy:p.recorded_by??p.recordedBy,valueDate:p.value_date??p.valueDate,method:p.payment_method??p.method,bounced:!!(p.bounced??false)}))}));setBillings(prev=>mlo(bs,prev));idbE.push([KEYS.billings,bs]);}
@@ -4882,6 +4890,7 @@ export default function App(){
     ce_type:r.ceType, product:r.product, stage:r.stage,
     priority:r.priority||"Normal", sales_owner:r.salesOwner||"",
     biz_dev_source:r.bizDevSource||"", lead_origin:leadOriginOf(r), date_acquired:r.dateAcquired||null,
+    lead_origin_status:leadOriginPending(r)?"Pending":"Approved", lead_origin_approved_by:r.leadOriginApprovedBy||"", lead_origin_approved_at:r.leadOriginApprovedAt||null,
     temperature:r.temperature||null,
     due_date:r.dueDate||null, follow_up:r.followUp||null,
     value:Number(r.value)||0,
@@ -5996,7 +6005,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       const{eventType,new:rec,old:oldRow}=payload;
       if(eventType==='INSERT'||eventType==='UPDATE'){
         const mapped={...rec,ceNo:rec.ce_no,ceType:rec.ce_type,salesOwner:rec.sales_owner,
-          bizDevSource:rec.biz_dev_source,leadOrigin:rec.lead_origin||DEFAULT_LEAD_ORIGIN,dateAcquired:rec.date_acquired,
+          bizDevSource:rec.biz_dev_source,leadOrigin:rec.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:rec.lead_origin_status||"Approved",leadOriginApprovedBy:rec.lead_origin_approved_by||"",leadOriginApprovedAt:rec.lead_origin_approved_at||null,
+          parentDealId:rec.parent_deal_id||null,addendumStatus:rec.addendum_status||null,dateAcquired:rec.date_acquired,
           dueDate:rec.due_date,amountPaid:Number(rec.amount_paid)||0,
           paymentStatus:rec.payment_status,receiptType:rec.receipt_type,
           commsGroup:rec.comms_group,salesRepoLink:rec.sales_repo_link,
@@ -7525,6 +7535,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // Bounced payments never landed, so they don't count as collected.
     return allMs.filter(b=>b.status!=='Cancelled').reduce((s,m)=>s+(m.payments||[]).filter(p=>!p.bounced).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
   };
+  // Billed-but-unpaid for one deal, like-for-like in CASH terms: what the client
+  // was invoiced (VAT-ex `invoiced` grossed up for VAT, less EWT) minus what the
+  // billing ledger shows collected. Never `invoiced − collected` (net − cash).
+  const dealOutstanding=(d)=>Math.max(0,calcTax(Number(d.invoiced)||0,d.receiptType||"OR",!!d.withholding).netReceivable-dealCollected(d));
   const totColl   =useMemo(()=>wonDeals.reduce((s,d)=>s+dealCollected(d),0),[wonDeals,billings]);
   const totOut    =useMemo(()=>Math.max(0,wonDeals.reduce((s,d)=>s+Number(d.invoiced||0)-dealCollected(d),0)),[wonDeals,billings]);
 
@@ -7684,6 +7698,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[stageFilter,  setStageFilter]  = useState(false);  // pipeline stage click filter
   const[pipeSearch,   setPipeSearch]   = useState("");     // pipeline search query
   const[pipeTab,      setPipeTab]      = useState("pipeline"); // "pipeline" | "awarded" | "updates"
+  const[homePeriod,   setHomePeriod]   = useState("year");     // Sales home performance window: "month" | "year" | "all"
   const[awardScope,   setAwardScope]   = useState("mine");     // Awarded tab: "mine" | "team" (team is manager-only)
   const[payoutDraft,  setPayoutDraft]  = useState(null);       // Commissions tab: open record-payout form (null = closed)
   const[aeUpdates,    setAeUpdates]    = useState([]);
@@ -7817,6 +7832,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         ce_type:rec.ceType, product:rec.product||rec.ceType||"", stage:rec.stage,
         priority:rec.priority, sales_owner:rec.salesOwner,
         biz_dev_source:rec.bizDevSource, lead_origin:leadOriginOf(rec), date_acquired:rec.dateAcquired||null,
+        lead_origin_status:leadOriginPending(rec)?"Pending":"Approved", lead_origin_approved_by:rec.leadOriginApprovedBy||"", lead_origin_approved_at:rec.leadOriginApprovedAt||null,
         due_date:rec.dueDate||null, value:Number(rec.value)||0,
         invoiced:Number(rec.invoiced)||0, amount_paid:Number(rec.amountPaid)||0,
         payment_status:rec.paymentStatus, receipt_type:rec.receiptType,
@@ -7919,6 +7935,25 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       }
     }else{
       rec.addendumStatus=null;
+    }
+    // ── Lead-origin approval (migration 072) ─────────────────────────────────
+    // Self-sourced pays 1.5% instead of 0.5%, so it needs a Manager's approval.
+    // A Manager's own save approves it; anyone else's new claim (new deal, or a
+    // switch from Given) goes to Pending. An already-approved claim stays approved
+    // when other fields are edited. The DB trigger enforces the same rule.
+    const _prevDeal=editDeal?deals.find(d=>d.id===editDeal):null;
+    const _prevLead=_prevDeal?leadOriginOf(_prevDeal):DEFAULT_LEAD_ORIGIN;
+    let _leadClaimSubmitted=false;
+    if(leadOriginOf(rec)!=="Self-sourced"){
+      Object.assign(rec,{leadOriginStatus:"Approved",leadOriginApprovedBy:"",leadOriginApprovedAt:null});
+    }else if(role==="Manager"){
+      if(_prevLead!=="Self-sourced"||leadOriginPending(_prevDeal||{}))
+        Object.assign(rec,{leadOriginStatus:"Approved",leadOriginApprovedBy:session?.name||"Manager",leadOriginApprovedAt:new Date().toISOString()});
+    }else if(_prevLead!=="Self-sourced"){
+      Object.assign(rec,{leadOriginStatus:"Pending",leadOriginApprovedBy:"",leadOriginApprovedAt:null});
+      _leadClaimSubmitted=true;
+    }else{
+      Object.assign(rec,{leadOriginStatus:_prevDeal.leadOriginStatus||"Pending",leadOriginApprovedBy:_prevDeal.leadOriginApprovedBy||"",leadOriginApprovedAt:_prevDeal.leadOriginApprovedAt||null});
     }
     // Guard: block the same change order being recorded as BOTH a linked child
     // deal AND an addendum on the same parent (double-counts awarded value).
@@ -8092,6 +8127,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       }
       const failedSteps=stepResults.filter(s=>!s.ok);
       if(failedSteps.length) toastEmit(`⚠️ ${rec.client} saved, but needs attention: ${failedSteps.map(f=>f.label).join(", ")} — saved on this device only, check console.`,"warning",10000);
+      if(_leadClaimSubmitted){
+        toastEmit("Self-sourced claim sent to a Manager for approval — commission stays at 0.5% until approved.","info",8000);
+        logActivity(rec.id,"Lead Origin","Claimed Self-sourced (1.5%) — awaiting Manager approval");
+        sendTelegramNotification("management",`🧭 <b>Self-sourced claim needs approval</b>\n${rec.contact||rec.client}${rec.ceNo?` (${rec.ceNo})`:""}\nAE: ${rec.salesOwner||"—"} · by ${session?.name||"—"}\nApprove in Sales Pipeline → top panel.`);
+      }
     }catch(err){
       console.error("saveDeal side-effect failed:",err);
       toastEmit("Deal saved, but a follow-up step failed — check console.","warning");
@@ -9978,31 +10018,74 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         ]}
       />
       {(()=>{
-        const myDeals=deals.filter(d=>d.salesOwner===session?.name);
+        const me=session?.name;
+        const myDeals=deals.filter(d=>d.salesOwner===me);
         const myWon=myDeals.filter(d=>WON_STAGES.includes(d.stage));
         const myPipe=myDeals.filter(d=>isActivePipeline(d.stage));
         const myUnpriced=myPipe.filter(d=>!d.standbyPO&&(!Number(d.value)||Number(d.value)===0));
-        const myColl=myWon.reduce((s,d)=>s+dealCollected(d),0);
-        const myRev=myWon.reduce((s,d)=>s+Number(d.value||0),0);
-        const myOut=Math.max(0,myWon.reduce((s,d)=>s+Number(d.invoiced||0)-dealCollected(d),0));
         const pendingAddenda=addenda.filter(a=>!a.salesNotified&&a.status!=="Rejected"&&myWon.some(d=>d.id===a.dealId));
         const fmtK=v=>v>=1000000?"₱"+Math.round(v/1000000*10)/10+"M":"₱"+Math.round(v/1000)+"K";
+        // ── Performance window (deals created / closing rate) ────────────────
+        // Cohort = deals this AE owns that were acquired in the window. Addendums
+        // (child deals) are left out so an approved scope change doesn't inflate
+        // the closing rate. Closing rate = Won ÷ (Won + Did Not Win); cancelled
+        // and still-open deals aren't decided yet so they sit outside the ratio.
+        const nowD=new Date(today);
+        const inWin=d=>{
+          if(homePeriod==="all") return true;
+          const dt=d.dateAcquired?new Date(d.dateAcquired):null;
+          if(!dt||isNaN(dt)) return false;
+          return dt.getFullYear()===nowD.getFullYear()&&(homePeriod==="year"||dt.getMonth()===nowD.getMonth());
+        };
+        const cohort=myDeals.filter(d=>!d.parentDealId&&inWin(d));
+        const cWon=cohort.filter(d=>WON_STAGES.includes(d.stage));
+        const cLost=cohort.filter(d=>d.stage==="Did Not Win");
+        const cOpen=cohort.filter(d=>isActivePipeline(d.stage));
+        const decided=cWon.length+cLost.length;
+        const closeRate=decided?Math.round(cWon.length/decided*100):null;
+        const winLabel=homePeriod==="month"?MONTHS[nowD.getMonth()]+" "+nowD.getFullYear():homePeriod==="year"?String(nowD.getFullYear()):"All time";
+        // ── Collections & commission (every awarded project, incl. addendums) ─
+        // One basis: VAT-exclusive, from the billing ledger (dealCollected).
+        const myAwarded=myWon.filter(d=>!d.standbyPO);
+        const aContract=myAwarded.reduce((s,d)=>s+(Number(d.value)||0),0);
+        const aColl=myAwarded.reduce((s,d)=>s+collectedBase(d,dealCollected(d)),0);
+        const collPct=aContract>0?Math.min(100,Math.round(aColl/aContract*100)):0;
+        const billedUnpaid=myAwarded.reduce((s,d)=>s+dealOutstanding(d),0);
+        const cEarned=myAwarded.reduce((s,d)=>s+commissionEarned(d,dealCollected(d)),0);
+        const cProj=myAwarded.reduce((s,d)=>s+commissionProjected(d),0);
+        const cPaid=payoutsPaid((payouts||[]).filter(p=>p.payee===me));
+        const cPayable=commissionPayable(cEarned,cPaid);
+        const myLeadPending=myDeals.filter(d=>leadOriginPending(d)&&!isLostStage(d.stage)).length;
+        const tile=(l,v,sub,c,action,extra)=>(
+          <div key={l} onClick={action} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:`1.5px solid ${c}33`,cursor:action?"pointer":"default"}}>
+            <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#64748b",fontWeight:700}}>{l}</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.5rem",color:c,marginTop:4,fontVariantNumeric:"tabular-nums"}}>{v}</div>
+            {extra}
+            {sub&&<div style={{fontSize:".7rem",color:"#64748b",marginTop:3}}>{sub}</div>}
+          </div>
+        );
+        const cols=window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)";
         return(
           <div style={{display:"flex",flexDirection:"column",gap:14}}>
-            {/* KPI strip */}
-            <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:12}}>
-              {[
-                {l:"Pipeline Deals",   v:myPipe.length,     c:"#6366f1", icon:"📊", action:()=>setPage("pipeline")},
-                {l:"Awarded Value",    v:fmtK(myRev),        c:"#10b981", icon:"🏆", action:()=>setPage("pipeline")},
-                {l:"Collected",        v:fmtK(myColl),       c:"#059669", icon:"💰", action:()=>setPage("billing")},
-                {l:"Outstanding",      v:fmtK(myOut),        c:myOut>0?"#ef4444":"#94a3b8", icon:"⏳", action:()=>setPage("billing")},
-              ].map(({l,v,c,icon,action})=>(
-                <div key={l} onClick={action} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:`1.5px solid ${c}22`,cursor:"pointer",transition:"all .15s"}}>
-                  <div style={{fontSize:"1.1rem"}}>{icon}</div>
-                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.25rem",color:c,marginTop:4}}>{v}</div>
-                  <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:3}}>{l}</div>
-                </div>
-              ))}
+            {/* ── My performance ───────────────────────────────────────── */}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+              <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem"}}>📈 My performance <span style={{fontWeight:600,color:"#64748b",fontSize:".75rem"}}>· {winLabel}</span></div>
+              <div style={{display:"flex",background:"#f1f5f9",borderRadius:9,padding:3}}>
+                {[["month","This month"],["year","This year"],["all","All time"]].map(([v,l])=>(
+                  <button key={v} onClick={()=>setHomePeriod(v)} style={{border:"none",background:homePeriod===v?"#6366f1":"transparent",color:homePeriod===v?"#fff":"#475569",fontFamily:"inherit",fontWeight:700,fontSize:".74rem",padding:"5px 12px",borderRadius:6,cursor:"pointer"}}>{l}</button>
+                ))}
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:cols,gap:12}}>
+              {tile("Deals created",cohort.length,`acquired · ${cOpen.length} still open`,"#6366f1",()=>setPage("pipeline"))}
+              {tile("Closing rate",closeRate===null?"—":closeRate+"%",decided?`${cWon.length} won · ${cLost.length} did not win`:"no decided deals yet",closeRate===null?"#94a3b8":closeRate>=50?"#059669":closeRate>=25?"#d97706":"#dc2626")}
+              {tile("Collected",collPct+"%",`${fmtK(aColl)} of ${fmtK(aContract)} · VAT-ex`,"#059669",()=>setPage("billing"),
+                <div style={{height:5,borderRadius:20,background:"#e2e8f0",overflow:"hidden",marginTop:4}}><div style={{height:"100%",width:collPct+"%",background:"#059669"}}/></div>)}
+              {tile("Commission earned",fmtK(cEarned),`payable ${fmtK(cPayable)} · of ${fmtK(cProj)} at full collection`,"#047857",()=>{setPipeTab("awarded");setPage("pipeline");})}
+            </div>
+            <div style={{fontSize:".7rem",color:"#64748b",marginTop:-4}}>
+              {myAwarded.length} awarded project{myAwarded.length!==1?"s":""} · billed but unpaid {fmtK(billedUnpaid)} (incl. VAT) · paid out {fmtK(cPaid)}
+              {myLeadPending>0&&<span style={{color:"#b45309",fontWeight:700}}> · ⏳ {myLeadPending} self-sourced claim{myLeadPending!==1?"s":""} awaiting Manager approval</span>}
             </div>
             {/* Scope changes needing Sales action */}
             {pendingAddenda.length>0&&(
@@ -10043,7 +10126,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   <span style={{fontSize:".72rem",color:"rgba(255,255,255,.5)",cursor:"pointer",textDecoration:"underline"}} onClick={()=>setPage("pipeline")}>See all →</span>
                 </div>
                 {myWon.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed").slice(0,6).map((d,i,arr)=>{
-                  const paid=dealCollected(d);const inv=Number(d.invoiced||0);const pct=inv>0?Math.min(100,Math.round(paid/inv*100)):0;
+                  const cv=Number(d.value||0);const pct=cv>0?Math.min(100,Math.round(collectedBase(d,dealCollected(d))/cv*100)):0;
                   const sc={"06 · Kickoff":"#8b5cf6","07 · Briefing":"#6366f1","08 · Fabrication":"#f59e0b","09 · Site & Billing":"#f97316","10 · Installation":"#3b82f6","11 · Punchlist":"#ef4444"}[d.stage]||"#94a3b8";
                   return(
                     <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:i<arr.length-1?"1px solid #f8fafc":""}}>
@@ -10112,7 +10195,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   <span style={{fontSize:".72rem",color:"rgba(255,255,255,.5)",cursor:"pointer",textDecoration:"underline"}} onClick={()=>setPage("projects")}>See all →</span>
                 </div>
                 {activeProjects.slice(0,6).map((d,i,arr)=>{
-                  const paid=dealCollected(d);const inv=Number(d.invoiced||0);const pct=inv>0?Math.min(100,Math.round(paid/inv*100)):0;
+                  const cv=Number(d.value||0);const pct=cv>0?Math.min(100,Math.round(collectedBase(d,dealCollected(d))/cv*100)):0;
                   const sc={"06 · Kickoff":"#8b5cf6","07 · Briefing":"#6366f1","08 · Fabrication":"#f59e0b","09 · Site & Billing":"#f97316","10 · Installation":"#3b82f6","11 · Punchlist":"#ef4444"}[d.stage]||"#94a3b8";
                   return(
                     <div key={d.id} onClick={()=>{setJumpDeal(d.id);setPage("projects");}} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:i<arr.length-1?"1px solid #f8fafc":"",cursor:"pointer"}}>
@@ -12938,16 +13021,20 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         // Awarded = deal in a WON stage (06→14). Exclude standby-PO umbrellas (0 value carriers).
         const awarded=wonDeals.filter(d=>!d.standbyPO);
         // Visibility: everyone sees their own; the roles above can flip to the whole team.
-        const mine   =d=>[d.salesOwner,d.assignedAE].filter(Boolean).includes(session?.name);
+        // Credit follows the deal's Sales Owner only — the same person the team view
+        // groups by and payouts are made to, so one deal never credits two people.
+        const mine   =d=>!!session?.name&&d.salesOwner===session.name;
         const scope  =(canSeeTeam&&awardScope==="team")?"team":"mine";
+        // VAT-ex collected (from the billing ledger) and the commission on it.
+        const collX  =d=>collectedBase(d,dealCollected(d));
+        const earnX  =d=>commissionEarned(d,dealCollected(d));
         const rows   =(scope==="team"?awarded:awarded.filter(mine))
-                        .slice().sort((a,b)=>(commissionEarned(b)-commissionEarned(a)));
+                        .slice().sort((a,b)=>(earnX(b)-earnX(a)));
         const done   =s=>["12 · Close-Out","14 · Completed"].includes(s);
         // Totals
         const tVal   =rows.reduce((s,d)=>s+(Number(d.value)||0),0);
-        const tColl  =rows.reduce((s,d)=>s+(Number(d.amountPaid)||0),0);
-        const tOut   =Math.max(0,tVal-tColl);
-        const tEarn  =rows.reduce((s,d)=>s+commissionEarned(d),0);
+        const tColl  =rows.reduce((s,d)=>s+collX(d),0);
+        const tEarn  =rows.reduce((s,d)=>s+earnX(d),0);
         const tProj  =rows.reduce((s,d)=>s+commissionProjected(d),0);
         const who    =scope==="team"?"the sales team":(session?.name||"you");
 
@@ -12977,16 +13064,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           return [...m.entries()].map(([owner,ds])=>({
             owner, ds,
             val:ds.reduce((s,d)=>s+(Number(d.value)||0),0),
-            coll:ds.reduce((s,d)=>s+(Number(d.amountPaid)||0),0),
-            earned:ds.reduce((s,d)=>s+commissionEarned(d),0),
+            coll:ds.reduce((s,d)=>s+collX(d),0),
+            earned:ds.reduce((s,d)=>s+earnX(d),0),
             proj:ds.reduce((s,d)=>s+commissionProjected(d),0),
           })).sort((a,b)=>b.earned-a.earned);
         })();
 
         const renderRow=(d)=>{
-          const collected=Number(d.amountPaid)||0, contract=Number(d.value)||0;
+          const collected=collX(d), contract=Number(d.value)||0;
           const pct=contract>0?Math.min(100,Math.round(collected/contract*100)):0;
-          const earned=commissionEarned(d), proj=commissionProjected(d);
+          const earned=earnX(d), proj=commissionProjected(d);
+          const pendLead=leadOriginPending(d);
           const payClr=PAY_CLR[d.paymentStatus]||"#94a3b8";
           const stgClr=STAGE_CLR[d.stage]||"#64748b";
           return(
@@ -13012,7 +13100,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               </td>
               <td style={{padding:"11px 13px",textAlign:"right",whiteSpace:"nowrap"}}>
                 <div style={{fontWeight:800,color:"#059669",fontVariantNumeric:"tabular-nums"}}>{peso(earned)}</div>
-                <div style={{fontSize:".66rem",color:"#94a3b8",fontVariantNumeric:"tabular-nums"}}>of {peso(proj)}</div>
+                <div style={{fontSize:".66rem",color:"#94a3b8",fontVariantNumeric:"tabular-nums"}}>of {peso(proj)} · {commissionRate(d)*100}%</div>
+                {pendLead&&<div title="Self-sourced claim waiting for Manager approval — earns 0.5% until approved" style={{fontSize:".62rem",fontWeight:700,color:"#b45309",marginTop:2}}>⏳ 1.5% pending approval</div>}
               </td>
             </tr>
           );
@@ -13050,11 +13139,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             <div style={{display:"flex",gap:10,alignItems:"flex-start",background:"#ecfdf5",border:"1.5px solid #a7f3d0",borderRadius:12,padding:"11px 15px",marginBottom:16,fontSize:".78rem",color:"#334155",lineHeight:1.55}}>
               <span style={{fontSize:"1rem",flexShrink:0}}>💡</span>
               <div>
-                <b style={{color:"#065f46"}}>Commission accrues on cash collected, not on award.</b> Each awarded deal earns
-                its sales owner <b>{(COMMISSION_RATE["Self-sourced"]*100)}%</b> (self-sourced client) or <b>{(COMMISSION_RATE["Given"]*100)}%</b> (client given to the team) of every peso collected.
+                <b style={{color:"#065f46"}}>Commission accrues on what the client has paid, VAT-exclusive — not on award.</b> Each awarded deal earns
+                its sales owner <b>{(COMMISSION_RATE["Self-sourced"]*100)}%</b> (self-sourced client, Manager-approved) or <b>{(COMMISSION_RATE["Given"]*100)}%</b> (client given to the team) of every peso collected, after taking out the 12% VAT (the client's 2% EWT counts as collected).
                 <b style={{color:"#059669"}}> Earned</b> moves each time a payment is logged; <b>Projected</b> is the full commission once the contract is paid off.
                 <b style={{color:"#059669"}}> Paid</b> is what Finance has disbursed (Manager-approved); <b>Payable</b> is earned minus paid — what you're still owed.
-                <span style={{color:"#94a3b8"}}> Lead origin is set per deal — deals default to the {DEFAULT_LEAD_ORIGIN.toLowerCase()} rate until flagged.</span>
+                <span style={{color:"#94a3b8"}}> Lead origin is set per deal — deals earn the {DEFAULT_LEAD_ORIGIN.toLowerCase()} rate until a Self-sourced claim is approved by a Manager.</span>
               </div>
             </div>
 
@@ -13063,7 +13152,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 <table style={{borderCollapse:"collapse",width:"100%",minWidth:820,fontSize:".82rem"}}>
                   <thead>
                     <tr style={{background:"#f8fafc",textAlign:"left"}}>
-                      {["Project","Owner","Stage","Contract","Collected","Payment","Commission"].map((h,i)=>(
+                      {["Project","Owner","Stage","Contract (VAT-ex)","Collected (VAT-ex)","Payment","Commission"].map((h,i)=>(
                         <th key={h} style={{padding:"10px 13px",fontSize:".65rem",fontWeight:700,letterSpacing:".5px",textTransform:"uppercase",color:"#94a3b8",borderBottom:"1.5px solid #e2e8f0",whiteSpace:"nowrap",textAlign:i>=3&&i!==5?"right":"left"}}>{h}</th>
                       ))}
                     </tr>
@@ -13442,6 +13531,51 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   {(role==="Manager"||role==="Sales")&&(
                     <button onClick={()=>openEditDeal(d)} style={{background:"#f97316",border:"none",borderRadius:7,padding:"6px 14px",fontSize:".78rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700,flexShrink:0}}>✏ Fix Link</button>
                   )}
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+
+        {/* ── 🧭 SELF-SOURCED CLAIMS AWAITING MANAGER APPROVAL ────────────────
+            A Self-sourced lead origin pays 1.5% instead of 0.5%, so it only takes
+            effect once a Manager approves it (migration 072). Everyone sees what's
+            waiting; only a Manager can Approve (→ 1.5%) or Reject (→ back to Given). */}
+        {(()=>{
+          const q=(pipeSearch||"").toLowerCase();
+          const pend=deals.filter(d=>leadOriginPending(d)&&!isLostStage(d.stage)
+              &&(pipeAE==="all"||d.salesOwner===pipeAE)
+              &&(!q||[d.client,d.contact,d.ceNo,d.salesOwner,d.product].join(" ").toLowerCase().includes(q)));
+          if(!pend.length) return null;
+          const decide=async(c,ok)=>{
+            const name=c.contact||c.client;
+            if(!(await uiConfirm(ok
+              ?`Approve Self-sourced for ${name}?\n\nAE: ${c.salesOwner||"—"}\nCommission on this deal moves from 0.5% to 1.5% of collected (VAT-ex).`
+              :`Reject the Self-sourced claim on ${name}?\n\nThe deal goes back to "Given" and earns 0.5%.`))) return;
+            const now=new Date().toISOString();
+            const patch=ok?{leadOriginStatus:"Approved",leadOriginApprovedBy:session?.name||"Manager",leadOriginApprovedAt:now}
+                          :{leadOrigin:"Given",leadOriginStatus:"Approved",leadOriginApprovedBy:"",leadOriginApprovedAt:null};
+            upDeals(ds=>ds.map(d=>d.id===c.id?{...d,...patch}:d));
+            if(isSupabaseReady()) sbUpdate('deals',c.id,ok
+              ?{lead_origin_status:"Approved",lead_origin_approved_by:patch.leadOriginApprovedBy,lead_origin_approved_at:now,updated_at:now}
+              :{lead_origin:"Given",lead_origin_status:"Approved",lead_origin_approved_by:"",lead_origin_approved_at:null,updated_at:now}).catch(()=>{});
+            logActivity(c.id,"Lead Origin",ok?`Self-sourced approved (1.5%)`:`Self-sourced claim rejected — set to Given (0.5%)`,session?.name);
+            toastEmit&&toastEmit(ok?`✅ Self-sourced approved — ${name} now earns 1.5%`:`Claim rejected — ${name} stays at 0.5%`,ok?"success":"info",6000);
+          };
+          return(
+            <div style={{background:"#eef2ff",border:"1.5px solid #c7d2fe",borderRadius:12,padding:"12px 16px",marginBottom:16}}>
+              <div style={{fontWeight:800,color:"#3730a3",fontSize:".9rem",marginBottom:4}}>🧭 {pend.length} Self-sourced claim{pend.length>1?"s":""} awaiting Manager approval</div>
+              <div style={{fontSize:".72rem",color:"#4f46e5",marginBottom:10}}>These deals earn 0.5% until a Manager approves the 1.5% self-sourced rate.</div>
+              {pend.map(c=>(
+                <div key={c.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",background:"#fff",borderRadius:8,marginBottom:6,border:"1px solid #c7d2fe",flexWrap:"wrap"}}>
+                  <div style={{flex:1,minWidth:120,cursor:"pointer"}} onClick={()=>openEditDeal(c)}>
+                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.contact||c.client}</div>
+                    <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:2}}>{c.ceNo&&<span style={{fontWeight:600,color:"#6366f1",marginRight:6}}>{c.ceNo}</span>}AE: {c.salesOwner||"—"}{c.bizDevSource?` · source: ${c.bizDevSource}`:""}</div>
+                  </div>
+                  {role==="Manager"&&<>
+                    <button onClick={()=>decide(c,true)} style={{background:"#059669",border:"none",borderRadius:7,padding:"6px 14px",fontSize:".78rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700,flexShrink:0}}>✅ Approve 1.5%</button>
+                    <button onClick={()=>decide(c,false)} style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"6px 12px",fontSize:".78rem",color:"#64748b",cursor:"pointer",fontFamily:"inherit",fontWeight:700,flexShrink:0}}>Reject</button>
+                  </>}
                 </div>
               ))}
             </div>
