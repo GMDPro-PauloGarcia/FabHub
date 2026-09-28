@@ -64,6 +64,34 @@ export const emptyDayPosition = (date) => ({
   savedAt: null,
 });
 
+// ── Pre-dated ("phantom") cash position days ─────────────────────────────────
+// A day whose LAST save happened well before the day itself is almost always a
+// date-picker slip (e.g. 09/01's sheet saved as 09/28). Left in the store it
+// becomes the "saved" sheet when that date finally arrives — resurrecting a
+// month-old floating-check list (checks cleared since show as floating again)
+// and hiding the real prior day's carry-forward (last week's disbursements and
+// balances appear to vanish). A short lead is allowed so Finance can still
+// pre-fill the next banking day (Fri → Mon = 3 days).
+export const CASH_PREFILL_DAYS = 3;
+const _localISO=(d)=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+export const addDaysLocalISO=(iso,days)=>{const d=new Date(iso+"T00:00:00");d.setDate(d.getDate()+days);return _localISO(d);};
+export const cashDayLastSavedISO=(p)=>{
+  const au=Array.isArray(p?.audit)?p.audit:[];
+  const at=(au.length?au[au.length-1]?.at:null)||p?.savedAt||null;
+  if(!at) return null;
+  const d=new Date(at);
+  return isNaN(d.getTime())?null:_localISO(d);
+};
+export const isPhantomCashDay=(p,date)=>{
+  const saved=cashDayLastSavedISO(p);
+  return !!(saved&&date&&addDaysLocalISO(saved,CASH_PREFILL_DAYS)<String(date));
+};
+export const dropPhantomCashDays=(obj)=>{
+  const out={};
+  Object.entries(obj||{}).forEach(([d,p])=>{ if(!isPhantomCashDay(p,d)) out[d]=p; });
+  return out;
+};
+
 export const Inp=({value,onChange,type="text",placeholder,min,max,readOnly,rows,style:sx})=>{
   // Using key+defaultValue pattern — safest focus fix, no hooks needed
   const base={width:"100%",border:`1.5px solid ${T.line}`,borderRadius:T.radius.md,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:T.inkStrong,background:readOnly?T.surface2:T.surface,boxSizing:"border-box",transition:"border-color .15s",...(sx||{})};

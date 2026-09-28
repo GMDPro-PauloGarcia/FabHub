@@ -1,5 +1,5 @@
 import React,{useState,useMemo,useEffect,useRef} from "react";
-import {today,uid,BANKS,emptyBankRow,emptyDayPosition,uiConfirm} from "../shared";
+import {today,uid,BANKS,emptyBankRow,emptyDayPosition,uiConfirm,addDaysLocalISO,CASH_PREFILL_DAYS} from "../shared";
 
 // ── Currency input: shows grouped digits, edits raw ────────────────────────────
 const CurrInp=({value,onChange,placeholder="—",style:sx={}})=>{
@@ -43,6 +43,8 @@ function DailyCashPosition({
   const[dirty,setDirty]    =useState(false);   // unsaved local edits on the current day
   const[histOpen,setHistOpen]=useState(false);
   const[hideAcct,setHideAcct]=useState(true);    // account no./branch/type hidden by default (screen-share friendly)
+  const[lateClears,setLateClears]=useState(0);   // checks shown cleared here because an earlier day cleared them
+  const maxDate=addDaysLocalISO(today,CASH_PREFILL_DAYS);
   const dirtyRef=useRef(false);                 // mirror of `dirty` readable inside the load effect
   const saveRef =useRef(()=>{});                // always points at the latest persistDay (for unmount auto-save)
   const loadedSavedAtRef=useRef(null);          // savedAt of the version currently open — to detect a newer save landing elsewhere
@@ -58,6 +60,27 @@ function DailyCashPosition({
   cashStaleRef.current=cashStale;
 
   const normPos=(p,date)=>p?.banks?p:{...emptyDayPosition(date||today),...(p||{})};
+
+  // Each day stores its own copy of the floating-check list, so marking a check
+  // cleared on an earlier day never reached days already saved after it — that
+  // later sheet kept showing it as floating. Reconcile by check id: a check
+  // cleared on any earlier day (on or before `date`) shows cleared here too,
+  // unless someone deliberately re-opened it on this day (`reopened`).
+  const applyEarlierClears=(checks,date)=>{
+    const cleared={};
+    Object.keys(cashPositions).filter(k=>k<date).forEach(k=>{
+      (cashPositions[k]?.floatingChecks||[]).forEach(c=>{
+        if(c?.id&&c.cleared&&(!c.clearedDate||c.clearedDate<=date)&&!cleared[c.id]) cleared[c.id]=c.clearedDate||k;
+      });
+    });
+    let count=0;
+    const out=(checks||[]).map(c=>{
+      if(c.cleared||c.reopened||!c.id||!cleared[c.id]) return c;
+      count++;
+      return {...c,cleared:true,clearedDate:cleared[c.id]};
+    });
+    return {checks:out,count};
+  };
   const[pos,setPos]=useState(()=>normPos(cashPositions[today],today));
 
   const mob=typeof window!=="undefined"&&window.innerWidth<820;
@@ -75,13 +98,19 @@ function DailyCashPosition({
       const endN=Number(r.end)||Number(r.book)||Number(r.beg)||0;
       newBanks[b.id]={...emptyBankRow(),beg:endN?String(endN):""};
     });
-    const carriedFloat=(prev.floatingChecks||[]).filter(c=>!c.cleared).map(c=>({...c,carried:true}));
+    const carriedFloat=applyEarlierClears((prev.floatingChecks||[]).filter(c=>!c.cleared),date).checks
+      .filter(c=>!c.cleared).map(c=>{const{reopened,...rest}=c;return {...rest,carried:true};});
     return {...base,banks:newBanks,floatingChecks:carriedFloat};
   };
 
   const loadDay=(d)=>{
-    if(cashPositions[d]){setPos(normPos(cashPositions[d],d));setSaved(true);loadedSavedAtRef.current=cashPositions[d].savedAt||null;}
-    else{setPos(carryFrom(d));setSaved(false);loadedSavedAtRef.current=null;}
+    if(cashPositions[d]){
+      const p=normPos(cashPositions[d],d);
+      const {checks,count}=applyEarlierClears(p.floatingChecks,d);
+      setPos(count?{...p,floatingChecks:checks}:p);setLateClears(count);
+      setSaved(!count);loadedSavedAtRef.current=cashPositions[d].savedAt||null;
+    }
+    else{setPos(carryFrom(d));setSaved(false);setLateClears(0);loadedSavedAtRef.current=null;}
     clearDirty();
   };
 
@@ -106,7 +135,14 @@ function DailyCashPosition({
   useEffect(()=>()=>{ if(dirtyRef.current&&!cashStaleRef.current){ try{ saveRef.current(); }catch(_){} } },[]);
 
   const switchDate=async (d)=>{
-    if(d===selDate) return;
+    if(!d||d===selDate) return;
+    // The date picker's max isn't enforced on typed input. A far-future date is
+    // how 09/01's sheet ended up saved as 09/28 — refuse it outright.
+    if(d>maxDate){
+      await uiConfirm({title:"Date is too far ahead",tone:"warning",confirmLabel:"OK",
+        message:`${fmtDate(d)} is more than ${CASH_PREFILL_DAYS} days ahead. Cash positions can only be prepared up to ${fmtDate(maxDate)}. Check the date you picked.`});
+      return;
+    }
     // Non-destructive switch: never silently drop unsaved finance data. If the
     // current day has unsaved edits, SAVE them by default before leaving — the
     // old behaviour discarded on switch, which is how a full day of collections,
@@ -326,6 +362,12 @@ function DailyCashPosition({
       });
       if(!proceed) return;
     }
+    if(selDate>maxDate) return;   // unreachable via switchDate; belt-and-braces
+    if(selDate>today){
+      const ahead=await uiConfirm({title:`Save a FUTURE date — ${fmtDate(selDate)}?`,tone:"warning",confirmLabel:`Yes, save as ${fmtDate(selDate)}`,
+        message:`Today is ${fmtDate(today)}, but this sheet is dated ${fmtDate(selDate)}.\n\nOnly continue if you are pre-filling that banking day on purpose. If you meant today, cancel and change the date first.`});
+      if(!ahead) return;
+    }
     const stored=cashPositions[selDate];
     const remoteSavedAt=stored?.savedAt||null;
     const conflict=remoteSavedAt&&remoteSavedAt!==loadedSavedAtRef.current;
@@ -452,11 +494,17 @@ function DailyCashPosition({
           {cashStale&&<span title="The latest cash positions couldn't be loaded from the server — you're viewing a locally-cached copy. Reconnect and tap the 🔄 sync button." style={{fontSize:".72rem",fontWeight:800,color:"#b91c1c",background:"#fef2f2",border:"1px solid #fecaca",borderRadius:6,padding:"3px 9px",display:"inline-flex",alignItems:"center",gap:4}}>⚠ Offline copy — not synced</span>}
           {dirty&&<span style={{fontSize:".72rem",fontWeight:700,color:"#b45309",display:"inline-flex",alignItems:"center",gap:4}}>● Unsaved</span>}
           <button onClick={exportCSV} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>
-          <input type="date" value={selDate} onChange={e=>switchDate(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".84rem",color:"#0f172a",cursor:"pointer"}}/>
+          <input type="date" value={selDate} max={maxDate} onChange={e=>switchDate(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".84rem",color:"#0f172a",cursor:"pointer"}}/>
           <button onClick={()=>setHistOpen(h=>!h)} style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".78rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>📅 History ({histDates.length})</button>
           <button onClick={handleSave} style={{background:(saved&&!dirty)?"#f0fdf4":C.navy,border:`1.5px solid ${(saved&&!dirty)?"#6ee7b7":C.navy}`,borderRadius:8,padding:"8px 18px",fontFamily:"inherit",fontSize:".82rem",color:(saved&&!dirty)?"#059669":"#fff",cursor:"pointer",fontWeight:700}}>{(saved&&!dirty)?"✓ Saved":"Save Position"}</button>
         </div>
       </div>
+
+      {lateClears>0&&(
+        <div style={{background:"#ecfdf5",border:"1px solid #a7f3d0",borderRadius:10,padding:"9px 14px",marginBottom:14,fontSize:".76rem",color:"#065f46",lineHeight:1.5}}>
+          ✓ <b>{lateClears} check{lateClears!==1?"s":""}</b> marked cleared on an earlier day {lateClears!==1?"were":"was"} still saved as floating on {fmtDate(selDate)}. {lateClears!==1?"They now show":"It now shows"} as cleared here — review and <b>Save Position</b> to record it.
+        </div>
+      )}
 
       {histOpen&&histDates.length>0&&(
         <div style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,padding:14,marginBottom:14,animation:"fadeIn .2s"}}>
@@ -759,11 +807,11 @@ function DailyCashPosition({
                   {row.cleared
                     ?<span style={{display:"inline-flex",alignItems:"center",gap:5}}>
                       <span title={row.clearedDate?`Cleared ${fmtDate(row.clearedDate)}`:"Cleared"} style={{fontSize:".64rem",fontWeight:800,padding:"2px 8px",borderRadius:20,color:"#047857",background:"#dcfce7",border:"1px solid #86efac"}}>✓ Cleared{row.clearedDate?` · ${fmtDate(row.clearedDate)}`:""}</span>
-                      <button onClick={()=>set({cleared:false,clearedDate:null})} title="Mark as still floating" style={{background:"none",border:"none",color:"#64748b",cursor:"pointer",fontSize:".66rem",padding:0}}>undo</button>
+                      <button onClick={()=>set({cleared:false,clearedDate:null,reopened:selDate})} title="Mark as still floating" style={{background:"none",border:"none",color:"#64748b",cursor:"pointer",fontSize:".66rem",padding:0}}>undo</button>
                     </span>
                     :<span style={{display:"inline-flex",alignItems:"center",gap:5}}>
                       <span style={{fontSize:".64rem",fontWeight:800,padding:"2px 8px",borderRadius:20,color:"#b45309",background:"#fef3c7",border:"1px solid #fde68a"}}>● Floating{row.carried?" · carried":""}</span>
-                      <button onClick={()=>set({cleared:true,clearedDate:selDate})} title="Mark this check cleared" style={{background:"#ecfdf5",border:"1px solid #a7f3d0",borderRadius:5,padding:"2px 7px",color:"#047857",cursor:"pointer",fontSize:".64rem",fontWeight:700,fontFamily:"inherit"}}>Mark cleared</button>
+                      <button onClick={()=>set({cleared:true,clearedDate:selDate,reopened:null})} title="Mark this check cleared" style={{background:"#ecfdf5",border:"1px solid #a7f3d0",borderRadius:5,padding:"2px 7px",color:"#047857",cursor:"pointer",fontSize:".64rem",fontWeight:700,fontFamily:"inherit"}}>Mark cleared</button>
                     </span>}
                 </td>
                 <td style={{...td,padding:2,textAlign:"center",border:"none"}}>{delBtn(()=>f("floatingChecks",floatChecks.filter((_,j)=>j!==ri)))}</td>
