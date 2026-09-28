@@ -1,5 +1,5 @@
 import React,{useState,useMemo} from "react";
-import {today,BANKS,disbPayee,disbParticulars} from "../shared";
+import {today,BANKS,payeeOf,particularsOf} from "../shared";
 import {paymentClearDate} from "../core";
 
 // ─── WEEKLY CASH FLOW SUMMARY — Owners' Review (weekly roll-up of the daily data) ───
@@ -55,8 +55,8 @@ function WeeklyCashFlow({cashPositions={},billings=[],setPage,mode="weekly"}){
   // Expenses group by payee; particulars (e.g. "Office payroll Sept 20") vary
   // row to row and would scatter one vendor across many lines.
   const disbFor=(date)=>(cashPositions[date]?.disbursements?.manual||[]);
-  const disbLabel=(r)=>disbPayee(r)||disbParticulars(r)||"Uncategorized";
-  const disbText=(r)=>`${disbPayee(r)} ${disbParticulars(r)}`;
+  const disbLabel=(r)=>payeeOf(r)||particularsOf(r)||"Uncategorized";
+  const disbText=(r)=>`${payeeOf(r)} ${particularsOf(r)}`;
   const collectionsFor=(date)=>{
     let s=0;
     (billings||[]).forEach(b=>{if(b.status==="Cancelled")return;(b.payments||[]).forEach(p=>{if(!p.bounced&&paymentClearDate(p)===date)s+=Number(p.amount||0);});});
