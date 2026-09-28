@@ -4,7 +4,7 @@ const WrapCtx = createContext(false);
 const BUDGET_ONLY=["Design","Operations","ProjectMover"];
 import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbPendingIds,sbOnQueueChange,appLogin,appLogout,restoreAppToken,logClientError} from './supabaseClient';
 import{idbGetMany,idbSetMany}from'./idb.js';
-import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable} from './shared';
+import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable} from './shared';
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
@@ -3389,7 +3389,7 @@ function CashFlowView({billings,payables,vouchers,loans,cashPositions,setPage,Wr
 
   // Opening working cash = latest reconciled position across operating banks
   const opening=(()=>{
-    const days=Object.values(cashPositions||{}).filter(p=>p&&p.banks).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+    const days=Object.values(cashPositions||{}).filter(p=>p&&p.banks&&(p.date||"")<=today).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
     if(!days[0]) return 0;
     return BANKS.filter(b=>b.type==="Operating").reduce((s,b)=>{const r=days[0].banks?.[b.id]||{};return s+(Number(r.book)||Number(r.end)||Number(r.beg)||0);},0);
   })();
@@ -4033,7 +4033,8 @@ function TVBoardAdmin({announcements=[],upAnnouncements,session,today}){
 // owner-dashboard KPIs read, which silently resolved to 0. Mirrors CashFlowView's
 // book||end||beg convention.
 function bankCashSummary(cashPositions, today){
-  const days=Object.values(cashPositions||{}).filter(p=>p&&p.date).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  // Never let a future-dated sheet (a pre-fill for the next banking day) pose as "latest".
+  const days=Object.values(cashPositions||{}).filter(p=>p&&p.date&&String(p.date)<=today).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
   const latest=days[0]||null;
   const val=(id)=>{const r=latest?.banks?.[id]||{};return Number(r.book)||Number(r.end)||Number(r.beg)||0;};
   const perBank=latest?BANKS.map(b=>({id:b.id,short:b.short,name:b.name,type:b.type,val:val(b.id)})):[];
@@ -4379,7 +4380,7 @@ export default function App(){
         if(idb[KEYS.swatches])    setSwatches(idb[KEYS.swatches]);
         if(idb[KEYS.checklist])   setChecklist(idb[KEYS.checklist]);
         if(idb[KEYS.users])       setUsers(idb[KEYS.users]);
-        if(idb[KEYS.cashPos])     setCashPos(idb[KEYS.cashPos]);
+        if(idb[KEYS.cashPos])     setCashPos(dropPhantomCashDays(idb[KEYS.cashPos]));
         if(idb[KEYS.prs])         setPrs(idb[KEYS.prs]);
         if(idb[KEYS.mreqs])       setMreqs(idb[KEYS.mreqs]);
         if(idb[KEYS.breqs])       setBreqs(idb[KEYS.breqs]);
@@ -4502,7 +4503,7 @@ export default function App(){
             {
               const cashReadFailed=Array.isArray(data._failed)&&data._failed.includes("cash_positions");
               setCashStale(cashReadFailed);
-              if(!cashReadFailed) setCashPos(prev=>{const merged=mergeLocalOnlyObj(convertSbCashPos(data.cashPositions),prev);idbSetMany([[KEYS.cashPos,merged]]).catch(()=>{});return merged;});
+              if(!cashReadFailed) setCashPos(prev=>{const merged=dropPhantomCashDays(mergeLocalOnlyObj(convertSbCashPos(data.cashPositions),prev));idbSetMany([[KEYS.cashPos,merged]]).catch(()=>{});return merged;});
             }
             const _budgets=Object.keys(data.budgets||{}).length?Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}])):null;
             if(_budgets){setBudgets(prev=>mergeLocalOnlyObj(_budgets,prev));idbE.push([KEYS.budgets,_budgets]);}
@@ -4816,7 +4817,7 @@ export default function App(){
     {
       const cashReadFailed=Array.isArray(data._failed)&&data._failed.includes("cash_positions");
       setCashStale(cashReadFailed);
-      if(!cashReadFailed) setCashPos(prev=>{const merged=mergeLocalOnlyObj(convertSbCashPos(data.cashPositions),prev);idbE.push([KEYS.cashPos,merged]);return merged;});
+      if(!cashReadFailed) setCashPos(prev=>{const merged=dropPhantomCashDays(mergeLocalOnlyObj(convertSbCashPos(data.cashPositions),prev));idbE.push([KEYS.cashPos,merged]);return merged;});
     }
     if(Object.keys(data.budgets||{}).length){const bg=Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}]));setBudgets(prev=>mergeLocalOnlyObj(bg,prev));idbE.push([KEYS.budgets,bg]);}
     if(data.users?.length){const us=data.users.map(u=>{const fallbackHash=DEFAULT_USERS.find(d=>d.username===(u.username||""))?.passwordHash||"";return{id:u.id,username:u.username||"",name:u.name||u.full_name||"",role:u.role||"Sales",title:u.title||u.role||"",status:u.status||"active",passwordHash:u.password_hash||fallbackHash,createdAt:u.created_at||""};});setUsers(prev=>mlo(us,prev));idbE.push([KEYS.users,us]);}
@@ -7015,7 +7016,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     }
   };
   const saveDayPos=(date,pos)=>{
-    upCashPos(cp=>({...cp,[date]:{...pos,savedAt:new Date().toISOString()}}));
+    // One timestamp for the local copy AND the server row, so the sheet's
+    // "updated elsewhere" check compares like with like after a refresh.
+    const savedAt=pos.savedAt||new Date().toISOString();
+    upCashPos(cp=>({...cp,[date]:{...pos,savedAt}}));
     if(isSupabaseReady()){
       const nb=(bank,key)=>Number(pos.banks?.[bank]?.[key])||0;
       const payload={
@@ -7034,8 +7038,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         ytd_supplier_payable:Number(pos.ytd?.supplierPayable)||0,
         ytd_loans_payable:   Number(pos.ytd?.loansPayable)  ||0,
         notes:pos.notes||"",
+        // No DB trigger bumps updated_at on UPDATE, so without this every row kept
+        // its creation time forever and the server copy looked older than it was.
+        updated_at:savedAt,
       };
-      sbUpsert("cash_positions",payload,"date").catch(e=>console.error("cash sync:",e.message));
+      // Surface a rejected write — the sheet already shows "✓ Saved" from the local
+      // copy, so a silent console.error here meant the day never reached the server.
+      sbUpsert("cash_positions",payload,"date").catch(e=>{console.error("cash sync:",e.message);toastEmit(`Cash position ${date} did NOT save to the server: ${e?.message||"unknown error"} — it's only on this device. Tap 🔄 sync and save again.`,"error",12000);});
     }
   };
   const upDeals    =useCallback(fn=>setDeals(p=>{const n=fn(p);persist(KEYS.deals,n);return n;}),[persist]);
@@ -17525,7 +17534,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       <FinanceErpBar active="dashboard" go={financeErpGo} counts={financeErpCounts()}/>
       <FinanceDigestPanel billings={billings} exps={exps} wonDeals={wonDeals} completedDeals={completedDeals} deals={deals} payables={payables} cashPositions={cashPositions} today={today} isMobile={isMobile} sendTelegramNotification={sendTelegramNotification} toastEmit={toastEmit}/>
       {(()=>{
-        const bpiPos=Object.values(cashPositions).sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0];
+        const bpiPos=Object.values(cashPositions).filter(p=>(p?.date||"")<=today).sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0];
         const bpiBal=bpiPos?Number(bpiPos.banks?.bpi?.book||bpiPos.banks?.bpi?.end||bpiPos.banks?.bpi?.beg||0):0;
         const pendingPay=exps.filter(e=>e.acctStatus==="For Payment"||(!e.acctStatus&&e.bankAccount));
         const overduePay=exps.filter(e=>(e.acctStatus==="For Payment"||(!e.acctStatus))&&e.expDate&&e.expDate<today);
