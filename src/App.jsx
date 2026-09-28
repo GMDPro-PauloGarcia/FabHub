@@ -4034,12 +4034,21 @@ function bankCashSummary(cashPositions, today){
   // Never let a future-dated sheet (a pre-fill for the next banking day) pose as "latest".
   const days=Object.values(cashPositions||{}).filter(p=>p&&p.date&&String(p.date)<=today).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
   const latest=days[0]||null;
-  const val=(id)=>{const r=latest?.banks?.[id]||{};return Number(r.book)||Number(r.end)||Number(r.beg)||0;};
-  const perBank=latest?BANKS.map(b=>({id:b.id,short:b.short,name:b.name,type:b.type,val:val(b.id)})):[];
+  // `total` = money actually in the banks at end of day — the Cash Position
+  // sheet's "Total Cash – All Accounts (End of Day)". `bookTotal` = the same
+  // after uncleared floating checks (Ending − Float), and `floatTotal` the gap.
+  // Previously `total` was the book figure summed over all 6 banks, a number
+  // that appears on no line of the sheet (dashboard ₱10.1M vs sheet ₱12.9M).
+  const num=(v)=>(v===undefined||v===null||v==="")?null:(Number(String(v).replace(/,/g,""))||0);
+  const endOf =(r)=>num(r.end)??num(r.beg)??0;
+  const bookOf=(r)=>num(r.book)??endOf(r);
+  const perBank=latest?BANKS.map(b=>{const r=latest.banks?.[b.id]||{};return {id:b.id,short:b.short,name:b.name,type:b.type,val:endOf(r),book:bookOf(r)};}):[];
   const total=perBank.reduce((s,b)=>s+b.val,0);
+  const bookTotal=perBank.reduce((s,b)=>s+b.book,0);
+  const floatTotal=Math.max(0,total-bookTotal);
   const stale=!latest||latest.date!==today;
   const daysOld=latest?Math.round((new Date(today)-new Date(latest.date))/86400000):null;
-  return {latest,total,perBank,stale,daysOld};
+  return {latest,total,bookTotal,floatTotal,perBank,stale,daysOld};
 }
 
 // ─── FINANCIAL OVERVIEW ──────────────────────────────────────────────────────
@@ -4106,7 +4115,8 @@ function FinancialOverview({deals=[],wonDeals=[],exps=[],payables=[],loans=[],ca
         <div onClick={()=>{setFinTab&&setFinTab("cash");setPage&&setPage("finance");}} style={{...card(cash.stale?"#fffbeb":"#fff"),cursor:"pointer",textAlign:"center",borderColor:cash.stale?"#fcd34d":"#e2e8f0"}}>
           <div style={{fontSize:"1.2rem"}}>🏦</div>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.5rem",color:cash.total>0?"#059669":"#94a3b8"}}>{_fmtM(cash.total)}</div>
-          <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",fontWeight:700}}>Cash in Bank</div>
+          <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",fontWeight:700}}>Cash in Bank · End of Day</div>
+          {cash.latest&&cash.floatTotal>0.005&&<div style={{fontSize:".64rem",color:"#64748b",marginTop:2}}>{_fmtM(cash.bookTotal)} after {_fmtM(cash.floatTotal)} uncleared checks</div>}
           {cash.stale
             ?<div style={{fontSize:".62rem",color:"#b45309",fontWeight:700,marginTop:3}}>⚠ {cash.latest?`As of ${cash.latest.date} · ${cash.daysOld}d old`:"No entry yet"}</div>
             :<div style={{fontSize:".62rem",color:"#059669",fontWeight:700,marginTop:3}}>✓ Updated today</div>}
@@ -7018,6 +7028,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // One timestamp for the local copy AND the server row, so the sheet's
     // "updated elsewhere" check compares like with like after a refresh.
     const savedAt=pos.savedAt||new Date().toISOString();
+    // A Manager changed a day that had already locked — tell management.
+    const _last=Array.isArray(pos.audit)?pos.audit[pos.audit.length-1]:null;
+    if(_last?.pastEdit&&_last.at===savedAt){
+      sendTelegramNotification("management",`🔓 <b>Cash position edited after lock</b>\nDay: ${date}\nBy: ${_last.by||"—"}\nReason: ${_last.pastEdit.reason||"—"}`);
+    }
     upCashPos(cp=>({...cp,[date]:{...pos,savedAt}}));
     if(isSupabaseReady()){
       const nb=(bank,key)=>Number(pos.banks?.[bank]?.[key])||0;
@@ -10298,6 +10313,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       <div style={{fontSize:".72rem",color:"#94a3b8",marginBottom:8}}>Last entry: {latest.date}</div>
                       <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.8rem",color:"#059669"}}>₱{total.toLocaleString("en-PH",{minimumFractionDigits:0})}</div>
                       <div style={{fontSize:".72rem",color:"#64748b"}}>Total ending balance across 6 banks</div>
+                      {_cs.floatTotal>0.005&&<div style={{fontSize:".72rem",color:"#64748b",marginTop:2}}>₱{_cs.bookTotal.toLocaleString("en-PH",{minimumFractionDigits:0})} after ₱{_cs.floatTotal.toLocaleString("en-PH",{minimumFractionDigits:0})} uncleared checks</div>}
                     </div>
                   );
                 })()
@@ -11316,7 +11332,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           {/* KPI Row 1 — Financial health */}
           <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:12}}>
             {[
-              {l:"Total Cash (6 banks)",   v:"₱"+Math.round(totalCash/1000)+"K",        c:"#059669",  icon:"🏦", sub:!latestCash?"⚠ No entry yet":_cash.stale?`⚠ As of ${latestCash.date} · ${_cash.daysOld}d old`:"✓ Updated today"},
+              {l:"Total Cash (6 banks)",   v:"₱"+Math.round(totalCash/1000)+"K",        c:"#059669",  icon:"🏦", sub:!latestCash?"⚠ No entry yet":_cash.stale?`⚠ As of ${latestCash.date} · ${_cash.daysOld}d old`:(_cash.floatTotal>0.005?`✓ Today · ₱${Math.round(_cash.bookTotal/1000)}K after uncleared checks`:"✓ Updated today")},
               {l:"Total Collected YTD",    v:"₱"+Math.round(totalPaid/1000)+"K",         c:"#3b82f6",  icon:"✅", sub:"Collection rate: "+collRate+"%"},
               {l:"Outstanding",            v:"₱"+Math.round(outstanding/1000)+"K",       c:"#f59e0b",  icon:"⏰", sub:overdue.length+" invoices overdue"},
               {l:"Overdue Value",          v:"₱"+Math.round(overdueValue/1000)+"K",      c:"#ef4444",  icon:"🚨", sub:"Needs immediate follow-up", click:()=>setPage("billing")},
@@ -11377,7 +11393,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 <button onClick={()=>setPage("finance")} style={{background:"rgba(255,255,255,.1)",border:"none",borderRadius:6,padding:"3px 10px",color:"#fff",fontSize:".72rem",cursor:"pointer",fontFamily:"inherit"}}>Update →</button>
               </div>
               {!latestCash
-                ?<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No cash position entered yet. Aerwin needs to update daily.</div>
+                ?<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No cash position entered yet. Finance needs to update daily.</div>
                 :_cash.perBank.map((b,i)=>{
                   const val=b.val;
                   return(<div key={b.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 14px",borderBottom:i<_cash.perBank.length-1?"1px solid #f8fafc":""}}>
@@ -14867,7 +14883,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               ))}
             </div>
             {cashSub==="daily"&&(
-              <DailyCashPosition cashPositions={cashPositions} saveDayPos={saveDayPos} wonDeals={wonDeals} billings={billings} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps} updateMilestone={updateMilestone} upExps={upExps} toSbExpense={toSbExpense} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} vouchers={vouchers} payables={payables} loans={loans} inventory={inventory} userName={session?.name||""} cashStale={cashStale}/>
+              <DailyCashPosition cashPositions={cashPositions} saveDayPos={saveDayPos} wonDeals={wonDeals} billings={billings} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps} updateMilestone={updateMilestone} upExps={upExps} toSbExpense={toSbExpense} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} vouchers={vouchers} payables={payables} loans={loans} inventory={inventory} userName={session?.name||""} role={role} username={session?.username||""} cashStale={cashStale}/>
             )}
             {cashSub==="weekly"&&(
               <WeeklyCashFlow mode="weekly" cashPositions={cashPositions} billings={billings} exps={exps} chartOfAccounts={chartOfAccounts} setPage={setPage}/>
