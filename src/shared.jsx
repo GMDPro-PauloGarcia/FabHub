@@ -94,8 +94,24 @@ export const isPhantomCashDay=(p,date)=>{
 // as the Payee. A row gets both fields the first time it is edited. Old rows
 // are never rewritten automatically — the "/" in them means different things
 // ("GMD PRODUCTION INC / PAYROLL" vs "ARDRIN/RENZ" vs "PAULO GARCIA / UNION BANK").
-export const payeeOf=(r)=>String((r&&Object.prototype.hasOwnProperty.call(r,"payee"))?(r.payee??""):(r?.particulars??"")).trim();
-export const particularsOf=(r)=>String((r&&Object.prototype.hasOwnProperty.call(r,"payee"))?(r.particulars??""):"").trim();
+// Raw values for the input boxes — NOT trimmed. Trimming what an input displays
+// deletes a space the instant it is typed ("ANGELO NOGRA" became "ANGELONOGRA").
+export const payeeRaw=(r)=>String((r&&Object.prototype.hasOwnProperty.call(r,"payee"))?(r.payee??""):(r?.particulars??""));
+export const particularsRaw=(r)=>String((r&&Object.prototype.hasOwnProperty.call(r,"payee"))?(r.particulars??""):"");
+// Trimmed values for grouping, matching, labels and exports.
+export const payeeOf=(r)=>payeeRaw(r).trim();
+export const particularsOf=(r)=>particularsRaw(r).trim();
+
+// ── Who may edit the Daily Cash Position, and when a day locks ────────────
+// Managers (Pao, Paulo, Mar) plus the assigned preparer(s) below may save.
+// Everyone else is view-only. A day locks for non-Managers at 12:01 AM the
+// following day; after that only a Manager can change it, with a reason that
+// is logged and sent to management. Mirrored server-side by migration
+// 20260928150000 (keep CASH_EDIT_USERS in sync with that policy).
+export const CASH_EDIT_USERS = ["mark"];
+export const cashCanEdit=(role,username)=>role==="Manager"||CASH_EDIT_USERS.includes(String(username||"").toLowerCase());
+export const cashDayLockAt=(date)=>new Date(`${addDaysLocalISO(date,1)}T00:01:00`);
+export const cashDayLocked=(date,now=new Date())=>!!date&&now>=cashDayLockAt(date);
 
 export const dropPhantomCashDays=(obj)=>{
   const out={};

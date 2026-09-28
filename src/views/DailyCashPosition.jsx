@@ -1,5 +1,5 @@
 import React,{useState,useMemo,useEffect,useRef} from "react";
-import {today,uid,BANKS,emptyBankRow,emptyDayPosition,uiConfirm,uiPrompt,addDaysLocalISO,CASH_PREFILL_DAYS,payeeOf,particularsOf} from "../shared";
+import {today,uid,BANKS,emptyBankRow,emptyDayPosition,uiConfirm,uiPrompt,addDaysLocalISO,CASH_PREFILL_DAYS,payeeOf,particularsOf,payeeRaw,particularsRaw,cashCanEdit,cashDayLocked} from "../shared";
 import {arSummary} from "../core";
 
 // ── Currency input: shows grouped digits, edits raw ────────────────────────────
@@ -37,9 +37,18 @@ const CurrInp=({value,onChange,placeholder="—",style:sx={}})=>{
 // carry from day to day until they are marked cleared.
 function DailyCashPosition({
   cashPositions={},saveDayPos=()=>{},billings=[],wonDeals=[],payables=[],loans=[],userName="",
-  cashStale=false
+  role="",username="",cashStale=false
 }){
   const[selDate,setSelDate]=useState(today);
+  // ── Edit rights & day lock (see cashCanEdit / cashDayLocked in shared.jsx) ──
+  // Only Managers and the assigned preparer may save; a day locks for
+  // non-Managers at 12:01 AM the next day. The database enforces the same rule.
+  const isMgr=role==="Manager";
+  const canWrite=cashCanEdit(role,username);
+  const dayLocked=cashDayLocked(selDate);
+  const readOnly=!canWrite||(dayLocked&&!isMgr);
+  const readOnlyRef=useRef(false);
+  readOnlyRef.current=readOnly;
   const[saved,setSaved]    =useState(false);
   const[dirty,setDirty]    =useState(false);   // unsaved local edits on the current day
   const[histOpen,setHistOpen]=useState(false);
@@ -134,7 +143,7 @@ function DailyCashPosition({
   // in-memory day would be lost). So on unmount, if the current day still has unsaved
   // edits, auto-save them — same save-by-default policy used when switching dates.
   const brokenRef=useRef(false);                // day has missing carried checks → never auto-save it
-  useEffect(()=>()=>{ if(dirtyRef.current&&!cashStaleRef.current&&!brokenRef.current){ try{ saveRef.current(); }catch(_){} } },[]);
+  useEffect(()=>()=>{ if(dirtyRef.current&&!cashStaleRef.current&&!brokenRef.current&&!readOnlyRef.current){ try{ saveRef.current(); }catch(_){} } },[]);
 
   const switchDate=async (d)=>{
     if(!d||d===selDate) return;
@@ -188,6 +197,7 @@ function DailyCashPosition({
   };
 
   const f=(path,val)=>{
+    if(readOnlyRef.current) return;
     setSaved(false);markDirty();
     setPos(p=>{
       const parts=path.split(".");
@@ -411,7 +421,8 @@ function DailyCashPosition({
 
   // Actually persist the current day (no prompts). Used by the button after
   // confirmation, and directly by the silent auto-save paths (unmount, date-switch).
-  const persistDay=(override=null)=>{
+  const persistDay=(override=null,pastEdit=null)=>{
+    if(readOnlyRef.current) return;
     const at=new Date().toISOString();
     // Materialize the computed Ending & Book into the saved banks so the next day carries
     // the right beginning balance and CSV/history export the reconciled figures.
@@ -428,11 +439,12 @@ function DailyCashPosition({
     const entry={at,by:userName||"—",action:prior?"Edited":"Created",changes};
     // Record any continuity break that was saved through, with the reason given.
     if(override) entry.override=override;
+    if(pastEdit) entry.pastEdit=pastEdit;
     else if(continuity.unexplained.length) entry.unexplained=continuity.unexplained.map(u=>({bank:u.name,diff:u.diff}));
     if(duplicates.length) entry.duplicates=duplicates.map(d=>({why:d.why,a:`#${d.a.checkNo||"—"} ${whoOf(d.a)} ${n(d.a.amount).toFixed(2)}`,b:`#${d.b.checkNo||"—"} ${whoOf(d.b)} ${n(d.b.amount).toFixed(2)}${d.bCleared?` (cleared ${d.bDay})`:""}`}));
     // Only log an edit if something actually changed; always log the first save.
     const priorAudit=Array.isArray(pos.audit)?pos.audit:[];
-    const audit=(!prior||changes.length>0||override)?[...priorAudit,entry]:priorAudit;
+    const audit=(!prior||changes.length>0||override||pastEdit)?[...priorAudit,entry]:priorAudit;
     saveDayPos(selDate,{...pos,banks:banksOut,collections:{...pos.collections,total:collTotal},audit,savedAt:at});
     setSaved(true);clearDirty();
     loadedSavedAtRef.current=at;   // this save is now the baseline for the open day
@@ -445,6 +457,7 @@ function DailyCashPosition({
   // auto-refreshed from a background sync (see the load effect), so without this
   // check a stale tab could silently clobber fresher data.
   const handleSave=async ()=>{
+    if(readOnly) return;
     // Guard: if the store is stale (the last Supabase refresh failed, so we're
     // looking at the local cache), saving now would upsert unconfirmed figures on
     // top of whatever is really on the server. Warn and require an explicit override.
@@ -497,7 +510,18 @@ function DailyCashPosition({
       if(!reason||!String(reason).trim()) return;
       override={reason:String(reason).trim(),vsDay:continuity.prevDayKey,missing:continuity.missing.map(c=>({checkNo:c.checkNo||"",payee:whoOf(c),amount:n(c.amount)}))};
     }
-    persistDay(override);
+    // Manager changing a day that already locked: require a reason. It is kept
+    // in the Audit Trail and sent to management on Telegram.
+    let pastEdit=null;
+    if(dayLocked&&isMgr){
+      const why=await uiPrompt({
+        title:`${fmtDate(selDate)} is locked`,tone:"warning",confirmLabel:"Save change to locked day",
+        message:`This day locked at 12:01 AM on ${fmtDate(addDaysLocalISO(selDate,1))}. As a Manager you can still change it, but the reason is recorded in the Audit Trail and sent to management.\n\nWhy is this past day being changed?`
+      });
+      if(!why||!String(why).trim()) return;
+      pastEdit={reason:String(why).trim()};
+    }
+    persistDay(override,pastEdit);
   };
   // Keep the unmount auto-save pointed at the current render's persistDay (it closes
   // over the latest pos/computed figures), so leaving the page never loses the day.
@@ -608,7 +632,9 @@ function DailyCashPosition({
           <button onClick={exportCSV} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>
           <input type="date" value={selDate} max={maxDate} onChange={e=>switchDate(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".84rem",color:"#0f172a",cursor:"pointer"}}/>
           <button onClick={()=>setHistOpen(h=>!h)} style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".78rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>📅 History ({histDates.length})</button>
-          <button onClick={handleSave} style={{background:(saved&&!dirty)?"#f0fdf4":C.navy,border:`1.5px solid ${(saved&&!dirty)?"#6ee7b7":C.navy}`,borderRadius:8,padding:"8px 18px",fontFamily:"inherit",fontSize:".82rem",color:(saved&&!dirty)?"#059669":"#fff",cursor:"pointer",fontWeight:700}}>{(saved&&!dirty)?"✓ Saved":"Save Position"}</button>
+          {readOnly
+            ?<span title={!canWrite?"Only Managers and the assigned preparer can edit the cash position.":`Locked at 12:01 AM on ${fmtDate(addDaysLocalISO(selDate,1))}. Only a Manager can change it.`} style={{border:"1.5px solid #cbd5e1",borderRadius:8,padding:"8px 14px",fontSize:".8rem",color:"#475569",fontWeight:700,background:"#f8fafc"}}>🔒 {!canWrite?"View only":"Locked"}</span>
+            :<button onClick={handleSave} style={{background:(saved&&!dirty)?"#f0fdf4":C.navy,border:`1.5px solid ${(saved&&!dirty)?"#6ee7b7":C.navy}`,borderRadius:8,padding:"8px 18px",fontFamily:"inherit",fontSize:".82rem",color:(saved&&!dirty)?"#059669":"#fff",cursor:"pointer",fontWeight:700}}>{(saved&&!dirty)?"✓ Saved":"Save Position"}</button>}
         </div>
       </div>
 
@@ -660,7 +686,18 @@ function DailyCashPosition({
         </div>
       )}
 
-      {/* ── Report sheet ── */}
+      {(readOnly||(dayLocked&&isMgr))&&(
+        <div style={{background:"#f1f5f9",border:"1px solid #cbd5e1",borderRadius:10,padding:"9px 14px",marginBottom:14,fontSize:".76rem",color:"#334155",lineHeight:1.5}}>
+          🔒 {!canWrite
+            ?<>View only. Only Managers and the assigned preparer can change the cash position.</>
+            :!isMgr
+              ?<><b>{fmtDate(selDate)} is locked</b> (since 12:01 AM, {fmtDate(addDaysLocalISO(selDate,1))}). Ask a Manager to make any change to a past day.</>
+              :<><b>{fmtDate(selDate)} is locked</b> for staff. You can still change it as a Manager; saving asks for a reason, which is logged and sent to management.</>}
+        </div>
+      )}
+
+      {/* ── Report sheet ── (disabled as a whole when view-only / locked) */}
+      <fieldset disabled={readOnly} style={{border:0,padding:0,margin:0,minWidth:0}}>
       <div style={{background:"#fff",border:`1px solid ${C.grid}`,borderRadius:10,overflow:"hidden",boxShadow:"0 1px 6px rgba(0,0,0,.05)"}}>
         <div style={{textAlign:"center",padding:"14px 16px 10px",borderBottom:`1px solid ${C.grid}`}}>
           <div style={{fontWeight:900,fontSize:"1.15rem",color:C.navy,letterSpacing:".5px"}}>DAILY CASH POSITION SUMMARY</div>
@@ -901,8 +938,8 @@ function DailyCashPosition({
                 <tr key={row.id||ri} style={{background:ri%2?C.zebra:"#fff"}}>
                   <td style={{...td,padding:2}}>{isUntagged(row)&&<span style={{color:"#dc2626",fontWeight:700,fontSize:".62rem",marginLeft:4}}>⚠</span>}{bankSelect(row.bank,v=>{const md=[...manualDisb];md[ri]={...md[ri],bank:v};f("disbursements.manual",md);})}</td>
                   {/* Editing either field saves both, moving an old one-text row to the split format */}
-                  <td style={{...td,padding:2}}>{textCell(payeeOf(row),v=>{const md=[...manualDisb];md[ri]={...md[ri],payee:v,particulars:particularsOf(md[ri])};f("disbursements.manual",md);},"Payee")}</td>
-                  <td style={{...td,padding:2}}>{textCell(particularsOf(row),v=>{const md=[...manualDisb];md[ri]={...md[ri],payee:payeeOf(md[ri]),particulars:v};f("disbursements.manual",md);},"e.g. Office payroll Sept 20")}</td>
+                  <td style={{...td,padding:2}}>{textCell(payeeRaw(row),v=>{const md=[...manualDisb];md[ri]={...md[ri],payee:v,particulars:particularsRaw(md[ri])};f("disbursements.manual",md);},"Payee")}</td>
+                  <td style={{...td,padding:2}}>{textCell(particularsRaw(row),v=>{const md=[...manualDisb];md[ri]={...md[ri],payee:payeeRaw(md[ri]),particulars:v};f("disbursements.manual",md);},"e.g. Office payroll Sept 20")}</td>
                   <td style={{...td,padding:2}}>
                     <CurrInp value={row.amount||""} onChange={e=>{const md=[...manualDisb];md[ri]={...md[ri],amount:e.target.value};f("disbursements.manual",md);}} style={{textAlign:"right",fontSize:".8rem",padding:"5px 8px"}}/>
                   </td>
@@ -947,8 +984,8 @@ function DailyCashPosition({
               <tr key={row.id||ri} style={{background:row.cleared?"#f0fdf4":zebra%2?C.zebra:"#fff",opacity:row.cleared?.85:1}}>
                 <td style={{...td,padding:2}}>{isUntagged(row)&&!row.cleared&&<span style={{color:"#dc2626",fontWeight:700,fontSize:".62rem",marginLeft:4}}>⚠</span>}{bankSelect(row.bank,v=>set({bank:v}))}</td>
                 {/* Editing either field saves both, moving an old one-text row to the split format */}
-                <td style={{...td,padding:2}}>{textCell(payeeOf(row),v=>set({payee:v,particulars:particularsOf(row)}),"Payee")}</td>
-                <td style={{...td,padding:2}}>{textCell(particularsOf(row),v=>set({payee:payeeOf(row),particulars:v}),"e.g. Supplier payment, PO #")}</td>
+                <td style={{...td,padding:2}}>{textCell(payeeRaw(row),v=>set({payee:v,particulars:particularsRaw(row)}),"Payee")}</td>
+                <td style={{...td,padding:2}}>{textCell(particularsRaw(row),v=>set({payee:payeeRaw(row),particulars:v}),"e.g. Supplier payment, PO #")}</td>
                 <td style={{...td,padding:2}}>{textCell(row.checkNo??"",v=>set({checkNo:v}),"#")}</td>
                 <td style={{...td,padding:2}}>
                   <CurrInp value={row.amount||""} onChange={e=>set({amount:e.target.value})} style={{textAlign:"right",fontSize:".8rem",padding:"5px 8px"}}/>
@@ -1069,6 +1106,7 @@ function DailyCashPosition({
                              ))}
                            </div>
                           :<div style={{fontSize:".72rem",color:"#64748b",marginTop:2}}>Re-saved (no figure changes).</div>}
+                      {e.pastEdit&&<div style={{fontSize:".72rem",color:"#7c2d12",marginTop:3}}>🔓 Changed after the day locked — reason: <b>{e.pastEdit.reason}</b></div>}
                       {e.override&&<div style={{fontSize:".72rem",color:"#991b1b",marginTop:3}}>⛔ Saved with {e.override.missing?.length||0} check(s) from {fmtDate(e.override.vsDay)} missing — reason: <b>{e.override.reason}</b></div>}
                       {Array.isArray(e.duplicates)&&e.duplicates.length>0&&<div style={{fontSize:".7rem",color:"#b45309",marginTop:2}}>⚠ Saved with {e.duplicates.length} possible duplicate check{e.duplicates.length!==1?"s":""}: {e.duplicates.map(d=>`${d.a} ↔ ${d.b}`).join(" · ")}</div>}
                       {Array.isArray(e.unexplained)&&e.unexplained.length>0&&<div style={{fontSize:".7rem",color:"#b45309",marginTop:2}}>⚠ Unexplained beginning movement: {e.unexplained.map(u=>`${u.bank} ${u.diff>0?"+":"−"}${peso(Math.abs(u.diff))}`).join(" · ")}</div>}
@@ -1080,6 +1118,7 @@ function DailyCashPosition({
           )}
         </div>
       </div>
+      </fieldset>
       {pos.savedAt&&<div style={{textAlign:"right",fontSize:".7rem",color:"#94a3b8",marginTop:6}}>Last saved: {new Date(pos.savedAt).toLocaleString("en-PH")}</div>}
     </div>
   );
