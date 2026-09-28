@@ -266,6 +266,51 @@ function DailyCashPosition({
     return {prevDayKey,missing,missingTotal:missing.reduce((s,c)=>s+n(c.amount),0),unexplained};
     // eslint-disable-next-line
   },[prevDayKey,cashPositions,floatChecks,pos.banks,selDate]);
+  // ── Possible duplicate checks ────────────────────────────────────────────
+  // SOFT warning (never blocks). Real Sept cases it catches:
+  //  • the same ₱110,000 Marjorie Y. Santiago check entered twice — once with no
+  //    check no. (09/14), once as #87749 (09/16). #87749 was cleared on 09/17 and
+  //    the blank copy kept floating, understating Book by ₱110k until 09/23.
+  //  • check #86711 recorded for BOTH Stella Garcia and Rafael Garcia.
+  // Rules, for every OPEN check on this day:
+  //  1. same bank + same check no. as another check (open on this day, or
+  //     cleared here or on an earlier day), with a different id;
+  //  2. same bank + amount + payee as another such check when either one has no
+  //     check no. — distinct numbered checks (3× Globe ₱599) are left alone.
+  const duplicates=useMemo(()=>{
+    const pk=(c)=>String(c.particulars??c.payee??"").toLowerCase().replace(/\b[a-z]\b/g,"").replace(/[^a-z0-9]/g,"");
+    // Only a real cheque number counts: "DEBIT" (auto-debits, e.g. the monthly
+    // Security Bank loan) and "#" are placeholders, not numbers.
+    const no=(c)=>{const v=String(c.checkNo||"").trim().toLowerCase();return /\d/.test(v)?v:"";};
+    const amt=(c)=>n(c.amount).toFixed(2);
+    const open=floatChecks.filter(c=>!c.cleared&&n(c.amount)>0);
+    if(!open.length) return [];
+    // Pool: today's rows plus checks cleared on earlier days (last 90 days).
+    const since=addDaysLocalISO(selDate,-90);
+    const pool=floatChecks.map(c=>({c,day:selDate}));
+    const seen=new Set(floatChecks.map(c=>c.id).filter(Boolean));
+    Object.keys(cashPositions).filter(k=>k<selDate&&k>=since).sort().reverse().forEach(k=>{
+      (cashPositions[k]?.floatingChecks||[]).forEach(c=>{
+        if(c?.cleared&&c.id&&!seen.has(c.id)){seen.add(c.id);pool.push({c,day:k});}
+      });
+    });
+    const out=[];const pairKeys=new Set();
+    open.forEach(a=>{
+      pool.forEach(({c:b,day})=>{
+        if(a===b||(a.id&&b.id&&a.id===b.id)||(a.bank||"")!==(b.bank||"")) return;
+        let why=null;
+        if(no(a)&&no(a)===no(b)) why="sameNo";
+        else if((!no(a)||!no(b))&&amt(a)===amt(b)&&pk(a)&&pk(a)===pk(b)) why="noNumber";
+        if(!why) return;
+        const key=[a.id||a.checkNo,b.id||b.checkNo].sort().join("|");
+        if(pairKeys.has(key)) return; pairKeys.add(key);
+        out.push({why,a,b,bCleared:!!b.cleared,bDay:b.cleared?(b.clearedDate||day):null});
+      });
+    });
+    return out;
+    // eslint-disable-next-line
+  },[floatChecks,cashPositions,selDate]);
+
   const restoreMissing=()=>{
     if(!continuity.missing.length) return;
     f("floatingChecks",[...floatChecks,...continuity.missing.map(c=>{const{reopened,...rest}=c;return {...rest,carried:true};})]);
@@ -379,6 +424,7 @@ function DailyCashPosition({
     // Record any continuity break that was saved through, with the reason given.
     if(override) entry.override=override;
     else if(continuity.unexplained.length) entry.unexplained=continuity.unexplained.map(u=>({bank:u.name,diff:u.diff}));
+    if(duplicates.length) entry.duplicates=duplicates.map(d=>({why:d.why,a:`#${d.a.checkNo||"—"} ${(d.a.particulars||d.a.payee||"").trim()} ${n(d.a.amount).toFixed(2)}`,b:`#${d.b.checkNo||"—"} ${(d.b.particulars||d.b.payee||"").trim()} ${n(d.b.amount).toFixed(2)}${d.bCleared?` (cleared ${d.bDay})`:""}`}));
     // Only log an edit if something actually changed; always log the first save.
     const priorAudit=Array.isArray(pos.audit)?pos.audit:[];
     const audit=(!prior||changes.length>0||override)?[...priorAudit,entry]:priorAudit;
@@ -570,6 +616,19 @@ function DailyCashPosition({
           <div style={{marginTop:6,fontSize:".7rem",color:"#b91c1c"}}>
             {continuity.missing.slice(0,6).map(c=>`#${c.checkNo||"—"} ${(c.particulars||c.payee||"").trim()} ${peso(c.amount)}`).join(" · ")}{continuity.missing.length>6?` · +${continuity.missing.length-6} more`:""}
           </div>
+        </div>
+      )}
+      {duplicates.length>0&&(
+        <div style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:10,padding:"9px 14px",marginBottom:14,fontSize:".74rem",color:"#92400e",lineHeight:1.5}}>
+          ⚠ <b>{duplicates.length} possible duplicate check{duplicates.length!==1?"s":""}</b> — a duplicate floating check overstates Float and understates Book:
+          <ul style={{margin:"4px 0 0",paddingLeft:18}}>
+            {duplicates.map((d,i)=>{
+              const lbl=(c)=>`#${c.checkNo||"(no check no.)"} ${(c.particulars||c.payee||"").trim()} ${peso(c.amount)}`;
+              return <li key={i}>{d.why==="sameNo"
+                ?<><b>Check #{d.a.checkNo}</b> is used twice: {lbl(d.a)} and {lbl(d.b)}{d.bCleared?` (cleared ${fmtDate(d.bDay)})`:""}. One check number can't be two checks — fix the wrong number.</>
+                :<><b>{lbl(d.a)}</b> matches {lbl(d.b)}{d.bCleared?`, already cleared ${fmtDate(d.bDay)}`:""}. One has no check number — if it's the same check, delete the extra row.</>}</li>;
+            })}
+          </ul>
         </div>
       )}
       {continuity.unexplained.length>0&&(
@@ -998,6 +1057,7 @@ function DailyCashPosition({
                            </div>
                           :<div style={{fontSize:".72rem",color:"#64748b",marginTop:2}}>Re-saved (no figure changes).</div>}
                       {e.override&&<div style={{fontSize:".72rem",color:"#991b1b",marginTop:3}}>⛔ Saved with {e.override.missing?.length||0} check(s) from {fmtDate(e.override.vsDay)} missing — reason: <b>{e.override.reason}</b></div>}
+                      {Array.isArray(e.duplicates)&&e.duplicates.length>0&&<div style={{fontSize:".7rem",color:"#b45309",marginTop:2}}>⚠ Saved with {e.duplicates.length} possible duplicate check{e.duplicates.length!==1?"s":""}: {e.duplicates.map(d=>`${d.a} ↔ ${d.b}`).join(" · ")}</div>}
                       {Array.isArray(e.unexplained)&&e.unexplained.length>0&&<div style={{fontSize:".7rem",color:"#b45309",marginTop:2}}>⚠ Unexplained beginning movement: {e.unexplained.map(u=>`${u.bank} ${u.diff>0?"+":"−"}${peso(Math.abs(u.diff))}`).join(" · ")}</div>}
                     </div>
                   </div>
