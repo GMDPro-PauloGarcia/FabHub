@@ -1,5 +1,5 @@
 import React,{useState,useMemo,useEffect,useRef} from "react";
-import {today,uid,BANKS,emptyBankRow,emptyDayPosition,uiConfirm,uiPrompt,addDaysLocalISO,CASH_PREFILL_DAYS} from "../shared";
+import {today,uid,BANKS,emptyBankRow,emptyDayPosition,uiConfirm,uiPrompt,addDaysLocalISO,CASH_PREFILL_DAYS,disbPayee,disbParticulars} from "../shared";
 
 // ── Currency input: shows grouped digits, edits raw ────────────────────────────
 const CurrInp=({value,onChange,placeholder="—",style:sx={}})=>{
@@ -525,9 +525,9 @@ function DailyCashPosition({
     rows.push([],["COLLECTIONS DETAIL (FOR THE DAY)"],["Bank","Particulars","Amount"]);
     manualColl.forEach(r=>{const bk=BANKS.find(x=>x.id===r.bank);rows.push([bk?bk.name:"",r.particulars??r.note??"",n(r.amount).toFixed(2)]);});
     rows.push(["TOTAL","",collTotal.toFixed(2)]);
-    rows.push([],["DISBURSEMENTS DETAIL (FOR THE DAY)"],["Bank","Payee / Particulars","Amount"]);
-    manualDisb.forEach(r=>{const bk=BANKS.find(x=>x.id===r.bank);rows.push([bk?bk.name:"",r.particulars||"",n(r.amount).toFixed(2)]);});
-    rows.push(["TOTAL","",disbTotal.toFixed(2)]);
+    rows.push([],["DISBURSEMENTS DETAIL (FOR THE DAY)"],["Bank","Payee","Particulars","Amount"]);
+    manualDisb.forEach(r=>{const bk=BANKS.find(x=>x.id===r.bank);rows.push([bk?bk.name:"",disbPayee(r),disbParticulars(r),n(r.amount).toFixed(2)]);});
+    rows.push(["TOTAL","","",disbTotal.toFixed(2)]);
     rows.push([],["FLOATING CHECKS (UNCLEARED)"],["Bank","Payee / Particulars","Check No.","Amount","Status"]);
     openFloat.forEach(r=>{const bk=BANKS.find(x=>x.id===r.bank);rows.push([bk?bk.name:"",r.particulars||r.payee||"",r.checkNo||"",n(r.amount).toFixed(2),"Floating"]);});
     rows.push(["TOTAL","","",floatingTotal.toFixed(2),"(uncleared)"]);
@@ -877,23 +877,27 @@ function DailyCashPosition({
         {/* DISBURSEMENTS DETAIL */}
         {sectionHdr("Disbursements Detail (for the day)","#7c2d12")}
         <div style={{padding:"10px 12px 14px"}}>
-          <table style={{borderCollapse:"collapse",width:"100%",maxWidth:720}}>
+          <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
+          <table style={{borderCollapse:"collapse",width:"100%",maxWidth:920,minWidth:mob?620:0}}>
             <thead>
               <tr>
-                <th style={{...th,textAlign:"left",width:mob?120:220}}>Bank</th>
-                <th style={{...th,textAlign:"left"}}>Payee / Particulars</th>
-                <th style={{...th,width:mob?110:170}}>Amount</th>
+                <th style={{...th,textAlign:"left",width:mob?120:200}}>Bank</th>
+                <th style={{...th,textAlign:"left"}}>Payee</th>
+                <th style={{...th,textAlign:"left"}}>Particulars</th>
+                <th style={{...th,width:mob?110:160}}>Amount</th>
                 <th style={{...th,width:40,background:"#fff",border:"none"}}></th>
               </tr>
             </thead>
             <tbody>
               {manualDisb.length===0&&(
-                <tr><td colSpan={4} style={{...td,color:"#94a3b8",fontStyle:"italic",padding:"10px"}}>No disbursements for {fmtDate(selDate)}. Add rows below.</td></tr>
+                <tr><td colSpan={5} style={{...td,color:"#94a3b8",fontStyle:"italic",padding:"10px"}}>No disbursements for {fmtDate(selDate)}. Add rows below.</td></tr>
               )}
               {manualDisb.map((row,ri)=>(
                 <tr key={row.id||ri} style={{background:ri%2?C.zebra:"#fff"}}>
                   <td style={{...td,padding:2}}>{isUntagged(row)&&<span style={{color:"#dc2626",fontWeight:700,fontSize:".62rem",marginLeft:4}}>⚠</span>}{bankSelect(row.bank,v=>{const md=[...manualDisb];md[ri]={...md[ri],bank:v};f("disbursements.manual",md);})}</td>
-                  <td style={{...td,padding:2}}>{textCell(row.particulars??"",v=>{const md=[...manualDisb];md[ri]={...md[ri],particulars:v};f("disbursements.manual",md);},"Payee / particulars")}</td>
+                  {/* Editing either field saves both, moving an old one-text row to the split format */}
+                  <td style={{...td,padding:2}}>{textCell(disbPayee(row),v=>{const md=[...manualDisb];md[ri]={...md[ri],payee:v,particulars:disbParticulars(md[ri])};f("disbursements.manual",md);},"Payee")}</td>
+                  <td style={{...td,padding:2}}>{textCell(disbParticulars(row),v=>{const md=[...manualDisb];md[ri]={...md[ri],payee:disbPayee(md[ri]),particulars:v};f("disbursements.manual",md);},"e.g. Office payroll Sept 20")}</td>
                   <td style={{...td,padding:2}}>
                     <CurrInp value={row.amount||""} onChange={e=>{const md=[...manualDisb];md[ri]={...md[ri],amount:e.target.value};f("disbursements.manual",md);}} style={{textAlign:"right",fontSize:".8rem",padding:"5px 8px"}}/>
                   </td>
@@ -901,13 +905,14 @@ function DailyCashPosition({
                 </tr>
               ))}
               <tr style={{background:"#f1e9e2"}}>
-                <td style={{...td,fontWeight:900,color:"#7c2d12"}} colSpan={2}>TOTAL</td>
+                <td style={{...td,fontWeight:900,color:"#7c2d12"}} colSpan={3}>TOTAL</td>
                 <td style={{...td,...numCell,fontWeight:900,color:"#b45309"}}>{fmt2(disbTotal)}</td>
                 <td style={{...td,border:"none",background:"#fff"}}></td>
               </tr>
             </tbody>
           </table>
-          <button onClick={()=>f("disbursements.manual",[...manualDisb,{id:uid(),bank:"",particulars:"",amount:""}])} style={{marginTop:10,background:"#f8fafc",border:"1.5px dashed #cbd5e1",borderRadius:8,padding:"5px 14px",fontFamily:"inherit",fontSize:".76rem",fontWeight:700,color:"#475569",cursor:"pointer"}}>+ Add disbursement</button>
+          </div>
+          <button onClick={()=>f("disbursements.manual",[...manualDisb,{id:uid(),bank:"",payee:"",particulars:"",amount:""}])} style={{marginTop:10,background:"#f8fafc",border:"1.5px dashed #cbd5e1",borderRadius:8,padding:"5px 14px",fontFamily:"inherit",fontSize:".76rem",fontWeight:700,color:"#475569",cursor:"pointer"}}>+ Add disbursement</button>
 
           {/* Cash-movement reconciliation */}
           {tot.end!==0&&(
