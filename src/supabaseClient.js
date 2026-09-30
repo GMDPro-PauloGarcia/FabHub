@@ -11,6 +11,18 @@ const SUPABASE_ANON = process.env.REACT_APP_SUPABASE_ANON_KEY
 let _appToken = null
 export const setAppToken = (t) => { _appToken = t || null }
 export const getAppToken = () => _appToken
+export const hasAppToken = () => !!_appToken
+// No role token = signed out (login screen, or a session that expired while the
+// tab was closed). Any write sent now goes out as `anon`, which RLS always
+// rejects — and that used to raise the red "server rejected a change … NOT
+// saved" toasts on the login screen (seen live 2026-09-29: the boot load ran
+// signed-out, got empty lists back, and re-pushed every cached standalone BOQ as
+// "local-only"). Don't send it at all; nothing a signed-out user does is a save.
+const _signedOut = (op, table) => {
+  if (_appToken) return false
+  console.warn(`SB ${op} ${table}: skipped — not signed in`)
+  return true
+}
 
 export const supabase = (SUPABASE_URL && SUPABASE_ANON)
   ? createClient(SUPABASE_URL, SUPABASE_ANON, {
@@ -231,6 +243,9 @@ export const sbFlushQueue = async (force = false) => {
   if (!supabase) return { synced: 0, remaining: _queue.length, lastError: { kind: 'no-client', message: 'Supabase is not configured on this device.' } }
   if (_flushing) return { synced: 0, remaining: _queue.length, lastError: { kind: 'busy', message: 'A sync attempt is already in progress.' } }
   if (!_queue.length) return { synced: 0, remaining: 0, lastError: null }
+  // Signed out: replaying now would fail as anon and drop the op for good. Hold
+  // the queue until a login mints a token.
+  if (!_appToken) return { synced: 0, remaining: _queue.length, lastError: { kind: 'auth', message: 'Not signed in.' } }
   if (!force && typeof navigator !== 'undefined' && navigator.onLine === false) {
     return { synced: 0, remaining: _queue.length, lastError: { kind: 'offline', message: 'This device is offline.' } }
   }
@@ -284,14 +299,14 @@ if (typeof window !== 'undefined') {
 // stuck on "Saving…", deal lost on refresh. Wrapping every live call in the
 // same _withTimeout race used for replay closes that hole.
 export const sbInsert = async (table, data) => {
-  if (!supabase) return null
+  if (!supabase || _signedOut('INSERT', table)) return null
   const { data: result, error } = await _withTimeout(supabase.from(table).insert(data).select().single())
   if (error) { console.error(`SB INSERT ${table}:`, error.message); const kind=_writeFailed('insert', table, error.message); if(_isRetryable(kind)) _enqueue({ kind: 'insert', table, data }); else _notifyDropped({ kind: 'insert', table, data }, kind, error.message) }
   return result
 }
 
 export const sbUpdate = async (table, id, data) => {
-  if (!supabase) return false
+  if (!supabase || _signedOut('UPDATE', table)) return false
   // Every update stamps updated_at — but a few older tables never had that
   // column, and injecting it made PostgREST return PGRST204 ("Could not find
   // the 'updated_at' column of 'x' in the schema cache"). That classifies as a
@@ -343,14 +358,14 @@ export const sbUpdate = async (table, id, data) => {
 // so they can NEVER overwrite an existing row with a stale local copy — a real
 // cross-user clobber vector when this device's `deals` state lags the server.
 export const sbUpsert = async (table, data, conflictCol = 'id', { ignoreDuplicates = false } = {}) => {
-  if (!supabase) return false
+  if (!supabase || _signedOut('UPSERT', table)) return false
   const { error } = await _withTimeout(supabase.from(table).upsert(data, { onConflict: conflictCol, ignoreDuplicates }))
   if (error) { console.error(`SB UPSERT ${table}:`, error.message); const kind=_writeFailed('upsert', table, error.message); if(_isRetryable(kind)) _enqueue({ kind: 'upsert', table, data, conflictCol }); else _notifyDropped({ kind: 'upsert', table, data, conflictCol }, kind, error.message); return false }
   return true
 }
 
 export const sbDelete = async (table, id) => {
-  if (!supabase) return
+  if (!supabase || _signedOut('DELETE', table)) return
   const { error } = await _withTimeout(supabase.from(table).delete().eq('id', id))
   if (error) { console.error(`SB DELETE ${table}:`, error.message); const kind=_writeFailed('delete', table, error.message); if(_isRetryable(kind)) _enqueue({ kind: 'delete', table, id }); else _notifyDropped({ kind: 'delete', table, id }, kind, error.message) }
 }
@@ -359,7 +374,7 @@ export const sbDelete = async (table, id) => {
 // through the central write-error hook — so cascade/by-column deletions are no
 // longer a silent blind spot. op: 'eq' | 'in' | 'gte' | 'not_null'.
 export const sbDeleteWhere = async (table, column, value, op = 'eq') => {
-  if (!supabase) return
+  if (!supabase || _signedOut('DELETE', table)) return
   let q = supabase.from(table).delete()
   if (op === 'in') q = q.in(column, value)
   else if (op === 'gte') q = q.gte(column, value)
