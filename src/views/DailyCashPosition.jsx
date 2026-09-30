@@ -1,4 +1,4 @@
-import React,{useState,useMemo,useEffect,useRef} from "react";
+import React,{useState,useMemo,useEffect,useLayoutEffect,useRef} from "react";
 import {today,uid,BANKS,emptyBankRow,emptyDayPosition,uiConfirm,uiPrompt,addDaysLocalISO,CASH_PREFILL_DAYS,payeeOf,particularsOf,payeeRaw,particularsRaw,cashCanEdit,cashDayLocked} from "../shared";
 import {arSummary} from "../core";
 
@@ -27,6 +27,29 @@ const CurrInp=({value,onChange,placeholder="—",style:sx={}})=>{
         onChange&&onChange({target:{value:raw}});
       }}
       placeholder={placeholder} style={base}/>
+  );
+};
+
+// ── Wrapping text cell: a one-row textarea that grows to fit its content ──────
+// Long particulars/payees wrap instead of being cut off. Enter is blocked so the
+// field stays single-entry; the value is passed through untouched (no trimming).
+const WrapCell=({value,onType,placeholder})=>{
+  const ref=useRef(null);
+  const fit=()=>{const el=ref.current;if(!el) return;el.style.height="auto";el.style.height=el.scrollHeight+"px";};
+  useLayoutEffect(fit,[value]);
+  useEffect(()=>{
+    const el=ref.current;
+    if(!el||typeof ResizeObserver==="undefined") return;
+    let w=el.clientWidth;
+    const ro=new ResizeObserver(()=>{if(el.clientWidth!==w){w=el.clientWidth;fit();}});
+    ro.observe(el);
+    return()=>ro.disconnect();
+  },[]);
+  return(
+    <textarea ref={ref} rows={1} value={value} placeholder={placeholder}
+      onChange={e=>onType(e.target.value)}
+      onKeyDown={e=>{if(e.key==="Enter") e.preventDefault();}}
+      style={{display:"block",width:"100%",boxSizing:"border-box",border:"1px solid transparent",borderRadius:4,padding:"5px 8px",fontFamily:"inherit",fontSize:".8rem",lineHeight:1.35,background:"transparent",color:"#0f172a",outline:"none",resize:"none",overflow:"hidden",whiteSpace:"pre-wrap",overflowWrap:"anywhere"}}/>
   );
 };
 
@@ -606,9 +629,7 @@ function DailyCashPosition({
       {BANKS.map(b=><option key={b.id} value={b.id}>{b.name.toUpperCase()}</option>)}
     </select>
   );
-  const textCell=(val,onType,ph)=>(
-    <input type="text" value={val} onChange={e=>onType(e.target.value)} placeholder={ph} style={{width:"100%",border:"1px solid transparent",borderRadius:4,padding:"5px 8px",fontFamily:"inherit",fontSize:".8rem",background:"transparent",color:"#0f172a",outline:"none"}}/>
-  );
+  const textCell=(val,onType,ph)=><WrapCell value={val} onType={onType} placeholder={ph}/>;
   const delBtn=(onClick)=>(
     <button onClick={onClick} style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:4,padding:"2px 7px",cursor:"pointer",color:"#dc2626",fontWeight:700,fontSize:".72rem",fontFamily:"inherit"}}>✕</button>
   );
