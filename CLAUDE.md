@@ -31,3 +31,7 @@ The `DB migrations` GitHub workflow does **not** apply migrations. It has no cre
 Run `node scripts/check-imports.js && node scripts/check-schema.js && node scripts/check-undef.js`, then `CI=true npx react-scripts build`. `CI=true` turns lint warnings, including unused imports, into errors.
 
 For the smoke test locally, run `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium-1194/chrome-linux/chrome npm run smoke`.
+
+## Mother PO billing (standby PO umbrellas)
+- A standby PO (`deals.standby_po`, e.g. Diageo CE-2026-1216) earns ₱0 itself; its sub-projects (`parent_deal_id`) carry the billing.
+- Only Managers may add or change milestones or payments on a mother PO. Enforced in `BillingView` (`isMotherPO` + `canonRole(role)`) and by migration `20260930010000_mother_po_billing_manager_only.sql` — keep them in sync.
