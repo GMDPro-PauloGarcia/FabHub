@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback, useRef, useContext, c
 const WrapCtx = createContext(false);
 // Roles that must never see contract value — they get the QS budget instead.
 const BUDGET_ONLY=["Design","Operations","ProjectMover"];
-import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbPendingIds,sbOnQueueChange,appLogin,appLogout,restoreAppToken,logClientError} from './supabaseClient';
+import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbPendingIds,sbOnQueueChange,appLogin,appLogout,restoreAppToken,hasAppToken,logClientError} from './supabaseClient';
 import{idbGetMany,idbSetMany}from'./idb.js';
 import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable} from './shared';
 import {T} from './theme';
@@ -4433,6 +4433,12 @@ export default function App(){
       // valid, and the client's accessToken option attaches it to every request —
       // no anonymous session needed.
       setSbReady(true);
+      // Signed out (no session, or the role token expired): the server returns
+      // empty lists to anon, and the reconciliation below would then treat every
+      // cached row as "local-only" and push it back up as anon — all rejected by
+      // RLS, surfacing as "N changes to standalone_boqs could not be saved" on the
+      // login screen. Load nothing now; login runs loadAllFromSupabase().
+      if(!hasAppToken()) return;
       if(isSupabaseReady()){
         try{
           const _tLoad=_perf();
