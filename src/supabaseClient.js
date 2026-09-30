@@ -11,6 +11,30 @@ const SUPABASE_ANON = process.env.REACT_APP_SUPABASE_ANON_KEY
 let _appToken = null
 export const setAppToken = (t) => { _appToken = t || null }
 export const getAppToken = () => _appToken
+// Who the current role token belongs to (the JWT carries `username`). Used to
+// tag queued writes so one person's held changes are never replayed under
+// someone else's login on a shared PC (history tables record the JWT username).
+const _tokenUsername = () => {
+  try {
+    const part = (_appToken || '').split('.')[1]
+    if (!part) return ''
+    const json = atob(part.replace(/-/g, '+').replace(/_/g, '/'))
+    return JSON.parse(json).username || ''
+  } catch (e) { return '' }
+}
+// True once the role token's lifetime (expires_in at login, default 12h) has
+// passed. Nothing re-checked this after boot, so a tab left open past it kept
+// sending an expired token and every save was rejected.
+export const appTokenExpired = () => {
+  if (!_appToken) return false
+  try { const exp = Number(localStorage.getItem('gmd:token_exp') || 0); return !!exp && exp <= Date.now() } catch (e) { return false }
+}
+// Fired when the server (or the local clock) says the login has expired, so
+// the UI can ask the user to log in again. Writes made meanwhile are held in
+// the queue, not dropped.
+let _onSessionExpired = null
+export const setSessionExpiredHandler = (fn) => { _onSessionExpired = fn }
+const _notifyExpired = () => { try { _onSessionExpired && _onSessionExpired() } catch (_) {} }
 
 export const supabase = (SUPABASE_URL && SUPABASE_ANON)
   ? createClient(SUPABASE_URL, SUPABASE_ANON, {
@@ -76,6 +100,11 @@ export const setSbDropHandler = (fn) => { _onWriteDropped = fn }
 const _classifyError = (msg) => {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return 'offline'
   const m = (msg || '').toLowerCase()
+  // An expired login is NOT a permission problem: the same write succeeds as
+  // soon as the user logs in again. It used to fall into 'auth' (via 'jwt'),
+  // which is never retried — so every save after the 12h token lifetime was
+  // thrown away while the screen still showed it.
+  if (m.includes('jwt expired') || m.includes('pgrst303') || m.includes('pgrst301')) return 'expired'
   if (m.includes('failed to fetch') || m.includes('load failed') || m.includes('network')) return 'network'
   if (m.includes('permission denied') || m.includes('row-level security') || m.includes('jwt') || m.includes('not authorized')) return 'auth'
   // PostgREST PGRST204 ("Could not find the 'x' column of 'y' in the schema
@@ -94,6 +123,7 @@ const _classifyError = (msg) => {
 const _isRetryable = (kind) => kind !== 'auth' && kind !== 'data'
 const _writeFailed = (op, table, msg) => {
   const kind = _classifyError(msg)
+  if (kind === 'expired') _notifyExpired()
   try { _onWriteError && _onWriteError(op, table, msg, kind) } catch (_) {}
   return kind
 }
@@ -137,7 +167,7 @@ export const sbPendingIds = () => {
   return ids
 }
 export const sbOnQueueChange = (fn) => { _queueListeners.push(fn); return () => { _queueListeners = _queueListeners.filter(f => f !== fn) } }
-const _enqueue = (op) => { _queue.push({ qid: `${Date.now()}_${_seq++}`, attempts: 0, ...op }); _saveQueue() }
+const _enqueue = (op) => { _queue.push({ qid: `${Date.now()}_${_seq++}`, attempts: 0, owner: _tokenUsername(), ...op }); _saveQueue() }
 
 // A hung request (no error, no success — seen on some flaky/restrictive
 // networks) must not block forever: without a timeout it holds the single
@@ -234,27 +264,41 @@ export const sbFlushQueue = async (force = false) => {
   if (!force && typeof navigator !== 'undefined' && navigator.onLine === false) {
     return { synced: 0, remaining: _queue.length, lastError: { kind: 'offline', message: 'This device is offline.' } }
   }
+  // Expired login: replaying now fails every op. Hold them until a fresh login.
+  if (appTokenExpired()) { _notifyExpired(); return { synced: 0, remaining: _queue.length, lastError: { kind: 'expired', message: 'Your login expired — log in again to send held changes.' } } }
   _flushing = true
   let synced = 0, lastError = null
+  // Replay only this login's ops (plus untagged ones from older clients).
+  // Another person's held changes stay queued until THEY log in again.
+  const me = _tokenUsername()
+  const mine = (op) => !op.owner || !me || op.owner === me
+  const _removeOp = (op) => { const i = _queue.indexOf(op); if (i >= 0) _queue.splice(i, 1) }
   try {
-    while (_queue.length) {
-      const op = _queue[0]
+    for (;;) {
+      const op = _queue.find(mine)
+      if (!op) break
       const { ok, kind, message } = await _replay(op)
-      if (ok) { _queue.shift(); _saveQueue(); synced++ }
+      if (ok) { _removeOp(op); _saveQueue(); synced++ }
+      else if (kind === 'expired') {
+        // Not the op's fault — keep it (attempts untouched) and stop.
+        lastError = { kind, message, table: op.table }
+        _notifyExpired()
+        break
+      }
       else if (!_isRetryable(kind)) {
         // Permission/schema/constraint errors will never succeed by replaying
         // the same payload — drop immediately instead of wedging every write
         // queued behind it for up to 8 retry cycles.
         console.error(`sync queue: dropping non-retryable op (${kind}) — ${op.kind} ${op.table}`)
         lastError = { kind, message, table: op.table }
-        _queue.shift(); _saveQueue()
+        _removeOp(op); _saveQueue()
         try { _onWriteDropped && _onWriteDropped(op, kind, message) } catch (_) {}
       } else {
         op.attempts = (op.attempts || 0) + 1
         lastError = { kind, message, table: op.table }
         if (op.attempts >= 8) {
           console.error(`sync queue: dropping op after 8 tries — ${op.kind} ${op.table}`)
-          _queue.shift()
+          _removeOp(op)
           try { _onWriteDropped && _onWriteDropped(op, kind, message) } catch (_) {}
         }
         _saveQueue()
@@ -262,6 +306,10 @@ export const sbFlushQueue = async (force = false) => {
       }
     }
   } finally { _flushing = false }
+  if (!lastError && _queue.length && !_queue.some(mine)) {
+    const who = [...new Set(_queue.map(op => op.owner).filter(Boolean))].join(', ')
+    lastError = { kind: 'other-user', message: `These changes were made by ${who || 'another user'} and will be sent when they log in on this device.` }
+  }
   return { synced, remaining: _queue.length, lastError }
 }
 
