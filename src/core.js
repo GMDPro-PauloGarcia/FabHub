@@ -804,6 +804,36 @@ export const scheduleSummary = (terms) => {
   return rows.join(", ") + (net ? ` · ${net.label}` : "");
 };
 
+// ── Mother PO billing guards ─────────────────────────────────────────────────
+// A standby PO (mother PO / Adhoc umbrella, e.g. Diageo CE-2026-1216) earns ₱0 on
+// its own; its sub-projects carry the billing. Anything billed or collected on the
+// mother PO is usually a copy of a sub-project's and double-counts Collected.
+export const isMotherPO = (deal) => !!deal?.standbyPO;
+const _familyRoot = (dealId, byId) => { const d = byId.get(dealId); return d?.parentDealId || dealId; };
+// The same money already recorded in this contract family (the mother PO / main
+// contract and everything linked under it): same amount to the centavo on the
+// same received date, or the same non-empty reference no. Bounced payments are
+// ignored. Pure — returns [{ milestone, payment, deal }].
+export const findDuplicatePayments = ({ dealId, payment, billings = [], deals = [], excludePaymentId = null } = {}) => {
+  if (!dealId || !payment) return [];
+  const byId = new Map(deals.map(d => [d.id, d]));
+  const root = _familyRoot(dealId, byId);
+  const amt = _c2(Number(payment.amount) || 0);
+  const date = String(payment.date || "");
+  const ref = String(payment.refNo ?? payment.ref_no ?? "").trim().toUpperCase();
+  const out = [];
+  billings.forEach(m => {
+    if (!m || m.status === "Cancelled" || _familyRoot(m.dealId, byId) !== root) return;
+    (m.payments || []).forEach(p => {
+      if (!p || p.bounced || (excludePaymentId && p.id === excludePaymentId)) return;
+      const pRef = String(p.refNo ?? p.ref_no ?? "").trim().toUpperCase();
+      const sameAmtDate = amt > 0 && Math.abs(_c2(Number(p.amount) || 0) - amt) < 0.005 && !!date && String(p.date || "") === date;
+      if (sameAmtDate || (ref && pRef === ref)) out.push({ milestone: m, payment: p, deal: byId.get(m.dealId) || null });
+    });
+  });
+  return out;
+};
+
 // ── Billing Check ────────────────────────────────────────────────────────────
 // Project-level double-billing / integrity checks. Pure: pass the loaded deals,
 // billings and addenda. Returns one issue per problem, most severe first.
