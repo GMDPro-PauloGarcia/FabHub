@@ -904,10 +904,10 @@ function DailyCashPosition({
         {/* COLLECTIONS DETAIL */}
         {sectionHdr("Collections Detail (for the day)","#c00000")}
         <div style={{padding:"10px 12px 14px"}}>
-          <table style={{borderCollapse:"collapse",width:"100%",maxWidth:720}}>
+          <table style={{borderCollapse:"collapse",width:"100%",maxWidth:1000}}>
             <thead>
               <tr>
-                <th style={{...th,textAlign:"left",width:mob?120:220}}>Bank</th>
+                <th style={{...th,textAlign:"left",width:mob?120:200}}>Bank</th>
                 <th style={{...th,textAlign:"left"}}>Particulars</th>
                 <th style={{...th,width:mob?110:170}}>Amount</th>
                 <th style={{...th,width:40,background:"#fff",border:"none"}}></th>
@@ -941,7 +941,7 @@ function DailyCashPosition({
         {sectionHdr("Disbursements Detail (for the day)","#7c2d12")}
         <div style={{padding:"10px 12px 14px"}}>
           <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
-          <table style={{borderCollapse:"collapse",width:"100%",maxWidth:920,minWidth:mob?620:0}}>
+          <table style={{borderCollapse:"collapse",width:"100%",maxWidth:1000,minWidth:mob?620:0}}>
             <thead>
               <tr>
                 <th style={{...th,textAlign:"left",width:mob?120:200}}>Bank</th>
