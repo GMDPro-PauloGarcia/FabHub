@@ -243,7 +243,7 @@ const DEFAULT_USERS = [
   { id:"u14", name:"Don Wyn Celmar",     username:"wyn",      passwordHash:"", role:"Sales",        status:"active", createdAt:today },
   { id:"u15", name:"April Gail De Ello", username:"gail",     passwordHash:"", role:"Sales",        status:"active", createdAt:today },
   // ── Cost Control ──────────────────────────────────────────────────────────
-  { id:"u16", name:"Aerwin Del Rosario", username:"aerwin",   passwordHash:"",   role:"Finance",      status:"active", createdAt:today },
+  { id:"u16", name:"Aerwin Del Rosario", username:"aerwin",   passwordHash:"",   role:"Finance",      status:"inactive", createdAt:today },
   { id:"u25", name:"Accounting",         username:"accounting",passwordHash:"",  role:"Accounting",   status:"active", createdAt:today },
   { id:"u17", name:"Marian Prile",       username:"marian",   passwordHash:"",   role:"ProcurementManager", title:"Procurement Manager", status:"active", createdAt:today },
   { id:"u27", name:"Mark Acejo",         username:"mark",     passwordHash:"",   role:"FinanceAssistant", title:"Finance Assistant",          status:"active", createdAt:today },
