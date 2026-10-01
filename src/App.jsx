@@ -9011,14 +9011,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const vendor=wo.subcontractor||"Subcontractor";
     if(existing){
       if(existing.status==="Paid") return existing;
-      const upd={...existing,amount,vendor,projectId:linkedProjectId||existing.projectId,retentionPct:(Number(wo.retentionPct)||0)>=1?Number(wo.retentionPct):(existing.retentionPct||0)};
+      const upd={...existing,amount,vendor,projectId:linkedProjectId||existing.projectId,retentionPct:Number(wo.retentionPct)||0};
       upPayables(ps=>ps.map(p=>p.id===existing.id?upd:p));
       if(isSupabaseReady()&&isUUID(existing.id)) sbUpsert("payables",payableToSb(upd),"id").catch(()=>{});
       return upd;
     }
     const rec={id:uid(),apNumber:"",vendor,amount,paidAmount:0,dueDate:"",category:"Subcontractor",
       accountCode:wo.accountCode||"5070", // 5070 Production - Subcon (5200 is Load Allowance in the chart)
-      retentionPct:(Number(wo.retentionPct)||0)>=1?Number(wo.retentionPct):0,
+      retentionPct:Number(wo.retentionPct)||0,
       invoiceRef:wo.woNumber,invoiceNumber:"",invoiceDate:"",notes:`Auto-created from Work Order ${wo.woNumber}`,projectId:linkedProjectId,
       poNumber:wo.woNumber,poId:wo.woNumber,status:"Unpaid",verified:false,verificationPct:0,createdAt:today,createdBy:session?.name||""};
     upPayables(ps=>[rec,...ps]);
@@ -15516,7 +15516,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                             </div>
                           </>
                         )}
-                        {sub&&(
+                        {sub&&retPct===0&&<div style={{fontSize:".74rem",color:"#64748b",margin:"6px 0"}}>No retention on this bill ({retSrc}).</div>}
+                        {sub&&retPct>0&&(
                           <div style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"10px 12px",margin:"8px 0",fontSize:".8rem",color:"#78350f"}}>
                             <label style={{display:"flex",gap:8,alignItems:"center",cursor:"pointer",fontWeight:600}}>
                               <input type="checkbox" checked={payPayDP} onChange={e=>setPayPayDP(e.target.checked)}/> This is the downpayment (no retention)
@@ -22320,7 +22321,8 @@ function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,subc
         specialty:String(g("specialty")||"").trim(),
         scopeOfWork:String(g("scopeOfWork")||"").trim(),
         contractAmount:numCell(g("contractAmount")),
-        retentionPct:numCell(g("retentionPct")),
+        // New WOs carry the company retention rate unless the sheet says otherwise (a typed 0 stays 0).
+        retentionPct:String(g("retentionPct")??"").trim()===""?AP_RULES.subconRetentionPct:numCell(g("retentionPct")),
         paymentStructure:String(g("paymentStructure")||"").trim(),
         paymentTerms:String(g("paymentTerms")||"").trim(),
         startDate:toISODate(g("startDate")),

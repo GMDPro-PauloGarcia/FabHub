@@ -1136,9 +1136,11 @@ export const canApprovePO=(role,sessionName,requestedBy,approvers)=>{
 export const woRetentionAmt=w=>Math.min(Number(w.retentionPct)||0,100)/100*(Number(w.contractAmount)||0);
 
 // ── Accounts payable rules (company defaults) ─────────────────────────────────
-// subconRetentionPct: held back from every subcontractor progress payment unless
-//   the Work Order sets its own rate (>= 1%). Released when Operations verifies
-//   the work 100% complete. Downpayments are exempt.
+// subconRetentionPct: the retention rate pre-filled on NEW Work Orders (decision
+//   1 Oct 2026: retention applies only to WOs issued from then on, because older
+//   WOs were signed at 0%). At payment time the WO's own rate is what's held —
+//   FabHub never adds retention a signed WO doesn't carry. Released when
+//   Operations verifies the work 100% complete. Downpayments are exempt.
 // prvSubconNoWo: a subcontractor payment request (PRV) at or above `limit` with
 //   no Work Order linked is warned about ("warn") or refused ("block"). Interim
 //   setting until management decides (decision D3).
@@ -1148,14 +1150,13 @@ export const AP_RULES={subconRetentionPct:10,prvSubconNoWo:{limit:50000,mode:"wa
 // the chart, so it is kept here only to recognise those older rows).
 export const SUBCON_ACCOUNT_CODES=["5070","5100","5200"];
 export const isSubconPayable=p=>!!p&&(p.category==="Subcontractor"||SUBCON_ACCOUNT_CODES.includes(String(p.accountCode||"")));
-// Which retention rate applies to a subcontractor payable, and why.
+// Which retention rate applies to a subcontractor payable, and why. Only what
+// the Work Order (or the bill itself) says — never a default on top of a signed WO.
 export const payableRetentionPct=(p,wos=[])=>{
-  const wo=(wos||[]).find(w=>w.woNumber&&p&&w.woNumber===p.poId);
-  const woPct=Number(wo?.retentionPct)||0;
-  if(woPct>=1) return {pct:Math.min(woPct,100),source:`per ${wo.woNumber}`};
-  const own=Number(p?.retentionPct)||0;
-  if(own>=1) return {pct:Math.min(own,100),source:"set on this bill"};
-  return {pct:AP_RULES.subconRetentionPct,source:"company default"};
+  const wo=(wos||[]).find(w=>w.woNumber&&p&&(w.woNumber===p.poId||w.woNumber===p.poNumber));
+  if(wo){const woPct=Math.min(Math.max(Number(wo.retentionPct)||0,0),100);return {pct:woPct,source:`per ${wo.woNumber}`};}
+  const own=Math.min(Math.max(Number(p?.retentionPct)||0,0),100);
+  return {pct:own,source:own>0?"set on this bill":"no Work Order"};
 };
 // Gross value claimed so far on a payable: cash paid plus retention still held.
 export const payableClaimed=p=>(Number(p?.paidAmount)||0)+(Number(p?.retentionHeld)||0);
@@ -1182,7 +1183,7 @@ export const SWO_STATUSES=["Draft","Pending Approval","Issued","In Progress","Co
 
 export const SWO_STATUS_CLR={Draft:"#94a3b8","Pending Approval":"#f59e0b",Issued:"#6366f1","In Progress":"#3b82f6",Completed:"#10b981",Cancelled:"#ef4444"};
 
-export const emptySWO=()=>({subcontractor:"",projectId:"",projectName:"",woNumber:"",woDate:"",specialty:"",status:"Draft",startDate:"",targetEndDate:"",scopeOfWork:"",contractAmount:0,retentionPct:0,paymentStructure:"",paymentTerms:"",notes:"",requestedBy:"",approvedBy:"",acctStatus:"",delivery:null});
+export const emptySWO=()=>({subcontractor:"",projectId:"",projectName:"",woNumber:"",woDate:"",specialty:"",status:"Draft",startDate:"",targetEndDate:"",scopeOfWork:"",contractAmount:0,retentionPct:AP_RULES.subconRetentionPct,paymentStructure:"",paymentTerms:"",notes:"",requestedBy:"",approvedBy:"",acctStatus:"",delivery:null});
 
 export const emptyDelivery=()=>({mode:"",deliveredDate:"",inspectedBy:"",inspectedOn:"",checkQty:false,checkDimensions:false,checkFinish:false,defectNotes:"",inspectionNotes:"",signedOffBy:"",signedOffOn:"",status:"Pending",retentionReleased:false});
 
