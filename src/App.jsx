@@ -7,8 +7,8 @@ import{idbGetMany,idbSetMany}from'./idb.js';
 import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable} from './shared';
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
-import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneReceivable, arSummary, costNet, costSummary, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, isProcurementRole, canonRole, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
+import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneReceivable, arSummary, costNet, costSummary, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -4267,6 +4267,105 @@ function ProjectMarginsView({wonDeals=[],exps=[],billings=[],payables=[],today,s
   );
 }
 
+// Check register: every check number recorded in payable_payments, per bank,
+// with the gaps and problems a manual check log hides — a skipped number, a
+// number used for two different payments, or a transfer reference that sits
+// inside the check series (check 87862 was logged as an online payment).
+function CheckRegister({pays,payables}){
+  const[bankF,setBankF]=useState("");
+  const peso=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+  const bankName=id=>{const b=(BANKS||[]).find(x=>x.id===id||x.short===id||x.name===id);return b?(b.short||b.name):(id||"—");};
+  const vendorOf=id=>(payables.find(p=>p.id===id)||{}).vendor||"—";
+  const digits=s=>/^\d+$/.test(String(s||"").trim())?Number(String(s).trim()):null;
+  // one entry per bank + check no.
+  const map=new Map();
+  (pays||[]).filter(r=>r.method==="Check"&&String(r.refNo||"").trim()).forEach(r=>{
+    const k=`${r.bank}|${String(r.refNo).trim().replace(/^0+(?=\d)/,"")}`;
+    const e=map.get(k)||{bank:r.bank,no:String(r.refNo).trim(),rows:[]};
+    e.rows.push(r);map.set(k,e);
+  });
+  const entries=[...map.values()].map(e=>{
+    const active=e.rows.filter(r=>r.status!=="Cancelled");
+    const payees=[...new Set(e.rows.map(r=>vendorOf(r.payableId)))];
+    const batches=new Set(active.map(r=>r.batchId||r.id));
+    const dates=[...new Set(active.map(r=>r.payDate))];
+    const flags=[];
+    if(active.length&&batches.size>1&&(payees.length>1||dates.length>1)) flags.push("Number used for two payments");
+    return {...e,n:digits(e.no),payees,bills:active.length||e.rows.length,total:(active.length?active:e.rows).reduce((s,r)=>s+(Number(r.amount)||0),0),
+      date:(active[0]||e.rows[0]).payDate,status:active.length?"Issued":"Cancelled",flags};
+  });
+  const banks=[...new Set(entries.map(e=>e.bank))].sort();
+  const bank=bankF||banks[0]||"";
+  const list=entries.filter(e=>e.bank===bank).sort((a,b)=>(a.n??Infinity)-(b.n??Infinity)||String(a.no).localeCompare(String(b.no)));
+  const nums=list.map(e=>e.n).filter(n=>n!=null);
+  const gaps=[];
+  for(let i=1;i<nums.length;i++){const d=nums[i]-nums[i-1];if(d>1&&d<=50) for(let g=nums[i-1]+1;g<nums[i];g++) gaps.push(g);}
+  const lo=nums.length?Math.min(...nums):null,hi=nums.length?Math.max(...nums):null;
+  const inSeries=(pays||[]).filter(r=>r.method!=="Check"&&r.bank===bank&&r.status!=="Cancelled"&&lo!=null&&(()=>{const n=digits(r.refNo);return n!=null&&n>lo&&n<hi;})());
+  const cancelled=list.filter(e=>e.status==="Cancelled").length;
+  const clash=list.filter(e=>e.flags.length).length;
+  if(!entries.length) return null;
+  const th={textAlign:"left",padding:"7px 10px",fontSize:11,color:"#64748b",textTransform:"uppercase",letterSpacing:".4px",borderBottom:"1px solid #e2e8f0",whiteSpace:"nowrap"};
+  const td={padding:"7px 10px",borderBottom:"1px solid #f1f5f9",fontSize:12.5,verticalAlign:"top"};
+  return(
+    <div style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"14px 16px",marginBottom:20}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:10}}>
+        <div style={{fontWeight:800,color:"#1e293b",fontSize:14}}>Check register</div>
+        <span style={{fontSize:12,color:"#64748b"}}>{nums.length?`${bankName(bank)} · ${lo} – ${hi}`:bankName(bank)}</span>
+        <div style={{marginLeft:"auto",display:"flex",gap:6,flexWrap:"wrap"}}>
+          {banks.map(b=><button key={b} onClick={()=>setBankF(b)} style={{background:b===bank?"#1e293b":"#fff",color:b===bank?"#fff":"#475569",border:`1px solid ${b===bank?"#1e293b":"#e2e8f0"}`,borderRadius:7,padding:"4px 10px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{bankName(b)}</button>)}
+        </div>
+      </div>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
+        <span style={{fontSize:11.5,fontWeight:700,padding:"2px 9px",borderRadius:20,background:gaps.length?"#fffbeb":"#f0fdf4",color:gaps.length?"#a16207":"#15803d",border:`1px solid ${gaps.length?"#fde68a":"#86efac"}`}}>{gaps.length?`${gaps.length} gap${gaps.length>1?"s":""}: ${gaps.slice(0,8).join(", ")}${gaps.length>8?"…":""}`:"No gaps"}</span>
+        {cancelled>0&&<span style={{fontSize:11.5,fontWeight:700,padding:"2px 9px",borderRadius:20,background:"#fef2f2",color:"#b91c1c",border:"1px solid #fca5a5"}}>{cancelled} cancelled</span>}
+        {clash>0&&<span style={{fontSize:11.5,fontWeight:700,padding:"2px 9px",borderRadius:20,background:"#fef2f2",color:"#b91c1c",border:"1px solid #fca5a5"}}>{clash} number{clash>1?"s":""} used twice</span>}
+        {inSeries.length>0&&<span title={inSeries.map(r=>`${r.refNo} (${r.method})`).join(", ")} style={{fontSize:11.5,fontWeight:700,padding:"2px 9px",borderRadius:20,background:"#fffbeb",color:"#a16207",border:"1px solid #fde68a"}}>{inSeries.length} non-check payment{inSeries.length>1?"s":""} with a reference inside this check series</span>}
+      </div>
+      <div style={{overflowX:"auto",maxHeight:360,overflowY:"auto"}}>
+        <table style={{width:"100%",borderCollapse:"collapse",minWidth:620}}>
+          <thead><tr><th style={th}>Check no.</th><th style={th}>Payee</th><th style={{...th,textAlign:"right"}}>Bills</th><th style={{...th,textAlign:"right"}}>Amount</th><th style={th}>Date</th><th style={th}>Status</th></tr></thead>
+          <tbody>
+            {list.map(e=>{const off=e.status==="Cancelled";return(
+              <tr key={e.bank+e.no}>
+                <td style={{...td,fontFamily:"monospace",fontWeight:700,color:off?"#94a3b8":"#1e293b"}}>{e.no}</td>
+                <td style={{...td,color:off?"#94a3b8":"#334155"}}>{e.payees.join(", ")}</td>
+                <td style={{...td,textAlign:"right",fontVariantNumeric:"tabular-nums"}}>{e.bills}</td>
+                <td style={{...td,textAlign:"right",fontVariantNumeric:"tabular-nums",textDecoration:off?"line-through":"none",color:off?"#94a3b8":"#0f172a"}}>{peso(e.total)}</td>
+                <td style={{...td,whiteSpace:"nowrap",color:"#64748b"}}>{e.date||"—"}</td>
+                <td style={td}><span style={{fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:20,background:off?"#fef2f2":"#f0fdf4",color:off?"#b91c1c":"#15803d"}}>{e.status}</span>{e.flags.map(f=><div key={f} style={{fontSize:11,color:"#b91c1c",fontWeight:700,marginTop:3}}>{f}</div>)}</td>
+              </tr>);})}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// Payment history rows for one bill (payable_payments). Cancelled rows stay on
+// screen, struck through, with who cancelled and why.
+function PayHistoryList({rows,onCancel,canCancel}){
+  const peso=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+  const bankName=id=>{const b=(BANKS||[]).find(x=>x.id===id||x.short===id||x.name===id);return b?(b.short||b.name):(id||"");};
+  return(
+    <div style={{display:"grid",gap:6}}>
+      {rows.map(r=>{const off=r.status==="Cancelled";return(
+        <div key={r.id} style={{border:"1px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontSize:".78rem",background:off?"#f8fafc":"#fff"}}>
+          <div style={{display:"flex",justifyContent:"space-between",gap:8,flexWrap:"wrap"}}>
+            <span style={{color:off?"#94a3b8":"#0f172a",fontWeight:700,textDecoration:off?"line-through":"none"}}>{peso(r.amount)}{r.kind==="Retention release"?" · retention release":""}</span>
+            <span style={{color:"#64748b"}}>{r.payDate||"—"}</span>
+          </div>
+          <div style={{color:"#64748b",marginTop:2}}>{[r.method,bankName(r.bank),r.refNo?`#${r.refNo}`:"",r.batchId?"part of a multi-bill payment":""].filter(Boolean).join(" · ")}</div>
+          {r.retentionAmount>0&&<div style={{color:"#b45309",marginTop:2}}>Retention held from this claim: {peso(r.retentionAmount)}</div>}
+          {r.note&&<div style={{color:"#64748b",marginTop:2}}>{r.note}</div>}
+          {off
+            ? <div style={{color:"#b91c1c",marginTop:2,fontWeight:600}}>Cancelled{r.cancelledBy?` by ${r.cancelledBy}`:""}: {r.cancelReason}</div>
+            : canCancel&&<button onClick={()=>onCancel(r.id)} style={{marginTop:6,background:"#fff",border:"1px solid #fca5a5",color:"#b91c1c",borderRadius:6,padding:"3px 10px",fontSize:".72rem",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Cancel payment</button>}
+        </div>);})}
+    </div>
+  );
+}
+
 export default function App(){
   const[users,      setUsers]     = useState(DEFAULT_USERS);
   const[cashPositions,setCashPos]  = useState({});
@@ -4379,7 +4478,7 @@ export default function App(){
           KEYS.botsettings,KEYS.customclients,KEYS.addenda,KEYS.budgets,
           KEYS.billings,KEYS.vvip,KEYS.actlog,KEYS.pcards,KEYS.inventory,
           KEYS.stocklog,KEYS.swos,"gmdv5:payables","gmdv5:loans","gmdv5:clientprofiles",
-          "gmdv5:aeUpdates","gmdv5:auditFindings",KEYS.vouchers,"gmdv5:standaloneBoqs","gmdv5:chartOfAccounts",KEYS.dailylogs,KEYS.ceReqs,KEYS.payouts,KEYS.tools,KEYS.drs
+          "gmdv5:aeUpdates","gmdv5:auditFindings",KEYS.vouchers,"gmdv5:standaloneBoqs","gmdv5:chartOfAccounts",KEYS.dailylogs,KEYS.ceReqs,KEYS.payouts,KEYS.tools,KEYS.drs,KEYS.payPays
         ]);
         if(idb[KEYS.deals]){setDeals(idb[KEYS.deals].map(x=>({...x,stage:normalizeStage(x.stage)})));}
         if(idb[KEYS.projects])    setProjs(idb[KEYS.projects]);
@@ -4413,6 +4512,7 @@ export default function App(){
         if(idb[KEYS.tools])       setTools(idb[KEYS.tools]);
         if(idb[KEYS.drs])         setDrs(idb[KEYS.drs]);
         if(idb["gmdv5:payables"]) setPayables(idb["gmdv5:payables"]);
+        if(idb[KEYS.payPays])     setPayPays(idb[KEYS.payPays]);
         if(idb["gmdv5:loans"])    setLoans(idb["gmdv5:loans"]);
         if(idb["gmdv5:aeUpdates"]) setAeUpdates(idb["gmdv5:aeUpdates"]);
         if(idb["gmdv5:auditFindings"]) setAuditFindings(idb["gmdv5:auditFindings"]);
@@ -4523,8 +4623,9 @@ export default function App(){
             const _budgets=Object.keys(data.budgets||{}).length?Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}])):null;
             if(_budgets){setBudgets(prev=>mergeLocalOnlyObj(_budgets,prev));idbE.push([KEYS.budgets,_budgets]);}
             if(data.inflows!=null){setInfs(data.inflows);idbE.push([KEYS.inflows,data.inflows]);}
-            const _payables=data.payables!=null?data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0,accountCode:p.account_code||"",verified:p.verified!==false,verifiedBy:p.verified_by||"",verifiedAt:p.verified_at||"",verificationPct:p.verification_pct!=null?Number(p.verification_pct):100,payBank:p.pay_bank||"",payMethod:p.pay_method||"",payRef:p.pay_ref||"",vatable:!!p.vatable,inputVat:Number(p.input_vat)||0,netAmount:Number(p.net_amount)||0,ewtRate:Number(p.ewt_rate)||0,ewtAmount:Number(p.ewt_amount)||0,tin:p.tin||"",approvalStatus:p.approval_status||"Approved",approvedBy:p.approved_by||"",approvedAt:p.approved_at||null})):null;
+            const _payables=data.payables!=null?data.payables.map(payableFromSb):null;
             if(_payables!=null){setPayables(prev=>mlo(_payables,prev));idbE.push(["gmdv5:payables",_payables]);}
+            if(data.payablePayments!=null&&!(Array.isArray(data._failed)&&data._failed.includes("payable_payments"))){const _pp=data.payablePayments.map(payablePaymentFromSb);setPayPays(prev=>mlo(_pp,prev));idbE.push([KEYS.payPays,_pp]);}
             const _loans=data.loans!=null?data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]})):null;
             if(_loans!=null){setLoans(prev=>mlo(_loans,prev));idbE.push(["gmdv5:loans",_loans]);}
             const _vouchers=data.checkVouchers?.length?data.checkVouchers.map(v=>({...v,cvNo:v.cv_no,projectId:v.project_id,releasedBy:v.released_by||"",releasedDate:v.released_date||null,createdBy:v.created_by||"",createdAt:v.created_at||null,poRef:v.po_ref||"",apRef:v.ap_ref||"",payableId:v.payable_id||null,checkNo:v.check_no||"",clearedDate:v.cleared_date||null,isCleared:v.is_cleared||false})):null;
@@ -4836,11 +4937,12 @@ export default function App(){
     }
     if(Object.keys(data.budgets||{}).length){const bg=Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}]));setBudgets(prev=>mergeLocalOnlyObj(bg,prev));idbE.push([KEYS.budgets,bg]);}
     if(data.users?.length){const us=data.users.map(u=>{const fallbackHash=DEFAULT_USERS.find(d=>d.username===(u.username||""))?.passwordHash||"";return{id:u.id,username:u.username||"",name:u.name||u.full_name||"",role:u.role||"Sales",title:u.title||u.role||"",status:u.status||"active",passwordHash:u.password_hash||fallbackHash,createdAt:u.created_at||""};});setUsers(prev=>mlo(us,prev));idbE.push([KEYS.users,us]);}
-    if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0,accountCode:p.account_code||"",verified:p.verified!==false,verifiedBy:p.verified_by||"",verifiedAt:p.verified_at||"",verificationPct:p.verification_pct!=null?Number(p.verification_pct):100,payBank:p.pay_bank||"",payMethod:p.pay_method||"",payRef:p.pay_ref||"",vatable:!!p.vatable,inputVat:Number(p.input_vat)||0,netAmount:Number(p.net_amount)||0,ewtRate:Number(p.ewt_rate)||0,ewtAmount:Number(p.ewt_amount)||0,tin:p.tin||"",approvalStatus:p.approval_status||"Approved",approvedBy:p.approved_by||"",approvedAt:p.approved_at||null}));setPayables(prev=>mlo(ps,prev));idbE.push(["gmdv5:payables",ps]);}
+    if(data.payables?.length){const ps=data.payables.map(payableFromSb);setPayables(prev=>mlo(ps,prev));idbE.push(["gmdv5:payables",ps]);}
     if(data.loans?.length){const ls=data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]}));setLoans(prev=>mlo(ls,prev));idbE.push(["gmdv5:loans",ls]);}
     if(data.dailyLogs?.length){const dl=data.dailyLogs.map(l=>({...l,dealId:l.deal_id,date:l.log_date,workDone:l.work_done,progressNote:l.progress_note,loggedBy:l.logged_by,createdAt:l.created_at}));setDailyLogs(prev=>mlo(dl,prev));idbE.push([KEYS.dailylogs,dl]);}
     if(data.ceReqs?.length){const cr=data.ceReqs.map(ceReqFromSb);setCeReqs(prev=>mlo(cr,prev));idbE.push([KEYS.ceReqs,cr]);}
     if(data.commissionPayouts?.length){const po=data.commissionPayouts.map(commissionPayoutFromSb);setPayouts(prev=>mlo(po,prev));idbE.push([KEYS.payouts,po]);}
+    if(data.payablePayments?.length){const pp=data.payablePayments.map(payablePaymentFromSb);setPayPays(prev=>mlo(pp,prev));idbE.push([KEYS.payPays,pp]);}
     // These tables were previously set only by the boot-time load, never here.
     // Because this function is the LOGIN / Retry-Sync / focus-refresh path, a
     // freshly-provisioned account (e.g. a designer who just got a user_profiles
@@ -5174,6 +5276,7 @@ export default function App(){
     // migrations, so referencing it keeps one source of truth.
     expenses:PERMISSIONS.expenses.insert,
     payables:PERMISSIONS.payables.insert,
+    payable_payments:PERMISSIONS.payable_payments.insert,
     billing_milestones:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"],
     billing_payments:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"],
     commission_payouts:["Manager","Finance","FinanceAssistant"],
@@ -7651,6 +7754,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[finTab,    setFinTab]   =useState("overview");
   const[cashSub,   setCashSub]  =useState("daily");   // Cash Position sub-tab: daily | weekly | monthly
   const[payables,  setPayables] =useState([]);
+  const[payPays,   setPayPays]  =useState([]); // payable_payments: one row per payment / retention release
   // Company costs on the AP-ledger basis (payables + unrouted legacy expenses),
   // VAT-exclusive — the one cost figure every margin uses (see costSummary).
   const costTot   =useMemo(()=>costSummary(exps,payables),[exps,payables]);
@@ -7671,6 +7775,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[payPayBank,  setPayPayBank]  =useState("");            // which bank/account the payable is paid from
   const[payPayMethod,setPayPayMethod]=useState("Online Transfer"); // Online Transfer | Cash | Check
   const[payPayRef,   setPayPayRef]   =useState("");
+  const[payPayDate,  setPayPayDate]  =useState("");   // date the payment actually went out (required)
+  const[payPayDP,    setPayPayDP]    =useState(false); // subcontractor downpayment: no retention withheld
+  const[payPayKind,  setPayPayKind]  =useState("Payment"); // "Payment" | "Retention release"
+  const[multiPay,    setMultiPay]    =useState(null);  // one check / transfer paying several bills: {vendor, sel:{id:amount}, date, method, bank, ref}
+  const[payHistId,   setPayHistId]   =useState(null);  // payable whose payment history is open
   const[editPayId, setEditPayId]=useState(null);
   const[loans,     setLoans]    =useState([]);
   const[loanModal, setLoanModal]=useState(false);
@@ -8626,10 +8735,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     upVouchers(vs=>vs.map(v=>v.id===id?{...v,status:"Released",releasedBy,releasedDate:today}:v));
     if(isSupabaseReady()) sbUpsert("check_vouchers",{id,status:"Released",released_by:releasedBy,released_date:today},"id").catch(()=>{});
     if(cv?.payableId){
+      // Releasing the check pays the linked bill's open balance — recorded as a
+      // payment row (method Check) so it shows in the bill's history and the
+      // check register, and can be cancelled with a reason if the check bounces.
       const linked=payables.find(p=>p.id===cv.payableId);
-      const fullPaid=Number(linked?.amount)||Number(cv?.amount)||0;
-      upPayables(ps=>ps.map(p=>p.id===cv.payableId?{...p,status:"Paid",paidAmount:fullPaid,paidDate:today}:p));
-      if(isSupabaseReady()) sbUpsert("payables",{id:cv.payableId,status:"Paid",paid_amount:fullPaid,paid_date:today},"id").catch(()=>{});
+      const bal=linked?Math.round(((Number(linked.amount)||0)-(Number(linked.paidAmount)||0))*100)/100:0;
+      if(linked&&bal>0) recordPayablePayment(linked.id,bal,{date:today,method:"Check",bank:cv.bank||"",ref:cv.checkNo||cv.cvNo||"",cvId:cv.id,note:`Released via ${cv.cvNo||"check voucher"}`});
     }
     // Reflect payment on the originating expense so the log shows "Paid" rather than "Logged".
     const paidExpId=cv?.sourceExpenseId||(payables.find(p=>p.id===cv?.payableId)||{}).expenseId;
@@ -8692,17 +8803,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     upPayouts(ps=>ps.map(p=>p.id===id?{...p,status:"Void"}:p));
     if(isSupabaseReady()) sbUpsert("commission_payouts",{id,status:"Void"},"id").catch(()=>{});
   };
-  // Human AP reference in the finance team's format: AP-YYYY-000N. Assigned
-  // locally (year-scoped, next after the current max) so PO-derived payables get a
-  // number the moment they're created without an extra async round-trip. Two
-  // offline devices could in theory pick the same suffix; the number is a display
-  // reference, not a key, so a rare collision is cosmetic and self-heals on edit.
-  const nextApNumber=(list=payables)=>{
-    const yr=new Date().getFullYear();
-    const re=new RegExp(`^AP-${yr}-(\\d+)$`);
-    const max=(list||[]).reduce((m,p)=>{const mt=re.exec(String(p.apNumber||""));return mt?Math.max(m,Number(mt[1])):m;},0);
-    return `AP-${yr}-${String(max+1).padStart(4,"0")}`;
-  };
+  // AP / PRV numbers (AP-YYYY-NNNN, PRV-YYYY-NNNN) are assigned by the server
+  // when a payable is first inserted (trigger payables_assign_number, migration
+  // 20260930140000). Numbering on each device produced 102 duplicate AP numbers.
   // The Accounts Payable Voucher (APV) is the approval/support document raised
   // when a payable is logged — BEFORE payment (vs. the Check Voucher, raised AT
   // payment). FabHub derives its number 1:1 from the payable's AP number, so the
@@ -8885,8 +8988,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       if(isSupabaseReady()&&isUUID(existing.id)) sbUpsert("payables",payableToSb(upd),"id").catch(()=>{});
       return upd;
     }
-    const rec={id:uid(),apNumber:nextApNumber(),vendor:supplier,amount,paidAmount:0,dueDate:"",category:"Supplier",
-      accountCode:active[0]?.accountCode||"5000", // default supplier materials → Cost of Materials - Construction
+    const rec={id:uid(),apNumber:"",vendor:supplier, /* AP no. assigned by the server on insert (migration 20260930140000) */amount,paidAmount:0,dueDate:"",category:"Supplier",
+      accountCode:active[0]?.accountCode||"5020", // default: 5020 Production Supplies (5000 is Warehouse Rental in the chart)
       invoiceRef:poNo,invoiceNumber:"",invoiceDate:"",notes:`Auto-created from PO ${poNo}`,projectId:linkedProjectId,
       poNumber:poNo,poId:poNo,status:"Unpaid",verified:false,verificationPct:0,createdAt:today,createdBy:session?.name||""};
     upPayables(ps=>[rec,...ps]);
@@ -8895,9 +8998,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   };
   // Work Order → Accounts Payable. Mirrors syncPoPayable for subcontractor Work
   // Orders so both procurement doors (PO to suppliers, WO to subcontractors) land
-  // in the one AP ledger. Keyed by woNumber; account code defaults to 5200
-  // (Subcontractor Costs). The full contract is the liability — retention only
-  // affects when/how much is paid, handled at payment time.
+  // in the one AP ledger. Keyed by woNumber; account code defaults to 5070
+  // (Production - Subcon). The full contract is the liability — retention (the
+  // WO's rate, else AP_RULES.subconRetentionPct) is held back at payment time.
   const syncWoPayable=(wo)=>{
     if(!wo||!wo.woNumber) return null;
     const amount=Math.round((Number(wo.contractAmount)||0)*100)/100;
@@ -8908,13 +9011,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const vendor=wo.subcontractor||"Subcontractor";
     if(existing){
       if(existing.status==="Paid") return existing;
-      const upd={...existing,amount,vendor,projectId:linkedProjectId||existing.projectId};
+      const upd={...existing,amount,vendor,projectId:linkedProjectId||existing.projectId,retentionPct:(Number(wo.retentionPct)||0)>=1?Number(wo.retentionPct):(existing.retentionPct||0)};
       upPayables(ps=>ps.map(p=>p.id===existing.id?upd:p));
       if(isSupabaseReady()&&isUUID(existing.id)) sbUpsert("payables",payableToSb(upd),"id").catch(()=>{});
       return upd;
     }
-    const rec={id:uid(),apNumber:nextApNumber(),vendor,amount,paidAmount:0,dueDate:"",category:"Subcontractor",
-      accountCode:wo.accountCode||"5200",
+    const rec={id:uid(),apNumber:"",vendor,amount,paidAmount:0,dueDate:"",category:"Subcontractor",
+      accountCode:wo.accountCode||"5070", // 5070 Production - Subcon (5200 is Load Allowance in the chart)
+      retentionPct:(Number(wo.retentionPct)||0)>=1?Number(wo.retentionPct):0,
       invoiceRef:wo.woNumber,invoiceNumber:"",invoiceDate:"",notes:`Auto-created from Work Order ${wo.woNumber}`,projectId:linkedProjectId,
       poNumber:wo.woNumber,poId:wo.woNumber,status:"Unpaid",verified:false,verificationPct:0,createdAt:today,createdBy:session?.name||""};
     upPayables(ps=>[rec,...ps]);
@@ -8924,6 +9028,23 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const savePayable=async(data)=>{
     if(!data.vendor||!data.amount) return;
     if(!String(data.accountCode||"").trim()){toastEmit("Select a Chart-of-Accounts code before saving — it drives the financial statements.","error");return;}
+    // Payment request (PRV) for subcontractor work. The Excel log paid ₱492K of
+    // subcontractor PRVs with no Work Order, so Operations never confirmed the
+    // work. A PRV linked to a WO that already has its own bill would pay the same
+    // work twice — pay that bill instead.
+    if(data.docType==="PRV"&&isSubconPayable(data)){
+      const wo=String(data.poNumber||"").trim();
+      if(wo){
+        const woBill=payables.find(p=>p.poId===wo&&p.id!==editPayId);
+        if(woBill){toastEmit(`${wo} already has its own bill${woBill.apNumber?` (${woBill.apNumber})`:""}. Record the payment on that bill instead of a new payment request, so the work isn't paid twice.`,"error",9000);return;}
+      } else if((Number(data.amount)||0)>=AP_RULES.prvSubconNoWo.limit){
+        const lim="₱"+AP_RULES.prvSubconNoWo.limit.toLocaleString("en-PH");
+        if(AP_RULES.prvSubconNoWo.mode==="block"){toastEmit(`Subcontractor payment requests of ${lim} or more need a Work Order, so Operations can confirm the work before payment.`,"error",9000);return;}
+        const ok=await uiConfirm({title:"No Work Order linked",tone:"warning",confirmLabel:"Save anyway",cancelLabel:"Go back",
+          message:`This subcontractor payment request is ${lim} or more with no Work Order, so Operations hasn't confirmed the work.\n\nIt will be flagged on the Friday exceptions list. Save anyway?`});
+        if(!ok) return;
+      }
+    }
     // Duplicate guard (new payables only) — the AP ledger has no unique key, so the
     // same supplier invoice can be entered twice and double-paid. Warn before saving
     // a likely repeat: same vendor + same amount, matched on invoice number when both
@@ -8981,7 +9102,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       else{approvalStatus=prev?.approvalStatus||"Pending";approvedBy=prev?.approvedBy||"";approvedAt=prev?.approvedAt||null;}
     }
     const rec={...data,amount,paidAmount,vatable,netAmount,inputVat,ewtRate,ewtAmount,tin:data.tin||"",approvalStatus,approvedBy,approvedAt,
-      apNumber:data.apNumber||(editPayId?"":nextApNumber()),
+      apNumber:data.apNumber||"", // blank → the server assigns AP-YYYY-NNNN / PRV-YYYY-NNNN on insert
+      docType:data.docType==="PRV"?"PRV":"AP",
       id:editPayId||uid(),status:editPayId?derived:(paidAmount>0?derived:"Unpaid"),
       paidDate:derived==="Paid"?(data.paidDate||today):(data.paidDate||""),
       createdAt:editPayId?data.createdAt:today,createdBy:editPayId?(data.createdBy||session?.name||""):session?.name||""};
@@ -8999,7 +9121,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // Verification gate: a PO/WO-sourced payable is locked from payment until the
   // receiving side signs off — Warehouse for Materials, Operations (% complete)
   // for Subcontractor. Manual Other Payables are verified by default.
-  const payIsSubcon=p=>p&&(p.category==="Subcontractor"||String(p.accountCode||"").startsWith("52"));
+  const payIsSubcon=isSubconPayable; // category Subcontractor, or account 5070 / 5100 (or the old 5200 default)
   const payNeedsVerify=p=>p&&!!(p.poId||p.poNumber); // only PO/WO-sourced payables are gated
   const verifyPayable=async (id)=>{
     const p=payables.find(x=>x.id===id); if(!p) return;
@@ -9055,34 +9177,80 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(isSupabaseReady()&&isUUID(id)) sbUpsert("payables",payableToSb(upd),"id").catch(()=>{toastEmit("⚠️ Rejection saved locally but NOT synced — do not close this tab!","warning",9000);});
     toastEmit("Payable rejected — it can be edited and re-submitted.","info");
   };
-  // Record a payment against a payable (full or partial). Advances paidAmount and
-  // flips Unpaid → Partial → Paid as the running balance closes — the "Pay" action
-  // in the finance team's AP log.
-  const recordPayablePayment=(id,payAmt,opts={})=>{
-    const p=payables.find(x=>x.id===id);
-    if(!p) return;
-    // Approval gate — enforced at the function level, not just by hiding buttons.
-    // Migration 063's DB trigger only guards approval_status, not status/paid, so
-    // the "cannot pay an unapproved payable" rule must live here to hold for every
-    // pay surface (the PO/WO cost view once let a verified-but-unapproved payable
-    // through). Legacy rows with no approvalStatus are treated as approved.
-    if(!payApproved(p)){toastEmit("This payable isn't approved yet — a Manager or Finance Manager must approve it before payment.","error",7000);return;}
-    const amount=Number(p.amount)||0;
-    const already=Number(p.paidAmount)||0;
-    const add=Number(payAmt)||0;
-    if(!(add>0)) return;
-    const paidAmount=Math.min(amount,Math.round((already+add)*100)/100);
-    const status=paidAmount>=amount?"Paid":"Partial";
-    const paidDate=status==="Paid"?today:(p.paidDate||"");
-    const payBank=opts.bank!=null?opts.bank:(p.payBank||"");
-    const payMethod=opts.method!=null?opts.method:(p.payMethod||"");
-    const payRef=opts.ref!=null?opts.ref:(p.payRef||"");
-    upPayables(ps=>ps.map(x=>x.id===id?{...x,paidAmount,status,paidDate,payBank,payMethod,payRef}:x));
-    if(isSupabaseReady()) sbUpsert("payables",{id,paid_amount:paidAmount,status,pay_bank:payBank,pay_method:payMethod,pay_ref:payRef,...(status==="Paid"?{paid_date:today}:{})},"id").catch(()=>{});
-    if(status==="Paid"&&p.expenseId) markExpensePaid(p.expenseId);
-    const peso=v=>"₱"+Number(v||0).toLocaleString("en-PH",{maximumFractionDigits:0});
-    const bankLbl=(BANKS||[]).find(b=>b.id===payBank||b.short===payBank||b.name===payBank);
-    toastEmit(status==="Paid"?`✅ Payable fully settled — ${peso(amount)}${bankLbl?` · ${bankLbl.short||bankLbl.name}`:""}`:`✅ Partial payment ${peso(add)} recorded · ${peso(amount-paidAmount)} balance`,"success");
+  // ── Payment history (payable_payments) ─────────────────────────────────────
+  // Every payment is its own row: one check paying 15 bills is 15 rows sharing a
+  // batchId; a second payment on the same bill is another row, not a new invoice
+  // number; a mistake is Cancelled with a reason and stays on record. The payable's
+  // paid / retention / status figures are recomputed from its Active rows, here
+  // for the screen and by the database trigger for the record (migration
+  // 20260930140000), so a cancelled check can never count as paid.
+  const r2=v=>Math.round((Number(v)||0)*100)/100;
+  const pesoFmt=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+  const paysOf=id=>payPays.filter(x=>x.payableId===id);
+  // entries: [{payableId, amount (cash), retentionAmount?, kind?}]
+  // common:  {date, method, bank, ref, note?, cvId?}
+  const recordPayments=async(entries,common={})=>{
+    if(!roleCanInsert("payable_payments")){toastEmit("Only Finance, Accounting or a Manager can record payments.","error",7000);return false;}
+    const list=(entries||[]).filter(e=>r2(e.amount)+r2(e.retentionAmount)>0);
+    if(!list.length) return false;
+    for(const e of list){
+      const p=payables.find(x=>x.id===e.payableId);
+      if(!p){toastEmit("That payable no longer exists — refresh and try again.","error");return false;}
+      // Approval gate — enforced here for every pay surface, and again by the DB guard.
+      if(!payApproved(p)){toastEmit(`${p.vendor||"This payable"}${p.apNumber?` (${p.apNumber})`:""} isn't approved yet — a Manager or Finance Manager must approve it before payment.`,"error",7000);return false;}
+    }
+    if(!common.date){toastEmit("Enter the payment date.","error");return false;}
+    const ref=String(common.ref||"").trim();
+    if(common.method==="Check"&&!ref){toastEmit("Enter the check number.","error");return false;}
+    const batchId=list.length>1?uid():null;
+    const now=new Date().toISOString();
+    const rows=list.map(e=>({id:uid(),payableId:e.payableId,batchId,kind:e.kind==="Retention release"?"Retention release":"Payment",payDate:common.date,
+      amount:r2(e.amount),retentionAmount:e.kind==="Retention release"?0:r2(e.retentionAmount),method:common.method||"",bank:common.bank||"",refNo:ref,
+      cvId:common.cvId||null,note:common.note||"",status:"Active",recordedBy:session?.name||"",createdAt:now}));
+    const nextPays=[...rows,...payPays];
+    const touched=new Set(rows.map(r=>r.payableId));
+    const nextPayables=payables.map(p=>touched.has(p.id)?recomputePayableFromPayments(p,nextPays):p);
+    setPayPays(nextPays);persist(KEYS.payPays,nextPays);
+    setPayables(nextPayables);persist(KEYS.payables,nextPayables);
+    if(isSupabaseReady()){
+      // One statement for the whole batch, so a check is recorded against all its bills or none.
+      const ok=await sbUpsert("payable_payments",rows.map(payablePaymentToSb),"id");
+      if(!ok) toastEmit("⚠️ Payment saved on this device but NOT confirmed by the server — do not close this tab.","warning",9000);
+    } else toastEmit("⚠️ Payment saved on this device only — no server connection. Do not close this tab.","warning",9000);
+    nextPayables.filter(p=>touched.has(p.id)&&p.status==="Paid"&&p.expenseId).forEach(p=>markExpensePaid(p.expenseId));
+    const cash=rows.reduce((s,r)=>s+r.amount,0),held=rows.reduce((s,r)=>s+r.retentionAmount,0);
+    const bankLbl=(BANKS||[]).find(b=>b.id===common.bank||b.short===common.bank||b.name===common.bank);
+    toastEmit(`✅ ${rows.length>1?`${rows.length} bills paid under one ${common.method==="Check"?"check":"payment"}`:(rows[0].kind==="Retention release"?"Retention released":"Payment recorded")} — ${pesoFmt(cash)}${held>0?` · retention held ${pesoFmt(held)}`:""}${bankLbl?` · ${bankLbl.short||bankLbl.name}`:""}`,"success",6000);
+    return true;
+  };
+  // Single-bill wrapper kept for existing callers.
+  const recordPayablePayment=(id,payAmt,opts={})=>recordPayments(
+    [{payableId:id,amount:payAmt,retentionAmount:opts.retention||0,kind:opts.kind}],
+    {date:opts.date||today,method:opts.method||"",bank:opts.bank||"",ref:opts.ref||"",note:opts.note||"",cvId:opts.cvId||null});
+  // Cancel a payment (with a reason). A cancelled check usually covered several
+  // bills, so every row of its batch is cancelled together.
+  const cancelPayablePayment=async(payId)=>{
+    const r=payPays.find(x=>x.id===payId);
+    if(!r||r.status==="Cancelled") return;
+    if(!roleCanInsert("payable_payments")){toastEmit("Only Finance, Accounting or a Manager can cancel a payment.","error",7000);return;}
+    const group=r.batchId?payPays.filter(x=>x.batchId===r.batchId&&x.status!=="Cancelled"):[r];
+    const total=group.reduce((s,x)=>s+(Number(x.amount)||0),0);
+    const what=r.method==="Check"&&r.refNo?`check ${r.refNo}`:(r.kind==="Retention release"?"retention release":"payment");
+    const reason=await uiPrompt(`Cancel ${what} of ${pesoFmt(total)}${group.length>1?` (it paid ${group.length} bills — all of them will be reopened)`:""}.\n\nReason (kept on record):`,"");
+    if(reason==null) return;
+    if(!reason.trim()){toastEmit("A reason is required to cancel a payment.","error");return;}
+    const ids=new Set(group.map(x=>x.id));
+    const at=new Date().toISOString();
+    const nextPays=payPays.map(x=>ids.has(x.id)?{...x,status:"Cancelled",cancelReason:reason.trim(),cancelledBy:session?.name||"",cancelledAt:at}:x);
+    const touched=new Set(group.map(x=>x.payableId));
+    const nextPayables=payables.map(p=>touched.has(p.id)?recomputePayableFromPayments(p,nextPays):p);
+    setPayPays(nextPays);persist(KEYS.payPays,nextPays);
+    setPayables(nextPayables);persist(KEYS.payables,nextPayables);
+    if(isSupabaseReady()){
+      const res=await Promise.all(group.map(x=>sbUpdate("payable_payments",x.id,{status:"Cancelled",cancel_reason:reason.trim(),cancelled_by:session?.name||""})));
+      if(res.some(ok=>!ok)) toastEmit("⚠️ Cancellation saved on this device but NOT confirmed by the server — do not close this tab.","warning",9000);
+    }
+    toastEmit(`Payment cancelled — ${group.length>1?`${group.length} bills`:"the bill"} reopened.`,"info");
   };
   // Mark a logged expense as Paid (so the expense log reflects payment instead of staying "Logged").
   const markExpensePaid=(expId)=>{
@@ -9090,12 +9258,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     upExps(es=>{const next=es.map(e=>e.id===expId?{...e,acctStatus:"Paid"}:e);const ex=next.find(e=>e.id===expId);if(ex&&isSupabaseReady())sbUpsert("expenses",toSbExpense(ex),"id").catch(()=>{});return next;});
   };
   const markPayablePaid=(id)=>{
-    const p=payables.find(x=>x.id===id);
-    if(p&&!payApproved(p)){toastEmit("This payable isn't approved yet — approval is required before it can be marked paid.","error",7000);return;}
-    const amount=Number(p?.amount)||0;
-    upPayables(ps=>ps.map(p=>p.id===id?{...p,status:"Paid",paidAmount:amount,paidDate:today}:p));
-    if(isSupabaseReady()) sbUpsert("payables",{id,status:"Paid",paid_amount:amount,paid_date:today},"id").catch(()=>{});
-    if(p?.expenseId) markExpensePaid(p.expenseId);
+    const p=payables.find(x=>x.id===id); if(!p) return;
+    const balance=r2((Number(p.amount)||0)-(Number(p.paidAmount)||0));
+    if(balance>0) recordPayablePayment(id,balance,{date:today,method:p.payMethod||"",bank:p.payBank||"",ref:p.payRef||""});
   };
   // Open the Record-Payment modal for a payable, pre-filled with its open balance.
   // Navigation + badge counts for the Aerwin-styled Finance module tab bar.
@@ -9117,7 +9282,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     setPayPayId(p.id);
     setPayPayMode("amount");setPayPayPct("");
     setPayPayAmt(String(balance||""));
-    setPayPayBank(p.payBank||"");setPayPayMethod(p.payMethod||"Online Transfer");setPayPayRef(p.payRef||"");
+    setPayPayBank(p.payBank||"");setPayPayMethod(p.payMethod||"Online Transfer");setPayPayRef("");
+    setPayPayDate(today);setPayPayDP(false);setPayPayKind("Payment");
+    // Subcontractor bills pay by gross progress claim; start from what's left to claim.
+    if(payIsSubcon(p)) setPayPayAmt(String(Math.max(0,Math.round(((Number(p.amount)||0)-payableClaimed(p))*100)/100)||""));
+  };
+  const openRetentionRelease=(p)=>{
+    if(!p) return;
+    setPayPayId(p.id);setPayPayKind("Retention release");setPayPayMode("amount");setPayPayPct("");
+    setPayPayAmt(String(Number(p.retentionHeld)||0));setPayPayDate(today);setPayPayDP(false);
+    setPayPayBank(p.payBank||"");setPayPayMethod(p.payMethod||"Online Transfer");setPayPayRef("");
   };
   // Route a floated payable into Check Payables: create a linked Draft check voucher.
   // The CV carries the vendor/amount/PO; on Release it marks this payable Paid (see releaseCv).
@@ -15105,6 +15279,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 <div style={{fontSize:12.5,fontWeight:700,color:ERP.navy}}>📋 Accounts Payable Log</div>
                 <span style={{fontSize:11.5,color:ERP.muted}}>Vendor invoices logged from POs, with aging & balances.</span>
                 <div style={{marginLeft:"auto",display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                  {roleCanInsert("payable_payments")&&<button onClick={()=>setMultiPay({vendor:"",sel:{},date:today,method:"Check",bank:"",ref:""})} title="One check or transfer that pays several bills of the same supplier" style={{background:ERP.navy,color:"#fff",border:"none",borderRadius:7,padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Pay several bills</button>}
                   <input value={apLogSearch} onChange={e=>setApLogSearch(e.target.value)} placeholder="Search AP/PO no., vendor, invoice, account…" style={{minWidth:200,flex:"0 1 280px",border:`1px solid ${ERP.line}`,borderRadius:7,padding:"6px 11px",fontFamily:"inherit",fontSize:12,outline:"none",color:ERP.ink}}/>
                   <div style={{display:"flex",gap:5}}>
                     {["All","Unpaid","Partial","Paid"].map(f=>(
@@ -15138,7 +15313,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                           return(
                             <tr key={p.id}
                               onMouseEnter={ev=>ev.currentTarget.style.background="#FAFBFD"} onMouseLeave={ev=>ev.currentTarget.style.background=""}>
-                              <td style={{...erpTd,fontVariantNumeric:"tabular-nums",fontWeight:700,color:ERP.navy,whiteSpace:"nowrap"}}>{p.apNumber||"—"}</td>
+                              <td style={{...erpTd,fontVariantNumeric:"tabular-nums",fontWeight:700,color:ERP.navy,whiteSpace:"nowrap"}}>{p.apNumber||<span style={{color:ERP.muted,fontWeight:500}} title="The server assigns the number when this syncs">pending</span>}{p.docType==="PRV"&&<div style={{fontSize:10.5,color:ERP.purple,fontWeight:700}}>Payment request</div>}</td>
                               <td style={{...erpTd,fontVariantNumeric:"tabular-nums",color:ERP.muted,whiteSpace:"nowrap"}}>{p.poNumber||"—"}</td>
                               <td style={{...erpTd,fontWeight:600,color:ERP.ink,maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={p.vendor}>{p.vendor||"—"}{pn&&<div style={{fontSize:11,color:ERP.purple,fontWeight:500}}>📁 {pn}</div>}</td>
                               <td style={{...erpTd,fontVariantNumeric:"tabular-nums",fontSize:11.5,color:p.accountCode?ERP.ink:"#cbd5e1",whiteSpace:"nowrap"}} title={acct?`${acct.code} · ${acct.name}`:""}>{p.accountCode||"—"}</td>
@@ -15147,7 +15322,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                               <td style={{...erpTd,fontVariantNumeric:"tabular-nums",color:ERP.muted,whiteSpace:"nowrap"}}>{p.dueDate||"—"}</td>
                               <td style={{...erpTd,fontWeight:700,color:settled?ERP.muted:ag.clr,whiteSpace:"nowrap"}}>{settled?"—":ag.label}</td>
                               <td style={{...erpTdNum,fontWeight:700,color:ERP.navy,whiteSpace:"nowrap"}}>{fmtM(p.amount)}</td>
-                              <td style={{...erpTdNum,color:ERP.ok,whiteSpace:"nowrap"}}>{paidAmt>0?<>{fmtM(paidAmt)}{Number(p.amount)>0&&<div style={{fontSize:11,color:ERP.muted}}>{Math.round(paidAmt/Number(p.amount)*100)}%</div>}</>:"—"}</td>
+                              <td style={{...erpTdNum,color:ERP.ok,whiteSpace:"nowrap"}}>{paidAmt>0?<button onClick={()=>setPayHistId(p.id)} title="Payment history" style={{background:"none",border:"none",padding:0,cursor:"pointer",color:"inherit",font:"inherit",textAlign:"right"}}>{fmtM(paidAmt)}{Number(p.amount)>0&&<div style={{fontSize:11,color:ERP.muted}}>{Math.round(paidAmt/Number(p.amount)*100)}%</div>}</button>:"—"}{(Number(p.retentionHeld)||0)>0&&<div style={{fontSize:10.5,color:"#b45309",fontWeight:700}} title="Retention held back from progress payments">Ret. {fmtM(Number(p.retentionHeld))}</div>}</td>
                               <td style={{...erpTdNum,fontWeight:700,color:balance>0?ERP.danger:ERP.muted,whiteSpace:"nowrap"}}>{fmtM(balance)}</td>
                               <td style={{...erpTd,whiteSpace:"nowrap"}}><ErpBadge kind={erpStatusKind(stTxt)}>{stTxt}</ErpBadge>{!settled&&p.approvalStatus==="Pending"&&<div style={{fontSize:10.5,fontWeight:800,color:"#b45309",marginTop:2}}>⏳ For approval</div>}{p.approvalStatus==="Rejected"&&<div style={{fontSize:10.5,fontWeight:800,color:ERP.danger,marginTop:2}}>✕ Rejected</div>}{p.approvalStatus==="Approved"&&p.approvedBy&&<div style={{fontSize:10,color:ERP.muted,marginTop:2}} title={`Approved by ${p.approvedBy}${p.approvedAt?" · "+p.approvedAt:""}`}>✓ {p.approvedBy}</div>}</td>
                               {(()=>{
@@ -15170,7 +15345,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                                     : <span title="Awaiting Manager / Finance approval" style={{fontSize:11,fontWeight:700,color:"#b45309",whiteSpace:"nowrap"}}>⏳ For approval</span>)}
                                   {!settled&&p.approvalStatus==="Rejected"&&<span title={p.notes||"Rejected"} style={{fontSize:11,fontWeight:700,color:ERP.danger,whiteSpace:"nowrap"}}>✕ Rejected</span>}
                                   {!settled&&payNeedsVerify(p)&&!p.verified&&<button onClick={()=>verifyPayable(p.id)} title={payIsSubcon(p)?"Operations: verify % complete":"Warehouse: verify receipt"} style={{background:ERP.gold,border:"none",borderRadius:6,padding:"4px 10px",fontSize:".7rem",color:ERP.navy,cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>✓ Verify</button>}
-                                  {!settled&&balance>0&&payApproved(p)&&(!payNeedsVerify(p)||p.verified)&&<button onClick={()=>openPayModal(p)} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"4px 12px",fontSize:".7rem",color:"#fff",cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>Pay</button>}
+                                  {!settled&&balance>0&&payApproved(p)&&(!payNeedsVerify(p)||p.verified)&&(!payIsSubcon(p)||(Number(p.amount)||0)-payableClaimed(p)>0.005)&&<button onClick={()=>openPayModal(p)} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"4px 12px",fontSize:".7rem",color:"#fff",cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>Pay</button>}
+                                  {(Number(p.retentionHeld)||0)>0&&payApproved(p)&&(!payNeedsVerify(p)||(Number(p.verificationPct)||0)>=100)&&<button onClick={()=>openRetentionRelease(p)} title="Release the retention held on this subcontractor bill" style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#b45309",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>Release ret.</button>}
+                                  {(paysOf(p.id).length>0||paidAmt>0)&&<button onClick={()=>setPayHistId(p.id)} title="Payment history" style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>History</button>}
                                   {!settled&&payApproved(p)&&(!payNeedsVerify(p)||p.verified)&&!(p.cvId||p.status==="Check Issued")&&<button onClick={()=>payableToCheck(p.id)} title="Route to Check Voucher" style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#2563eb",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🖊 CV</button>}
                                   <button onClick={()=>{setPayForm({...p});setEditPayId(p.id);setPayModal(true);}} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
                                   <button onClick={()=>delPayable(p.id)} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
@@ -15185,8 +15362,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 </div>
               )}
               {/* Add/Edit Payable Modal */}
-              <Modal open={payModal} onClose={()=>{setPayModal(false);setEditPayId(null);}} title={editPayId?"Edit Other Payable":"New Other Payable"}>
+              <Modal open={payModal} onClose={()=>{setPayModal(false);setEditPayId(null);}} title={editPayId?(payForm.docType==="PRV"?"Edit Payment Request":"Edit Other Payable"):(payForm.docType==="PRV"?"New Payment Request (PRV)":"New Other Payable")}>
                 {editPayId&&payForm.apNumber&&<div style={{fontSize:".72rem",color:"#6366f1",fontWeight:700,fontFamily:"monospace",marginBottom:8}}>{payForm.apNumber}{payForm.poNumber?` · PO ${payForm.poNumber}`:""}</div>}
+                <Fld label="Type">
+                  <Sel value={payForm.docType==="PRV"?"PRV":"AP"} onChange={e=>setPayForm(p=>({...p,docType:e.target.value}))} disabled={!!(editPayId&&payForm.apNumber)}>
+                    <option value="AP">Supplier bill (AP)</option>
+                    <option value="PRV">Payment request, no PO (PRV)</option>
+                  </Sel>
+                  {!editPayId&&<div style={{fontSize:".72rem",color:"#64748b",marginTop:3}}>The {payForm.docType==="PRV"?"PRV":"AP"} number is assigned by the server when it saves, so two people can never get the same number.</div>}
+                </Fld>
                 <Fld label="Vendor / Payee"><Inp value={payForm.vendor||""} onChange={e=>setPayForm(p=>({...p,vendor:e.target.value}))} placeholder="e.g. ABC Steel Supply"/></Fld>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
                   <Fld label="Invoice No."><Inp value={payForm.invoiceNumber||""} onChange={e=>setPayForm(p=>({...p,invoiceNumber:e.target.value}))} placeholder="Vendor invoice #"/></Fld>
@@ -15209,6 +15393,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   </Sel>
                   {!payForm.accountCode&&<div style={{fontSize:".72rem",color:"#b45309",marginTop:3,fontWeight:600}}>Required — this drives the account-code financial statements.</div>}
                 </Fld>
+                {payForm.docType==="PRV"&&isSubconPayable(payForm)&&(
+                  <Fld label="Work order">
+                    <Sel value={payForm.poNumber||""} onChange={e=>setPayForm(p=>({...p,poNumber:e.target.value}))}>
+                      <option value="">— None —</option>
+                      {(swos||[]).filter(w=>w.woNumber&&w.status!=="Cancelled").slice().sort((a,b)=>String(b.woNumber).localeCompare(String(a.woNumber))).map(w=><option key={w.id||w.woNumber} value={w.woNumber}>{w.woNumber} · {w.subcontractor||"—"} · {fmtM(Number(w.contractAmount)||0)}</option>)}
+                    </Sel>
+                    {!payForm.poNumber&&(Number(payForm.amount)||0)>=AP_RULES.prvSubconNoWo.limit&&<div style={{fontSize:".72rem",color:"#b45309",marginTop:3,fontWeight:600}}>No Work Order: Operations won't confirm this work before it's paid.</div>}
+                    {payForm.poNumber&&<div style={{fontSize:".72rem",color:"#64748b",marginTop:3}}>Payment waits for Operations to verify % complete. Retention is held at payment.</div>}
+                  </Fld>
+                )}
                 <Fld label="Link to Project"><Sel value={payForm.projectId||"none"} onChange={e=>setPayForm(p=>({...p,projectId:e.target.value==="none"?null:e.target.value}))}><option value="none">— No project</option>{wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" — "+d.contact:""}</option>)}</Sel></Fld>
                 {/* BIR: VAT + EWT capture (restored from the legacy expense flow) */}
                 {(()=>{
@@ -15244,81 +15438,213 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   <Btn variant="ghost" onClick={()=>{setPayModal(false);setEditPayId(null);}}>Cancel</Btn>
                 </div>
               </Modal>
-              {/* Record-Payment (full or partial) modal */}
+              {/* Record-Payment modal: full / partial payment, subcontractor progress
+                  claim with retention, or retention release. Every save is a row in
+                  payable_payments (see recordPayments). */}
               {(()=>{
                 const p=payables.find(x=>x.id===payPayId);
                 if(!p) return null;
                 const contract=Number(p.amount)||0;
-                const balance=Math.max(0,contract-(Number(p.paidAmount)||0));
-                const amt=Number(payPayAmt)||0;
-                const invalid=!(amt>0)||amt>balance+0.005||!payPayBank;
-                const pctPaidSoFar=contract>0?Math.round((Number(p.paidAmount)||0)/contract*100):0;
-                const close=()=>{setPayPayId(null);setPayPayAmt("");setPayPayMode("amount");setPayPayPct("");setPayPayBank("");setPayPayMethod("Online Transfer");setPayPayRef("");};
-                // % mode is a progress PAYMENT to the subcontractor/supplier (money
-                // out, AP side — not client billing): percent is of the FULL contract,
-                // so retention (e.g. hold the last 10%) works by simply not paying to 100%.
-                const setFromPct=(v)=>{setPayPayPct(v);const pct=Number(v)||0;setPayPayAmt(pct>0?String(Math.round(contract*pct/100*100)/100):"");};
+                const paid=Number(p.paidAmount)||0;
+                const balance=Math.max(0,Math.round((contract-paid)*100)/100);
+                const held=Number(p.retentionHeld)||0;
+                const sub=payIsSubcon(p);
+                const release=payPayKind==="Retention release";
+                const {pct:retPct,source:retSrc}=payableRetentionPct(p,swos);
+                const claimed=payableClaimed(p);
+                const leftToClaim=Math.max(0,Math.round((contract-claimed)*100)/100);
+                const entered=Math.round((Number(payPayAmt)||0)*100)/100;
+                // Subcontractor progress claim: the entered figure is the GROSS claim;
+                // retention is held back from it and the rest is paid now.
+                const retention=(sub&&!release&&!payPayDP)?Math.round(entered*retPct/100*100)/100:0;
+                const cash=release?held:Math.round((entered-retention)*100)/100;
+                const verifiedCap=(Number(p.verificationPct)||0)/100*contract;
+                const overVerified=sub&&!release&&payNeedsVerify(p)&&claimed+entered>verifiedCap+0.005;
+                const releaseBlocked=release&&payNeedsVerify(p)&&(Number(p.verificationPct)||0)<100;
+                const overLimit=release?false:(sub?entered>leftToClaim+0.005:entered>balance+0.005);
+                const noRef=payPayMethod==="Check"&&!String(payPayRef).trim();
+                const invalid=!(cash>0)||overLimit||!payPayBank||!payPayDate||noRef||releaseBlocked||(release&&!(held>0));
+                const pctPaidSoFar=contract>0?Math.round(paid/contract*100):0;
+                const history=paysOf(p.id).slice().sort((a,b)=>String(b.payDate).localeCompare(String(a.payDate)));
+                const close=()=>{setPayPayId(null);setPayPayAmt("");setPayPayMode("amount");setPayPayPct("");setPayPayBank("");setPayPayMethod("Online Transfer");setPayPayRef("");setPayPayDate("");setPayPayDP(false);setPayPayKind("Payment");};
+                const base=sub?contract:contract; // % is always of the full contract
+                const setFromPct=(v)=>{setPayPayPct(v);const q=Number(v)||0;setPayPayAmt(q>0?String(Math.round(base*q/100*100)/100):"");};
+                const chip={border:"1px solid #bfdbfe",background:"#eff6ff",color:"#1d4ed8",borderRadius:6,padding:"4px 10px",fontSize:".72rem",cursor:"pointer",fontWeight:700,fontFamily:"inherit"};
                 return(
-                  <Modal open={!!payPayId} onClose={close} title="Record Payment">
+                  <Modal open={!!payPayId} onClose={close} title={release?"Release Retention":"Record Payment"}>
                     <div style={{background:"#f8fafc",borderRadius:10,padding:"12px 14px",marginBottom:14,fontSize:".82rem"}}>
                       <div style={{fontWeight:700,color:"#0f172a"}}>{p.vendor||"Payable"}</div>
-                      <div style={{color:"#64748b",marginTop:3}}>{p.apNumber||""}{p.poNumber?` · ${p.poNumber}`:""}</div>
+                      <div style={{color:"#64748b",marginTop:3}}>{p.apNumber||""}{p.poNumber?` · ${p.poNumber}`:""}{p.docType==="PRV"?" · Payment request":""}</div>
                       <div style={{marginTop:6,display:"flex",gap:16,flexWrap:"wrap"}}>
                         <span style={{color:"#64748b"}}>Contract <strong style={{color:"#0f172a"}}>{fmtM(contract)}</strong></span>
-                        <span style={{color:"#64748b"}}>Paid <strong style={{color:"#059669"}}>{fmtM(Number(p.paidAmount)||0)} ({pctPaidSoFar}%)</strong></span>
+                        <span style={{color:"#64748b"}}>Paid <strong style={{color:"#059669"}}>{fmtM(paid)} ({pctPaidSoFar}%)</strong></span>
+                        {held>0&&<span style={{color:"#64748b"}}>Retention held <strong style={{color:"#b45309"}}>{fmtM(held)}</strong></span>}
                         <span style={{color:"#64748b"}}>Balance <strong style={{color:"#b91c1c"}}>{fmtM(balance)}</strong></span>
                       </div>
+                      {sub&&payNeedsVerify(p)&&<div style={{marginTop:6,color:"#64748b"}}>Operations verified <strong style={{color:"#0f172a"}}>{Number(p.verificationPct)||0}%</strong> complete</div>}
                     </div>
-                    {/* Amount vs % (progress payment) toggle */}
-                    <div style={{display:"flex",gap:6,marginBottom:12}}>
-                      {[["amount","₱ Amount"],["pct","% of contract"]].map(([m,l])=>(
-                        <button key={m} onClick={()=>{setPayPayMode(m);setPayPayPct("");if(m==="amount")setPayPayAmt(String(balance));else setPayPayAmt("");}} style={{flex:1,background:payPayMode===m?"#1e293b":"#fff",color:payPayMode===m?"#fff":"#475569",border:`1.5px solid ${payPayMode===m?"#1e293b":"#e2e8f0"}`,borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,cursor:"pointer"}}>{l}</button>
-                      ))}
-                    </div>
-                    {payPayMode==="amount"?(
-                      <>
-                        <Fld label="Payment amount (₱)" required>
-                          <Inp type="number" value={payPayAmt} onChange={e=>setPayPayAmt(e.target.value)} placeholder="0"/>
-                        </Fld>
-                        <div style={{display:"flex",gap:6,marginBottom:6}}>
-                          <button onClick={()=>setPayPayAmt(String(balance))} style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 10px",fontSize:".72rem",color:"#1d4ed8",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>Full balance</button>
-                          <button onClick={()=>setPayPayAmt(String(Math.round(balance/2*100)/100))} style={{background:"#f1f5f9",border:"1px solid #e2e8f0",borderRadius:6,padding:"4px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>Half</button>
-                        </div>
-                      </>
+                    {release?(
+                      <div style={{marginBottom:12,fontSize:".82rem",color:"#334155"}}>
+                        Pays out the full retention held: <strong>{fmtM(held)}</strong>.
+                        {releaseBlocked&&<div style={{marginTop:6,color:"#b91c1c",fontWeight:600}}>Operations must verify this work 100% complete before retention is released.</div>}
+                      </div>
                     ):(
                       <>
-                        <Fld label="Progress payment (% of contract)" required>
-                          <Inp type="number" value={payPayPct} onChange={e=>setFromPct(e.target.value)} placeholder="e.g. 30"/>
-                          {amt>0&&<div style={{fontSize:".78rem",color:"#0f172a",marginTop:4,fontWeight:600}}>= {fmtM(amt)} <span style={{color:"#94a3b8",fontWeight:400}}>of {fmtM(contract)} contract</span></div>}
-                        </Fld>
-                        <div style={{display:"flex",gap:6,marginBottom:6,flexWrap:"wrap"}}>
-                          {[10,25,30,50].map(q=><button key={q} onClick={()=>setFromPct(String(q))} style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 10px",fontSize:".72rem",color:"#1d4ed8",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>{q}%</button>)}
+                        <div style={{display:"flex",gap:6,marginBottom:12}}>
+                          {[["amount","₱ Amount"],["pct","% of contract"]].map(([m,l])=>(
+                            <button key={m} onClick={()=>{setPayPayMode(m);setPayPayPct("");if(m==="amount")setPayPayAmt(String(sub?leftToClaim:balance));else setPayPayAmt("");}} style={{flex:1,background:payPayMode===m?"#1e293b":"#fff",color:payPayMode===m?"#fff":"#475569",border:`1.5px solid ${payPayMode===m?"#1e293b":"#e2e8f0"}`,borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,cursor:"pointer"}}>{l}</button>
+                          ))}
                         </div>
+                        {payPayMode==="amount"?(
+                          <>
+                            <Fld label={sub?"Progress claim, gross (₱)":"Payment amount (₱)"} required>
+                              <Inp type="number" value={payPayAmt} onChange={e=>setPayPayAmt(e.target.value)} placeholder="0"/>
+                            </Fld>
+                            <div style={{display:"flex",gap:6,marginBottom:6}}>
+                              <button onClick={()=>setPayPayAmt(String(sub?leftToClaim:balance))} style={chip}>{sub?"Rest of contract":"Full balance"}</button>
+                              <button onClick={()=>setPayPayAmt(String(Math.round((sub?leftToClaim:balance)/2*100)/100))} style={{...chip,background:"#f1f5f9",border:"1px solid #e2e8f0",color:"#475569"}}>Half</button>
+                            </div>
+                          </>
+                        ):(
+                          <>
+                            <Fld label="Progress payment (% of contract)" required>
+                              <Inp type="number" value={payPayPct} onChange={e=>setFromPct(e.target.value)} placeholder="e.g. 30"/>
+                              {entered>0&&<div style={{fontSize:".78rem",color:"#0f172a",marginTop:4,fontWeight:600}}>= {fmtM(entered)} <span style={{color:"#94a3b8",fontWeight:400}}>of {fmtM(contract)} contract</span></div>}
+                            </Fld>
+                            <div style={{display:"flex",gap:6,marginBottom:6,flexWrap:"wrap"}}>
+                              {[10,25,30,50].map(q=><button key={q} onClick={()=>setFromPct(String(q))} style={chip}>{q}%</button>)}
+                            </div>
+                          </>
+                        )}
+                        {sub&&(
+                          <div style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"10px 12px",margin:"8px 0",fontSize:".8rem",color:"#78350f"}}>
+                            <label style={{display:"flex",gap:8,alignItems:"center",cursor:"pointer",fontWeight:600}}>
+                              <input type="checkbox" checked={payPayDP} onChange={e=>setPayPayDP(e.target.checked)}/> This is the downpayment (no retention)
+                            </label>
+                            <div style={{marginTop:6,display:"flex",gap:14,flexWrap:"wrap"}}>
+                              <span>Retention {payPayDP?"0":retPct}% <span style={{color:"#a16207"}}>({payPayDP?"downpayment":retSrc})</span>: <strong>{fmtM(retention)}</strong></span>
+                              <span>Pay now: <strong>{fmtM(cash)}</strong></span>
+                            </div>
+                          </div>
+                        )}
+                        {overLimit&&<div style={{fontSize:".72rem",color:"#ef4444",marginTop:3,fontWeight:600}}>⚠ {fmtM(entered)} is more than {sub?`the ${fmtM(leftToClaim)} left to claim on this contract`:`the outstanding balance of ${fmtM(balance)}`}.</div>}
+                        {overVerified&&<div style={{fontSize:".72rem",color:"#b45309",marginTop:3,fontWeight:600}}>⚠ This brings claims to {contract>0?Math.round((claimed+entered)/contract*100):0}% of the contract, above the {Number(p.verificationPct)||0}% Operations has verified. Confirm the work is done before paying.</div>}
                       </>
                     )}
-                    {amt>balance+0.005&&<div style={{fontSize:".72rem",color:"#ef4444",marginTop:3,fontWeight:600}}>⚠ {fmtM(amt)} exceeds the outstanding balance of {fmtM(balance)}.</div>}
-                    {/* Where it's paid from — Aerwin: payment must record the bank/method */}
                     <div style={{borderTop:`1px solid ${ERP.line}`,marginTop:12,paddingTop:12}}>
                       <div style={{fontSize:".7rem",fontWeight:800,color:ERP.navy,textTransform:"uppercase",letterSpacing:".5px",marginBottom:8}}>Payment Details</div>
-                      <Fld label="Paid from (Bank / Account)" required>
-                        <Sel value={payPayBank} onChange={e=>setPayPayBank(e.target.value)}>
-                          <option value="">— Select bank / account —</option>
-                          {(BANKS||[]).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
-                        </Sel>
-                      </Fld>
                       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                        <Fld label="Payment date" required><Inp type="date" value={payPayDate} onChange={e=>setPayPayDate(e.target.value)}/></Fld>
+                        <Fld label="Paid from (Bank / Account)" required>
+                          <Sel value={payPayBank} onChange={e=>setPayPayBank(e.target.value)}>
+                            <option value="">— Select —</option>
+                            {(BANKS||[]).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
+                          </Sel>
+                        </Fld>
                         <Fld label="Payment Method">
                           <Sel value={payPayMethod} onChange={e=>setPayPayMethod(e.target.value)}>
                             {["Online Transfer","Cash","Check"].map(m=><option key={m}>{m}</option>)}
                           </Sel>
                         </Fld>
-                        <Fld label="Reference No."><Inp value={payPayRef} onChange={e=>setPayPayRef(e.target.value)} placeholder={payPayMethod==="Check"?"Check no.":"Transfer / OR no."}/></Fld>
+                        <Fld label={payPayMethod==="Check"?"Check no.":"Reference No."} required={payPayMethod==="Check"}><Inp value={payPayRef} onChange={e=>setPayPayRef(e.target.value)} placeholder={payPayMethod==="Check"?"e.g. 087856":"Transfer / OR no."}/></Fld>
                       </div>
-                      {!payPayBank&&<div style={{fontSize:".72rem",color:"#b45309",fontWeight:600}}>Select the bank/account this will be paid from to enable payment.</div>}
+                      {(!payPayBank||!payPayDate||noRef)&&<div style={{fontSize:".72rem",color:"#b45309",fontWeight:600}}>{!payPayDate?"Enter the payment date. ":""}{!payPayBank?"Select the bank/account. ":""}{noRef?"Enter the check number.":""}</div>}
                     </div>
                     <div style={{display:"flex",gap:10,marginTop:14}}>
-                      <Btn full variant="green" disabled={invalid} onClick={()=>{if(invalid)return;recordPayablePayment(p.id,amt,{bank:payPayBank,method:payPayMethod,ref:payPayRef});close();}}>Record Payment</Btn>
+                      <Btn full variant="green" disabled={invalid} onClick={async()=>{if(invalid)return;
+                        const ok=await recordPayments([{payableId:p.id,amount:cash,retentionAmount:retention,kind:release?"Retention release":"Payment"}],{date:payPayDate,method:payPayMethod,bank:payPayBank,ref:payPayRef,note:sub&&!release&&payPayDP?"Downpayment (no retention)":""});
+                        if(ok) close();}}>{release?"Release Retention":"Record Payment"}</Btn>
                       <Btn variant="ghost" onClick={close}>Cancel</Btn>
+                    </div>
+                    {history.length>0&&(
+                      <div style={{borderTop:`1px solid ${ERP.line}`,marginTop:14,paddingTop:10}}>
+                        <div style={{fontSize:".7rem",fontWeight:800,color:ERP.navy,textTransform:"uppercase",letterSpacing:".5px",marginBottom:6}}>Payment history</div>
+                        <PayHistoryList rows={history} onCancel={cancelPayablePayment} canCancel={roleCanInsert("payable_payments")}/>
+                      </div>
+                    )}
+                  </Modal>
+                );
+              })()}
+              {/* Payment history for one bill (read + cancel) */}
+              {(()=>{
+                const p=payables.find(x=>x.id===payHistId);
+                if(!p) return null;
+                const rows=paysOf(p.id).slice().sort((a,b)=>String(b.payDate).localeCompare(String(a.payDate)));
+                return(
+                  <Modal open={!!payHistId} onClose={()=>setPayHistId(null)} title="Payment history">
+                    <div style={{fontSize:".82rem",marginBottom:10}}>
+                      <div style={{fontWeight:700,color:"#0f172a"}}>{p.vendor||"Payable"}</div>
+                      <div style={{color:"#64748b",marginTop:3}}>{p.apNumber||""}{p.poNumber?` · ${p.poNumber}`:""} · Contract {fmtM(Number(p.amount)||0)} · Paid {fmtM(Number(p.paidAmount)||0)}{(Number(p.retentionHeld)||0)>0?` · Retention held ${fmtM(Number(p.retentionHeld))}`:""}</div>
+                    </div>
+                    {rows.length?<PayHistoryList rows={rows} onCancel={cancelPayablePayment} canCancel={roleCanInsert("payable_payments")}/>:<div style={{fontSize:".82rem",color:"#64748b"}}>No payments recorded yet.</div>}
+                    {(Number(p.retentionHeld)||0)>0&&payApproved(p)&&(!payNeedsVerify(p)||(Number(p.verificationPct)||0)>=100)&&<div style={{marginTop:12}}><Btn variant="ghost" onClick={()=>{setPayHistId(null);openRetentionRelease(p);}}>Release retention ({fmtM(Number(p.retentionHeld))})</Btn></div>}
+                  </Modal>
+                );
+              })()}
+              {/* One check / transfer paying several bills of the same vendor */}
+              {multiPay&&(()=>{
+                const norm=s=>String(s||"").trim().toLowerCase();
+                const vendors=[...new Set(payables.filter(p=>p.status!=="Paid"&&payApproved(p)&&!payIsSubcon(p)).map(p=>p.vendor||"").filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+                const open=payables.filter(p=>norm(p.vendor)===norm(multiPay.vendor)&&p.vendor&&(Number(p.amount)||0)-(Number(p.paidAmount)||0)>0.005);
+                const bal=p=>Math.round(((Number(p.amount)||0)-(Number(p.paidAmount)||0))*100)/100;
+                const payableNow=p=>payApproved(p)&&(!payNeedsVerify(p)||p.verified)&&!payIsSubcon(p);
+                const sel=multiPay.sel||{};
+                const picked=open.filter(p=>sel[p.id]!=null&&payableNow(p));
+                const total=picked.reduce((s,p)=>s+(Number(sel[p.id])||0),0);
+                const bad=picked.some(p=>!(Number(sel[p.id])>0)||Number(sel[p.id])>bal(p)+0.005);
+                const noRef=multiPay.method==="Check"&&!String(multiPay.ref||"").trim();
+                const invalid=!picked.length||bad||!multiPay.bank||!multiPay.date||noRef;
+                const set=patch=>setMultiPay(m=>({...m,...patch}));
+                return(
+                  <Modal open onClose={()=>setMultiPay(null)} title="Pay several bills at once">
+                    <div style={{fontSize:".8rem",color:"#475569",marginBottom:10}}>One check or transfer that covers several bills of the same supplier. Each bill gets its own line in its payment history, linked to this one payment. Subcontractor bills are paid one at a time because of retention.</div>
+                    <Fld label="Supplier" required>
+                      <Sel value={multiPay.vendor||""} onChange={e=>set({vendor:e.target.value,sel:{}})}>
+                        <option value="">— Select supplier —</option>
+                        {vendors.map(v=><option key={v} value={v}>{v}</option>)}
+                      </Sel>
+                    </Fld>
+                    {multiPay.vendor&&(
+                      <div style={{border:`1px solid ${ERP.line}`,borderRadius:8,overflowX:"auto",margin:"6px 0 10px"}}>
+                        <table style={{width:"100%",borderCollapse:"collapse",fontSize:".78rem"}}>
+                          <thead><tr style={{background:"#f8fafc",color:"#64748b",textAlign:"left"}}><th style={{padding:"6px 8px"}}></th><th style={{padding:"6px 8px"}}>Bill</th><th style={{padding:"6px 8px",textAlign:"right"}}>Balance</th><th style={{padding:"6px 8px",textAlign:"right"}}>Pay</th></tr></thead>
+                          <tbody>
+                            {open.map(p=>{const ok=payableNow(p);const on=sel[p.id]!=null;return(
+                              <tr key={p.id} style={{borderTop:`1px solid ${ERP.line}`,opacity:ok?1:.55}}>
+                                <td style={{padding:"6px 8px"}}><input type="checkbox" disabled={!ok} checked={on} aria-label={`Include ${p.apNumber||p.invoiceNumber||"bill"}`} onChange={e=>{const n={...sel};if(e.target.checked)n[p.id]=String(bal(p));else delete n[p.id];set({sel:n});}}/></td>
+                                <td style={{padding:"6px 8px"}}><div style={{fontWeight:600,color:"#0f172a"}}>{p.invoiceNumber||p.invoiceRef||p.poNumber||"—"}</div><div style={{color:"#94a3b8"}}>{p.apNumber||""}{!ok?(payIsSubcon(p)?" · subcontractor: pay singly":!payApproved(p)?" · not approved":" · not verified"):""}</div></td>
+                                <td style={{padding:"6px 8px",textAlign:"right",fontVariantNumeric:"tabular-nums"}}>{fmtM(bal(p))}</td>
+                                <td style={{padding:"6px 8px",textAlign:"right"}}>{on?<input type="number" value={sel[p.id]} aria-label="Amount to pay" onChange={e=>set({sel:{...sel,[p.id]:e.target.value}})} style={{width:110,textAlign:"right",border:`1px solid ${Number(sel[p.id])>bal(p)+0.005?"#ef4444":"#e2e8f0"}`,borderRadius:6,padding:"4px 6px",fontFamily:"inherit"}}/>:"—"}</td>
+                              </tr>);})}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                      <Fld label="Payment date" required><Inp type="date" value={multiPay.date||""} onChange={e=>set({date:e.target.value})}/></Fld>
+                      <Fld label="Paid from (Bank / Account)" required>
+                        <Sel value={multiPay.bank||""} onChange={e=>set({bank:e.target.value})}>
+                          <option value="">— Select —</option>
+                          {(BANKS||[]).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
+                        </Sel>
+                      </Fld>
+                      <Fld label="Payment Method">
+                        <Sel value={multiPay.method||"Check"} onChange={e=>set({method:e.target.value})}>
+                          {["Check","Online Transfer","Cash"].map(m=><option key={m}>{m}</option>)}
+                        </Sel>
+                      </Fld>
+                      <Fld label={(multiPay.method||"Check")==="Check"?"Check no.":"Reference No."} required={(multiPay.method||"Check")==="Check"}><Inp value={multiPay.ref||""} onChange={e=>set({ref:e.target.value})} placeholder="e.g. 087856"/></Fld>
+                    </div>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",margin:"8px 0",fontSize:".85rem"}}>
+                      <span style={{color:"#64748b"}}>{picked.length} bill{picked.length===1?"":"s"} selected</span>
+                      <strong style={{color:"#0f172a"}}>Total {fmtM(total)}</strong>
+                    </div>
+                    {bad&&<div style={{fontSize:".72rem",color:"#ef4444",fontWeight:600}}>Each amount must be more than 0 and no more than that bill's balance.</div>}
+                    <div style={{display:"flex",gap:10,marginTop:10}}>
+                      <Btn full variant="green" disabled={invalid} onClick={async()=>{if(invalid)return;
+                        const ok=await recordPayments(picked.map(p=>({payableId:p.id,amount:Number(sel[p.id])})),{date:multiPay.date,method:multiPay.method||"Check",bank:multiPay.bank,ref:multiPay.ref});
+                        if(ok) setMultiPay(null);}}>Record payment for {picked.length||"—"} bill{picked.length===1?"":"s"}</Btn>
+                      <Btn variant="ghost" onClick={()=>setMultiPay(null)}>Cancel</Btn>
                     </div>
                   </Modal>
                 );
@@ -15358,6 +15684,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 <ErpStat tone="ok" label="By Online / Cash" value={fmt(onlineMonth)} foot="this month"/>
                 <ErpStat tone="warn" label="Released — Float" value={fmt(floatAmt)} foot="checks not yet cleared"/>
               </div>
+              <CheckRegister pays={payPays} payables={payables}/>
               <ErpCard title="Payment History" desc="All payments made against Accounts Payable, by Check or Online Transaction. Checks are released here; expenses originate in Procurement.">
                 <div style={{overflowX:"auto"}}>
                   <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:820}}>
@@ -16173,7 +16500,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       payId=uid();
                       // Payment-due tracker: float a payable with a due date computed from the supplier's terms,
                       // so finance can see when it's due. It gets settled later via Check Payable / BizLink.
-                      const payRec={id:payId,vendor:receivingPr.supplier||"—",amount:recvAmt,dueDate:due,projectId:sProjId,category:"Supplier",accountCode:receivingPr.accountCode||"5000",invoiceRef:rxDrNo?`DR ${rxDrNo}`:"",notes:`${receivingPr.itemName||""} · PO ${receivingPr.poNumber||receivingPr.id.slice(-6)}${effTerms?` · Terms: ${effTerms}${receivingPr.paymentTerms?" (PO)":""}`:" · No terms on file"}`,status:"Unpaid",poNumber:receivingPr.poNumber||"",poId:receivingPr.id,expenseId:expId,createdAt:today,createdBy:session?.name||""};
+                      const payRec={id:payId,vendor:receivingPr.supplier||"—",amount:recvAmt,dueDate:due,projectId:sProjId,category:"Supplier",accountCode:receivingPr.accountCode||"5020",invoiceRef:rxDrNo?`DR ${rxDrNo}`:"",notes:`${receivingPr.itemName||""} · PO ${receivingPr.poNumber||receivingPr.id.slice(-6)}${effTerms?` · Terms: ${effTerms}${receivingPr.paymentTerms?" (PO)":""}`:" · No terms on file"}`,status:"Unpaid",poNumber:receivingPr.poNumber||"",poId:receivingPr.id,expenseId:expId,createdAt:today,createdBy:session?.name||""};
                       upPayables(ps=>[payRec,...ps]);
                       if(isSupabaseReady()) sbUpsert("payables",payableToSb(payRec),"id").catch(()=>{});
                     }

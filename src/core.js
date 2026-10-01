@@ -402,6 +402,7 @@ export const PERMISSIONS = {
   billing_payments:    { label:"Billing Payments",         group:"Finance",     select:["Manager","Sales","Finance","Accounting","FinanceAssistant","SalesOpsAdmin"], insert:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"], update:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"], delete:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"] },
   expenses:            { label:"Expenses",                 group:"Finance",     select:[AUTH], insert:["Manager","Finance","Accounting","FinanceAssistant","SalesOpsAdmin","Procurement"], update:["Manager","Finance","Accounting","FinanceAssistant","SalesOpsAdmin","Procurement"], delete:["Manager"] },
   payables:            { label:"Payables",                 group:"Finance",     select:["Manager","Finance","Accounting","FinanceAssistant","Procurement","SalesOpsAdmin"], insert:["Manager","Finance","Accounting","FinanceAssistant","Procurement","SalesOpsAdmin"], update:["Manager","Finance","Accounting","FinanceAssistant","Procurement","SalesOpsAdmin"], delete:["Manager"] },
+  payable_payments:    { label:"Payable Payments",         group:"Finance",     select:["Manager","Finance","Accounting","FinanceAssistant","Procurement","SalesOpsAdmin"], insert:["Manager","Finance","Accounting","FinanceAssistant"], update:["Manager","Finance","Accounting","FinanceAssistant"], delete:[] },
   check_vouchers:      { label:"Check Vouchers",           group:"Finance",     select:["Manager","Finance","Accounting","FinanceAssistant"], insert:["Manager","Accounting"], update:["Manager","Finance","Accounting","FinanceAssistant"], delete:["Manager"] },
   purchase_requests:   { label:"Purchase Orders",          group:"Procurement", select:["Manager","Finance","Accounting","FinanceAssistant","Procurement","QS"], insert:["Manager","Finance","FinanceAssistant","Procurement"], update:["Manager","Finance","FinanceAssistant","Procurement"], delete:["Manager","Procurement"] },
   subcon_work_orders:  { label:"Subcon Work Orders",       group:"Procurement", select:["Manager","Sales","Finance","Accounting","FinanceAssistant","Procurement","SalesOpsAdmin"], insert:["Manager","Finance","FinanceAssistant","Procurement"], update:["Manager","Finance","Accounting","FinanceAssistant","Procurement"], delete:["Manager","Procurement"] },
@@ -1133,6 +1134,49 @@ export const canApprovePO=(role,sessionName,requestedBy,approvers)=>{
 };
 
 export const woRetentionAmt=w=>Math.min(Number(w.retentionPct)||0,100)/100*(Number(w.contractAmount)||0);
+
+// ── Accounts payable rules (company defaults) ─────────────────────────────────
+// subconRetentionPct: held back from every subcontractor progress payment unless
+//   the Work Order sets its own rate (>= 1%). Released when Operations verifies
+//   the work 100% complete. Downpayments are exempt.
+// prvSubconNoWo: a subcontractor payment request (PRV) at or above `limit` with
+//   no Work Order linked is warned about ("warn") or refused ("block"). Interim
+//   setting until management decides (decision D3).
+export const AP_RULES={subconRetentionPct:10,prvSubconNoWo:{limit:50000,mode:"warn"}};
+// 5070 Production - Subcon, 5100 Sub-Con Prof Fee, 5200 the old default that
+// earlier code stamped on subcontractor payables (5200 is "Load Allowance" in
+// the chart, so it is kept here only to recognise those older rows).
+export const SUBCON_ACCOUNT_CODES=["5070","5100","5200"];
+export const isSubconPayable=p=>!!p&&(p.category==="Subcontractor"||SUBCON_ACCOUNT_CODES.includes(String(p.accountCode||"")));
+// Which retention rate applies to a subcontractor payable, and why.
+export const payableRetentionPct=(p,wos=[])=>{
+  const wo=(wos||[]).find(w=>w.woNumber&&p&&w.woNumber===p.poId);
+  const woPct=Number(wo?.retentionPct)||0;
+  if(woPct>=1) return {pct:Math.min(woPct,100),source:`per ${wo.woNumber}`};
+  const own=Number(p?.retentionPct)||0;
+  if(own>=1) return {pct:Math.min(own,100),source:"set on this bill"};
+  return {pct:AP_RULES.subconRetentionPct,source:"company default"};
+};
+// Gross value claimed so far on a payable: cash paid plus retention still held.
+export const payableClaimed=p=>(Number(p?.paidAmount)||0)+(Number(p?.retentionHeld)||0);
+// Recompute a payable's paid / retention / status from its payment rows. Mirrors
+// the database trigger payable_payments_recompute (migration 20260930140000) so
+// the screen updates at once, before the server's copy comes back.
+export const recomputePayableFromPayments=(p,pays)=>{
+  const mine=(pays||[]).filter(x=>x.payableId===p.id);
+  if(!mine.length) return p; // no history rows yet: leave legacy figures alone
+  const act=mine.filter(x=>x.status!=="Cancelled");
+  const r2=v=>Math.round(v*100)/100;
+  const cash=r2(act.reduce((s,x)=>s+(Number(x.amount)||0),0));
+  const ret=act.filter(x=>x.kind!=="Retention release").reduce((s,x)=>s+(Number(x.retentionAmount)||0),0);
+  const rel=act.filter(x=>x.kind==="Retention release").reduce((s,x)=>s+(Number(x.amount)||0),0);
+  const latest=[...act].sort((a,b)=>String(b.payDate).localeCompare(String(a.payDate))||String(b.createdAt||"").localeCompare(String(a.createdAt||"")))[0];
+  const amount=Number(p.amount)||0;
+  const full=amount>0&&cash>=amount-0.005;
+  return {...p,paidAmount:cash,retentionHeld:r2(Math.max(0,ret-rel)),
+    status:full?"Paid":cash>0?"Partial":(p.status==="Check Issued"?"Check Issued":"Unpaid"),
+    paidDate:full?(latest?.payDate||""):"",payBank:latest?.bank||"",payMethod:latest?.method||"",payRef:latest?.refNo||""};
+};
 
 export const SWO_STATUSES=["Draft","Pending Approval","Issued","In Progress","Completed","Cancelled"];
 
