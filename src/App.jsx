@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback, useRef, useContext, c
 const WrapCtx = createContext(false);
 // Roles that must never see contract value — they get the QS budget instead.
 const BUDGET_ONLY=["Design","Operations","ProjectMover"];
-import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbPendingIds,sbOnQueueChange,appLogin,appLogout,restoreAppToken,hasAppToken,logClientError} from './supabaseClient';
+import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbPendingIds,sbOnQueueChange,appLogin,appLogout,restoreAppToken,hasAppToken,appTokenExpired,setSessionExpiredHandler,logClientError} from './supabaseClient';
 import{idbGetMany,idbSetMany}from'./idb.js';
 import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable} from './shared';
 import {T} from './theme';
@@ -4684,6 +4684,9 @@ export default function App(){
       // Firing the red "bad data — redo it or contact support" banner for them too
       // produced two contradictory toasts for one event ("redo it" vs "nothing lost").
       if(LOW_STAKES_DROP_TABLES.has(table)) return;
+      // Expired login: the write is held in the queue, and the session-expired
+      // banner (below) tells the user what to do. No scary "rejected" toast.
+      if(kind==="expired") return;
       const n=Date.now();
       if(n-last>30000){
         last=n;
@@ -4755,6 +4758,16 @@ export default function App(){
   // retrying them on mount / focus / reconnect until they reach the server.
   const[accountsPermOpen,setAccountsPermOpen]=useState(false); // Role Permissions panel on the Accounts page
   const[pendingSync,setPendingSync]=useState(sbQueueSize());
+  // The role token lives 12h and was only checked at boot, so a tab left open
+  // past that kept "saving" into a wall of JWT-expired rejections. Now the
+  // server's "JWT expired" (or the local clock) flips this on, writes are held
+  // in the queue, and a banner asks the user to log in again.
+  const[sessionExpired,setSessionExpired]=useState(false);
+  useEffect(()=>{
+    setSessionExpiredHandler(()=>setSessionExpired(true));
+    const t=setInterval(()=>{ if(appTokenExpired()) setSessionExpired(true); },60000);
+    return ()=>{ setSessionExpiredHandler(null); clearInterval(t); };
+  },[]);
   useEffect(()=>{
     const off=sbOnQueueChange(n=>setPendingSync(n));
     const tryFlush=()=>{ if(isSupabaseReady()) sbFlushQueue(); };
@@ -7372,7 +7385,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     setPage(defaultPages[u.role]||"home");
     localStorage.setItem(KEYS.session,JSON.stringify(sess));
     localStorage.setItem(KEYS.role,u.role);
-    loadAllFromSupabase();
+    setSessionExpired(false);
+    // Send changes held while the previous login was expired BEFORE reloading,
+    // so the fresh server read already includes them.
+    (isSupabaseReady()?sbFlushQueue(true).catch(()=>{}):Promise.resolve()).finally(()=>loadAllFromSupabase());
     return null;
   };
   // Verify a password against the CURRENT logged-in user's own stored hash
@@ -9801,7 +9817,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             if(remaining===0) toastUpdate(toastId,"✅ Synced — all changes reached the server.","success",5000);
             else if(synced>0) toastUpdate(toastId,`Synced ${synced}, ${remaining} still pending — ${lastError?.message||"retrying…"}`,"warning",6000);
             else{
-              const reason=lastError?.kind==="offline"?"This device appears to be offline.":
+              const reason=lastError?.kind==="other-user"?lastError.message:
+                lastError?.kind==="expired"?"Your login expired — log in again and they'll be sent.":
+                lastError?.kind==="offline"?"This device appears to be offline.":
                 lastError?.kind==="auth"?"Your session can't reach the server — try logging out and back in.":
                 lastError?.kind==="network"?"Network request failed — check your connection or try a different network.":
                 lastError?.kind==="busy"?"A sync keeps running in the background without finishing — try reloading the page, then tap retry again.":
@@ -9812,6 +9830,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             style={{position:"fixed",bottom:isMobile?80:18,right:18,zIndex:2100,background:"#b45309",color:"#fff",padding:"8px 14px",borderRadius:24,fontSize:".76rem",fontWeight:800,cursor:"pointer",boxShadow:"0 4px 14px rgba(180,83,9,.35)",display:"flex",alignItems:"center",gap:7}}>
             <span style={{display:"inline-block",animation:"fhspin 1.1s linear infinite"}}>⟳</span>
             {pendingSync} change{pendingSync!==1?"s":""} pending sync — tap to retry
+          </div>
+        )}
+        {sessionExpired&&session&&(
+          <div role="alert" style={{position:"fixed",top:0,left:0,right:0,zIndex:10000,background:"#fffbeb",borderBottom:"2px solid #f59e0b",padding:"10px 16px",display:"flex",alignItems:"center",gap:12,justifyContent:"center",flexWrap:"wrap",fontSize:".82rem",fontFamily:"'Segoe UI',sans-serif"}}>
+            <span style={{color:"#92400e",fontWeight:700}}>⏱ Your login expired.</span>
+            <span style={{color:"#78350f"}}>Changes you make now are held on this device{pendingSync>0?` (${pendingSync} waiting)`:""} and sent after you log in again. Finish what you're typing, then log in.</span>
+            <button onClick={logout} style={{background:"#d97706",color:"#fff",border:"none",borderRadius:6,padding:"5px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",cursor:"pointer",whiteSpace:"nowrap"}}>Log in again</button>
           </div>
         )}
         {SyncBanner}
