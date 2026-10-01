@@ -417,6 +417,34 @@ export const sbList = async (table, opts = {}) => {
   return []
 }
 
+// Paged read for tables that can outgrow one request. PostgREST caps a single
+// response, and a hard `limit` silently hides older rows: payables and check
+// vouchers were loaded with limit 500, so the 501st bill vanished from the AP
+// ledger without any warning. This pages through in 1000-row chunks (ordered by
+// a stable key so pages don't overlap) up to a generous safety ceiling.
+export const sbListAll = async (table, opts = {}) => {
+  if (!supabase) return []
+  const page = 1000, ceiling = opts.max || 20000
+  const out = []
+  for (let from = 0; from < ceiling; from += page) {
+    let rows = null
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt) await _sleep(400 * attempt)
+      let q = supabase.from(table).select(opts.select || '*')
+      if (opts.order) q = q.order(opts.order, { ascending: opts.asc ?? false })
+      q = q.order('id', { ascending: true }).range(from, from + page - 1)
+      const { data, error } = await _withTimeout(q)
+      if (!error) { rows = data || []; break }
+      console.error(`SB LIST ${table} page ${from / page + 1} (attempt ${attempt + 1}/3):`, error.message)
+    }
+    if (rows == null) { _readFailures.add(table); return out }
+    out.push(...rows)
+    if (rows.length < page) break
+  }
+  _readFailures.delete(table)
+  return out
+}
+
 // Concurrency-limited runner (preserves input order). sbLoadAll fires ~34 table
 // reads; firing all at once floods a constrained connection (PH<->Singapore) so
 // that a brief network hiccup stalls the whole batch to the 12s timeout at
@@ -448,7 +476,7 @@ export const sbLoadAll = async () => {
       suppliers, subcontractors,
       payables, loans, loanPayments,
       swos, boqLibrary, standaloneBoqRows, checkVouchers, blockers, dailyLogs, ceReqs,
-      commissionPayouts, tools, deliveryReceipts
+      commissionPayouts, tools, deliveryReceipts, payablePayments
     ] = await _mapLimit([
       () => sbList('deals',                    { order: 'created_at', limit: 1000 }),
       () => sbList('job_orders',               { order: 'created_at', limit: 500 }),
@@ -487,19 +515,20 @@ export const sbLoadAll = async () => {
       () => sbList('projects',                 { limit: 1000 }),
       () => sbList('suppliers',       { order: 'company_name', asc: true, limit: 2000 }),
       () => sbList('subcontractors',  { order: 'company_name', asc: true, limit: 2000 }),
-      () => sbList('payables',        { order: 'created_at', limit: 500 }),
+      () => sbListAll('payables',        { order: 'created_at' }),
       () => sbList('loans',           { order: 'created_at', limit: 200 }),
       () => sbList('loan_payments',   { order: 'date',        limit: 1000 }),
       () => sbList('subcon_work_orders', { order: 'created_at', limit: 500 }),
       () => sbList('boq_library',        { order: 'name', asc: true, limit: 2000 }),
       () => sbList('standalone_boqs',    { order: 'updated_at', limit: 2000 }),
-      () => sbList('check_vouchers',     { order: 'date', limit: 500 }),
+      () => sbListAll('check_vouchers',     { order: 'date' }),
       () => sbList('project_blockers',   { order: 'created_at', limit: 1000 }),
       () => sbList('daily_logs',         { order: 'log_date', limit: 1000 }),
       () => sbList('ce_requests',        { order: 'created_at', limit: 1000 }),
       () => sbList('commission_payouts', { order: 'created_at', limit: 2000 }),
       () => sbList('tools',              { order: 'created_at', limit: 2000 }),
       () => sbList('delivery_receipts',  { order: 'dr_date', limit: 2000 }),
+      () => sbListAll('payable_payments', { order: 'pay_date' }),
     ], 6)
 
     // Build pcards object with departments embedded
@@ -583,7 +612,7 @@ export const sbLoadAll = async () => {
              checklist: checklists, swatches, actLog, users, settings: settingsObj,
              drfs, inventory, stocklog, projs: projsObj, suppliers, subcontractors,
              payables, loans: loansArr, swos, boqLibrary, standaloneBoqs, checkVouchers, blockers, dailyLogs, ceReqs,
-             commissionPayouts, tools, drs: deliveryReceipts,
+             commissionPayouts, tools, drs: deliveryReceipts, payablePayments,
              _failed: consumeReadFailures() }
   } catch (err) {
     console.error('sbLoadAll failed:', err)
