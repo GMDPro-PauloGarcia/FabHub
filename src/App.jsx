@@ -1643,6 +1643,10 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
   // holds what the user typed in the gross box; `value` = gross / 1.12.
   const netToGross=(v)=>{const n=Number(v)||0;return n?String(Math.round(n*1.12*100)/100):"";};
   const[grossStr,setGrossStr]=useState(()=>initialForm?.receiptType==="OR"?netToGross(initialForm?.value):"");
+  // The BOQ is the VAT authority: once a linked BOQ has decided VAT, the receipt
+  // type follows it (VAT 12% → OR, No VAT → AR) and is locked here.
+  const boqLockedRt=(()=>{const src=editId?deals.find(d=>d.id===editId):null;const v=(src?.boqData||src?.boq_data||form?.boqData)?.vatEnabled;return typeof v==="boolean"?(v?"OR":"AR"):null;})();
+  useEffect(()=>{if(open&&boqLockedRt&&form.receiptType!==boqLockedRt){setForm(p=>({...p,receiptType:boqLockedRt,withholding:boqLockedRt==="AR"?false:p.withholding}));setVatErr(false);}},[open,boqLockedRt,form.receiptType]);
 
   // Sync when modal opens or editId changes
   const formKey=`${open}-${editId||"new"}`;
@@ -1913,13 +1917,14 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
               <label style={{display:"block",fontSize:".68rem",fontWeight:700,color:"#92400e",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>Receipt Type <span style={{color:"#dc2626"}}>*</span></label>
               <div style={{display:"flex",gap:8}}>
                 {["OR","AR"].map(rt=>(
-                  <button key={rt} type="button" onClick={()=>{setForm(p=>({...p,receiptType:rt,withholding:rt==="AR"?false:p.withholding}));setVatErr(false);if(rt==="OR")setGrossStr(netToGross(form.value));}}
-                    style={{flex:1,padding:"8px",border:`2px solid ${form.receiptType===rt?"#d97706":(vatErr?"#fca5a5":"#e2e8f0")}`,borderRadius:8,background:form.receiptType===rt?"#fef3c7":"#fff",color:form.receiptType===rt?"#92400e":"#64748b",fontWeight:form.receiptType===rt?700:400,cursor:"pointer",fontFamily:"inherit",fontSize:".82rem"}}>
+                  <button key={rt} type="button" disabled={boqLockedRt!==null} onClick={()=>{if(boqLockedRt!==null)return;setForm(p=>({...p,receiptType:rt,withholding:rt==="AR"?false:p.withholding}));setVatErr(false);if(rt==="OR")setGrossStr(netToGross(form.value));}}
+                    style={{flex:1,padding:"8px",border:`2px solid ${form.receiptType===rt?"#d97706":(vatErr?"#fca5a5":"#e2e8f0")}`,borderRadius:8,background:form.receiptType===rt?"#fef3c7":"#fff",color:form.receiptType===rt?"#92400e":"#64748b",fontWeight:form.receiptType===rt?700:400,cursor:boqLockedRt!==null?"not-allowed":"pointer",opacity:boqLockedRt!==null&&form.receiptType!==rt?.5:1,fontFamily:"inherit",fontSize:".82rem"}}>
                     {rt==="OR"?"🧾 OR (with VAT)":"📄 AR (no VAT)"}
                   </button>
                 ))}
               </div>
               <div style={{fontSize:".7rem",color:vatErr?"#dc2626":"#92400e",marginTop:5,opacity:vatErr?1:.8,fontWeight:vatErr?700:400}}>
+                {boqLockedRt!==null&&<div style={{fontWeight:700}}>🔒 Set by the BOQ ({boqLockedRt==="OR"?"VAT 12%":"No VAT"}) — change VAT in the BOQ.</div>}
                 {form.receiptType==="OR"?"Official Receipt — VAT 12% applies":form.receiptType==="AR"?"Acknowledgement Receipt — VAT exempted":vatErr?"⚠ Required — choose OR (with VAT) or AR (no VAT) before saving.":"Choose OR (with VAT) or AR (no VAT)."}
               </div>
             </div>
@@ -4267,6 +4272,9 @@ function ProjectMarginsView({wonDeals=[],exps=[],billings=[],payables=[],today,s
   );
 }
 
+// Billed projects whose BOQ/receipt-type mismatch warning was already shown this
+// session — the BOQ autosaves every edit, so warn once, not on every keystroke.
+const boqVatWarned=new Set();
 export default function App(){
   const[users,      setUsers]     = useState(DEFAULT_USERS);
   const[cashPositions,setCashPos]  = useState({});
@@ -12126,6 +12134,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // that rollDealContract already folded into the parent's `value`.
     const dealBase=(d)=>d.originalValue!=null?Number(d.originalValue)||0:Number(d.value||0);
     const dealTax=(d)=>calcTax(dealBase(d),d.receiptType||"OR",d.withholding||false);
+    // The BOQ is the VAT authority; flag a deal whose receipt type disagrees with
+    // its BOQ's decided VAT choice (e.g. set before the BOQ became authoritative).
+    const boqVat=(d)=>{const v=(d.boqData||d.boq_data)?.vatEnabled;return typeof v==="boolean"?v:null;};
+    const boqVatMismatch=(d)=>boqVat(d)!==null&&d.receiptType!==(boqVat(d)?"OR":"AR");
     // Approved change orders are sales in their own right. They land in the month
     // they were Approved (awardedDate) and are credited to the CO's salesOwner.
     // coTax is signed so a deductive CO reduces the month's sales value.
@@ -12222,7 +12234,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const ml=`${MONTHS[CM]} ${CY}`;
         const summData=[["GMD PRODUCTIONS INC."],[`Sales Month-End Report — ${ml}`],[`Prepared by FabHub • Values are ex-VAT base + 12% VAT (OR) • Review Data Flags before circulating`],[],["DEALS WON","DEALS CANCELLED","OPEN PIPELINE (count)"],[monthWon.length,monthCancelled.length,openPipeline.length],[],[`CLOSED REVENUE — ${ml.toUpperCase()} (incl. VAT)`],["Total closed (all WON rows, as recorded)",totalWonGross],["  Memo: ex-VAT base",totalWonBase],["  Memo: total VAT collected",totalWonVat],[],["CLOSED REVENUE BY SALES OWNER"],["AE","AE Code","Deals Won","Closed (incl. VAT)","% of total"],...aeRows.map(r=>[r.name,r.code,r.won,r.gross,aeTotal>0?(r.gross/aeTotal).toFixed(4):0]),["TOTAL","",aeRows.reduce((s,r)=>s+r.won,0),aeTotal,1]];
         window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(summData),"Summary");
-        const closedData=[["Service Type","Project Type","AE","Client","Project Name","Status","Estimate (ex-VAT)","VAT","Total (incl. VAT)","Flag / Note"],...monthWon.map(d=>{const t=dealTax(d);const f=[];if(!Number(d.value))f.push("No value");if(!d.ceNo)f.push("Missing CE#");if(t.vat===0&&Number(d.value)>50000)f.push("VAT=0 — confirm exempt");return[svcType(d.ceType),d.ceType||"—",aeCode(d.salesOwner||""),d.client||"—",d.contact||d.product||"—","WON",t.base,t.vat,t.gross,f.join("; ")||null];}),[],...monthCancelled.map(d=>{const t=dealTax(d);return[svcType(d.ceType),d.ceType||"—",aeCode(d.salesOwner||""),d.client||"—",d.contact||d.product||"—","CANCELLED",t.base,t.vat,t.gross,"Cancelled"];}),["","","","","TOTAL — WON only",monthWon.length,totalWonBase,totalWonVat,totalWonGross,""]];
+        const closedData=[["Service Type","Project Type","AE","Client","Project Name","Status","Estimate (ex-VAT)","VAT","Total (incl. VAT)","Flag / Note"],...monthWon.map(d=>{const t=dealTax(d);const f=[];if(!Number(d.value))f.push("No value");if(!d.ceNo)f.push("Missing CE#");if(t.vat===0&&Number(d.value)>50000)f.push("VAT=0 — confirm exempt");if(boqVatMismatch(d))f.push(`BOQ says ${boqVat(d)?"VAT":"No VAT"} — receipt is ${d.receiptType||"unset"}`);return[svcType(d.ceType),d.ceType||"—",aeCode(d.salesOwner||""),d.client||"—",d.contact||d.product||"—","WON",t.base,t.vat,t.gross,f.join("; ")||null];}),[],...monthCancelled.map(d=>{const t=dealTax(d);return[svcType(d.ceType),d.ceType||"—",aeCode(d.salesOwner||""),d.client||"—",d.contact||d.product||"—","CANCELLED",t.base,t.vat,t.gross,"Cancelled"];}),["","","","","TOTAL — WON only",monthWon.length,totalWonBase,totalWonVat,totalWonGross,""]];
         window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(closedData),"Closed Deals");
         const pipeData=[["Client","Project Name","Service Type","Stage","CE#","Note"],...openPipeline.map(d=>{const f=[];if(!d.client)f.push("Client missing");if(!Number(d.value))f.push("No value");if(!d.ceNo)f.push("No CE#");return[d.client||"(blank)",d.contact||d.product||"—",svcType(d.ceType),d.stage||"—",d.ceNo||"—",f.join("; ")||null];})];
         window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(pipeData),"Open Pipeline");
@@ -12492,6 +12504,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                         if(!Number(d.value))flags.push("No value");
                         if(!d.ceNo)flags.push("Missing CE#");
                         if(t.vat===0&&Number(d.value)>50000)flags.push("VAT=0 — confirm exempt");
+                        if(boqVatMismatch(d))flags.push(`BOQ says ${boqVat(d)?"VAT":"No VAT"} — receipt is ${d.receiptType||"unset"}`);
                         return(
                           <tr key={d.id} style={{background:i%2===0?"#fff":"#f9fafb"}}>
                             {TD(<span style={{fontSize:".74rem",background:"#e0e7ff",color:"#3730a3",padding:"2px 7px",borderRadius:5,fontWeight:600}}>{svcType(d.ceType)}</span>)}
@@ -16941,22 +16954,27 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} initialCoId={boqCoId} coRecord={co} saveCoBoq={boqCoReadOnly?undefined:saveCoBoq} readOnly={boqCoReadOnly} onBack={()=>{setBoqCoReadOnly(false);setBoqCoId(null);}}/></Wrap>);
     }
     if(boqDealId) return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} initialDealId={boqDealId} clearBoqDeal={()=>setBoqDealId(null)} onBack={()=>setBoqDealId(null)} onBoqValue={(dealId,netTotal)=>{const v=Math.round((Number(netTotal)||0)*100)/100;const cur=deals.find(d=>d.id===dealId);if(cur&&Math.round((Number(cur.value)||0)*100)/100===v)return;upDeals(ds=>ds.map(d=>d.id===dealId?{...d,value:v}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{value:v}).catch(()=>{});}} onBoqData={(dealId,bd)=>upDeals(ds=>ds.map(d=>d.id===dealId?{...d,boqData:bd}:d))} onBoqVat={(dealId,vatEnabled)=>{
-      // BOQ pre-fills the deal's receipt type from its VAT checkbox, but only
-      // when the deal has no explicit choice yet — a receipt type set on the
-      // deal is treated as an intentional override and is never clobbered by a
-      // later BOQ save. vatEnabled must be a decided boolean (not the unset
-      // null) for the fill to apply. VAT on → OR, exempt → AR.
+      // The BOQ is the authority on VAT: its decided VAT choice sets the deal's
+      // receipt type (VAT 12% → OR, No VAT → AR), overriding whatever the sales
+      // form had — the form defaults to OR, so an "explicit" OR there is usually
+      // just the default and must not silently win over the costing decision.
+      // vatEnabled must be a decided boolean (not the unset null).
       if(typeof vatEnabled!=="boolean")return;
       const rt=vatEnabled?"OR":"AR";
       const cur=deals.find(d=>d.id===dealId);
-      if(!cur||["OR","AR"].includes(cur.receiptType))return;
+      if(!cur||cur.receiptType===rt)return;
+      // Never flip a deal that already has billing milestones: milestones with no
+      // receipt type of their own fall back to the deal's, so issued invoices and
+      // collections would be re-taxed after the fact. Finance changes it by hand.
+      if(billings.some(b=>b.dealId===dealId)){if(boqVatWarned.has(dealId))return;boqVatWarned.add(dealId);toastEmit&&toastEmit(`BOQ is ${vatEnabled?"VAT 12%":"No VAT"} but this project is already billed as ${cur.receiptType||"unset"} — receipt type NOT changed. Ask Finance to review.`,"warning");return;}
+      if(["OR","AR"].includes(cur.receiptType))toastEmit&&toastEmit(`Project receipt type changed ${cur.receiptType} → ${rt} to match the BOQ (${vatEnabled?"VAT 12%":"No VAT"})`,"info");
       upDeals(ds=>ds.map(d=>d.id===dealId?{...d,receiptType:rt,withholding:rt==="AR"?false:d.withholding}:d));
       if(isSupabaseReady())sbUpdate('deals',dealId,{receipt_type:rt,...(rt==="AR"?{withholding:false}:{})}).catch(()=>{});
     }} onUnlinkToStandalone={(b)=>{const did=boqDealId;const id=uid();saveStandaloneBoq({id,title:b.boqTitle||"",location:b.location||"",quotationNo:b.quotationNo||"",boqDate:b.boqDate||today,items:b.items||[],sections:b.sections||[],vatEnabled:b.vatEnabled!==false,discount:b.discount||"",createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});try{const drafts=JSON.parse(localStorage.getItem(KEYS.boqDrafts)||"{}");delete drafts[did];localStorage.setItem(KEYS.boqDrafts,JSON.stringify(drafts));}catch{}if(isSupabaseReady())sbUpdate('deals',did,{boq_data:null}).catch(()=>{});setBoqDealId(null);setBoqStandaloneId(id);toastEmit&&toastEmit("✅ BOQ unlinked to Standalone","success");}}/></Wrap>);
     if(boqStandaloneId) return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} standaloneBoqs={standaloneBoqs} saveStandaloneBoq={saveStandaloneBoq} initialStandaloneId={boqStandaloneId} clearBoqStandalone={()=>setBoqStandaloneId(null)} onBack={()=>setBoqStandaloneId(null)} onLinkToDeal={(dealId,boqData)=>{const sid=boqStandaloneId;try{const drafts=JSON.parse(localStorage.getItem(KEYS.boqDrafts)||"{}");drafts[dealId]=boqData;localStorage.setItem(KEYS.boqDrafts,JSON.stringify(drafts));}catch{}if(isSupabaseReady())sbUpdate('deals',dealId,{boq_data:boqData}).catch(()=>{});
-      // Pre-fill receipt type from the linked BOQ's VAT choice when the deal has
-      // none yet (decided boolean only; deal-side override is preserved).
-      if(typeof boqData.vatEnabled==="boolean"){const rt=boqData.vatEnabled?"OR":"AR";const cur=deals.find(d=>d.id===dealId);if(cur&&!["OR","AR"].includes(cur.receiptType)){upDeals(ds=>ds.map(d=>d.id===dealId?{...d,receiptType:rt,withholding:rt==="AR"?false:d.withholding}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{receipt_type:rt,...(rt==="AR"?{withholding:false}:{})}).catch(()=>{});}}const bi=boqData.items||[];if(bi.length){const grand=bi.reduce((s,it)=>s+(Number(it.total)||0),0);const disc=Math.min(Math.max(Number(boqData.discount)||0,0),grand);const net=Math.round((grand-disc)*100)/100;upDeals(ds=>ds.map(d=>d.id===dealId?{...d,value:net,boqData}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{value:net}).catch(()=>{});}else{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,boqData}:d));}deleteStandaloneBoq(sid);setBoqStandaloneId(null);setBoqDealId(dealId);toastEmit&&toastEmit("✅ BOQ linked to project — deal value set from BOQ","success");}}/></Wrap>);
+      // The linked BOQ's decided VAT choice sets the deal's receipt type (BOQ is
+      // the VAT authority — see onBoqVat above).
+      if(typeof boqData.vatEnabled==="boolean"){const rt=boqData.vatEnabled?"OR":"AR";const cur=deals.find(d=>d.id===dealId);if(cur&&cur.receiptType!==rt&&!billings.some(b=>b.dealId===dealId)){upDeals(ds=>ds.map(d=>d.id===dealId?{...d,receiptType:rt,withholding:rt==="AR"?false:d.withholding}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{receipt_type:rt,...(rt==="AR"?{withholding:false}:{})}).catch(()=>{});}}const bi=boqData.items||[];if(bi.length){const grand=bi.reduce((s,it)=>s+(Number(it.total)||0),0);const disc=Math.min(Math.max(Number(boqData.discount)||0,0),grand);const net=Math.round((grand-disc)*100)/100;upDeals(ds=>ds.map(d=>d.id===dealId?{...d,value:net,boqData}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{value:net}).catch(()=>{});}else{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,boqData}:d));}deleteStandaloneBoq(sid);setBoqStandaloneId(null);setBoqDealId(dealId);toastEmit&&toastEmit("✅ BOQ linked to project — deal value set from BOQ","success");}}/></Wrap>);
     return(<Wrap><BOQHomeView standaloneBoqs={standaloneBoqs} deals={deals} session={session} role={role} today={today} onOpenStandalone={id=>{setBoqCoId(null);setBoqDealId(null);setBoqStandaloneId(id);}} onOpenDeal={id=>{setBoqCoId(null);setBoqStandaloneId(null);setBoqDealId(id);}} onNewStandalone={()=>{const id=uid();saveStandaloneBoq({id,title:"",location:"",quotationNo:"",boqDate:today,items:[],sections:[],vatEnabled:true,discount:"",createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});setBoqCoId(null);setBoqDealId(null);setBoqStandaloneId(id);}} onDeleteStandalone={deleteStandaloneBoq}/></Wrap>);
   }
 
