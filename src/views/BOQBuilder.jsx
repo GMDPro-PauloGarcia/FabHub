@@ -131,7 +131,7 @@ const GMD_DEFAULT_LIBRARY=[
 
 // ─── CHART OF ACCOUNTS ──────────────────────────────────────────────────────
 
-function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],setBoqLibrary,initialDealId,clearBoqDeal,onBack,standaloneBoqs=[],saveStandaloneBoq,initialStandaloneId,clearBoqStandalone,onLinkToDeal,onDuplicateToDeal,onUnlinkToStandalone,onBoqValue,onBoqData,onBoqVat,initialCoId,coRecord,saveCoBoq,readOnly=false}){
+function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],setBoqLibrary,initialDealId,clearBoqDeal,onBack,standaloneBoqs=[],saveStandaloneBoq,initialStandaloneId,clearBoqStandalone,onLinkToDeal,onDuplicateToDeal,onBoqValue,onBoqData,onBoqVat,initialCoId,coRecord,saveCoBoq,readOnly=false}){
   // Read-only mode: the BOQ can be viewed and printed/exported (e.g. Sales sending
   // a change-order BOQ to a client) but never edited. Every mutator no-ops and the
   // editing chrome is hidden, so the printed PDF always matches the saved figures.
@@ -812,21 +812,22 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   // One dialog for both ways a BOQ lands on a deal. "duplicate" copies this BOQ
   // onto another deal and leaves the source untouched (rollouts: one tier BOQ,
   // one deal per location). "link" moves a standalone BOQ onto a deal. Either
-  // way the user must pick the deal explicitly, and a deal that already carries
-  // a BOQ is only replaced after an explicit tick — deals.boq_data is a
-  // whole-column write, so a silent link used to wipe the target's BOQ.
-  const[xfer,setXfer]=useState(null);   // null | {mode,dealId,check,replace,location,setValue,busy}
+  // way the user must pick the deal explicitly. Linking is final: a deal that
+  // already carries a BOQ can never be replaced from here — you edit that BOQ
+  // instead (deals.boq_data is a whole-column write; a silent link used to wipe
+  // the target's BOQ). Mother POs never carry a BOQ: they earn ₱0 themselves.
+  const[xfer,setXfer]=useState(null);   // null | {mode,dealId,check,location,setValue,busy}
   const xferSeqRef=useRef(0);
   const xferTargets=deals.filter(d=>d.id!==selDeal&&!d.standbyPO&&d.stage!=="Did Not Win"&&d.stage!=="Cancelled")
     .sort((a,b)=>(a.client||"").localeCompare(b.client||"")||(a.ceNo||"").localeCompare(b.ceNo||""));
-  const openXfer=(mode)=>setXfer({mode,dealId:"",check:null,replace:false,location:"",setValue:true,busy:false});
+  const openXfer=(mode)=>setXfer({mode,dealId:"",check:null,location:"",setValue:true,busy:false});
   // Pick the target deal, then re-read its BOQ from the server: this device's
   // deals state can lag, so the cached boqData alone can't prove the deal is empty.
   const pickXferDeal=(id)=>{
     const seq=++xferSeqRef.current;
     const d2=deals.find(d=>d.id===id);
     const cur=Number(d2?.value)||0;
-    setXfer(x=>({...x,dealId:id,replace:false,setValue:cur===0||Math.abs(cur-netTotal)<0.005,check:id?{loading:true}:null}));
+    setXfer(x=>({...x,dealId:id,setValue:cur===0||Math.abs(cur-netTotal)<0.005,check:id?{loading:true}:null}));
     if(!id) return;
     const done=(src,offline)=>{
       if(seq!==xferSeqRef.current) return;
@@ -1059,10 +1060,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
               ?<button onClick={()=>onLinkToDeal&&!editLocked&&openXfer("link")} disabled={!onLinkToDeal||editLocked} style={{fontFamily:"inherit",fontSize:".78rem",color:"#7c3aed",fontWeight:700,background:"#f5f3ff",border:"1px solid #ddd6fe",borderRadius:20,padding:"2px 10px",outline:"none",flex:1,minWidth:0,cursor:"pointer",textAlign:"left"}}>
                 📄 Standalone BOQ — link to a project…
               </button>
-              :<select value={selDeal} onChange={async e=>{const v=e.target.value;if(v==="__unlink__"){if(onUnlinkToStandalone&&(await uiConfirm("Unlink this BOQ from the project and move it to Standalone?\n\nUse this if a project was picked by mistake. Your sections and items are kept; the BOQ is detached from the project."))){onUnlinkToStandalone({items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount});}return;}setSelDeal(v);}} style={{border:"none",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",outline:"none",background:"transparent",flex:1,minWidth:0}}>
-                <option value="">— Select —</option>
-                {deals.filter(d=>d.id===selDeal||(d.stage!=="Did Not Win"&&d.stage!=="Cancelled")).map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" · "+d.contact:""}{d.ceNo?" ("+d.ceNo+")":""}</option>)}
-              </select>
+              :<span title="A linked BOQ is final — it stays on this deal." style={{fontSize:".8rem",color:"#0f172a",fontWeight:700,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>🔒 {dealLabel(deal)||"—"}</span>
             }
           </div>
           <div style={{display:"flex",gap:6,alignItems:"center"}}>
@@ -1212,7 +1210,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
         const fmtP=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
         // A source with unsaved edits would lose them when we navigate to the target.
         const srcPending=!draftSaved;
-        const blocked=!target||!ck||ck.loading||(ck.hasBoq&&!xfer.replace)||xfer.busy||srcPending;
+        const blocked=!target||!ck||ck.loading||ck.hasBoq||xfer.busy||srcPending;
         const lbl={fontSize:".72rem",fontWeight:700,color:"#475569",marginBottom:4,display:"block"};
         const close=()=>{if(!xfer.busy){xferSeqRef.current++;setXfer(null);}};
         return(
@@ -1224,8 +1222,8 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
             </div>
             <div style={{fontSize:".76rem",color:"#64748b",marginBottom:14,lineHeight:1.55}}>
               {dup
-                ?<>Copies all <b>{items.length}</b> line items and <b>{sections.length}</b> sections — costs, markups and discount included — onto the deal you pick. <b>This BOQ stays as it is.</b> The copy gets the deal's title, a blank quotation no. and today's date.</>
-                :<>Moves this standalone BOQ onto the deal you pick. It leaves the Standalone list.</>}
+                ?<>Copies all <b>{items.length}</b> line items and <b>{sections.length}</b> sections — costs, markups and discount included — onto the deal you pick — the deal must not have a BOQ yet. <b>This BOQ stays as it is.</b> The copy gets the deal's title, a blank quotation no. and today's date.</>
+                :<>Moves this standalone BOQ onto the deal you pick. It leaves the Standalone list. <b>This is final</b> — after linking, the BOQ is edited on the deal.</>}
             </div>
 
             <label style={lbl}>Deal <span style={{color:"#dc2626"}}>*</span></label>
@@ -1238,11 +1236,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
               ?<div style={{fontSize:".76rem",color:"#64748b",marginBottom:12}}>⟳ Checking whether this deal already has a BOQ…</div>
               :ck.hasBoq
                 ?<div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:8,padding:"10px 12px",marginBottom:12,fontSize:".76rem",color:"#991b1b",lineHeight:1.5}}>
-                  <b>⚠️ This deal already has a BOQ</b> — {ck.count} item{ck.count===1?"":"s"}, net {fmtP(ck.net)}. Continuing <b>replaces it</b>; the old BOQ is not kept.
-                  <label style={{display:"flex",gap:8,alignItems:"center",marginTop:8,fontWeight:700,cursor:"pointer"}}>
-                    <input type="checkbox" checked={xfer.replace} disabled={xfer.busy} onChange={e=>setXfer(x=>({...x,replace:e.target.checked}))}/>
-                    Yes, replace the existing BOQ
-                  </label>
+                  <b>⛔ This deal already has a BOQ</b> — {ck.count} item{ck.count===1?"":"s"}, net {fmtP(ck.net)}. A linked BOQ is final and can't be replaced. Open that deal's BOQ and edit it there, or pick another deal.
                 </div>
                 :<div style={{fontSize:".76rem",color:"#15803d",marginBottom:12}}>✓ This deal has no BOQ yet.</div>)}
             {target&&ck&&!ck.loading&&ck.offline&&<div style={{fontSize:".72rem",color:"#b45309",marginBottom:12}}>Couldn't reach the server — the check above is based on this device's copy.</div>}
@@ -1262,8 +1256,8 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
 
             <div style={{display:"flex",justifyContent:"flex-end",gap:8}}>
               <button onClick={close} disabled={xfer.busy} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 16px",fontFamily:"inherit",fontSize:".8rem",fontWeight:700,color:"#475569",cursor:"pointer"}}>Cancel</button>
-              <button onClick={confirmXfer} disabled={blocked} style={{background:blocked?"#cbd5e1":(ck?.hasBoq?"#dc2626":"#7c3aed"),border:"none",borderRadius:8,padding:"8px 16px",fontFamily:"inherit",fontSize:".8rem",fontWeight:800,color:"#fff",cursor:blocked?"not-allowed":"pointer"}}>
-                {xfer.busy?"Saving…":dup?(ck?.hasBoq?"Replace with copy":"Duplicate to this deal"):(ck?.hasBoq?"Replace & link":"Link to this deal")}
+              <button onClick={confirmXfer} disabled={blocked} style={{background:blocked?"#cbd5e1":"#7c3aed",border:"none",borderRadius:8,padding:"8px 16px",fontFamily:"inherit",fontSize:".8rem",fontWeight:800,color:"#fff",cursor:blocked?"not-allowed":"pointer"}}>
+                {xfer.busy?"Saving…":dup?"Duplicate to this deal":"Link to this deal"}
               </button>
             </div>
           </div>

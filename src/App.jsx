@@ -16923,8 +16923,20 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // The server write is awaited FIRST: if it fails nothing else happens, so a
     // standalone BOQ is never deleted and the user never lands on a deal whose
     // BOQ didn't save. setValue (an explicit tick in the dialog) also pegs the
-    // deal value to the BOQ net in the same write.
+    // deal value to the BOQ net in the same write. Linking is final: a deal that
+    // already has a BOQ is refused (re-checked on the server right before the
+    // write), and a mother PO never takes a BOQ — it earns ₱0 itself.
     const attachBoqToDeal=async(dealId,boqData,{setValue}={})=>{
+      const tgt=deals.find(d=>d.id===dealId);
+      if(!tgt||isMotherPO(tgt)){toastEmit&&toastEmit("⛔ A mother PO can't carry a BOQ or a price — put the BOQ on its sub-project instead.","error",8000);return false;}
+      const hasContent=b=>!!(b&&((b.items?.length)||(b.sections?.length)));
+      let existing=tgt.boqData;
+      if(isSupabaseReady()&&supabase){
+        const {data,error}=await supabase.from('deals').select('boq_data').eq('id',dealId).maybeSingle();
+        if(error){toastEmit&&toastEmit("❌ Couldn't check that deal on the server — nothing was changed. Try again.","error",8000);return false;}
+        existing=data?.boq_data||null;
+      }
+      if(hasContent(existing)){toastEmit&&toastEmit("⛔ That deal already has a BOQ. A linked BOQ is final — edit it on the deal instead.","error",8000);return false;}
       const bi=Array.isArray(boqData.items)?boqData.items:[];
       const grand=bi.reduce((s,it)=>s+(Number(it.total)||0),0);
       const net=Math.round((grand-Math.min(Math.max(Number(boqData.discount)||0,0),grand))*100)/100;
@@ -16968,7 +16980,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       };
       return(<Wrap><BOQBuilder key={"co:"+boqCoId} wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} initialCoId={boqCoId} coRecord={co} saveCoBoq={boqCoReadOnly?undefined:saveCoBoq} readOnly={boqCoReadOnly} onBack={()=>{setBoqCoReadOnly(false);setBoqCoId(null);}}/></Wrap>);
     }
-    if(boqDealId) return(<Wrap><BOQBuilder key={"deal:"+boqDealId} onDuplicateToDeal={duplicateBoqToDeal} wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} initialDealId={boqDealId} clearBoqDeal={()=>setBoqDealId(null)} onBack={()=>setBoqDealId(null)} onBoqValue={(dealId,netTotal)=>{const v=Math.round((Number(netTotal)||0)*100)/100;const cur=deals.find(d=>d.id===dealId);if(cur&&Math.round((Number(cur.value)||0)*100)/100===v)return;upDeals(ds=>ds.map(d=>d.id===dealId?{...d,value:v}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{value:v}).catch(()=>{});}} onBoqData={(dealId,bd)=>upDeals(ds=>ds.map(d=>d.id===dealId?{...d,boqData:bd}:d))} onBoqVat={(dealId,vatEnabled)=>{
+    if(boqDealId) return(<Wrap><BOQBuilder key={"deal:"+boqDealId} onDuplicateToDeal={duplicateBoqToDeal} wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} initialDealId={boqDealId} clearBoqDeal={()=>setBoqDealId(null)} onBack={()=>setBoqDealId(null)} onBoqValue={(dealId,netTotal)=>{const v=Math.round((Number(netTotal)||0)*100)/100;const cur=deals.find(d=>d.id===dealId);if(isMotherPO(cur))return;if(cur&&Math.round((Number(cur.value)||0)*100)/100===v)return;upDeals(ds=>ds.map(d=>d.id===dealId?{...d,value:v}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{value:v}).catch(()=>{});}} onBoqData={(dealId,bd)=>upDeals(ds=>ds.map(d=>d.id===dealId?{...d,boqData:bd}:d))} onBoqVat={(dealId,vatEnabled)=>{
       // BOQ pre-fills the deal's receipt type from its VAT checkbox, but only
       // when the deal has no explicit choice yet — a receipt type set on the
       // deal is treated as an intentional override and is never clobbered by a
@@ -16980,7 +16992,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       if(!cur||["OR","AR"].includes(cur.receiptType))return;
       upDeals(ds=>ds.map(d=>d.id===dealId?{...d,receiptType:rt,withholding:rt==="AR"?false:d.withholding}:d));
       if(isSupabaseReady())sbUpdate('deals',dealId,{receipt_type:rt,...(rt==="AR"?{withholding:false}:{})}).catch(()=>{});
-    }} onUnlinkToStandalone={(b)=>{const did=boqDealId;const id=uid();saveStandaloneBoq({id,title:b.boqTitle||"",location:b.location||"",quotationNo:b.quotationNo||"",boqDate:b.boqDate||today,items:b.items||[],sections:b.sections||[],vatEnabled:b.vatEnabled!==false,discount:b.discount||"",createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});try{const drafts=JSON.parse(localStorage.getItem(KEYS.boqDrafts)||"{}");delete drafts[did];localStorage.setItem(KEYS.boqDrafts,JSON.stringify(drafts));}catch{}if(isSupabaseReady())sbUpdate('deals',did,{boq_data:null}).catch(()=>{});setBoqDealId(null);setBoqStandaloneId(id);toastEmit&&toastEmit("✅ BOQ unlinked to Standalone","success");}}/></Wrap>);
+    }}/></Wrap>);
     if(boqStandaloneId) return(<Wrap><BOQBuilder key={"sa:"+boqStandaloneId} onDuplicateToDeal={duplicateBoqToDeal} wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} standaloneBoqs={standaloneBoqs} saveStandaloneBoq={saveStandaloneBoq} initialStandaloneId={boqStandaloneId} clearBoqStandalone={()=>setBoqStandaloneId(null)} onBack={()=>setBoqStandaloneId(null)} onLinkToDeal={async(dealId,boqData,opts)=>{const sid=boqStandaloneId;if(!(await attachBoqToDeal(dealId,boqData,opts)))return false;deleteStandaloneBoq(sid);setBoqStandaloneId(null);setBoqDealId(dealId);toastEmit&&toastEmit(opts?.setValue?"✅ BOQ linked to project — deal value set from BOQ":"✅ BOQ linked to project","success");return true;}}/></Wrap>);
     return(<Wrap><BOQHomeView standaloneBoqs={standaloneBoqs} deals={deals} session={session} role={role} today={today} onOpenStandalone={id=>{setBoqCoId(null);setBoqDealId(null);setBoqStandaloneId(id);}} onOpenDeal={id=>{setBoqCoId(null);setBoqStandaloneId(null);setBoqDealId(id);}} onNewStandalone={()=>{const id=uid();saveStandaloneBoq({id,title:"",location:"",quotationNo:"",boqDate:today,items:[],sections:[],vatEnabled:true,discount:"",createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});setBoqCoId(null);setBoqDealId(null);setBoqStandaloneId(id);}} onDeleteStandalone={deleteStandaloneBoq}/></Wrap>);
   }
@@ -29549,7 +29561,7 @@ function BOQHomeView({standaloneBoqs=[],deals=[],session,role,today,onOpenStanda
         {(()=>{
           const s=dq.trim().toLowerCase();
           const pickable=deals
-            .filter(d=>!isLostStage(d.stage))
+            .filter(d=>!isLostStage(d.stage)&&!isMotherPO(d))
             .filter(d=>!s||(d.client||"").toLowerCase().includes(s)||(d.ceNo||"").toLowerCase().includes(s)||(d.contact||"").toLowerCase().includes(s))
             .sort((a,b)=>String(b.dateAcquired||b.addedAt||"").localeCompare(String(a.dateAcquired||a.addedAt||"")));
           if(!pickable.length) return <div style={{padding:"24px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No matching deals. Create the deal in the Pipeline first, then come back to build its BOQ.</div>;
