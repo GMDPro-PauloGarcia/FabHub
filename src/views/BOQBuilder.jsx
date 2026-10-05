@@ -1247,7 +1247,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
               <input value={xfer.location} disabled={xfer.busy} onChange={e=>setXfer(x=>({...x,location:e.target.value}))} placeholder={target?.location||"e.g. SM Megamall, 3F"} style={{...inpSt,marginBottom:12}}/>
             </>}
 
-            {target&&<label style={{display:"flex",gap:8,alignItems:"flex-start",fontSize:".76rem",color:"#334155",marginBottom:14,cursor:"pointer",lineHeight:1.45}}>
+            {target&&ck&&!ck.loading&&!ck.hasBoq&&<label style={{display:"flex",gap:8,alignItems:"flex-start",fontSize:".76rem",color:"#334155",marginBottom:14,cursor:"pointer",lineHeight:1.45}}>
               <input type="checkbox" checked={xfer.setValue} disabled={xfer.busy} onChange={e=>setXfer(x=>({...x,setValue:e.target.checked}))} style={{marginTop:2}}/>
               <span>Set the deal value to this BOQ's net ({fmtP(netTotal)}).<br/><span style={{color:"#64748b"}}>Deal value now: {fmtP(curVal)}{curVal&&Math.abs(curVal-netTotal)>=0.005?" — leave unticked to keep it":""}</span></span>
             </label>}
