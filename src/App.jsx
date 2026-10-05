@@ -16919,6 +16919,34 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   if(page==="subcontractors") return(<Wrap><SubconMasterView subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role}/></Wrap>);
   if(page==="ceqs") return(<Wrap><CEQSView ceReqs={ceReqs} addCEReq={addCEReq} updateCEReq={updateCEReq} session={session} role={role} toastEmit={toastEmit} deals={deals}/></Wrap>);
   if(page==="boq"){
+    // Put a BOQ onto a deal (Duplicate or Link from the BOQ builder's dialog).
+    // The server write is awaited FIRST: if it fails nothing else happens, so a
+    // standalone BOQ is never deleted and the user never lands on a deal whose
+    // BOQ didn't save. setValue (an explicit tick in the dialog) also pegs the
+    // deal value to the BOQ net in the same write.
+    const attachBoqToDeal=async(dealId,boqData,{setValue}={})=>{
+      const bi=Array.isArray(boqData.items)?boqData.items:[];
+      const grand=bi.reduce((s,it)=>s+(Number(it.total)||0),0);
+      const net=Math.round((grand-Math.min(Math.max(Number(boqData.discount)||0,0),grand))*100)/100;
+      const pegValue=!!setValue&&bi.length>0;
+      if(isSupabaseReady()){
+        const ok=await sbUpdate('deals',dealId,pegValue?{boq_data:boqData,value:net}:{boq_data:boqData});
+        if(!ok){toastEmit&&toastEmit("❌ Couldn't confirm the BOQ saved to that deal. FabHub will retry when the connection is back — this BOQ was left as it is. Check the deal before trying again.","error",10000);return false;}
+      }
+      try{const drafts=JSON.parse(localStorage.getItem(KEYS.boqDrafts)||"{}");drafts[dealId]=boqData;localStorage.setItem(KEYS.boqDrafts,JSON.stringify(drafts));}catch{}
+      upDeals(ds=>ds.map(d=>d.id===dealId?{...d,boqData,...(pegValue?{value:net}:{})}:d));
+      // Pre-fill receipt type from the BOQ's VAT choice when the deal has none yet
+      // (decided boolean only; deal-side override is preserved).
+      if(typeof boqData.vatEnabled==="boolean"){const rt=boqData.vatEnabled?"OR":"AR";const cur=deals.find(d=>d.id===dealId);if(cur&&!["OR","AR"].includes(cur.receiptType)){upDeals(ds=>ds.map(d=>d.id===dealId?{...d,receiptType:rt,withholding:rt==="AR"?false:d.withholding}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{receipt_type:rt,...(rt==="AR"?{withholding:false}:{})}).catch(()=>{});}}
+      return true;
+    };
+    const duplicateBoqToDeal=async(dealId,boqData,opts)=>{
+      if(!(await attachBoqToDeal(dealId,boqData,opts)))return false;
+      const d=deals.find(x=>x.id===dealId);
+      setBoqCoId(null);setBoqStandaloneId(null);setBoqDealId(dealId);
+      toastEmit&&toastEmit(`✅ BOQ copied to ${d?.client||"the deal"}${d?.ceNo?" ("+d.ceNo+")":""} — now editing the copy`,"success");
+      return true;
+    };
     if(boqCoId){
       const co=addenda.find(a=>a.id===boqCoId);
       if(!co){setBoqCoId(null);return null;}
@@ -16938,9 +16966,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const magnitude=Math.round(scopeItems.reduce((s,it)=>s+it.qty*it.rate,0)*100)/100;
         updateAddendum(coId,{coBoqData:bd,scopeItems,value:magnitude});
       };
-      return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} initialCoId={boqCoId} coRecord={co} saveCoBoq={boqCoReadOnly?undefined:saveCoBoq} readOnly={boqCoReadOnly} onBack={()=>{setBoqCoReadOnly(false);setBoqCoId(null);}}/></Wrap>);
+      return(<Wrap><BOQBuilder key={"co:"+boqCoId} wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} initialCoId={boqCoId} coRecord={co} saveCoBoq={boqCoReadOnly?undefined:saveCoBoq} readOnly={boqCoReadOnly} onBack={()=>{setBoqCoReadOnly(false);setBoqCoId(null);}}/></Wrap>);
     }
-    if(boqDealId) return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} initialDealId={boqDealId} clearBoqDeal={()=>setBoqDealId(null)} onBack={()=>setBoqDealId(null)} onBoqValue={(dealId,netTotal)=>{const v=Math.round((Number(netTotal)||0)*100)/100;const cur=deals.find(d=>d.id===dealId);if(cur&&Math.round((Number(cur.value)||0)*100)/100===v)return;upDeals(ds=>ds.map(d=>d.id===dealId?{...d,value:v}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{value:v}).catch(()=>{});}} onBoqData={(dealId,bd)=>upDeals(ds=>ds.map(d=>d.id===dealId?{...d,boqData:bd}:d))} onBoqVat={(dealId,vatEnabled)=>{
+    if(boqDealId) return(<Wrap><BOQBuilder key={"deal:"+boqDealId} onDuplicateToDeal={duplicateBoqToDeal} wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} initialDealId={boqDealId} clearBoqDeal={()=>setBoqDealId(null)} onBack={()=>setBoqDealId(null)} onBoqValue={(dealId,netTotal)=>{const v=Math.round((Number(netTotal)||0)*100)/100;const cur=deals.find(d=>d.id===dealId);if(cur&&Math.round((Number(cur.value)||0)*100)/100===v)return;upDeals(ds=>ds.map(d=>d.id===dealId?{...d,value:v}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{value:v}).catch(()=>{});}} onBoqData={(dealId,bd)=>upDeals(ds=>ds.map(d=>d.id===dealId?{...d,boqData:bd}:d))} onBoqVat={(dealId,vatEnabled)=>{
       // BOQ pre-fills the deal's receipt type from its VAT checkbox, but only
       // when the deal has no explicit choice yet — a receipt type set on the
       // deal is treated as an intentional override and is never clobbered by a
@@ -16953,10 +16981,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       upDeals(ds=>ds.map(d=>d.id===dealId?{...d,receiptType:rt,withholding:rt==="AR"?false:d.withholding}:d));
       if(isSupabaseReady())sbUpdate('deals',dealId,{receipt_type:rt,...(rt==="AR"?{withholding:false}:{})}).catch(()=>{});
     }} onUnlinkToStandalone={(b)=>{const did=boqDealId;const id=uid();saveStandaloneBoq({id,title:b.boqTitle||"",location:b.location||"",quotationNo:b.quotationNo||"",boqDate:b.boqDate||today,items:b.items||[],sections:b.sections||[],vatEnabled:b.vatEnabled!==false,discount:b.discount||"",createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});try{const drafts=JSON.parse(localStorage.getItem(KEYS.boqDrafts)||"{}");delete drafts[did];localStorage.setItem(KEYS.boqDrafts,JSON.stringify(drafts));}catch{}if(isSupabaseReady())sbUpdate('deals',did,{boq_data:null}).catch(()=>{});setBoqDealId(null);setBoqStandaloneId(id);toastEmit&&toastEmit("✅ BOQ unlinked to Standalone","success");}}/></Wrap>);
-    if(boqStandaloneId) return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} standaloneBoqs={standaloneBoqs} saveStandaloneBoq={saveStandaloneBoq} initialStandaloneId={boqStandaloneId} clearBoqStandalone={()=>setBoqStandaloneId(null)} onBack={()=>setBoqStandaloneId(null)} onLinkToDeal={(dealId,boqData)=>{const sid=boqStandaloneId;try{const drafts=JSON.parse(localStorage.getItem(KEYS.boqDrafts)||"{}");drafts[dealId]=boqData;localStorage.setItem(KEYS.boqDrafts,JSON.stringify(drafts));}catch{}if(isSupabaseReady())sbUpdate('deals',dealId,{boq_data:boqData}).catch(()=>{});
-      // Pre-fill receipt type from the linked BOQ's VAT choice when the deal has
-      // none yet (decided boolean only; deal-side override is preserved).
-      if(typeof boqData.vatEnabled==="boolean"){const rt=boqData.vatEnabled?"OR":"AR";const cur=deals.find(d=>d.id===dealId);if(cur&&!["OR","AR"].includes(cur.receiptType)){upDeals(ds=>ds.map(d=>d.id===dealId?{...d,receiptType:rt,withholding:rt==="AR"?false:d.withholding}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{receipt_type:rt,...(rt==="AR"?{withholding:false}:{})}).catch(()=>{});}}const bi=boqData.items||[];if(bi.length){const grand=bi.reduce((s,it)=>s+(Number(it.total)||0),0);const disc=Math.min(Math.max(Number(boqData.discount)||0,0),grand);const net=Math.round((grand-disc)*100)/100;upDeals(ds=>ds.map(d=>d.id===dealId?{...d,value:net,boqData}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{value:net}).catch(()=>{});}else{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,boqData}:d));}deleteStandaloneBoq(sid);setBoqStandaloneId(null);setBoqDealId(dealId);toastEmit&&toastEmit("✅ BOQ linked to project — deal value set from BOQ","success");}}/></Wrap>);
+    if(boqStandaloneId) return(<Wrap><BOQBuilder key={"sa:"+boqStandaloneId} onDuplicateToDeal={duplicateBoqToDeal} wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} standaloneBoqs={standaloneBoqs} saveStandaloneBoq={saveStandaloneBoq} initialStandaloneId={boqStandaloneId} clearBoqStandalone={()=>setBoqStandaloneId(null)} onBack={()=>setBoqStandaloneId(null)} onLinkToDeal={async(dealId,boqData,opts)=>{const sid=boqStandaloneId;if(!(await attachBoqToDeal(dealId,boqData,opts)))return false;deleteStandaloneBoq(sid);setBoqStandaloneId(null);setBoqDealId(dealId);toastEmit&&toastEmit(opts?.setValue?"✅ BOQ linked to project — deal value set from BOQ":"✅ BOQ linked to project","success");return true;}}/></Wrap>);
     return(<Wrap><BOQHomeView standaloneBoqs={standaloneBoqs} deals={deals} session={session} role={role} today={today} onOpenStandalone={id=>{setBoqCoId(null);setBoqDealId(null);setBoqStandaloneId(id);}} onOpenDeal={id=>{setBoqCoId(null);setBoqStandaloneId(null);setBoqDealId(id);}} onNewStandalone={()=>{const id=uid();saveStandaloneBoq({id,title:"",location:"",quotationNo:"",boqDate:today,items:[],sections:[],vatEnabled:true,discount:"",createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});setBoqCoId(null);setBoqDealId(null);setBoqStandaloneId(id);}} onDeleteStandalone={deleteStandaloneBoq}/></Wrap>);
   }
 
