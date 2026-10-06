@@ -25867,7 +25867,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     const rowsHtml=rows.map((r,i)=>`<tr>
       <td style="text-align:center;color:#64748b">${i+1}</td>
       <td style="color:#2563eb;font-weight:600">${esc(r.d.client)}</td>
-      <td style="color:#2563eb;font-weight:600">${esc(r.d.ceNo||r.d.contact||"—")}</td>
+      <td style="text-align:left"><div style="color:#2563eb;font-weight:600">${esc(r.d.contact||r.d.product||r.d.ceNo||"—")}</div>${r.d.ceNo&&(r.d.contact||r.d.product)?`<div style="color:#64748b;font-size:8.5px;margin-top:1px">${esc(r.d.ceNo)}</div>`:""}</td>
       <td style="text-align:right">${f(r.vatable)}</td>
       <td style="text-align:right">${f(r.vat)}</td>
       <td style="text-align:right">${f(r.gross)}</td>
