@@ -323,9 +323,11 @@ export function DialogHost(){
     if(e.key==="Escape"){e.preventDefault();onCancel();}
     else if(e.key==="Enter"&&(cur.kind!=="prompt"||!e.shiftKey)){e.preventDefault();onConfirm();}
   };
+  // Above every page modal (they go up to zIndex 10020): a confirm opened from
+  // inside a modal must never render behind it and leave the user stuck.
   return(
     <div role="presentation" onKeyDown={onKey}
-      style={{position:"fixed",inset:0,background:"rgba(15,23,42,.55)",zIndex:2000,display:"flex",alignItems:mob?"flex-end":"center",justifyContent:"center",padding:mob?0:16,animation:"fadein .15s ease"}}
+      style={{position:"fixed",inset:0,background:"rgba(15,23,42,.55)",zIndex:20000,display:"flex",alignItems:mob?"flex-end":"center",justifyContent:"center",padding:mob?0:16,animation:"fadein .15s ease"}}
       onClick={cur.kind==="alert"?onCancel:undefined}>
       <div role="dialog" aria-modal="true" aria-labelledby={titleId} onClick={e=>e.stopPropagation()}
         style={{background:"#fff",borderRadius:mob?"18px 18px 0 0":16,padding:mob?"22px 18px 24px":26,width:"100%",maxWidth:mob?undefined:420,boxShadow:"0 24px 80px rgba(0,0,0,.28)",borderTop:`4px solid ${t.accent}`}}>
