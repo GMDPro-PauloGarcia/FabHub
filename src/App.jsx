@@ -1635,7 +1635,6 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
   const setDrfRef=(i,v)=>f("drfRefLinks",(form.drfRefLinks||["","",""]).map((r,ri)=>ri===i?v:r));
   const mob=window.innerWidth<768;
   const[saving,setSaving]=useState(false);
-  const[vatErr,setVatErr]=useState(false);
   // Gross-entry helper. Staff type the VAT-INCLUSIVE (gross) contract amount for
   // OR deals — the number off the client PO — but the deal's `value` is stored
   // VAT-EXCLUSIVE (net) as everywhere else in the system, so nothing downstream
@@ -1646,12 +1645,12 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
   // The BOQ is the VAT authority: once a linked BOQ has decided VAT, the receipt
   // type follows it (VAT 12% → OR, No VAT → AR) and is locked here.
   const boqLockedRt=(()=>{const src=editId?deals.find(d=>d.id===editId):null;const v=(src?.boqData||src?.boq_data||form?.boqData)?.vatEnabled;return typeof v==="boolean"?(v?"OR":"AR"):null;})();
-  useEffect(()=>{if(open&&boqLockedRt&&form.receiptType!==boqLockedRt){setForm(p=>({...p,receiptType:boqLockedRt,withholding:boqLockedRt==="AR"?false:p.withholding}));setVatErr(false);}},[open,boqLockedRt,form.receiptType]);
+  useEffect(()=>{if(open&&boqLockedRt&&form.receiptType!==boqLockedRt){setForm(p=>({...p,receiptType:boqLockedRt,withholding:boqLockedRt==="AR"?false:p.withholding}));}},[open,boqLockedRt,form.receiptType]);
 
   // Sync when modal opens or editId changes
   const formKey=`${open}-${editId||"new"}`;
   useEffect(()=>{
-    if(open){setForm(initialForm||emptyDeal);setSaving(false);setVatErr(false);
+    if(open){setForm(initialForm||emptyDeal);setSaving(false);
       setGrossStr(initialForm?.receiptType==="OR"?netToGross(initialForm?.value):"");}
   },[open,editId]);
 
@@ -1660,15 +1659,10 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
     // fast double-click before it resolves could re-run the whole save and
     // risk a second deal record. Guard with a local submitting lock.
     if(saving) return;
-    // Receipt type is a required, no-default choice once the deal carries a
-    // value: VAT (OR) vs VAT-exempt (AR) drives billing, milestones and the
-    // sales report, so a silent default is how a non-VAT project ends up
-    // showing 12% VAT. Force an explicit pick instead of assuming OR.
-    if(Number(form.value)>0 && !["OR","AR"].includes(form.receiptType)){
-      setVatErr(true);
-      return;
-    }
-    setVatErr(false);
+    // Receipt type is NOT chosen here: the BOQ's VAT choice sets it (VAT 12% →
+    // OR, No VAT → AR — see onBoqVat). A sales-side pick defaulted to OR and
+    // silently overrode "No VAT" costings, so a new deal saves with it blank and
+    // billing refuses to invoice until the BOQ decides.
     setSaving(true);
     // Pass local form data directly to saveDeal — bypasses async state sync
     _setForm(()=>form);
@@ -1914,18 +1908,16 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
           <div style={{fontWeight:700,color:"#92400e",fontSize:".88rem",marginBottom:12}}>🧾 Tax Settings</div>
           <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:14,marginBottom:14}}>
             <div>
-              <label style={{display:"block",fontSize:".68rem",fontWeight:700,color:"#92400e",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>Receipt Type <span style={{color:"#dc2626"}}>*</span></label>
-              <div style={{display:"flex",gap:8}}>
-                {["OR","AR"].map(rt=>(
-                  <button key={rt} type="button" disabled={boqLockedRt!==null} onClick={()=>{if(boqLockedRt!==null)return;setForm(p=>({...p,receiptType:rt,withholding:rt==="AR"?false:p.withholding}));setVatErr(false);if(rt==="OR")setGrossStr(netToGross(form.value));}}
-                    style={{flex:1,padding:"8px",border:`2px solid ${form.receiptType===rt?"#d97706":(vatErr?"#fca5a5":"#e2e8f0")}`,borderRadius:8,background:form.receiptType===rt?"#fef3c7":"#fff",color:form.receiptType===rt?"#92400e":"#64748b",fontWeight:form.receiptType===rt?700:400,cursor:boqLockedRt!==null?"not-allowed":"pointer",opacity:boqLockedRt!==null&&form.receiptType!==rt?.5:1,fontFamily:"inherit",fontSize:".82rem"}}>
-                    {rt==="OR"?"🧾 OR (with VAT)":"📄 AR (no VAT)"}
-                  </button>
-                ))}
+              <label style={{display:"block",fontSize:".68rem",fontWeight:700,color:"#92400e",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>Receipt Type</label>
+              <div style={{padding:"8px 12px",border:"2px solid #e2e8f0",borderRadius:8,background:"#f8fafc",fontSize:".82rem",fontWeight:700,color:form.receiptType?"#92400e":"#64748b"}}>
+                {form.receiptType==="OR"?"🧾 OR (with VAT)":form.receiptType==="AR"?"📄 AR (no VAT)":"⏳ Pending BOQ"}
               </div>
-              <div style={{fontSize:".7rem",color:vatErr?"#dc2626":"#92400e",marginTop:5,opacity:vatErr?1:.8,fontWeight:vatErr?700:400}}>
-                {boqLockedRt!==null&&<div style={{fontWeight:700}}>🔒 Set by the BOQ ({boqLockedRt==="OR"?"VAT 12%":"No VAT"}) — change VAT in the BOQ.</div>}
-                {form.receiptType==="OR"?"Official Receipt — VAT 12% applies":form.receiptType==="AR"?"Acknowledgement Receipt — VAT exempted":vatErr?"⚠ Required — choose OR (with VAT) or AR (no VAT) before saving.":"Choose OR (with VAT) or AR (no VAT)."}
+              <div style={{fontSize:".7rem",color:"#92400e",marginTop:5,opacity:.85}}>
+                {boqLockedRt!==null
+                  ?<span style={{fontWeight:700}}>🔒 Set by the BOQ ({boqLockedRt==="OR"?"VAT 12%":"No VAT"}) — change VAT in the BOQ.</span>
+                  :form.receiptType
+                    ?"Will follow the BOQ once its VAT treatment is chosen."
+                    :"Set automatically when the BOQ's VAT treatment (VAT 12% / No VAT) is chosen. Billing can't be generated until then."}
               </div>
             </div>
             {form.receiptType==="OR"?(
@@ -6556,6 +6548,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(!_deal) return false;
     const val=Number(_deal.originalValue!=null?_deal.originalValue:_deal.value)||0;
     if(val<=0){toastEmit("Set a contract value for this project first.","error");return false;}
+    // VAT is decided by the BOQ (it sets receipt type). Never bill an undecided
+    // project: its invoices would silently default to OR and re-tax later.
+    if(!_deal.standbyPO&&!["OR","AR"].includes(_deal.receiptType)){toastEmit("VAT isn't decided yet — choose VAT 12% or No VAT in this project's BOQ before generating billing.","error",9000);return false;}
     if(_deal.billingGenerated||billings.some(b=>b.dealId===dealId)){toastEmit("This project already has billing milestones. Edit those instead.","warning",7000);return false;}
     const sch=buildMilestoneSchedule(val,active);
     if(!sch.ok){toastEmit(sch.problems[0]?.msg||"The schedule doesn't add up to 100%.","error");return false;}
@@ -12405,7 +12400,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const ml=`${MONTHS[CM]} ${CY}`;
         const summData=[["GMD PRODUCTIONS INC."],[`Sales Month-End Report — ${ml}`],[`Prepared by FabHub • Values are ex-VAT base + 12% VAT (OR) • Review Data Flags before circulating`],[],["DEALS WON","DEALS CANCELLED","OPEN PIPELINE (count)"],[monthWon.length,monthCancelled.length,openPipeline.length],[],[`CLOSED REVENUE — ${ml.toUpperCase()} (incl. VAT)`],["Total closed (all WON rows, as recorded)",totalWonGross],["  Memo: ex-VAT base",totalWonBase],["  Memo: total VAT collected",totalWonVat],[],["CLOSED REVENUE BY SALES OWNER"],["AE","AE Code","Deals Won","Closed (incl. VAT)","% of total"],...aeRows.map(r=>[r.name,r.code,r.won,r.gross,aeTotal>0?(r.gross/aeTotal).toFixed(4):0]),["TOTAL","",aeRows.reduce((s,r)=>s+r.won,0),aeTotal,1]];
         window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(summData),"Summary");
-        const closedData=[["Service Type","Project Type","AE","Client","Project Name","Status","Estimate (ex-VAT)","VAT","Total (incl. VAT)","Flag / Note"],...monthWon.map(d=>{const t=dealTax(d);const f=[];if(!Number(d.value))f.push("No value");if(!d.ceNo)f.push("Missing CE#");if(t.vat===0&&Number(d.value)>50000)f.push("VAT=0 — confirm exempt");if(boqVatMismatch(d))f.push(`BOQ says ${boqVat(d)?"VAT":"No VAT"} — receipt is ${d.receiptType||"unset"}`);return[svcType(d.ceType),d.ceType||"—",aeCode(d.salesOwner||""),d.client||"—",d.contact||d.product||"—","WON",t.base,t.vat,t.gross,f.join("; ")||null];}),[],...monthCancelled.map(d=>{const t=dealTax(d);return[svcType(d.ceType),d.ceType||"—",aeCode(d.salesOwner||""),d.client||"—",d.contact||d.product||"—","CANCELLED",t.base,t.vat,t.gross,"Cancelled"];}),["","","","","TOTAL — WON only",monthWon.length,totalWonBase,totalWonVat,totalWonGross,""]];
+        const closedData=[["Service Type","Project Type","AE","Client","Project Name","Status","Estimate (ex-VAT)","VAT","Total (incl. VAT)","Flag / Note"],...monthWon.map(d=>{const t=dealTax(d);const f=[];if(!Number(d.value))f.push("No value");if(!d.ceNo)f.push("Missing CE#");if(t.vat===0&&Number(d.value)>50000)f.push("VAT=0 — confirm exempt");if(!["OR","AR"].includes(d.receiptType))f.push("VAT pending BOQ — shown as OR");if(boqVatMismatch(d))f.push(`BOQ says ${boqVat(d)?"VAT":"No VAT"} — receipt is ${d.receiptType||"unset"}`);return[svcType(d.ceType),d.ceType||"—",aeCode(d.salesOwner||""),d.client||"—",d.contact||d.product||"—","WON",t.base,t.vat,t.gross,f.join("; ")||null];}),[],...monthCancelled.map(d=>{const t=dealTax(d);return[svcType(d.ceType),d.ceType||"—",aeCode(d.salesOwner||""),d.client||"—",d.contact||d.product||"—","CANCELLED",t.base,t.vat,t.gross,"Cancelled"];}),["","","","","TOTAL — WON only",monthWon.length,totalWonBase,totalWonVat,totalWonGross,""]];
         window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(closedData),"Closed Deals");
         const pipeData=[["Client","Project Name","Service Type","Stage","CE#","Note"],...openPipeline.map(d=>{const f=[];if(!d.client)f.push("Client missing");if(!Number(d.value))f.push("No value");if(!d.ceNo)f.push("No CE#");return[d.client||"(blank)",d.contact||d.product||"—",svcType(d.ceType),d.stage||"—",d.ceNo||"—",f.join("; ")||null];})];
         window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(pipeData),"Open Pipeline");
@@ -12675,6 +12670,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                         if(!Number(d.value))flags.push("No value");
                         if(!d.ceNo)flags.push("Missing CE#");
                         if(t.vat===0&&Number(d.value)>50000)flags.push("VAT=0 — confirm exempt");
+                        if(!["OR","AR"].includes(d.receiptType))flags.push("VAT pending BOQ — shown as OR");
                         if(boqVatMismatch(d))flags.push(`BOQ says ${boqVat(d)?"VAT":"No VAT"} — receipt is ${d.receiptType||"unset"}`);
                         return(
                           <tr key={d.id} style={{background:i%2===0?"#fff":"#f9fafb"}}>
@@ -25551,6 +25547,9 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         message:`${msDeal.ceNo||"This project"} is a standby PO / Adhoc umbrella. It carries ₱0 of its own; billing belongs on its sub-projects${kids.length?` (${kids.join(", ")})`:""}.\n\nA milestone here is billed on top of those and double-counts billing and collections. Bill the sub-project instead.\n\nAdd it to the mother PO anyway?`});
       if(!ok) return;
     }
+    // VAT comes from the BOQ via the deal's receipt type; a per-invoice Receipt
+    // Type is the only other source. With neither, the invoice would default to OR.
+    if(!["OR","AR"].includes(msForm.receiptType||msDeal?.receiptType)&&!msDeal?.standbyPO){toastEmit&&toastEmit("VAT isn't decided for this project yet — choose it in the BOQ, or set Receipt Type on this invoice.","error",9000);return;}
     addMilestone({...msForm,dealId:selDeal,invoiceNo:String(msForm.invoiceNo||"").trim()||await claimInv(),createdBy:session?.name||role});
     setMsForm({name:"",description:"",amount:"",invoiceNo:"",invoiceDate:today,dueDate:"",status:"Draft",receiptType:null,withholding:null});
     setMsGrossStr("");
@@ -26691,9 +26690,9 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                     <Fld label="Invoice Date"><Inp type="date" value={msForm.invoiceDate} onChange={e=>fm("invoiceDate",e.target.value)}/></Fld>
                     <Fld label="Due Date" required hint={!msForm.dueDate?"Recommended — drives the cash-flow forecast.":undefined}><Inp type="date" value={msForm.dueDate} onChange={e=>fm("dueDate",e.target.value)}/></Fld>
                     <Fld label="Status"><Sel value={msForm.status} onChange={e=>fm("status",e.target.value)}>{BILLING_STATUSES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
-                    <Fld label="Receipt Type" hint={`Defaults to deal setting (${deal?.receiptType||"OR"})`}>
+                    <Fld label="Receipt Type" hint={deal?.receiptType?`Defaults to project setting (${deal.receiptType})`:"Project VAT not decided in the BOQ yet — choose one here or set VAT in the BOQ"}>
                       <Sel value={msForm.receiptType||""} onChange={e=>{const v=e.target.value||null;fm("receiptType",v);if((v??deal?.receiptType??"OR")==="OR")setMsGrossStr(msNetToGross(msForm.amount));}}>
-                        <option value="">— Use Deal Default ({deal?.receiptType||"OR"}) —</option>
+                        <option value="">{deal?.receiptType?`— Use Project Default (${deal.receiptType}) —`:"— Not set (decide in BOQ) —"}</option>
                         <option value="OR">OR (Official Receipt)</option>
                         <option value="AR">AR (Acknowledgement Receipt)</option>
                       </Sel>
@@ -26885,7 +26884,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                             <Fld label="Description"><Inp value={editMsForm.description||""} onChange={e=>fme("description",e.target.value)} placeholder="Optional details…"/></Fld>
                             <Fld label="Receipt Type" hint={`Deal default: ${deal?.receiptType||"OR"}`}>
                               <Sel value={editMsForm.receiptType||""} onChange={e=>fme("receiptType",e.target.value||null)}>
-                                <option value="">— Use Deal Default ({deal?.receiptType||"OR"}) —</option>
+                                <option value="">{deal?.receiptType?`— Use Project Default (${deal.receiptType}) —`:"— Not set (decide in BOQ) —"}</option>
                                 <option value="OR">OR (Official Receipt)</option>
                                 <option value="AR">AR (Acknowledgement Receipt)</option>
                               </Sel>
