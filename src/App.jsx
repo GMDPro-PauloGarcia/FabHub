@@ -4272,9 +4272,6 @@ function ProjectMarginsView({wonDeals=[],exps=[],billings=[],payables=[],today,s
   );
 }
 
-// Billed projects whose BOQ/receipt-type mismatch warning was already shown this
-// session — the BOQ autosaves every edit, so warn once, not on every keystroke.
-const boqVatWarned=new Set();
 export default function App(){
   const[users,      setUsers]     = useState(DEFAULT_USERS);
   const[cashPositions,setCashPos]  = useState({});
@@ -16963,18 +16960,19 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       const rt=vatEnabled?"OR":"AR";
       const cur=deals.find(d=>d.id===dealId);
       if(!cur||cur.receiptType===rt)return;
-      // Never flip a deal that already has billing milestones: milestones with no
-      // receipt type of their own fall back to the deal's, so issued invoices and
-      // collections would be re-taxed after the fact. Finance changes it by hand.
-      if(billings.some(b=>b.dealId===dealId)){if(boqVatWarned.has(dealId))return;boqVatWarned.add(dealId);toastEmit&&toastEmit(`BOQ is ${vatEnabled?"VAT 12%":"No VAT"} but this project is already billed as ${cur.receiptType||"unset"} — receipt type NOT changed. Ask Finance to review.`,"warning");return;}
-      if(["OR","AR"].includes(cur.receiptType))toastEmit&&toastEmit(`Project receipt type changed ${cur.receiptType} → ${rt} to match the BOQ (${vatEnabled?"VAT 12%":"No VAT"})`,"info");
+      // Billed projects flip too (owner decision 2026-10-01: the BOQ is final;
+      // a single invoice is adjusted in the billing modal). Existing invoices keep
+      // the tax they were billed with: the DB trigger trg_deal_receipt_type_freeze
+      // (migration 20261001010000) stamps the old receipt type onto milestones
+      // that had none of their own before the deal changes.
+      if(["OR","AR"].includes(cur.receiptType))toastEmit&&toastEmit(`Project receipt type changed ${cur.receiptType} → ${rt} to match the BOQ (${vatEnabled?"VAT 12%":"No VAT"})${billings.some(b=>b.dealId===dealId)?" — existing invoices keep their tax; adjust one in the billing modal if needed":""}`,"info");
       upDeals(ds=>ds.map(d=>d.id===dealId?{...d,receiptType:rt,withholding:rt==="AR"?false:d.withholding}:d));
       if(isSupabaseReady())sbUpdate('deals',dealId,{receipt_type:rt,...(rt==="AR"?{withholding:false}:{})}).catch(()=>{});
     }} onUnlinkToStandalone={(b)=>{const did=boqDealId;const id=uid();saveStandaloneBoq({id,title:b.boqTitle||"",location:b.location||"",quotationNo:b.quotationNo||"",boqDate:b.boqDate||today,items:b.items||[],sections:b.sections||[],vatEnabled:b.vatEnabled!==false,discount:b.discount||"",createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});try{const drafts=JSON.parse(localStorage.getItem(KEYS.boqDrafts)||"{}");delete drafts[did];localStorage.setItem(KEYS.boqDrafts,JSON.stringify(drafts));}catch{}if(isSupabaseReady())sbUpdate('deals',did,{boq_data:null}).catch(()=>{});setBoqDealId(null);setBoqStandaloneId(id);toastEmit&&toastEmit("✅ BOQ unlinked to Standalone","success");}}/></Wrap>);
     if(boqStandaloneId) return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} standaloneBoqs={standaloneBoqs} saveStandaloneBoq={saveStandaloneBoq} initialStandaloneId={boqStandaloneId} clearBoqStandalone={()=>setBoqStandaloneId(null)} onBack={()=>setBoqStandaloneId(null)} onLinkToDeal={(dealId,boqData)=>{const sid=boqStandaloneId;try{const drafts=JSON.parse(localStorage.getItem(KEYS.boqDrafts)||"{}");drafts[dealId]=boqData;localStorage.setItem(KEYS.boqDrafts,JSON.stringify(drafts));}catch{}if(isSupabaseReady())sbUpdate('deals',dealId,{boq_data:boqData}).catch(()=>{});
       // The linked BOQ's decided VAT choice sets the deal's receipt type (BOQ is
       // the VAT authority — see onBoqVat above).
-      if(typeof boqData.vatEnabled==="boolean"){const rt=boqData.vatEnabled?"OR":"AR";const cur=deals.find(d=>d.id===dealId);if(cur&&cur.receiptType!==rt&&!billings.some(b=>b.dealId===dealId)){upDeals(ds=>ds.map(d=>d.id===dealId?{...d,receiptType:rt,withholding:rt==="AR"?false:d.withholding}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{receipt_type:rt,...(rt==="AR"?{withholding:false}:{})}).catch(()=>{});}}const bi=boqData.items||[];if(bi.length){const grand=bi.reduce((s,it)=>s+(Number(it.total)||0),0);const disc=Math.min(Math.max(Number(boqData.discount)||0,0),grand);const net=Math.round((grand-disc)*100)/100;upDeals(ds=>ds.map(d=>d.id===dealId?{...d,value:net,boqData}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{value:net}).catch(()=>{});}else{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,boqData}:d));}deleteStandaloneBoq(sid);setBoqStandaloneId(null);setBoqDealId(dealId);toastEmit&&toastEmit("✅ BOQ linked to project — deal value set from BOQ","success");}}/></Wrap>);
+      if(typeof boqData.vatEnabled==="boolean"){const rt=boqData.vatEnabled?"OR":"AR";const cur=deals.find(d=>d.id===dealId);if(cur&&cur.receiptType!==rt){upDeals(ds=>ds.map(d=>d.id===dealId?{...d,receiptType:rt,withholding:rt==="AR"?false:d.withholding}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{receipt_type:rt,...(rt==="AR"?{withholding:false}:{})}).catch(()=>{});}}const bi=boqData.items||[];if(bi.length){const grand=bi.reduce((s,it)=>s+(Number(it.total)||0),0);const disc=Math.min(Math.max(Number(boqData.discount)||0,0),grand);const net=Math.round((grand-disc)*100)/100;upDeals(ds=>ds.map(d=>d.id===dealId?{...d,value:net,boqData}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{value:net}).catch(()=>{});}else{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,boqData}:d));}deleteStandaloneBoq(sid);setBoqStandaloneId(null);setBoqDealId(dealId);toastEmit&&toastEmit("✅ BOQ linked to project — deal value set from BOQ","success");}}/></Wrap>);
     return(<Wrap><BOQHomeView standaloneBoqs={standaloneBoqs} deals={deals} session={session} role={role} today={today} onOpenStandalone={id=>{setBoqCoId(null);setBoqDealId(null);setBoqStandaloneId(id);}} onOpenDeal={id=>{setBoqCoId(null);setBoqStandaloneId(null);setBoqDealId(id);}} onNewStandalone={()=>{const id=uid();saveStandaloneBoq({id,title:"",location:"",quotationNo:"",boqDate:today,items:[],sections:[],vatEnabled:true,discount:"",createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});setBoqCoId(null);setBoqDealId(null);setBoqStandaloneId(id);}} onDeleteStandalone={deleteStandaloneBoq}/></Wrap>);
   }
 
