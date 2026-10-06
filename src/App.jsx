@@ -14889,7 +14889,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               ))}
             </div>
             {cashSub==="daily"&&(
-              <DailyCashPosition cashPositions={cashPositions} saveDayPos={saveDayPos} wonDeals={wonDeals} billings={billings} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps} updateMilestone={updateMilestone} upExps={upExps} toSbExpense={toSbExpense} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} vouchers={vouchers} payables={payables} loans={loans} inventory={inventory} userName={session?.name||""} role={role} username={session?.username||""} cashStale={cashStale}/>
+              <DailyCashPosition cashPositions={cashPositions} saveDayPos={saveDayPos} wonDeals={wonDeals} billings={billings} suppliers={suppliers} subcons={subcons} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps} updateMilestone={updateMilestone} upExps={upExps} toSbExpense={toSbExpense} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} vouchers={vouchers} payables={payables} loans={loans} inventory={inventory} userName={session?.name||""} role={role} username={session?.username||""} cashStale={cashStale}/>
             )}
             {cashSub==="weekly"&&(
               <WeeklyCashFlow mode="weekly" cashPositions={cashPositions} billings={billings} exps={exps} chartOfAccounts={chartOfAccounts} setPage={setPage}/>
@@ -15879,6 +15879,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           payables={payables}
           vouchers={vouchers}
           loans={loans}
+          suppliers={suppliers}
+          subcons={subcons}
           inventory={inventory}
           userName={session?.name||""}
           cashStale={cashStale}
