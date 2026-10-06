@@ -582,7 +582,9 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
 
       {calTab==="schedule"&&(()=>{
         const upcoming=opsEvents.filter(e=>e.status!=="Done").sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
-        const done=opsEvents.filter(e=>e.status==="Done").sort((a,b)=>b.dueDate.localeCompare(a.dueDate)).slice(0,10);
+        // opsEvents drops Done items (calendar + tab count stay clean), so read the
+        // completed list straight from checklists — filtering opsEvents left it empty.
+        const done=checklists.filter(c=>OPS_EVENT_TYPES.includes(c.type)&&c.dept==="Operations"&&c.dueDate&&c.status==="Done").sort((a,b)=>b.dueDate.localeCompare(a.dueDate)).slice(0,10);
         const STATUS_COLORS={"Scheduled":"#0ea5e9","In Progress":"#f59e0b","Done":"#059669"};
         return(
           <div>
