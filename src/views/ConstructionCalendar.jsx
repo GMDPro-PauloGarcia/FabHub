@@ -1,4 +1,5 @@
 import React from "react";
+import {uiConfirm} from "../shared";
 
 // ─── CONSTRUCTION CALENDAR ────────────────────────────────────────────────────
 // ── Field Board — Type of Work classifier (mirrors the Ops Director's deck) ──
@@ -88,6 +89,16 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
     if(editSchedId) updateOpsEvent?.(editSchedId,data);
     else addOpsEvent?.(data);
     setSchedModal(false);setEditSchedId(null);
+  };
+
+  // Every delete path (edit dialog + Items tab) goes through this so a single
+  // misclick next to ✏ can't wipe a crew's job without a named confirmation.
+  const confirmDeleteSched=async(ev)=>{
+    if(!ev||!deleteOpsEvent) return false;
+    const ok=await uiConfirm({title:"Delete field job?",message:`${ev.title||"Untitled job"} · ${ev.dueDate||"no date"}${ev.assignedTo?` · ${ev.assignedTo}`:""}\n\nThis removes it from the Field Board and calendar. If the job was cancelled or finished, consider setting it to Done instead so the record stays.`,tone:"danger",confirmLabel:"Delete job"});
+    if(!ok) return false;
+    await deleteOpsEvent(ev.id);
+    return true;
   };
 
   const events=React.useMemo(()=>{
@@ -528,6 +539,7 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
             </div>
             <div style={{display:"flex",gap:8}}>
               {(()=>{const dis=!schedForm.date||!schedForm.category||(!schedForm.projectId&&!(schedForm.title||"").trim())||(schedForm.category==="O"&&!(schedForm.workDetail||"").trim());return(<button onClick={saveSched} disabled={dis} title={dis?"Add a date, type of work, and a project or job title":""} style={{flex:1,padding:"9px",background:dis?"#cbd5e1":(CAT_COLOR[schedForm.category]||"#3b82f6"),color:"#fff",border:"none",borderRadius:8,fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:dis?"not-allowed":"pointer"}}>{editSchedId?"Save Changes":"Add to Board"}</button>);})()}
+              {editSchedId&&deleteOpsEvent&&<button onClick={async()=>{const ev=checklists.find(e=>e.id===editSchedId)||{id:editSchedId,title:schedForm.title,dueDate:schedForm.date,assignedTo:schedForm.assignedTo};if(await confirmDeleteSched(ev)){setSchedModal(false);setEditSchedId(null);}}} title="Delete this job" style={{padding:"9px 14px",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:8,fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>🗑 Delete</button>}
               <button onClick={()=>{setSchedModal(false);setEditSchedId(null);}} style={{padding:"9px 16px",background:"#f1f5f9",color:"#64748b",border:"none",borderRadius:8,fontFamily:"inherit",fontWeight:600,fontSize:".85rem",cursor:"pointer"}}>Cancel</button>
             </div>
           </div>
@@ -603,7 +615,7 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
                     </select>
                     <div style={{display:"flex",gap:5}}>
                       <button onClick={()=>openSched(ev.dueDate,ev)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"3px 9px",fontSize:".7rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
-                      <button onClick={()=>deleteOpsEvent?.(ev.id)} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"3px 9px",fontSize:".7rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+                      <button onClick={()=>confirmDeleteSched(ev)} title="Delete job" style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"3px 9px",fontSize:".7rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
                     </div>
                   </div>
                 </div>
@@ -618,7 +630,7 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
                       <span style={{fontWeight:600,color:"#64748b",fontSize:".82rem"}}>{OPS_EVENT_ICONS[ev.type]||"🔧"} {ev.title}</span>
                       <span style={{fontSize:".7rem",color:"#94a3b8",marginLeft:8}}>{ev.dueDate} · {ev.type}</span>
                     </div>
-                    <button onClick={()=>deleteOpsEvent?.(ev.id)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".72rem",fontFamily:"inherit"}}>✕</button>
+                    <button onClick={()=>confirmDeleteSched(ev)} title="Delete job" style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".72rem",fontFamily:"inherit"}}>✕</button>
                   </div>
                 ))}
               </div>
