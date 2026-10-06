@@ -25867,7 +25867,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     const rowsHtml=rows.map((r,i)=>`<tr>
       <td style="text-align:center;color:#64748b">${i+1}</td>
       <td style="color:#2563eb;font-weight:600">${esc(r.d.client)}</td>
-      <td style="color:#2563eb;font-weight:600">${esc(r.d.ceNo||r.d.contact||"—")}</td>
+      <td style="text-align:left"><div style="color:#2563eb;font-weight:600">${esc(r.d.contact||r.d.product||r.d.ceNo||"—")}</div>${r.d.ceNo&&(r.d.contact||r.d.product)?`<div style="color:#64748b;font-size:8.5px;margin-top:1px">${esc(r.d.ceNo)}</div>`:""}</td>
       <td style="text-align:right">${f(r.vatable)}</td>
       <td style="text-align:right">${f(r.vat)}</td>
       <td style="text-align:right">${f(r.gross)}</td>
@@ -25878,7 +25878,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     </tr>`).join("");
     const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>SOA — ${esc(clientName)}</title><style>
       @page{size:A4 landscape;margin:12mm 15mm}
-      *{box-sizing:border-box;margin:0;padding:0}
+      *{box-sizing:border-box;margin:0;padding:0;print-color-adjust:exact;-webkit-print-color-adjust:exact}
       body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#0f172a;background:#fff;padding:0}
       .print-btn{text-align:center;padding:12px;background:#f8fafc;border-bottom:1px solid #e2e8f0}
       .print-btn button{background:#1e293b;color:#fff;border:none;border-radius:6px;padding:8px 24px;font-size:13px;cursor:pointer;font-family:inherit}
@@ -25907,7 +25907,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       tbody td:nth-child(n+4){text-align:right}
       tfoot tr{background:#1e293b}
       tfoot td{color:#fff;font-weight:700;padding:9px 10px;font-size:10px;text-align:right}
-      tfoot td:nth-child(1),tfoot td:nth-child(2),tfoot td:nth-child(3){text-align:center;color:rgba(255,255,255,.7);font-size:9px;font-weight:400}
+      tfoot td:nth-child(1),tfoot td:nth-child(2){text-align:center;color:rgba(255,255,255,.7);font-size:9px;font-weight:400}
       .total-due{color:#f97316!important;font-size:13px!important;font-weight:900!important}
       .notes{border:1px solid #e2e8f0;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:9px;color:#475569}
       .notes b{color:#0f172a;font-size:9px}
