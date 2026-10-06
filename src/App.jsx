@@ -1917,7 +1917,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
                   ?<span style={{fontWeight:700}}>🔒 Set by the BOQ ({boqLockedRt==="OR"?"VAT 12%":"No VAT"}) — change VAT in the BOQ.</span>
                   :form.receiptType
                     ?"Will follow the BOQ once its VAT treatment is chosen."
-                    :"Set automatically when the BOQ's VAT treatment (VAT 12% / No VAT) is chosen. Billing can't be generated until then."}
+                    :"Set automatically when the BOQ's VAT treatment (VAT 12% / No VAT) is chosen. With no BOQ, Finance sets it in Billing. Billing can't be generated until then."}
               </div>
             </div>
             {form.receiptType==="OR"?(
@@ -6550,7 +6550,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(val<=0){toastEmit("Set a contract value for this project first.","error");return false;}
     // VAT is decided by the BOQ (it sets receipt type). Never bill an undecided
     // project: its invoices would silently default to OR and re-tax later.
-    if(!_deal.standbyPO&&!["OR","AR"].includes(_deal.receiptType)){toastEmit("VAT isn't decided yet — choose VAT 12% or No VAT in this project's BOQ before generating billing.","error",9000);return false;}
+    if(!_deal.standbyPO&&!["OR","AR"].includes(_deal.receiptType)){toastEmit("VAT isn't decided yet — choose VAT 12% or No VAT in this project's BOQ (or, with no BOQ, Finance sets Project VAT in Billing) before generating billing.","error",9000);return false;}
     if(_deal.billingGenerated||billings.some(b=>b.dealId===dealId)){toastEmit("This project already has billing milestones. Edit those instead.","warning",7000);return false;}
     const sch=buildMilestoneSchedule(val,active);
     if(!sch.ok){toastEmit(sch.problems[0]?.msg||"The schedule doesn't add up to 100%.","error");return false;}
@@ -25549,7 +25549,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     }
     // VAT comes from the BOQ via the deal's receipt type; a per-invoice Receipt
     // Type is the only other source. With neither, the invoice would default to OR.
-    if(!["OR","AR"].includes(msForm.receiptType||msDeal?.receiptType)&&!msDeal?.standbyPO){toastEmit&&toastEmit("VAT isn't decided for this project yet — choose it in the BOQ, or set Receipt Type on this invoice.","error",9000);return;}
+    if(!["OR","AR"].includes(msForm.receiptType||msDeal?.receiptType)&&!msDeal?.standbyPO){toastEmit&&toastEmit("VAT isn't decided for this project yet — choose it in the BOQ, set Project VAT above (no BOQ), or set Receipt Type on this invoice.","error",9000);return;}
     addMilestone({...msForm,dealId:selDeal,invoiceNo:String(msForm.invoiceNo||"").trim()||await claimInv(),createdBy:session?.name||role});
     setMsForm({name:"",description:"",amount:"",invoiceNo:"",invoiceDate:today,dueDate:"",status:"Draft",receiptType:null,withholding:null});
     setMsGrossStr("");
@@ -26554,6 +26554,40 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
               );
             }
             return null;
+          })()}
+
+          {/* Project VAT when the BOQ hasn't decided it. The BOQ's VAT choice sets
+             receipt type (see onBoqVat); with no BOQ decision, Finance or a Manager
+             sets it here so the project can be billed. Server-side the
+             set_deal_receipt_type RPC enforces the same rule
+             (migration 20261006010000) — keep the two in sync. */}
+          {deal&&!deal.standbyPO&&typeof (deal.boqData||deal.boq_data)?.vatEnabled!=="boolean"&&(()=>{
+            const canSetVat=["Manager","Finance","FinanceAssistant"].includes(role);
+            const cur=deal.receiptType;
+            const setVat=async(rt)=>{
+              if(rt===cur)return;
+              if(cur&&!(await uiConfirm({title:"Change project VAT?",tone:"warning",confirmLabel:`Change to ${rt}`,cancelLabel:"Cancel",
+                message:`${deal.ceNo||"This project"} is ${cur}. Change it to ${rt==="OR"?"OR (VAT 12%)":"AR (No VAT)"}?\n\nInvoices already created keep the tax they were billed with; new invoices follow ${rt}.`})))return;
+              if(!isSupabaseReady()){toastEmit&&toastEmit("No server connection — VAT not changed.","error");return;}
+              const{error}=await _rpcWithTimeout(supabase.rpc('set_deal_receipt_type',{p_deal_id:deal.id,p_receipt_type:rt}));
+              if(error){toastEmit&&toastEmit(`VAT not changed: ${error.message}`,"error",9000);return;}
+              upDeals&&upDeals(ds=>ds.map(d=>d.id===deal.id?{...d,receiptType:rt,withholding:rt==="AR"?false:d.withholding}:d));
+              toastEmit&&toastEmit(`${deal.ceNo||"Project"} set to ${rt==="OR"?"OR (VAT 12%)":"AR (No VAT)"}`,"success");
+            };
+            return(
+              <div style={{background:cur?"#f8fafc":"#fef2f2",border:`1.5px solid ${cur?"#e2e8f0":"#fecaca"}`,borderRadius:12,padding:"10px 16px",marginBottom:14,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                <span style={{fontSize:".8rem",fontWeight:800,color:cur?"#475569":"#b91c1c"}}>🧾 Project VAT{cur?"":" — not decided"}</span>
+                <span style={{fontSize:".72rem",color:"#64748b"}}>No BOQ VAT decision for this project.{canSetVat?" Finance sets it here:":" Finance or a Manager sets it."}</span>
+                <div style={{display:"flex",gap:6,marginLeft:"auto"}}>
+                  {[["OR","OR · VAT 12%"],["AR","AR · No VAT"]].map(([rt,label])=>(
+                    <button key={rt} type="button" disabled={!canSetVat} onClick={()=>setVat(rt)}
+                      style={{padding:"4px 12px",border:`2px solid ${cur===rt?"#d97706":"#e2e8f0"}`,borderRadius:8,background:cur===rt?"#fef3c7":"#fff",color:cur===rt?"#92400e":"#64748b",fontWeight:cur===rt?700:500,cursor:canSetVat?"pointer":"not-allowed",opacity:!canSetVat&&cur!==rt?.5:1,fontFamily:"inherit",fontSize:".74rem"}}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
           })()}
 
           {/* Onboarding readiness gate (Policy §2.1) — Finance holds the first
