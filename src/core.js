@@ -388,7 +388,7 @@ export const PERM_ROLES = ["Manager","Sales","ProjectMover","Finance","FinanceAs
 const AUTH = "AUTH";
 export const PERMISSIONS = {
   deals:               { label:"Deals / Pipeline",        group:"Sales",       select:["Manager","Sales","ProjectMover","Finance","FinanceAssistant","Accounting","Procurement","QS","SalesOpsAdmin"], insert:["Manager","Sales","SalesOpsAdmin"], update:["Manager","Sales","SalesOpsAdmin","QS"], delete:["Manager"] },
-  ce_requests:         { label:"CE / QS Requests",         group:"Sales",       select:["Manager","Sales","Finance","FinanceAssistant","QS","SalesOpsAdmin"], insert:["Manager","QS"], update:["Manager","QS"], delete:["Manager"] },
+  ce_requests:         { label:"CE / QS Requests",         group:"Sales",       select:["Manager","Sales","Finance","FinanceAssistant","QS","SalesOpsAdmin"], insert:["Manager","QS","Sales","SalesOpsAdmin"], update:["Manager","QS"], delete:["Manager"] },
   design_requests:     { label:"Design Requests (DRF)",    group:"Design",      select:["Manager","Sales","ProjectMover","Finance","Design","SalesOpsAdmin"], insert:["Manager","Sales","Design","SalesOpsAdmin"], update:["Manager","Design"], delete:["Manager"] },
   swatches:            { label:"Swatches",                 group:"Design",      select:["Manager","Finance","FinanceAssistant","Procurement","Design"], insert:["Manager","Procurement","Design"], update:["Manager","Procurement","Design"], delete:["Manager","Procurement"] },
   projects:            { label:"Projects",                 group:"Operations",  select:[AUTH], insert:["Manager","ProjectMover"], update:["Manager","ProjectMover"], delete:["Manager"] },
@@ -402,6 +402,7 @@ export const PERMISSIONS = {
   billing_payments:    { label:"Billing Payments",         group:"Finance",     select:["Manager","Sales","Finance","Accounting","FinanceAssistant","SalesOpsAdmin"], insert:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"], update:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"], delete:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"] },
   expenses:            { label:"Expenses",                 group:"Finance",     select:[AUTH], insert:["Manager","Finance","Accounting","FinanceAssistant","SalesOpsAdmin","Procurement"], update:["Manager","Finance","Accounting","FinanceAssistant","SalesOpsAdmin","Procurement"], delete:["Manager"] },
   payables:            { label:"Payables",                 group:"Finance",     select:["Manager","Finance","Accounting","FinanceAssistant","Procurement","SalesOpsAdmin"], insert:["Manager","Finance","Accounting","FinanceAssistant","Procurement","SalesOpsAdmin"], update:["Manager","Finance","Accounting","FinanceAssistant","Procurement","SalesOpsAdmin"], delete:["Manager"] },
+  payable_payments:    { label:"Payable Payments",         group:"Finance",     select:["Manager","Finance","Accounting","FinanceAssistant","Procurement","SalesOpsAdmin"], insert:["Manager","Finance","Accounting","FinanceAssistant"], update:["Manager","Finance","Accounting","FinanceAssistant"], delete:[] },
   check_vouchers:      { label:"Check Vouchers",           group:"Finance",     select:["Manager","Finance","Accounting","FinanceAssistant"], insert:["Manager","Accounting"], update:["Manager","Finance","Accounting","FinanceAssistant"], delete:["Manager"] },
   purchase_requests:   { label:"Purchase Orders",          group:"Procurement", select:["Manager","Finance","Accounting","FinanceAssistant","Procurement","QS"], insert:["Manager","Finance","FinanceAssistant","Procurement"], update:["Manager","Finance","FinanceAssistant","Procurement"], delete:["Manager","Procurement"] },
   subcon_work_orders:  { label:"Subcon Work Orders",       group:"Procurement", select:["Manager","Sales","Finance","Accounting","FinanceAssistant","Procurement","SalesOpsAdmin"], insert:["Manager","Finance","FinanceAssistant","Procurement"], update:["Manager","Finance","Accounting","FinanceAssistant","Procurement"], delete:["Manager","Procurement"] },
@@ -412,7 +413,7 @@ export const PERMISSIONS = {
   inventory_items:     { label:"Inventory Items",          group:"Warehouse",   select:["Manager","Finance","FinanceAssistant","Procurement","Warehouse"], insert:["Manager","Warehouse"], update:["Manager","Warehouse"], delete:["Manager","Warehouse"] },
   stock_movements:     { label:"Stock Movements",          group:"Warehouse",   select:["Manager","Finance","FinanceAssistant","Procurement","Warehouse"], insert:["Manager","Warehouse"], update:["Manager","Warehouse"], delete:["Manager"] },
   boq_library:         { label:"BOQ Library",              group:"QS / Cost",   select:["Manager","Finance","FinanceAssistant","QS","ProjectMover"], insert:["Manager","QS"], update:["Manager","QS"], delete:["Manager"] },
-  project_budgets:     { label:"Project Budgets",          group:"QS / Cost",   select:["Manager","Finance","FinanceAssistant","QS","ProjectMover"], insert:["Manager","QS"], update:["Manager","Finance","FinanceAssistant","QS"], delete:["Manager"] },
+  project_budgets:     { label:"Project Budgets",          group:"QS / Cost",   select:["Manager","Finance","FinanceAssistant","QS","ProjectMover"], insert:["Manager","QS","Sales","SalesOpsAdmin"], update:["Manager","Finance","FinanceAssistant","QS"], delete:["Manager"] },
   audit_findings:      { label:"Audit Findings",           group:"Audit",       select:["Manager","Finance","Audit","HRAdmin"], insert:["Manager","Audit","HRAdmin"], update:["Manager","Audit","HRAdmin"], delete:["Manager","Audit","HRAdmin"] },
   commission_payouts:  { label:"Commission Payouts",       group:"Sales",       select:["Manager","Sales","Finance","FinanceAssistant","Accounting","SalesOpsAdmin"], insert:["Manager","Finance","FinanceAssistant"], update:["Manager","Finance","FinanceAssistant"], delete:["Manager"] },
 };
@@ -422,7 +423,7 @@ export const PERM_NOTES = {
   deals:"Delete is limited to Managers plus the named sales leads (Jena, Wyn, Paolo).",
   daily_logs:"Beyond Managers, the person who wrote a log can delete their own — the ✓ column shows Manager only, but authors can remove their own entry.",
   design_requests:"Design reads/edits are further tiered by designer — senior designers (Gab, Miaa) see more than the rest of the team.",
-  project_budgets:"Finance can edit an existing budget, but creating the first budget row for a project is limited to Managers and QS.",
+  project_budgets:"Finance can edit an existing budget. Creating the first budget row is Managers, QS, and Sales/SalesOpsAdmin (the award's automatic starting budget) — Sales cannot edit it afterwards.",
 };
 
 const PERM_ACTIONS = ["select","insert","update","delete"];
@@ -1134,11 +1135,55 @@ export const canApprovePO=(role,sessionName,requestedBy,approvers)=>{
 
 export const woRetentionAmt=w=>Math.min(Number(w.retentionPct)||0,100)/100*(Number(w.contractAmount)||0);
 
+// ── Accounts payable rules (company defaults) ─────────────────────────────────
+// subconRetentionPct: the retention rate pre-filled on NEW Work Orders (decision
+//   1 Oct 2026: retention applies only to WOs issued from then on, because older
+//   WOs were signed at 0%). At payment time the WO's own rate is what's held —
+//   FabHub never adds retention a signed WO doesn't carry. Released when
+//   Operations verifies the work 100% complete. Downpayments are exempt.
+// prvSubconNoWo: a subcontractor payment request (PRV) at or above `limit` with
+//   no Work Order linked is warned about ("warn") or refused ("block"). Interim
+//   setting until management decides (decision D3).
+export const AP_RULES={subconRetentionPct:10,prvSubconNoWo:{limit:50000,mode:"warn"}};
+// 5070 Production - Subcon, 5100 Sub-Con Prof Fee, 5200 the old default that
+// earlier code stamped on subcontractor payables (5200 is "Load Allowance" in
+// the chart, so it is kept here only to recognise those older rows).
+export const SUBCON_ACCOUNT_CODES=["5070","5100","5200"];
+export const isSubconPayable=p=>!!p&&(p.category==="Subcontractor"||SUBCON_ACCOUNT_CODES.includes(String(p.accountCode||"")));
+// Which retention rate applies to a subcontractor payable, and why. Only what
+// the Work Order (or the bill itself) says — never a default on top of a signed WO.
+export const payableRetentionPct=(p,wos=[])=>{
+  const wo=(wos||[]).find(w=>w.woNumber&&p&&(w.woNumber===p.poId||w.woNumber===p.poNumber));
+  if(wo){const woPct=Math.min(Math.max(Number(wo.retentionPct)||0,0),100);return {pct:woPct,source:`per ${wo.woNumber}`};}
+  const own=Math.min(Math.max(Number(p?.retentionPct)||0,0),100);
+  return {pct:own,source:own>0?"set on this bill":"no Work Order"};
+};
+// Gross value claimed so far on a payable: cash paid plus retention still held.
+export const payableClaimed=p=>(Number(p?.paidAmount)||0)+(Number(p?.retentionHeld)||0);
+// Recompute a payable's paid / retention / status from its payment rows. Mirrors
+// the database trigger payable_payments_recompute (migration 20260930140000) so
+// the screen updates at once, before the server's copy comes back.
+export const recomputePayableFromPayments=(p,pays)=>{
+  const mine=(pays||[]).filter(x=>x.payableId===p.id);
+  if(!mine.length) return p; // no history rows yet: leave legacy figures alone
+  const act=mine.filter(x=>x.status!=="Cancelled");
+  const r2=v=>Math.round(v*100)/100;
+  const cash=r2(act.reduce((s,x)=>s+(Number(x.amount)||0),0));
+  const ret=act.filter(x=>x.kind!=="Retention release").reduce((s,x)=>s+(Number(x.retentionAmount)||0),0);
+  const rel=act.filter(x=>x.kind==="Retention release").reduce((s,x)=>s+(Number(x.amount)||0),0);
+  const latest=[...act].sort((a,b)=>String(b.payDate).localeCompare(String(a.payDate))||String(b.createdAt||"").localeCompare(String(a.createdAt||"")))[0];
+  const amount=Number(p.amount)||0;
+  const full=amount>0&&cash>=amount-0.005;
+  return {...p,paidAmount:cash,retentionHeld:r2(Math.max(0,ret-rel)),
+    status:full?"Paid":cash>0?"Partial":(p.status==="Check Issued"?"Check Issued":"Unpaid"),
+    paidDate:full?(latest?.payDate||""):"",payBank:latest?.bank||"",payMethod:latest?.method||"",payRef:latest?.refNo||""};
+};
+
 export const SWO_STATUSES=["Draft","Pending Approval","Issued","In Progress","Completed","Cancelled"];
 
 export const SWO_STATUS_CLR={Draft:"#94a3b8","Pending Approval":"#f59e0b",Issued:"#6366f1","In Progress":"#3b82f6",Completed:"#10b981",Cancelled:"#ef4444"};
 
-export const emptySWO=()=>({subcontractor:"",projectId:"",projectName:"",woNumber:"",woDate:"",specialty:"",status:"Draft",startDate:"",targetEndDate:"",scopeOfWork:"",contractAmount:0,retentionPct:0,paymentStructure:"",paymentTerms:"",notes:"",requestedBy:"",approvedBy:"",acctStatus:"",delivery:null});
+export const emptySWO=()=>({subcontractor:"",projectId:"",projectName:"",woNumber:"",woDate:"",specialty:"",status:"Draft",startDate:"",targetEndDate:"",scopeOfWork:"",contractAmount:0,retentionPct:AP_RULES.subconRetentionPct,paymentStructure:"",paymentTerms:"",notes:"",requestedBy:"",approvedBy:"",acctStatus:"",delivery:null});
 
 export const emptyDelivery=()=>({mode:"",deliveredDate:"",inspectedBy:"",inspectedOn:"",checkQty:false,checkDimensions:false,checkFinish:false,defectNotes:"",inspectionNotes:"",signedOffBy:"",signedOffOn:"",status:"Pending",retentionReleased:false});
 
