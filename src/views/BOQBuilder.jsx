@@ -1,6 +1,6 @@
 import React,{useState,useEffect,useLayoutEffect,useRef} from "react";
 import {today,uid,KEYS,Card,uiConfirm} from "../shared";
-import {isSupabaseReady,sbInsert,sbUpdate,sbDelete} from "../supabaseClient";
+import {supabase,isSupabaseReady,sbInsert,sbUpdate,sbDelete} from "../supabaseClient";
 
 // A textarea that grows to fit its content. BOQ line-item descriptions are
 // often multi-line spec lists (a title + "Specifications:" + bullets), so a
@@ -199,7 +199,11 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   const[lastEditedBy,setLastEditedBy]=useState("");
   const[lastEditedAt,setLastEditedAt]=useState("");
   const locked=boqStatus==="Locked";
-  const editLocked=ro||locked;               // content edits blocked by the read-only prop OR a lock
+  // True while a deal's BOQ is being re-read from the server on open. Editing is
+  // blocked until it lands so nobody builds on a stale or blank cached copy.
+  const[srvLoading,setSrvLoading]=useState(false);
+  const loadSeqRef=useRef(0);
+  const editLocked=ro||locked||srvLoading;   // content edits blocked by the read-only prop, a lock, or the server load
   // Only stamp "last edited by" on a genuine user edit — never on the autosave that
   // fires when a BOQ is merely opened (that would restamp the editor as whoever
   // opened it). Reset per mount; each mutator/header input flips it true.
@@ -551,8 +555,62 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       if(scratch){applyBoqSrc(scratch);setDraftSaved(true);}
       return;
     }
-    // Prefer Supabase-stored BOQ (deal.boqData), fall back to localStorage draft
-    const existing=deal?.boqData||loadDraft(selDeal);
+    // ── Deal BOQ ─────────────────────────────────────────────────────────────
+    // Fix for "BOQ the team made is missing when opened from the pipeline": this
+    // device's deals state can lag the server (the app goes interactive on the
+    // IndexedDB cache before sbLoadAll lands, or a realtime echo was missed), so
+    // deal.boqData can be null or an older version while the real BOQ sits in
+    // deals.boq_data. Show the cached copy at once, but re-read the row from the
+    // server on every open and adopt it; editing stays locked until it lands.
+    const cached=deal?.boqData||loadDraft(selDeal);
+    const seq=++loadSeqRef.current;
+    if(!isSupabaseReady()||!supabase){
+      openDealBoq(cached,true);
+      setSrvLoading(false);
+      return;
+    }
+    if(hasBoqContent(cached)) openDealBoq(cached,false);
+    else {setItems(BLANK_ITEMS());setSections([]);}
+    setSrvLoading(true);
+    const id=selDeal;
+    const timeout=new Promise(res=>setTimeout(()=>res({error:{message:"timeout"}}),15000));
+    Promise.race([supabase.from('deals').select('boq_data').eq('id',id).maybeSingle(),timeout])
+      .then(r=>r,e=>({error:e}))
+      .then(({data,error})=>{
+        if(seq!==loadSeqRef.current) return;   // user switched deal/closed meanwhile
+        setSrvLoading(false);
+        if(error){
+          // Could not reach the server — fall back to what this device has, and say so.
+          openDealBoq(cached,true);
+          toastEmit&&toastEmit("⚠️ Couldn't load the latest BOQ from the server — showing this device's copy. Check your connection before editing.","warning",10000);
+          return;
+        }
+        const srv=data?.boq_data||null;
+        if(hasBoqContent(srv)){
+          if(boqSig(srv)!==boqSig(cached)||!hasBoqContent(cached)) openDealBoq(srv,true);
+          else runReconcile(srv);
+          // Repair the shared deals state so the BOQ list, print and contract views agree.
+          if(boqSig(srv)!==boqSig(deal?.boqData)&&onBoqData) onBoqData(id,srv);
+          setSyncState("synced");
+        } else {
+          openDealBoq(cached,true);
+        }
+      });
+  },[selDeal,standaloneId,coId]);
+
+  // A BOQ has content when it carries at least one row or section.
+  function hasBoqContent(src){return !!(src&&((src.items?.length)||(src.sections?.length)));}
+  // Cheap identity of a saved BOQ — enough to tell two versions apart.
+  function boqSig(src){
+    if(!src) return "";
+    try{return JSON.stringify([src.lastEditedAt||"",src.items||[],src.sections||[],src.discount??"",src.markupPct??"",src.vatEnabled??null]);}
+    catch{return String(Math.random());}
+  }
+
+  // Open a deal's BOQ from a loaded source (or seed a fresh one when none exists).
+  // `final` = this is the authoritative copy, so the scratch draft may be adopted
+  // and the value-reconcile prompt may run.
+  function openDealBoq(existing,final){
     if(existing){
       applyBoqSrc(existing);
       // Backfill a missing project title from the linked deal so existing BOQs
@@ -581,7 +639,13 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       }
       setDraftSaved(false);
     }
-    // Reconcile the deal's pegged value against its BOQ — once per deal per session, on open.
+    if(final) runReconcile(existing);
+  }
+
+  // Reconcile the deal's pegged value against its BOQ — once per deal per session,
+  // on open, and only against the authoritative (server) copy.
+  function runReconcile(existing){
+    if(!selDeal) return;
     if(!reconciledRef.current[selDeal]){
       const dealValue=Number(deal?.value)||0;
       const hasBoq=(existing?.items?.length||0)>0;
@@ -593,7 +657,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
         setReconcile({net:0,dealValue:dv,hasBoq:false});setReconcileCustom("");
       }
     }
-  },[selDeal,standaloneId,coId]);
+  }
 
   // Status + last-edited stamp folded into every saved payload. "Last edited by"
   // advances to the current user only on a genuine edit (userEditedRef), so opening
@@ -634,6 +698,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
     // so a BOQ is never lost just because a project hasn't been picked.
     const hasContent=items.length>0||sections.length>0;
     if(!selDeal&&!hasContent) return;
+    if(selDeal&&srvLoading) return;   // never save while the server copy is still loading
     setDraftSaved(false);
     clearTimeout(draftTimerRef.current);
     draftTimerRef.current=setTimeout(async()=>{
@@ -649,6 +714,11 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       // write (last-write-wins), so the good BOQ was gone with no error.
       const hasNow=items.length>0||sections.length>0;
       if(!hasNow&&!userEditedRef.current){ setDraftSaved(true); setSyncState("idle"); return; }
+      // OPEN-CLOBBER GUARD: merely opening a deal's BOQ must never write it back to
+      // the server. A copy that was only loaded (possibly a stale cache) is not new
+      // information, and a whole-column last-write-wins push of it would overwrite a
+      // teammate's newer BOQ. Only a real edit (userEditedRef) reaches deals.boq_data.
+      if(selDeal&&!userEditedRef.current){ setDraftSaved(true); setSyncState(s=>s==="synced"?s:"idle"); return; }
       const boqData={items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount,markupPct,...buildStamp()};
       saveDraft(selDeal||BOQ_SCRATCH_KEY,boqData);
       // Reflect the saved BOQ in the shared deals state immediately so surfaces
@@ -679,7 +749,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       }
     },1200);
     return()=>clearTimeout(draftTimerRef.current);
-  },[coId,standaloneId,selDeal,items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount,markupPct,boqStatus]);
+  },[coId,standaloneId,selDeal,srvLoading,items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount,markupPct,boqStatus]);
 
 
   const updateItem=(id,key,val)=>{if(editLocked)return;markEdited();setItems(its=>its.map(it=>{
@@ -904,7 +974,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
               const STCLR={Draft:{bg:"#f1f5f9",bd:"#cbd5e1",fg:"#475569"},Issued:{bg:"#eff6ff",bd:"#bfdbfe",fg:"#1d4ed8"},Locked:{bg:"#fef2f2",bd:"#fecaca",fg:"#b91c1c"}};
               const c=STCLR[boqStatus]||STCLR.Draft;
               return(
-                <select value={boqStatus} onChange={e=>{markEdited();setBoqStatus(e.target.value);}} title="Draft = editable · Issued = sent/printed · Locked = frozen"
+                <select value={boqStatus} disabled={srvLoading} onChange={e=>{if(srvLoading)return;markEdited();setBoqStatus(e.target.value);}} title="Draft = editable · Issued = sent/printed · Locked = frozen"
                   style={{fontFamily:"inherit",fontSize:".68rem",fontWeight:800,letterSpacing:".4px",textTransform:"uppercase",color:c.fg,background:c.bg,border:`1.5px solid ${c.bd}`,borderRadius:20,padding:"3px 12px",outline:"none",cursor:"pointer"}}>
                   {BOQ_STATUSES.map(s=><option key={s} value={s}>{s==="Locked"?"🔒 ":s==="Issued"?"📤 ":"✏️ "}{s}</option>)}
                 </select>
@@ -913,6 +983,11 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
             {lastEditedBy&&<div style={{fontSize:".62rem",color:"#94a3b8",fontWeight:600,textAlign:"right"}}>Last edited by {lastEditedBy}{lastEditedAt?` · ${new Date(lastEditedAt).toLocaleString("en-PH",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}`:""}</div>}
           </div>
         </div>
+        {srvLoading&&!ro&&(
+          <div style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:9,padding:"8px 12px",marginBottom:12,fontSize:".74rem",color:"#1d4ed8",fontWeight:600,display:"flex",alignItems:"center",gap:7}}>
+            ⟳ Loading the latest BOQ from the server… editing unlocks in a moment.
+          </div>
+        )}
         {locked&&!ro&&(
           <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:9,padding:"8px 12px",marginBottom:12,fontSize:".74rem",color:"#b91c1c",fontWeight:600,display:"flex",alignItems:"center",gap:7}}>
             🔒 This BOQ is <strong>Locked</strong> — editing is frozen. Set the status back to Draft or Issued to make changes.
@@ -977,7 +1052,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
           </button>}
           {items.length>0&&<button onClick={printBOQ} style={{background:"#f0fdf4",border:"1.5px solid #86efac",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#166534",cursor:"pointer"}}>🖨 Preview / Print</button>}
           {items.length>0&&<button onClick={exportCSV} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>}
-          {!ro&&(selDeal||items.length>0||sections.length>0)&&<button onClick={()=>{deleteDraft(selDeal||BOQ_SCRATCH_KEY);if(selDeal&&isSupabaseReady())sbUpdate('deals',selDeal,{boq_data:null}).catch(()=>{});setItems(BLANK_ITEMS());setSections([]);setBoqTitle("");setLocation(deal?.location||"");setQuotationNo(deal?.ceNo||"");setBoqDate(today);setVatEnabled(null);setDiscount("");setMarkupPct("");setDraftSaved(false);}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#c2410c",cursor:"pointer"}} title="Clear saved draft and reset">✕ Clear Draft</button>}
+          {!ro&&!srvLoading&&(selDeal||items.length>0||sections.length>0)&&<button onClick={()=>{deleteDraft(selDeal||BOQ_SCRATCH_KEY);if(selDeal&&isSupabaseReady())sbUpdate('deals',selDeal,{boq_data:null}).catch(()=>{});setItems(BLANK_ITEMS());setSections([]);setBoqTitle("");setLocation(deal?.location||"");setQuotationNo(deal?.ceNo||"");setBoqDate(today);setVatEnabled(null);setDiscount("");setMarkupPct("");setDraftSaved(false);}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#c2410c",cursor:"pointer"}} title="Clear saved draft and reset">✕ Clear Draft</button>}
           {!ro&&(items.length>0||sections.length>0)&&(()=>{
             // Sync badge — reflects the REAL cloud-save state, not just the local draft.
             // Amber "device only" is the important one: it tells the user the BOQ is not

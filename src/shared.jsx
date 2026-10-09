@@ -11,7 +11,7 @@ export const uid=()=>{
   // UUID v4 fallback for older browsers / non-secure contexts
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==="x"?r:(r&0x3|0x8)).toString(16);});
 };
-export const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos",prs:"gmdv5:prs",budgets:"gmdv5:budgets",mreqs:"gmdv5:mreqs",breqs:"gmdv5:breqs",addenda:"gmdv5:addenda",billings:"gmdv5:billings",vvip:"gmdv5:vvip",actlog:"gmdv5:actlog",pcards:"gmdv5:pcards",inventory:"gmdv5:inventory",stocklog:"gmdv5:stocklog",drfs:"gmdv5:drfs",botsettings:"gmdv5:botsettings",suppliers:"gmdv5:suppliers",subcons:"gmdv5:subcons",swos:"gmdv5:swos",customclients:"gmdv5:customclients",blockers:"gmdv5:blockers",boqLibrary:"gmdv5:boqLibrary",boqDrafts:"gmdv5:boqDrafts",vouchers:"gmdv5:vouchers",payables:"gmdv5:payables",loans:"gmdv5:loans",evouchers:"gmdv5:evouchers",dailylogs:"gmdv5:dailylogs",ceReqs:"gmdv5:ceReqs",payouts:"gmdv5:payouts",tools:"gmdv5:tools",drs:"gmdv5:drs",announcements:"gmdv5:announcements"};
+export const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos",prs:"gmdv5:prs",budgets:"gmdv5:budgets",mreqs:"gmdv5:mreqs",breqs:"gmdv5:breqs",addenda:"gmdv5:addenda",billings:"gmdv5:billings",vvip:"gmdv5:vvip",actlog:"gmdv5:actlog",pcards:"gmdv5:pcards",inventory:"gmdv5:inventory",stocklog:"gmdv5:stocklog",drfs:"gmdv5:drfs",botsettings:"gmdv5:botsettings",suppliers:"gmdv5:suppliers",subcons:"gmdv5:subcons",swos:"gmdv5:swos",customclients:"gmdv5:customclients",blockers:"gmdv5:blockers",boqLibrary:"gmdv5:boqLibrary",boqDrafts:"gmdv5:boqDrafts",vouchers:"gmdv5:vouchers",payables:"gmdv5:payables",payPays:"gmdv5:payPays",loans:"gmdv5:loans",evouchers:"gmdv5:evouchers",dailylogs:"gmdv5:dailylogs",ceReqs:"gmdv5:ceReqs",payouts:"gmdv5:payouts",tools:"gmdv5:tools",drs:"gmdv5:drs",announcements:"gmdv5:announcements"};
 // type: "Operating" = working accounts in the Executive Summary totals;
 // "Reserve" = Chinabank/Security/Unionbank savings, tracked separately (per Aerwin's sheet).
 // acctNo/branch mirror the Bank Account Detail columns of the owners' cash-position report.
@@ -323,9 +323,11 @@ export function DialogHost(){
     if(e.key==="Escape"){e.preventDefault();onCancel();}
     else if(e.key==="Enter"&&(cur.kind!=="prompt"||!e.shiftKey)){e.preventDefault();onConfirm();}
   };
+  // Above every page modal (they go up to zIndex 10020): a confirm opened from
+  // inside a modal must never render behind it and leave the user stuck.
   return(
     <div role="presentation" onKeyDown={onKey}
-      style={{position:"fixed",inset:0,background:"rgba(15,23,42,.55)",zIndex:2000,display:"flex",alignItems:mob?"flex-end":"center",justifyContent:"center",padding:mob?0:16,animation:"fadein .15s ease"}}
+      style={{position:"fixed",inset:0,background:"rgba(15,23,42,.55)",zIndex:20000,display:"flex",alignItems:mob?"flex-end":"center",justifyContent:"center",padding:mob?0:16,animation:"fadein .15s ease"}}
       onClick={cur.kind==="alert"?onCancel:undefined}>
       <div role="dialog" aria-modal="true" aria-labelledby={titleId} onClick={e=>e.stopPropagation()}
         style={{background:"#fff",borderRadius:mob?"18px 18px 0 0":16,padding:mob?"22px 18px 24px":26,width:"100%",maxWidth:mob?undefined:420,boxShadow:"0 24px 80px rgba(0,0,0,.28)",borderTop:`4px solid ${t.accent}`}}>
