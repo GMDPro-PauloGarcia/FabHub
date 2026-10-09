@@ -35,3 +35,9 @@ For the smoke test locally, run `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers
 ## Mother PO billing (standby PO umbrellas)
 - A standby PO (`deals.standby_po`, e.g. Diageo CE-2026-1216) earns ₱0 itself; its sub-projects (`parent_deal_id`) carry the billing.
 - Only Managers may add or change milestones or payments on a mother PO. Enforced in `BillingView` (`isMotherPO` + `canonRole(role)`) and by migration `20260930010000_mother_po_billing_manager_only.sql` — keep them in sync.
+
+## BOQs on deals
+- Linking a BOQ to a deal is final: Duplicate/Link never replace a deal's existing BOQ. Mother POs never carry a BOQ or a price.
+- Only a Manager can clear a deal's BOQ. Every BOQ change and deal delete keeps the previous BOQ in `deals_boq_history` (restore steps are in the migration).
+- Enforced in `attachBoqToDeal` (`src/App.jsx`), the Clear Draft gate in `src/views/BOQBuilder.jsx`, and migration `20261006010000_deals_boq_safeguards.sql` — keep them in sync.
+- Supabase MCP `execute_sql`/`apply_migration` hang on any `DROP` (they wait for a confirmation that never comes). Write migrations with `create or replace` / `if not exists` instead.
