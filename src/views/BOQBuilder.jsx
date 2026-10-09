@@ -725,9 +725,11 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       // that read deal.boqData (BOQ list "has BOQ", print, contract breakdown)
       // update without waiting for the realtime echo / a manual refresh.
       if(selDeal&&onBoqData) onBoqData(selDeal,boqData);
-      // Pre-fill the deal's receipt type from the BOQ VAT choice (fill-when-empty;
-      // an explicit deal-side choice is preserved). Only a decided boolean syncs.
-      if(selDeal&&onBoqVat&&typeof vatEnabled==="boolean") onBoqVat(selDeal,vatEnabled);
+      // The BOQ is the VAT authority: a decided VAT choice sets the deal's receipt
+      // type (VAT 12% → OR, No VAT → AR). Only on a real edit this session, so
+      // merely opening a BOQ never rewrites a finance field — an existing mismatch
+      // is surfaced next to the VAT toggle instead.
+      if(selDeal&&onBoqVat&&typeof vatEnabled==="boolean"&&userEditedRef.current) onBoqVat(selDeal,vatEnabled);
       // Seed the deal's contract value from the BOQ (net of VAT) ONLY when the deal has
       // no value yet. A pegged, non-zero value is never silently overwritten — a mismatch
       // is surfaced via the reconcile prompt when the deal is opened instead.
@@ -1516,6 +1518,11 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                     </button>
                   ))}
                   {vatEnabled==null&&<span style={{fontSize:".7rem",color:"#dc2626",fontWeight:700}}>⚠ Choose VAT treatment</span>}
+                  {!ro&&!coId&&deal&&onBoqVat&&typeof vatEnabled==="boolean"&&deal.receiptType!==(vatEnabled?"OR":"AR")&&(
+                    <span style={{fontSize:".7rem",color:"#b45309",fontWeight:700}}>
+                      ⚠ Project receipt is {deal.receiptType||"unset"} — <button type="button" onClick={()=>onBoqVat(selDeal,vatEnabled)} style={{border:"none",background:"none",padding:0,color:"#b45309",textDecoration:"underline",cursor:"pointer",fontFamily:"inherit",fontSize:"inherit",fontWeight:700}}>set to {vatEnabled?"OR":"AR"}</button>
+                    </span>
+                  )}
                 </div>
                 <div style={{textAlign:"right",fontWeight:700,color:vatEnabled?"#475569":"#cbd5e1",fontSize:".85rem"}}>{vatEnabled?`₱${vatAmount.toLocaleString("en-PH",{minimumFractionDigits:2})}`:"-"}</div>
                 <div/><div/>
