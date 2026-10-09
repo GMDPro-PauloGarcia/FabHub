@@ -388,7 +388,7 @@ export const PERM_ROLES = ["Manager","Sales","ProjectMover","Finance","FinanceAs
 const AUTH = "AUTH";
 export const PERMISSIONS = {
   deals:               { label:"Deals / Pipeline",        group:"Sales",       select:["Manager","Sales","ProjectMover","Finance","FinanceAssistant","Accounting","Procurement","QS","SalesOpsAdmin"], insert:["Manager","Sales","SalesOpsAdmin"], update:["Manager","Sales","SalesOpsAdmin","QS"], delete:["Manager"] },
-  ce_requests:         { label:"CE / QS Requests",         group:"Sales",       select:["Manager","Sales","Finance","FinanceAssistant","QS","SalesOpsAdmin"], insert:["Manager","QS"], update:["Manager","QS"], delete:["Manager"] },
+  ce_requests:         { label:"CE / QS Requests",         group:"Sales",       select:["Manager","Sales","Finance","FinanceAssistant","QS","SalesOpsAdmin"], insert:["Manager","QS","Sales","SalesOpsAdmin"], update:["Manager","QS"], delete:["Manager"] },
   design_requests:     { label:"Design Requests (DRF)",    group:"Design",      select:["Manager","Sales","ProjectMover","Finance","Design","SalesOpsAdmin"], insert:["Manager","Sales","Design","SalesOpsAdmin"], update:["Manager","Design"], delete:["Manager"] },
   swatches:            { label:"Swatches",                 group:"Design",      select:["Manager","Finance","FinanceAssistant","Procurement","Design"], insert:["Manager","Procurement","Design"], update:["Manager","Procurement","Design"], delete:["Manager","Procurement"] },
   projects:            { label:"Projects",                 group:"Operations",  select:[AUTH], insert:["Manager","ProjectMover"], update:["Manager","ProjectMover"], delete:["Manager"] },
@@ -413,7 +413,7 @@ export const PERMISSIONS = {
   inventory_items:     { label:"Inventory Items",          group:"Warehouse",   select:["Manager","Finance","FinanceAssistant","Procurement","Warehouse"], insert:["Manager","Warehouse"], update:["Manager","Warehouse"], delete:["Manager","Warehouse"] },
   stock_movements:     { label:"Stock Movements",          group:"Warehouse",   select:["Manager","Finance","FinanceAssistant","Procurement","Warehouse"], insert:["Manager","Warehouse"], update:["Manager","Warehouse"], delete:["Manager"] },
   boq_library:         { label:"BOQ Library",              group:"QS / Cost",   select:["Manager","Finance","FinanceAssistant","QS","ProjectMover"], insert:["Manager","QS"], update:["Manager","QS"], delete:["Manager"] },
-  project_budgets:     { label:"Project Budgets",          group:"QS / Cost",   select:["Manager","Finance","FinanceAssistant","QS","ProjectMover"], insert:["Manager","QS"], update:["Manager","Finance","FinanceAssistant","QS"], delete:["Manager"] },
+  project_budgets:     { label:"Project Budgets",          group:"QS / Cost",   select:["Manager","Finance","FinanceAssistant","QS","ProjectMover"], insert:["Manager","QS","Sales","SalesOpsAdmin"], update:["Manager","Finance","FinanceAssistant","QS"], delete:["Manager"] },
   audit_findings:      { label:"Audit Findings",           group:"Audit",       select:["Manager","Finance","Audit","HRAdmin"], insert:["Manager","Audit","HRAdmin"], update:["Manager","Audit","HRAdmin"], delete:["Manager","Audit","HRAdmin"] },
   commission_payouts:  { label:"Commission Payouts",       group:"Sales",       select:["Manager","Sales","Finance","FinanceAssistant","Accounting","SalesOpsAdmin"], insert:["Manager","Finance","FinanceAssistant"], update:["Manager","Finance","FinanceAssistant"], delete:["Manager"] },
 };
@@ -423,7 +423,7 @@ export const PERM_NOTES = {
   deals:"Delete is limited to Managers plus the named sales leads (Jena, Wyn, Paolo).",
   daily_logs:"Beyond Managers, the person who wrote a log can delete their own — the ✓ column shows Manager only, but authors can remove their own entry.",
   design_requests:"Design reads/edits are further tiered by designer — senior designers (Gab, Miaa) see more than the rest of the team.",
-  project_budgets:"Finance can edit an existing budget, but creating the first budget row for a project is limited to Managers and QS.",
+  project_budgets:"Finance can edit an existing budget. Creating the first budget row is Managers, QS, and Sales/SalesOpsAdmin (the award's automatic starting budget) — Sales cannot edit it afterwards.",
 };
 
 const PERM_ACTIONS = ["select","insert","update","delete"];

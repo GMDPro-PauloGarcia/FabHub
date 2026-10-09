@@ -132,6 +132,7 @@ const _classifyError = (msg) => {
 // Non-retryable failures will never succeed by replaying the same op — retrying
 // them just wedges the queue (blocking every write queued behind them) and
 // re-fires the "offline" toast forever even though the connection is fine.
+const _isDuplicate = (error) => (error && (error.code === '23505' || /duplicate key/i.test(error.message || '')))
 const _isRetryable = (kind) => kind !== 'auth' && kind !== 'data'
 const _writeFailed = (op, table, msg) => {
   const kind = _classifyError(msg)
@@ -173,7 +174,7 @@ export const sbQueueSize = () => _queue.length
 export const sbPendingIds = () => {
   const ids = new Set()
   for (const op of _queue) {
-    if (op.kind === 'insert' || op.kind === 'upsert') { if (op.data && op.data.id != null) ids.add(op.data.id) }
+    if (op.kind === 'insert' || op.kind === 'upsert' || op.kind === 'insertIfMissing') { if (op.data && op.data.id != null) ids.add(op.data.id) }
     else if (op.kind === 'update') { if (op.id != null) ids.add(op.id) }
   }
   return ids
@@ -205,6 +206,15 @@ export const consumeReadFailures = () => { const s = [..._readFailures]; _readFa
 const _MISSING_COL_RE = /could not find the '([^']+)' column/i
 // Run the op's actual write once and return its { error }.
 const _runOp = async (op) => {
+  if (op.kind === 'insertIfMissing') {
+    // Plain INSERT, no RETURNING, no ON CONFLICT: the only form a role with
+    // INSERT-but-not-UPDATE/SELECT rights (e.g. Sales on project_budgets) can
+    // run. A duplicate means an earlier attempt (or someone else) already
+    // created the row — that is success, not an error.
+    const res = await _withTimeout(supabase.from(op.table).insert(op.data))
+    if (res.error && _isDuplicate(res.error)) return { error: null }
+    return res
+  }
   if (op.kind === 'insert' || op.kind === 'upsert') {
     // Replay inserts as upserts when an id is present so a lost-response retry
     // can't create a duplicate; fall back to insert only when there's no id.
@@ -410,6 +420,23 @@ export const sbUpsert = async (table, data, conflictCol = 'id', { ignoreDuplicat
   const { error } = await _withTimeout(supabase.from(table).upsert(data, { onConflict: conflictCol, ignoreDuplicates }))
   if (error) { console.error(`SB UPSERT ${table}:`, error.message); const kind=_writeFailed('upsert', table, error.message); if(_isRetryable(kind)) _enqueue({ kind: 'upsert', table, data, conflictCol }); else _notifyDropped({ kind: 'upsert', table, data, conflictCol }, kind, error.message); return false }
   return true
+}
+
+// Create a row only if it doesn't exist yet; never overwrite. Unlike sbUpsert
+// this needs nothing but INSERT rights — Postgres RLS applies UPDATE (and
+// SELECT) checks to ANY "ON CONFLICT" insert, even DO NOTHING, so upsert
+// silently failed for roles that may create but not edit a row: Sales raising
+// a CE request, or the 🏆 award writing a starting budget (verified against
+// production as role Sales, 2026-10-06). A duplicate = already there = success.
+export const sbInsertIfMissing = async (table, data) => {
+  if (!supabase || _signedOut('INSERT', table)) return false
+  const { error } = await _withTimeout(supabase.from(table).insert(data))
+  if (!error || _isDuplicate(error)) return true
+  console.error(`SB INSERT-IF-MISSING ${table}:`, error.message)
+  const kind = _writeFailed('insert', table, error.message)
+  if (_isRetryable(kind)) _enqueue({ kind: 'insertIfMissing', table, data })
+  else _notifyDropped({ kind: 'insertIfMissing', table, data }, kind, error.message)
+  return false
 }
 
 export const sbDelete = async (table, id) => {

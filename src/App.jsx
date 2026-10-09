@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback, useRef, useContext, c
 const WrapCtx = createContext(false);
 // Roles that must never see contract value — they get the QS budget instead.
 const BUDGET_ONLY=["Design","Operations","ProjectMover"];
-import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbPendingIds,sbOnQueueChange,appLogin,appLogout,restoreAppToken,hasAppToken,appTokenExpired,setSessionExpiredHandler,logClientError} from './supabaseClient';
+import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbInsertIfMissing,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbPendingIds,sbOnQueueChange,appLogin,appLogout,restoreAppToken,hasAppToken,appTokenExpired,setSessionExpiredHandler,logClientError} from './supabaseClient';
 import{idbGetMany,idbSetMany}from'./idb.js';
 import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable} from './shared';
 import {T} from './theme';
@@ -5507,7 +5507,9 @@ export default function App(){
     if(billings?.length){
       await Promise.all(billings.map(m=>{if(!isUUID(m.id))return Promise.resolve();sbSyncOne("billing_milestones",m,toSbBilling);return Promise.all((m.payments||[]).map(p=>isUUID(p.id)?sbSyncOne("billing_payments",{...p,milestoneId:m.id},toSbPayment):Promise.resolve()));})).catch(()=>{});
     }
-    if(budgets&&roleCanInsert("project_budgets")){Object.entries(budgets).forEach(([dealId,b])=>{if(isUUID(dealId)) sbUpsert("project_budgets",toSbBudget(dealId,b),"deal_id").catch(()=>{});});}
+    // A role that may create but not edit budgets (Sales/SalesOpsAdmin) can only
+    // fill in budgets missing on the server — an upsert is refused for it outright.
+    if(budgets&&roleCanInsert("project_budgets")){const canEdit=roleCan(role,"update","project_budgets");Object.entries(budgets).forEach(([dealId,b])=>{if(!isUUID(dealId)) return;(canEdit?sbUpsert("project_budgets",toSbBudget(dealId,b),"deal_id"):sbInsertIfMissing("project_budgets",toSbBudget(dealId,b))).catch(()=>{});});}
     setTimeout(()=>toastEmit("Done! All data pushed to Supabase. Refresh Safari to see it.","success",6000),1200);
   },[hasValidUUIDs,deals,jos,exps,prs,mreqs,breqs,addenda,swatches,checklist,actLog,billings,budgets,cashPositions,infs]);
   const upInventory =useCallback(fn=>setInventory(p=>{const n=fn(p);persist(KEYS.inventory,n);return n;}),[persist]);
@@ -5697,7 +5699,9 @@ export default function App(){
   const addCEReq=(rec)=>{
     const nr={...rec,id:rec.id||uid(),created_at:rec.created_at||new Date().toISOString()};
     setCeReqs(p=>[...p,ceReqFromSb(nr)]);
-    return isSupabaseReady()?sbUpsert('ce_requests',nr,'id').catch(()=>false):Promise.resolve(true);
+    // Plain insert, not upsert: Sales may CREATE a CE request but not edit one
+    // (migration 20261006020000), and an upsert needs edit rights too.
+    return isSupabaseReady()?sbInsertIfMissing('ce_requests',nr).catch(()=>false):Promise.resolve(true);
   };
   const updateCEReq=(id,updates)=>{
     setCeReqs(p=>p.map(r=>{if(r.id!==id)return r;return{...r,...(updates.status!==undefined?{status:updates.status}:{}),clientName:updates.client_name??r.clientName,projectName:updates.project_name??r.projectName,location:updates.location??r.location,projectType:updates.project_type??r.projectType,priority:updates.priority??r.priority,submittedBy:updates.submitted_by??r.submittedBy,targetDeadline:updates.target_deadline??r.targetDeadline,submissionDeadline:updates.submission_deadline??r.submissionDeadline,targetBudget:updates.target_budget??r.targetBudget,targetMargin:updates.target_margin??r.targetMargin,plansLink:updates.plans_link??r.plansLink,skpLink:updates.skp_link??r.skpLink,scheduleOfFinish:updates.schedule_of_finish??r.scheduleOfFinish,notes:updates.notes??r.notes,ceNotes:updates.ce_notes??r.ceNotes,bidAmount:updates.bid_amount??r.bidAmount,bidMarginPct:updates.bid_margin_pct??r.bidMarginPct,awarded:updates.awarded??r.awarded,awardDate:updates.award_date??r.awardDate};}));
@@ -7088,10 +7092,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     }));
   };
   const upBudgets  =useCallback(fn=>setBudgets(p=>{const n=fn(p);persist(KEYS.budgets,n);return n;}),[persist]);
-  const saveBudget=async(dealId,budget)=>{
+  // onlyIfMissing: the 🏆 award's auto "starting budget". It must never replace
+  // a budget QS already built (re-award, or QS got there first), and Sales —
+  // who award deals — may create a budget row but not edit one, so it is a
+  // plain create-if-absent, not an upsert (which RLS refused for Sales).
+  const saveBudget=async(dealId,budget,{onlyIfMissing=false}={})=>{
     const saved={...budget,savedAt:new Date().toISOString()};
-    upBudgets(bs=>({...bs,[dealId]:saved}));
+    upBudgets(bs=>(onlyIfMissing&&bs[dealId])?bs:({...bs,[dealId]:saved}));
     if(!isSupabaseReady()) return true;
+    if(onlyIfMissing) return await sbInsertIfMissing("project_budgets",toSbBudget(dealId,saved));
     return await sbUpsert("project_budgets",toSbBudget(dealId,saved),"deal_id");
   };
   const addPR=(pr,{silent=false}={})=>{
@@ -8597,7 +8606,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         marginTarget:30,
         autoGenerated:true,
         autoGeneratedAt:today,
-      });
+      },{onlyIfMissing:true});
       stepResults.push({label:"Starting Budget",ok:budgetOk});
     }
     // Log
