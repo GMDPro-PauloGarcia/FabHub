@@ -11,13 +11,11 @@
 -- submits with a plain INSERT (not upsert), which needs nothing more than this.
 -- SELECT is unchanged (Sales could already read).
 
-drop policy if exists ce_requests_ins on public.ce_requests;
-create policy ce_requests_ins on public.ce_requests
-  for insert to authenticated
+-- ALTER (not drop + create): edits the existing INSERT policy in place, so
+-- there is never a moment with no INSERT policy, and re-running is harmless.
+alter policy ce_requests_ins on public.ce_requests
   with check (public.has_role('Manager', 'QS', 'Sales', 'SalesOpsAdmin'));
 
 -- ROLLBACK
--- drop policy if exists ce_requests_ins on public.ce_requests;
--- create policy ce_requests_ins on public.ce_requests
---   for insert to authenticated
+-- alter policy ce_requests_ins on public.ce_requests
 --   with check (public.has_role('Manager', 'QS'));
