@@ -7685,7 +7685,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(!billings.length) return;
     // Skip milestones already paid in full even if their status tag is stale —
     // otherwise a paid "Partially Paid" milestone gets flipped to Overdue.
-    const toMark=billings.filter(b=>b.dueDate&&b.dueDate<today&&!['Fully Paid','Cancelled','Overdue'].includes(b.status)&&milestoneBalance(b,dealById.get(b.dealId))>0.5);
+    // Drafts haven't been sent to the client, so they can't be overdue.
+    const toMark=billings.filter(b=>b.dueDate&&b.dueDate<today&&!['Draft','Fully Paid','Cancelled','Overdue'].includes(b.status)&&milestoneBalance(b,dealById.get(b.dealId))>0.5);
     if(!toMark.length) return;
     upBillings(bs=>bs.map(b=>toMark.find(m=>m.id===b.id)?{...b,status:'Overdue'}:b));
     if(isSupabaseReady()){
