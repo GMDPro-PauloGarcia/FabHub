@@ -7683,7 +7683,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // Auto-mark overdue billing milestones — runs once when billings load, then daily
   useEffect(()=>{
     if(!billings.length) return;
-    const toMark=billings.filter(b=>b.dueDate&&b.dueDate<today&&!['Fully Paid','Cancelled','Overdue'].includes(b.status));
+    // Skip milestones already paid in full even if their status tag is stale —
+    // otherwise a paid "Partially Paid" milestone gets flipped to Overdue.
+    const toMark=billings.filter(b=>b.dueDate&&b.dueDate<today&&!['Fully Paid','Cancelled','Overdue'].includes(b.status)&&milestoneBalance(b,dealById.get(b.dealId))>0.5);
     if(!toMark.length) return;
     upBillings(bs=>bs.map(b=>toMark.find(m=>m.id===b.id)?{...b,status:'Overdue'}:b));
     if(isSupabaseReady()){
@@ -25462,16 +25464,14 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   // even though the underlying billing data hadn't changed.
   const allBilled=useMemo(()=>billings.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+n(m.amount),0),[billings]);
   const allCollected=useMemo(()=>billings.reduce((s,m)=>s+(m.payments||[]).filter(p=>!p.bounced).reduce((ps,p)=>ps+n(p.amount),0),0),[billings]);
-  // Per-deal outstanding: floor each deal at 0 so overpayments don't offset other clients
+  // Outstanding = cash receivable (VAT-incl, less EWT) minus good payments, via the
+  // shared arSummary — the same figure as Daily Cash Position's Running A/R and the
+  // per-project balances below. The old `amount − payments` mixed the VAT-ex base
+  // with cash payments and read ~₱4.3M low.
   const allOutstanding=useMemo(()=>{
-    const dealIds=[...new Set(billings.map(b=>b.dealId))];
-    return dealIds.reduce((total,did)=>{
-      const dms=billings.filter(m=>m.dealId===did&&m.status!=="Cancelled");
-      const billed=dms.reduce((s,m)=>s+n(m.amount),0);
-      const collected=dms.reduce((s,m)=>s+(m.payments||[]).filter(p=>!p.bounced).reduce((ps,p)=>ps+n(p.amount),0),0);
-      return total+Math.max(0,billed-collected);
-    },0);
-  },[billings]);
+    const byId=new Map(deals.map(d=>[d.id,d]));
+    return arSummary(billings,id=>byId.get(id)).outstanding;
+  },[billings,deals]);
   const overdue=useMemo(()=>billings.filter(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled"),[billings]);
 
   // ── Collection Forecast — how much net cash we can expect to collect within a
@@ -26131,7 +26131,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       {/* KPIs */}
       <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:16}}>
         {[
-          {l:"Total Billed",      v:fmt(allBilled),                c:"#3b82f6"},
+          {l:"Total Billed (VAT-ex)",v:fmt(allBilled),             c:"#3b82f6"},
           {l:"Total Collected",   v:fmt(allCollected),             c:"#059669"},
           {l:"Outstanding",       v:fmt(allOutstanding), c:allOutstanding>0?"#ef4444":"#059669", filter:"outstanding", hint:"View all clients with a balance →"},
           {l:"Overdue Invoices",  v:overdue.length,                c:overdue.length>0?"#ef4444":"#94a3b8", filter:"overdue", hint:"View overdue invoices →"},
