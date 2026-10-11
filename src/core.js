@@ -1141,15 +1141,23 @@ export const woRetentionAmt=w=>Math.min(Number(w.retentionPct)||0,100)/100*(Numb
 //   WOs were signed at 0%). At payment time the WO's own rate is what's held —
 //   FabHub never adds retention a signed WO doesn't carry. Released when
 //   Operations verifies the work 100% complete. Downpayments are exempt.
-// prvSubconNoWo: a subcontractor payment request (PRV) at or above `limit` with
-//   no Work Order linked is warned about ("warn") or refused ("block"). Interim
-//   setting until management decides (decision D3).
-export const AP_RULES={subconRetentionPct:10,prvSubconNoWo:{limit:50000,mode:"warn"}};
+// subconNoWoLimit: a subcontractor payable (PRV or AP) of this amount or more must
+//   be linked to a Work Order, so Operations confirms the work before it's paid.
+//   Hard block, no override (decision D3, Paulo, 9 Oct 2026). The database
+//   enforces the same rule (migration 20261009120000_subcon_payable_needs_wo.sql):
+//   keep the limit, the account codes and the conditions in sync.
+export const AP_RULES={subconRetentionPct:10,subconNoWoLimit:50000};
 // 5070 Production - Subcon, 5100 Sub-Con Prof Fee, 5200 the old default that
 // earlier code stamped on subcontractor payables (5200 is "Load Allowance" in
 // the chart, so it is kept here only to recognise those older rows).
 export const SUBCON_ACCOUNT_CODES=["5070","5100","5200"];
 export const isSubconPayable=p=>!!p&&(p.category==="Subcontractor"||SUBCON_ACCOUNT_CODES.includes(String(p.accountCode||"")));
+// D3: subcontractor payable at/above the limit with no Work Order linked.
+export const subconNeedsWo=p=>isSubconPayable(p)&&!String(p.poNumber||"").trim()&&(Number(p.amount)||0)>=AP_RULES.subconNoWoLimit;
+// Refuse a save that creates such a payable, turns an existing one into one, or
+// raises its amount. Older rows that already break the rule can still be edited
+// and paid, as long as the amount doesn't go up. Mirrors the database trigger.
+export const subconNoWoRefused=(next,prev)=>subconNeedsWo(next)&&(!prev||!subconNeedsWo(prev)||(Number(next.amount)||0)>(Number(prev.amount)||0));
 // Which retention rate applies to a subcontractor payable, and why. Only what
 // the Work Order (or the bill itself) says — never a default on top of a signed WO.
 export const payableRetentionPct=(p,wos=[])=>{
