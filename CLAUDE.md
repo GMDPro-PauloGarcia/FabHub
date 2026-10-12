@@ -7,7 +7,7 @@ The `DB migrations` GitHub workflow does **not** apply migrations. It has no cre
 
 1. Write the migration in `supabase/migrations/<timestamp>_<name>.sql`. Make it idempotent (`if not exists`, `create or replace`, `drop … if exists`) and add a `-- ROLLBACK` section.
 2. Test it on production inside a transaction that ends in a raised exception, so nothing is kept. Simulate the real user with `set local role authenticated` plus `set_config('request.jwt.claims', '{"username":"…","user_role":"…"}', true)`. Then confirm afterwards that nothing stuck.
-3. Apply it with the Supabase MCP `apply_migration`.
+3. Apply it with the Supabase MCP `apply_migration`. To change an existing policy, use `alter policy … with check/using (…)`, not `drop policy` + `create policy`: a `drop` makes `apply_migration` wait for a confirmation this session never sees, and it times out (seen 4× on 2026-10-06/09).
 4. Only then merge the app code that depends on it. If code that writes a new column ships first, every save fails with "saved locally only".
 5. Say in the PR body that it is already applied.
 
