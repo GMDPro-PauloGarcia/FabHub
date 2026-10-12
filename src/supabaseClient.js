@@ -14,14 +14,15 @@ export const getAppToken = () => _appToken
 // Who the current role token belongs to (the JWT carries `username`). Used to
 // tag queued writes so one person's held changes are never replayed under
 // someone else's login on a shared PC (history tables record the JWT username).
-const _tokenUsername = () => {
+const _usernameOf = (tok) => {
   try {
-    const part = (_appToken || '').split('.')[1]
+    const part = (tok || '').split('.')[1]
     if (!part) return ''
     const json = atob(part.replace(/-/g, '+').replace(/_/g, '/'))
     return JSON.parse(json).username || ''
   } catch (e) { return '' }
 }
+const _tokenUsername = () => _usernameOf(_appToken)
 // True once the role token's lifetime (expires_in at login, default 12h) has
 // passed. Nothing re-checked this after boot, so a tab left open past it kept
 // sending an expired token and every save was rejected.
@@ -34,7 +35,14 @@ export const appTokenExpired = () => {
 // the queue, not dropped.
 let _onSessionExpired = null
 export const setSessionExpiredHandler = (fn) => { _onSessionExpired = fn }
-const _notifyExpired = () => { try { _onSessionExpired && _onSessionExpired() } catch (_) {} }
+const _notifyExpired = () => {
+  // Try a silent renewal first; only ask the user to log in if that fails.
+  // refreshAppToken() de-duplicates, so a burst of failing writes costs one call.
+  refreshAppToken().then(ok => {
+    if (ok) { sbFlushQueue(true) }
+    else { try { _onSessionExpired && _onSessionExpired() } catch (_) {} }
+  })
+}
 export const hasAppToken = () => !!_appToken
 // No role token = signed out (login screen, or a session that expired while the
 // tab was closed). Any write sent now goes out as `anon`, which RLS always
@@ -69,12 +77,83 @@ export const appLogin = async (username, password) => {
   let data = {}
   try { data = await res.json() } catch (e) { /* non-JSON */ }
   if (!res.ok) return { error: data.error || `Login failed (${res.status})` }
+  _storeToken(data)
+  return { user: data.user }
+}
+
+const _storeToken = (data) => {
   _appToken = data.access_token
   try {
     localStorage.setItem('gmd:token', data.access_token)
     localStorage.setItem('gmd:token_exp', String(Date.now() + (data.expires_in || 43200) * 1000))
   } catch (e) { /* storage disabled */ }
-  return { user: data.user }
+}
+
+// Silent renewal: trade the current token (valid, or expired < 24h ago) for a
+// fresh 12h one. mint-session re-checks the account each time and refuses after
+// 7 days from the last password login. Resolves true on success. Concurrent
+// callers share one request. Never throws; on any failure the caller falls back
+// to the "log in again" path from before.
+let _refreshing = null
+let _refusedToken = null // the server said no for this token — don't keep asking every minute
+export const refreshAppToken = () => {
+  if (!_appToken || !SUPABASE_URL || _appToken === _refusedToken) return Promise.resolve(false)
+  if (_refreshing) return _refreshing
+  const sent = _appToken
+  _refreshing = (async () => {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/mint-session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}` },
+        body: JSON.stringify({ refresh_token: sent }),
+      })
+      if (res.status === 401 || res.status === 403) { _refusedToken = sent; return false }
+      if (!res.ok) return false // 5xx / gateway: transient, may retry later
+      const data = await res.json()
+      if (!data || !data.access_token) return false
+      // Logged out (or another user logged in) while the request was in flight:
+      // don't resurrect the old session.
+      if (_appToken !== sent) return false
+      _storeToken(data)
+      return true
+    } catch (e) { return false } finally { _refreshing = null }
+  })()
+  return _refreshing
+}
+// ms until the current token expires (negative once expired; null if none).
+const _msLeft = () => {
+  try { const exp = Number(localStorage.getItem('gmd:token_exp') || 0); return exp ? exp - Date.now() : null } catch (e) { return null }
+}
+const RENEW_BEFORE_MS = 2 * 60 * 60 * 1000 // renew in the last 2h of the 12h
+const _maybeRenew = () => { const left = _msLeft(); if (_appToken && left != null && left < RENEW_BEFORE_MS) refreshAppToken() }
+if (typeof window !== 'undefined') {
+  // Every 5 min while open, plus on wake/focus (timers don't run while a laptop sleeps).
+  setInterval(_maybeRenew, 5 * 60 * 1000)
+  window.addEventListener('focus', _maybeRenew)
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') _maybeRenew() })
+  // Another tab renewed: adopt its token so this tab doesn't renew separately.
+  // Only for the SAME user — on a shared PC a different person logging in on
+  // another tab must never turn this tab's saves into theirs. Removals
+  // (logout elsewhere) are ignored, as before: silently signing this tab out
+  // would make its saves quietly skip.
+  window.addEventListener('storage', (e) => {
+    if (e.key !== 'gmd:token' || !e.newValue || !_appToken) return
+    if (_usernameOf(e.newValue) === _tokenUsername()) _appToken = e.newValue
+  })
+}
+
+// Boot: like restoreAppToken, but an expired token still inside the renewal
+// window is exchanged instead of discarded — so reopening FabHub the next
+// morning lands back in the app, not on the login screen.
+export const restoreOrRefreshAppToken = async () => {
+  if (restoreAppToken()) return true
+  let t = null
+  try { t = localStorage.getItem('gmd:token') } catch (e) { /* storage disabled */ }
+  if (!t) return false
+  _appToken = t
+  if (await refreshAppToken()) return true
+  _appToken = null
+  return false
 }
 
 // Restore a still-valid token on boot; returns true if a usable token was loaded.
@@ -290,7 +369,7 @@ export const sbFlushQueue = async (force = false) => {
     return { synced: 0, remaining: _queue.length, lastError: { kind: 'offline', message: 'This device is offline.' } }
   }
   // Expired login: replaying now fails every op. Hold them until a fresh login.
-  if (appTokenExpired()) { _notifyExpired(); return { synced: 0, remaining: _queue.length, lastError: { kind: 'expired', message: 'Your login expired — log in again to send held changes.' } } }
+  if (appTokenExpired() && !(await refreshAppToken())) { _notifyExpired(); return { synced: 0, remaining: _queue.length, lastError: { kind: 'expired', message: 'Your login expired — log in again to send held changes.' } } }
   _flushing = true
   let synced = 0, lastError = null
   // Replay only this login's ops (plus untagged ones from older clients).
