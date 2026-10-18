@@ -4550,7 +4550,7 @@ export default function App(){
           console.info("[FabHub] sbLoadAll result — deals:",data?.deals?.length||0,"jos:",data?.jos?.length||0,"users:",data?.users?.length||0);
           if(data){
             const idbE=[];
-            const _deals=data.deals?.length?data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,standbyPO:d.standby_po||false,poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})):null;
+            const _deals=data.deals?.length?data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,standbyPO:d.standby_po||false,poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,signedCeUrl:d.signed_ce_url||"",signedCeOnFile:d.signed_ce_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})):null;
             if(_deals){
               // Reconcile legacy non-UUID "ghost" deals against the server.
               // Before the deals.id → UUID migration, deals were keyed by local
@@ -4892,7 +4892,7 @@ export default function App(){
         // once/30s) — far more often than a manual page refresh — so a blind
         // overwrite here was the single biggest way to lose a just-added record
         // that hadn't synced yet (e.g. still in flight when the user tabbed away).
-        if(data?.deals?.length) setDeals(prev=>mlo(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,standbyPO:d.standby_po||false,poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})),prev));
+        if(data?.deals?.length) setDeals(prev=>mlo(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,standbyPO:d.standby_po||false,poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,signedCeUrl:d.signed_ce_url||"",signedCeOnFile:d.signed_ce_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})),prev));
         if(data?.jos?.length) setJos(prev=>mlo(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no})),prev));
         if(Object.keys(data?.pcards||{}).length) setPcards(prev=>mergeLocalOnlyObj(data.pcards,prev));
         // Map the same camelCase fields the initial load does. Omitting dueDate
@@ -4926,7 +4926,7 @@ export default function App(){
     // clicks it is right after a save looked stuck, which is also the exact
     // moment a blind overwrite would erase the very record they're trying to
     // recover.
-    if(data.deals?.length){const ds=data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,standbyPO:d.standby_po||false,poBudget:d.standby_po?(Number(d.po_budget)||0):"",leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,boqData:d.boq_data||null,bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null}));setDeals(prev=>mlo(ds,prev));idbE.push([KEYS.deals,ds]);}
+    if(data.deals?.length){const ds=data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,standbyPO:d.standby_po||false,poBudget:d.standby_po?(Number(d.po_budget)||0):"",leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,boqData:d.boq_data||null,bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,signedCeUrl:d.signed_ce_url||"",signedCeOnFile:d.signed_ce_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null}));setDeals(prev=>mlo(ds,prev));idbE.push([KEYS.deals,ds]);}
     if(data.jos?.length){const js=data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned}));setJos(prev=>mlo(js,prev));idbE.push([KEYS.jos,js]);}
     if(Object.keys(data.pcards||{}).length){setPcards(data.pcards);idbE.push([KEYS.pcards,data.pcards]);}
     if(data.billings?.length){const bs=data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by,retentionHeld:m.retention_held!=null?Number(m.retention_held):undefined,isRetentionRelease:m.is_retention_release||undefined,plannedDate:m.planned_bill_date||undefined,msType:m.ms_type||undefined,payments:(m.payments||[]).map(p=>({...p,milestoneId:p.milestone_id??p.milestoneId,refNo:p.ref_no??p.refNo,recordedBy:p.recorded_by??p.recordedBy,valueDate:p.value_date??p.valueDate,method:p.payment_method??p.method,bounced:!!(p.bounced??false)}))}));setBillings(prev=>mlo(bs,prev));idbE.push([KEYS.billings,bs]);}
@@ -6152,6 +6152,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           standbyPO:rec.standby_po||false,poBudget:rec.standby_po?(Number(rec.po_budget)||0):"",
           billingGenerated:rec.billing_generated||false,
           bir2303Url:rec.bir_2303_url||"",bir2303OnFile:rec.bir_2303_on_file||false,
+          signedCeUrl:rec.signed_ce_url||"",signedCeOnFile:rec.signed_ce_on_file||false,
           vatTreatment:rec.vat_treatment||"",downpaymentPct:rec.downpayment_pct??null,
           paymentTermsText:rec.payment_terms_text||"",clientSatisfied:rec.client_satisfied||false,
           satisfactionNote:rec.satisfaction_note||"",
@@ -8081,7 +8082,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // the form is only ever a local suggestion (set when the Add Deal form
     // opened), which can be stale/colliding if another device saved a deal
     // since then.
-    const claimedCeNo=editDeal?data.ceNo:await claimCENo(data.ceNo,deals.map(d=>d.ceNo));
+    // An edit never blanks the CE number (trg_deals_keep_ce_no enforces the same).
+    const claimedCeNo=editDeal?(String(data.ceNo||"").trim()?data.ceNo:(deals.find(d=>d.id===editDeal)?.ceNo||data.ceNo)):await claimCENo(data.ceNo,deals.map(d=>d.ceNo));
     const prob=WON_STAGES.includes(data.stage)?100:isLostStage(data.stage)?0:Number(data.probability);
     const rec={...data,ceNo:claimedCeNo,product:data.product||data.ceType||"",id:editDeal||uid(),value:data.standbyPO?0:Number(data.value),poBudget:data.standbyPO?(Number(data.poBudget)||0):"",invoiced:Number(data.invoiced||0),amountPaid:Number(data.amountPaid||0),probability:prob,
       addedBy:editDeal?(data.addedBy||""):(session?.name||""),
@@ -17566,16 +17568,22 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         onSaveOnboarding={(dealId,fields)=>{
           upDeals(ds=>ds.map(d=>d.id===dealId?{...d,...fields}:d));
           if(isSupabaseReady()){
+            // Through the set_deal_onboarding RPC, not sbUpdate: Finance and
+            // FinanceAssistant edit this panel but deals_upd doesn't admit
+            // them, so a direct update matched 0 rows and was silently lost.
             const snake={};
             if('bir2303Url' in fields) snake.bir_2303_url=fields.bir2303Url||null;
             if('bir2303OnFile' in fields) snake.bir_2303_on_file=!!fields.bir2303OnFile;
+            if('signedCeUrl' in fields) snake.signed_ce_url=fields.signedCeUrl||null;
+            if('signedCeOnFile' in fields) snake.signed_ce_on_file=!!fields.signedCeOnFile;
             if('vatTreatment' in fields) snake.vat_treatment=fields.vatTreatment||null;
             if('downpaymentPct' in fields) snake.downpayment_pct=fields.downpaymentPct!==""&&fields.downpaymentPct!=null?Number(fields.downpaymentPct):null;
             if('paymentTermsText' in fields) snake.payment_terms_text=fields.paymentTermsText||null;
             if('clientSatisfied' in fields) snake.client_satisfied=!!fields.clientSatisfied;
             if('satisfactionNote' in fields) snake.satisfaction_note=fields.satisfactionNote||null;
-            snake.updated_at=new Date().toISOString();
-            sbUpdate('deals',dealId,snake).catch(()=>{});
+            supabase.rpc('set_deal_onboarding',{p_deal_id:dealId,p_fields:snake}).then(({error})=>{
+              if(error){console.error('set_deal_onboarding:',error.message);toastEmit("⚠ Onboarding details not saved: "+error.message,"error");}
+            },e=>toastEmit("⚠ Onboarding details not saved: "+(e?.message||e),"error"));
           }
         }}
         onOpenPayTerms={id=>setPayTermsModal(id)}
@@ -26637,6 +26645,14 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                 </div>
                 {canEdit?(
                   <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:10}}>
+                    <Fld label="Signed C.E. / client PO">
+                      <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                        <Inp type="url" value={deal.signedCeUrl||""} placeholder="Drive link to signed C.E. or PO" onChange={e=>save({signedCeUrl:e.target.value})} style={{flex:1}}/>
+                        <label style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:".72rem",color:"#475569",whiteSpace:"nowrap"}}>
+                          <input type="checkbox" checked={!!deal.signedCeOnFile} onChange={e=>save({signedCeOnFile:e.target.checked})}/> On file
+                        </label>
+                      </div>
+                    </Fld>
                     <Fld label="BIR Form 2303">
                       <div style={{display:"flex",gap:6,alignItems:"center"}}>
                         <Inp type="url" value={deal.bir2303Url||""} placeholder="Drive link to 2303" onChange={e=>save({bir2303Url:e.target.value})} style={{flex:1}}/>
