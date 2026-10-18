@@ -2,13 +2,13 @@ import React, { useState, useMemo, useEffect, useCallback, useRef, useContext, c
 const WrapCtx = createContext(false);
 // Roles that must never see contract value — they get the QS budget instead.
 const BUDGET_ONLY=["Design","Operations","ProjectMover"];
-import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbPendingIds,sbOnQueueChange,appLogin,appLogout,restoreAppToken,hasAppToken,logClientError} from './supabaseClient';
+import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbInsertIfMissing,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbPendingIds,sbOnQueueChange,appLogin,appLogout,restoreAppToken,hasAppToken,appTokenExpired,setSessionExpiredHandler,logClientError} from './supabaseClient';
 import{idbGetMany,idbSetMany}from'./idb.js';
 import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable} from './shared';
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneReceivable, arSummary, costNet, costSummary, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneReceivable, arSummary, costNet, costSummary, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, subconNeedsWo, subconNoWoRefused, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -4782,6 +4782,9 @@ export default function App(){
       // Firing the red "bad data — redo it or contact support" banner for them too
       // produced two contradictory toasts for one event ("redo it" vs "nothing lost").
       if(LOW_STAKES_DROP_TABLES.has(table)) return;
+      // Expired login: the write is held in the queue, and the session-expired
+      // banner (below) tells the user what to do. No scary "rejected" toast.
+      if(kind==="expired") return;
       const n=Date.now();
       if(n-last>30000){
         last=n;
@@ -4853,6 +4856,16 @@ export default function App(){
   // retrying them on mount / focus / reconnect until they reach the server.
   const[accountsPermOpen,setAccountsPermOpen]=useState(false); // Role Permissions panel on the Accounts page
   const[pendingSync,setPendingSync]=useState(sbQueueSize());
+  // The role token lives 12h and was only checked at boot, so a tab left open
+  // past that kept "saving" into a wall of JWT-expired rejections. Now the
+  // server's "JWT expired" (or the local clock) flips this on, writes are held
+  // in the queue, and a banner asks the user to log in again.
+  const[sessionExpired,setSessionExpired]=useState(false);
+  useEffect(()=>{
+    setSessionExpiredHandler(()=>setSessionExpired(true));
+    const t=setInterval(()=>{ if(appTokenExpired()) setSessionExpired(true); },60000);
+    return ()=>{ setSessionExpiredHandler(null); clearInterval(t); };
+  },[]);
   useEffect(()=>{
     const off=sbOnQueueChange(n=>setPendingSync(n));
     const tryFlush=()=>{ if(isSupabaseReady()) sbFlushQueue(); };
@@ -5491,7 +5504,9 @@ export default function App(){
     if(billings?.length){
       await Promise.all(billings.map(m=>{if(!isUUID(m.id))return Promise.resolve();sbSyncOne("billing_milestones",m,toSbBilling);return Promise.all((m.payments||[]).map(p=>isUUID(p.id)?sbSyncOne("billing_payments",{...p,milestoneId:m.id},toSbPayment):Promise.resolve()));})).catch(()=>{});
     }
-    if(budgets&&roleCanInsert("project_budgets")){Object.entries(budgets).forEach(([dealId,b])=>{if(isUUID(dealId)) sbUpsert("project_budgets",toSbBudget(dealId,b),"deal_id").catch(()=>{});});}
+    // A role that may create but not edit budgets (Sales/SalesOpsAdmin) can only
+    // fill in budgets missing on the server — an upsert is refused for it outright.
+    if(budgets&&roleCanInsert("project_budgets")){const canEdit=roleCan(role,"update","project_budgets");Object.entries(budgets).forEach(([dealId,b])=>{if(!isUUID(dealId)) return;(canEdit?sbUpsert("project_budgets",toSbBudget(dealId,b),"deal_id"):sbInsertIfMissing("project_budgets",toSbBudget(dealId,b))).catch(()=>{});});}
     setTimeout(()=>toastEmit("Done! All data pushed to Supabase. Refresh Safari to see it.","success",6000),1200);
   },[hasValidUUIDs,deals,jos,exps,prs,mreqs,breqs,addenda,swatches,checklist,actLog,billings,budgets,cashPositions,infs]);
   const upInventory =useCallback(fn=>setInventory(p=>{const n=fn(p);persist(KEYS.inventory,n);return n;}),[persist]);
@@ -5681,7 +5696,9 @@ export default function App(){
   const addCEReq=(rec)=>{
     const nr={...rec,id:rec.id||uid(),created_at:rec.created_at||new Date().toISOString()};
     setCeReqs(p=>[...p,ceReqFromSb(nr)]);
-    return isSupabaseReady()?sbUpsert('ce_requests',nr,'id').catch(()=>false):Promise.resolve(true);
+    // Plain insert, not upsert: Sales may CREATE a CE request but not edit one
+    // (migration 20261006020000), and an upsert needs edit rights too.
+    return isSupabaseReady()?sbInsertIfMissing('ce_requests',nr).catch(()=>false):Promise.resolve(true);
   };
   const updateCEReq=(id,updates)=>{
     setCeReqs(p=>p.map(r=>{if(r.id!==id)return r;return{...r,...(updates.status!==undefined?{status:updates.status}:{}),clientName:updates.client_name??r.clientName,projectName:updates.project_name??r.projectName,location:updates.location??r.location,projectType:updates.project_type??r.projectType,priority:updates.priority??r.priority,submittedBy:updates.submitted_by??r.submittedBy,targetDeadline:updates.target_deadline??r.targetDeadline,submissionDeadline:updates.submission_deadline??r.submissionDeadline,targetBudget:updates.target_budget??r.targetBudget,targetMargin:updates.target_margin??r.targetMargin,plansLink:updates.plans_link??r.plansLink,skpLink:updates.skp_link??r.skpLink,scheduleOfFinish:updates.schedule_of_finish??r.scheduleOfFinish,notes:updates.notes??r.notes,ceNotes:updates.ce_notes??r.ceNotes,bidAmount:updates.bid_amount??r.bidAmount,bidMarginPct:updates.bid_margin_pct??r.bidMarginPct,awarded:updates.awarded??r.awarded,awardDate:updates.award_date??r.awardDate};}));
@@ -7075,10 +7092,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     }));
   };
   const upBudgets  =useCallback(fn=>setBudgets(p=>{const n=fn(p);persist(KEYS.budgets,n);return n;}),[persist]);
-  const saveBudget=async(dealId,budget)=>{
+  // onlyIfMissing: the 🏆 award's auto "starting budget". It must never replace
+  // a budget QS already built (re-award, or QS got there first), and Sales —
+  // who award deals — may create a budget row but not edit one, so it is a
+  // plain create-if-absent, not an upsert (which RLS refused for Sales).
+  const saveBudget=async(dealId,budget,{onlyIfMissing=false}={})=>{
     const saved={...budget,savedAt:new Date().toISOString()};
-    upBudgets(bs=>({...bs,[dealId]:saved}));
+    upBudgets(bs=>(onlyIfMissing&&bs[dealId])?bs:({...bs,[dealId]:saved}));
     if(!isSupabaseReady()) return true;
+    if(onlyIfMissing) return await sbInsertIfMissing("project_budgets",toSbBudget(dealId,saved));
     return await sbUpsert("project_budgets",toSbBudget(dealId,saved),"deal_id");
   };
   const addPR=(pr,{silent=false}={})=>{
@@ -7475,7 +7497,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     setPage(defaultPages[u.role]||"home");
     localStorage.setItem(KEYS.session,JSON.stringify(sess));
     localStorage.setItem(KEYS.role,u.role);
-    loadAllFromSupabase();
+    setSessionExpired(false);
+    // Send changes held while the previous login was expired BEFORE reloading,
+    // so the fresh server read already includes them.
+    (isSupabaseReady()?sbFlushQueue(true).catch(()=>{}):Promise.resolve()).finally(()=>loadAllFromSupabase());
     return null;
   };
   // Verify a password against the CURRENT logged-in user's own stored hash
@@ -7683,7 +7708,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // Auto-mark overdue billing milestones — runs once when billings load, then daily
   useEffect(()=>{
     if(!billings.length) return;
-    const toMark=billings.filter(b=>b.dueDate&&b.dueDate<today&&!['Fully Paid','Cancelled','Overdue'].includes(b.status));
+    // Skip milestones already paid in full even if their status tag is stale —
+    // otherwise a paid "Partially Paid" milestone gets flipped to Overdue.
+    // Drafts haven't been sent to the client, so they can't be overdue.
+    const toMark=billings.filter(b=>b.dueDate&&b.dueDate<today&&!['Draft','Fully Paid','Cancelled','Overdue'].includes(b.status)&&milestoneBalance(b,dealById.get(b.dealId))>0.5);
     if(!toMark.length) return;
     upBillings(bs=>bs.map(b=>toMark.find(m=>m.id===b.id)?{...b,status:'Overdue'}:b));
     if(isSupabaseReady()){
@@ -8579,7 +8607,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         marginTarget:30,
         autoGenerated:true,
         autoGeneratedAt:today,
-      });
+      },{onlyIfMissing:true});
       stepResults.push({label:"Starting Budget",ok:budgetOk});
     }
     // Log
@@ -9037,13 +9065,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       if(wo){
         const woBill=payables.find(p=>p.poId===wo&&p.id!==editPayId);
         if(woBill){toastEmit(`${wo} already has its own bill${woBill.apNumber?` (${woBill.apNumber})`:""}. Record the payment on that bill instead of a new payment request, so the work isn't paid twice.`,"error",9000);return;}
-      } else if((Number(data.amount)||0)>=AP_RULES.prvSubconNoWo.limit){
-        const lim="₱"+AP_RULES.prvSubconNoWo.limit.toLocaleString("en-PH");
-        if(AP_RULES.prvSubconNoWo.mode==="block"){toastEmit(`Subcontractor payment requests of ${lim} or more need a Work Order, so Operations can confirm the work before payment.`,"error",9000);return;}
-        const ok=await uiConfirm({title:"No Work Order linked",tone:"warning",confirmLabel:"Save anyway",cancelLabel:"Go back",
-          message:`This subcontractor payment request is ${lim} or more with no Work Order, so Operations hasn't confirmed the work.\n\nIt will be flagged on the Friday exceptions list. Save anyway?`});
-        if(!ok) return;
       }
+    }
+    // D3: subcontractor work of ₱50,000+ must go through a Work Order (either
+    // document type, so switching PRV to AP doesn't get around it).
+    if(subconNoWoRefused(data,editPayId?payables.find(p=>p.id===editPayId):null)){
+      const lim="₱"+AP_RULES.subconNoWoLimit.toLocaleString("en-PH");
+      toastEmit(`Subcontractor payables of ${lim} or more need a Work Order, so Operations can confirm the work before it's paid. Create the Work Order first: its bill is created automatically.`,"error",10000);
+      return;
     }
     // Duplicate guard (new payables only) — the AP ledger has no unique key, so the
     // same supplier invoice can be entered twice and double-paid. Warn before saving
@@ -9975,7 +10004,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             if(remaining===0) toastUpdate(toastId,"✅ Synced — all changes reached the server.","success",5000);
             else if(synced>0) toastUpdate(toastId,`Synced ${synced}, ${remaining} still pending — ${lastError?.message||"retrying…"}`,"warning",6000);
             else{
-              const reason=lastError?.kind==="offline"?"This device appears to be offline.":
+              const reason=lastError?.kind==="other-user"?lastError.message:
+                lastError?.kind==="expired"?"Your login expired — log in again and they'll be sent.":
+                lastError?.kind==="offline"?"This device appears to be offline.":
                 lastError?.kind==="auth"?"Your session can't reach the server — try logging out and back in.":
                 lastError?.kind==="network"?"Network request failed — check your connection or try a different network.":
                 lastError?.kind==="busy"?"A sync keeps running in the background without finishing — try reloading the page, then tap retry again.":
@@ -9986,6 +10017,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             style={{position:"fixed",bottom:isMobile?80:18,right:18,zIndex:2100,background:"#b45309",color:"#fff",padding:"8px 14px",borderRadius:24,fontSize:".76rem",fontWeight:800,cursor:"pointer",boxShadow:"0 4px 14px rgba(180,83,9,.35)",display:"flex",alignItems:"center",gap:7}}>
             <span style={{display:"inline-block",animation:"fhspin 1.1s linear infinite"}}>⟳</span>
             {pendingSync} change{pendingSync!==1?"s":""} pending sync — tap to retry
+          </div>
+        )}
+        {sessionExpired&&session&&(
+          <div role="alert" style={{position:"fixed",top:0,left:0,right:0,zIndex:10000,background:"#fffbeb",borderBottom:"2px solid #f59e0b",padding:"10px 16px",display:"flex",alignItems:"center",gap:12,justifyContent:"center",flexWrap:"wrap",fontSize:".82rem",fontFamily:"'Segoe UI',sans-serif"}}>
+            <span style={{color:"#92400e",fontWeight:700}}>⏱ Your login expired.</span>
+            <span style={{color:"#78350f"}}>Changes you make now are held on this device{pendingSync>0?` (${pendingSync} waiting)`:""} and sent after you log in again. Finish what you're typing, then log in.</span>
+            <button onClick={logout} style={{background:"#d97706",color:"#fff",border:"none",borderRadius:6,padding:"5px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",cursor:"pointer",whiteSpace:"nowrap"}}>Log in again</button>
           </div>
         )}
         {SyncBanner}
@@ -15069,7 +15107,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               ))}
             </div>
             {cashSub==="daily"&&(
-              <DailyCashPosition cashPositions={cashPositions} saveDayPos={saveDayPos} wonDeals={wonDeals} billings={billings} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps} updateMilestone={updateMilestone} upExps={upExps} toSbExpense={toSbExpense} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} vouchers={vouchers} payables={payables} loans={loans} inventory={inventory} userName={session?.name||""} role={role} username={session?.username||""} cashStale={cashStale}/>
+              <DailyCashPosition cashPositions={cashPositions} saveDayPos={saveDayPos} wonDeals={wonDeals} billings={billings} suppliers={suppliers} subcons={subcons} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps} updateMilestone={updateMilestone} upExps={upExps} toSbExpense={toSbExpense} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} vouchers={vouchers} payables={payables} loans={loans} inventory={inventory} userName={session?.name||""} role={role} username={session?.username||""} cashStale={cashStale}/>
             )}
             {cashSub==="weekly"&&(
               <WeeklyCashFlow mode="weekly" cashPositions={cashPositions} billings={billings} exps={exps} chartOfAccounts={chartOfAccounts} setPage={setPage}/>
@@ -15405,7 +15443,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       <option value="">— None —</option>
                       {(swos||[]).filter(w=>w.woNumber&&w.status!=="Cancelled").slice().sort((a,b)=>String(b.woNumber).localeCompare(String(a.woNumber))).map(w=><option key={w.id||w.woNumber} value={w.woNumber}>{w.woNumber} · {w.subcontractor||"—"} · {fmtM(Number(w.contractAmount)||0)}</option>)}
                     </Sel>
-                    {!payForm.poNumber&&(Number(payForm.amount)||0)>=AP_RULES.prvSubconNoWo.limit&&<div style={{fontSize:".72rem",color:"#b45309",marginTop:3,fontWeight:600}}>No Work Order: Operations won't confirm this work before it's paid.</div>}
+                    {subconNeedsWo(payForm)&&<div style={{fontSize:".72rem",color:"#b91c1c",marginTop:3,fontWeight:600}}>Required: subcontractor payment requests of ₱{AP_RULES.subconNoWoLimit.toLocaleString("en-PH")} or more need a Work Order.</div>}
                     {payForm.poNumber&&<div style={{fontSize:".72rem",color:"#64748b",marginTop:3}}>Payment waits for Operations to verify % complete. Retention is held at payment.</div>}
                   </Fld>
                 )}
@@ -16213,6 +16251,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           payables={payables}
           vouchers={vouchers}
           loans={loans}
+          suppliers={suppliers}
+          subcons={subcons}
           inventory={inventory}
           userName={session?.name||""}
           cashStale={cashStale}
@@ -17253,6 +17293,46 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   if(page==="subcontractors") return(<Wrap><SubconMasterView subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role}/></Wrap>);
   if(page==="ceqs") return(<Wrap><CEQSView ceReqs={ceReqs} addCEReq={addCEReq} updateCEReq={updateCEReq} session={session} role={role} toastEmit={toastEmit} deals={deals}/></Wrap>);
   if(page==="boq"){
+    // Put a BOQ onto a deal (Duplicate or Link from the BOQ builder's dialog).
+    // The server write is awaited FIRST: if it fails nothing else happens, so a
+    // standalone BOQ is never deleted and the user never lands on a deal whose
+    // BOQ didn't save. setValue (an explicit tick in the dialog) also pegs the
+    // deal value to the BOQ net in the same write. Linking is final: a deal that
+    // already has a BOQ is refused (re-checked on the server right before the
+    // write), and a mother PO never takes a BOQ — it earns ₱0 itself.
+    const attachBoqToDeal=async(dealId,boqData,{setValue}={})=>{
+      const tgt=deals.find(d=>d.id===dealId);
+      if(!tgt||isMotherPO(tgt)){toastEmit&&toastEmit("⛔ A mother PO can't carry a BOQ or a price — put the BOQ on its sub-project instead.","error",8000);return false;}
+      const hasContent=b=>!!(b&&((b.items?.length)||(b.sections?.length)));
+      let existing=tgt.boqData;
+      if(isSupabaseReady()&&supabase){
+        const {data,error}=await supabase.from('deals').select('boq_data').eq('id',dealId).maybeSingle();
+        if(error){toastEmit&&toastEmit("❌ Couldn't check that deal on the server — nothing was changed. Try again.","error",8000);return false;}
+        existing=data?.boq_data||null;
+      }
+      if(hasContent(existing)){toastEmit&&toastEmit("⛔ That deal already has a BOQ. A linked BOQ is final — edit it on the deal instead.","error",8000);return false;}
+      const bi=Array.isArray(boqData.items)?boqData.items:[];
+      const grand=bi.reduce((s,it)=>s+(Number(it.total)||0),0);
+      const net=Math.round((grand-Math.min(Math.max(Number(boqData.discount)||0,0),grand))*100)/100;
+      const pegValue=!!setValue&&bi.length>0;
+      if(isSupabaseReady()){
+        const ok=await sbUpdate('deals',dealId,pegValue?{boq_data:boqData,value:net}:{boq_data:boqData});
+        if(!ok){toastEmit&&toastEmit("❌ Couldn't confirm the BOQ saved to that deal. FabHub will retry when the connection is back — this BOQ was left as it is. Check the deal before trying again.","error",10000);return false;}
+      }
+      try{const drafts=JSON.parse(localStorage.getItem(KEYS.boqDrafts)||"{}");drafts[dealId]=boqData;localStorage.setItem(KEYS.boqDrafts,JSON.stringify(drafts));}catch{}
+      upDeals(ds=>ds.map(d=>d.id===dealId?{...d,boqData,...(pegValue?{value:net}:{})}:d));
+      // The linked BOQ's decided VAT choice sets the deal's receipt type (BOQ is
+      // the VAT authority — see onBoqVat below).
+      if(typeof boqData.vatEnabled==="boolean"){const rt=boqData.vatEnabled?"OR":"AR";const cur=deals.find(d=>d.id===dealId);if(cur&&cur.receiptType!==rt){upDeals(ds=>ds.map(d=>d.id===dealId?{...d,receiptType:rt,withholding:rt==="AR"?false:d.withholding}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{receipt_type:rt,...(rt==="AR"?{withholding:false}:{})}).catch(()=>{});}}
+      return true;
+    };
+    const duplicateBoqToDeal=async(dealId,boqData,opts)=>{
+      if(!(await attachBoqToDeal(dealId,boqData,opts)))return false;
+      const d=deals.find(x=>x.id===dealId);
+      setBoqCoId(null);setBoqStandaloneId(null);setBoqDealId(dealId);
+      toastEmit&&toastEmit(`✅ BOQ copied to ${d?.client||"the deal"}${d?.ceNo?" ("+d.ceNo+")":""} — now editing the copy`,"success");
+      return true;
+    };
     if(boqCoId){
       const co=addenda.find(a=>a.id===boqCoId);
       if(!co){setBoqCoId(null);return null;}
@@ -17272,9 +17352,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const magnitude=Math.round(scopeItems.reduce((s,it)=>s+it.qty*it.rate,0)*100)/100;
         updateAddendum(coId,{coBoqData:bd,scopeItems,value:magnitude});
       };
-      return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} initialCoId={boqCoId} coRecord={co} saveCoBoq={boqCoReadOnly?undefined:saveCoBoq} readOnly={boqCoReadOnly} onBack={()=>{setBoqCoReadOnly(false);setBoqCoId(null);}}/></Wrap>);
+      return(<Wrap><BOQBuilder key={"co:"+boqCoId} wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} initialCoId={boqCoId} coRecord={co} saveCoBoq={boqCoReadOnly?undefined:saveCoBoq} readOnly={boqCoReadOnly} onBack={()=>{setBoqCoReadOnly(false);setBoqCoId(null);}}/></Wrap>);
     }
-    if(boqDealId) return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} initialDealId={boqDealId} clearBoqDeal={()=>setBoqDealId(null)} onBack={()=>setBoqDealId(null)} onBoqValue={(dealId,netTotal)=>{const v=Math.round((Number(netTotal)||0)*100)/100;const cur=deals.find(d=>d.id===dealId);if(cur&&Math.round((Number(cur.value)||0)*100)/100===v)return;upDeals(ds=>ds.map(d=>d.id===dealId?{...d,value:v}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{value:v}).catch(()=>{});}} onBoqData={(dealId,bd)=>upDeals(ds=>ds.map(d=>d.id===dealId?{...d,boqData:bd}:d))} onBoqVat={(dealId,vatEnabled)=>{
+    if(boqDealId) return(<Wrap><BOQBuilder key={"deal:"+boqDealId} onDuplicateToDeal={duplicateBoqToDeal} wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} initialDealId={boqDealId} clearBoqDeal={()=>setBoqDealId(null)} onBack={()=>setBoqDealId(null)} onBoqValue={(dealId,netTotal)=>{const v=Math.round((Number(netTotal)||0)*100)/100;const cur=deals.find(d=>d.id===dealId);if(isMotherPO(cur))return;if(cur&&Math.round((Number(cur.value)||0)*100)/100===v)return;upDeals(ds=>ds.map(d=>d.id===dealId?{...d,value:v}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{value:v}).catch(()=>{});}} onBoqData={(dealId,bd)=>upDeals(ds=>ds.map(d=>d.id===dealId?{...d,boqData:bd}:d))} onBoqVat={(dealId,vatEnabled)=>{
       // The BOQ is the authority on VAT: its decided VAT choice sets the deal's
       // receipt type (VAT 12% → OR, No VAT → AR), overriding whatever the sales
       // form had — the form defaults to OR, so an "explicit" OR there is usually
@@ -17292,11 +17372,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       if(["OR","AR"].includes(cur.receiptType))toastEmit&&toastEmit(`Project receipt type changed ${cur.receiptType} → ${rt} to match the BOQ (${vatEnabled?"VAT 12%":"No VAT"})${billings.some(b=>b.dealId===dealId)?" — existing invoices keep their tax; adjust one in the billing modal if needed":""}`,"info");
       upDeals(ds=>ds.map(d=>d.id===dealId?{...d,receiptType:rt,withholding:rt==="AR"?false:d.withholding}:d));
       if(isSupabaseReady())sbUpdate('deals',dealId,{receipt_type:rt,...(rt==="AR"?{withholding:false}:{})}).catch(()=>{});
-    }} onUnlinkToStandalone={(b)=>{const did=boqDealId;const id=uid();saveStandaloneBoq({id,title:b.boqTitle||"",location:b.location||"",quotationNo:b.quotationNo||"",boqDate:b.boqDate||today,items:b.items||[],sections:b.sections||[],vatEnabled:b.vatEnabled!==false,discount:b.discount||"",createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});try{const drafts=JSON.parse(localStorage.getItem(KEYS.boqDrafts)||"{}");delete drafts[did];localStorage.setItem(KEYS.boqDrafts,JSON.stringify(drafts));}catch{}if(isSupabaseReady())sbUpdate('deals',did,{boq_data:null}).catch(()=>{});setBoqDealId(null);setBoqStandaloneId(id);toastEmit&&toastEmit("✅ BOQ unlinked to Standalone","success");}}/></Wrap>);
-    if(boqStandaloneId) return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} standaloneBoqs={standaloneBoqs} saveStandaloneBoq={saveStandaloneBoq} initialStandaloneId={boqStandaloneId} clearBoqStandalone={()=>setBoqStandaloneId(null)} onBack={()=>setBoqStandaloneId(null)} onLinkToDeal={(dealId,boqData)=>{const sid=boqStandaloneId;try{const drafts=JSON.parse(localStorage.getItem(KEYS.boqDrafts)||"{}");drafts[dealId]=boqData;localStorage.setItem(KEYS.boqDrafts,JSON.stringify(drafts));}catch{}if(isSupabaseReady())sbUpdate('deals',dealId,{boq_data:boqData}).catch(()=>{});
-      // The linked BOQ's decided VAT choice sets the deal's receipt type (BOQ is
-      // the VAT authority — see onBoqVat above).
-      if(typeof boqData.vatEnabled==="boolean"){const rt=boqData.vatEnabled?"OR":"AR";const cur=deals.find(d=>d.id===dealId);if(cur&&cur.receiptType!==rt){upDeals(ds=>ds.map(d=>d.id===dealId?{...d,receiptType:rt,withholding:rt==="AR"?false:d.withholding}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{receipt_type:rt,...(rt==="AR"?{withholding:false}:{})}).catch(()=>{});}}const bi=boqData.items||[];if(bi.length){const grand=bi.reduce((s,it)=>s+(Number(it.total)||0),0);const disc=Math.min(Math.max(Number(boqData.discount)||0,0),grand);const net=Math.round((grand-disc)*100)/100;upDeals(ds=>ds.map(d=>d.id===dealId?{...d,value:net,boqData}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{value:net}).catch(()=>{});}else{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,boqData}:d));}deleteStandaloneBoq(sid);setBoqStandaloneId(null);setBoqDealId(dealId);toastEmit&&toastEmit("✅ BOQ linked to project — deal value set from BOQ","success");}}/></Wrap>);
+    }}/></Wrap>);
+    if(boqStandaloneId) return(<Wrap><BOQBuilder key={"sa:"+boqStandaloneId} onDuplicateToDeal={duplicateBoqToDeal} wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} standaloneBoqs={standaloneBoqs} saveStandaloneBoq={saveStandaloneBoq} initialStandaloneId={boqStandaloneId} clearBoqStandalone={()=>setBoqStandaloneId(null)} onBack={()=>setBoqStandaloneId(null)} onLinkToDeal={async(dealId,boqData,opts)=>{const sid=boqStandaloneId;if(!(await attachBoqToDeal(dealId,boqData,opts)))return false;deleteStandaloneBoq(sid);setBoqStandaloneId(null);setBoqDealId(dealId);toastEmit&&toastEmit(opts?.setValue?"✅ BOQ linked to project — deal value set from BOQ":"✅ BOQ linked to project","success");return true;}}/></Wrap>);
     return(<Wrap><BOQHomeView standaloneBoqs={standaloneBoqs} deals={deals} session={session} role={role} today={today} onOpenStandalone={id=>{setBoqCoId(null);setBoqDealId(null);setBoqStandaloneId(id);}} onOpenDeal={id=>{setBoqCoId(null);setBoqStandaloneId(null);setBoqDealId(id);}} onNewStandalone={()=>{const id=uid();saveStandaloneBoq({id,title:"",location:"",quotationNo:"",boqDate:today,items:[],sections:[],vatEnabled:true,discount:"",createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});setBoqCoId(null);setBoqDealId(null);setBoqStandaloneId(id);}} onDeleteStandalone={deleteStandaloneBoq}/></Wrap>);
   }
 
@@ -25474,16 +25551,14 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   // even though the underlying billing data hadn't changed.
   const allBilled=useMemo(()=>billings.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+n(m.amount),0),[billings]);
   const allCollected=useMemo(()=>billings.reduce((s,m)=>s+(m.payments||[]).filter(p=>!p.bounced).reduce((ps,p)=>ps+n(p.amount),0),0),[billings]);
-  // Per-deal outstanding: floor each deal at 0 so overpayments don't offset other clients
+  // Outstanding = cash receivable (VAT-incl, less EWT) minus good payments, via the
+  // shared arSummary — the same figure as Daily Cash Position's Running A/R and the
+  // per-project balances below. The old `amount − payments` mixed the VAT-ex base
+  // with cash payments and read ~₱4.3M low.
   const allOutstanding=useMemo(()=>{
-    const dealIds=[...new Set(billings.map(b=>b.dealId))];
-    return dealIds.reduce((total,did)=>{
-      const dms=billings.filter(m=>m.dealId===did&&m.status!=="Cancelled");
-      const billed=dms.reduce((s,m)=>s+n(m.amount),0);
-      const collected=dms.reduce((s,m)=>s+(m.payments||[]).filter(p=>!p.bounced).reduce((ps,p)=>ps+n(p.amount),0),0);
-      return total+Math.max(0,billed-collected);
-    },0);
-  },[billings]);
+    const byId=new Map(deals.map(d=>[d.id,d]));
+    return arSummary(billings,id=>byId.get(id)).outstanding;
+  },[billings,deals]);
   const overdue=useMemo(()=>billings.filter(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled"),[billings]);
 
   // ── Collection Forecast — how much net cash we can expect to collect within a
@@ -25882,7 +25957,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     const rowsHtml=rows.map((r,i)=>`<tr>
       <td style="text-align:center;color:#64748b">${i+1}</td>
       <td style="color:#2563eb;font-weight:600">${esc(r.d.client)}</td>
-      <td style="color:#2563eb;font-weight:600">${esc(r.d.ceNo||r.d.contact||"—")}</td>
+      <td style="text-align:left"><div style="color:#2563eb;font-weight:600">${esc(r.d.contact||r.d.product||r.d.ceNo||"—")}</div>${r.d.ceNo&&(r.d.contact||r.d.product)?`<div style="color:#64748b;font-size:8.5px;margin-top:1px">${esc(r.d.ceNo)}</div>`:""}</td>
       <td style="text-align:right">${f(r.vatable)}</td>
       <td style="text-align:right">${f(r.vat)}</td>
       <td style="text-align:right">${f(r.gross)}</td>
@@ -25893,7 +25968,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     </tr>`).join("");
     const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>SOA — ${esc(clientName)}</title><style>
       @page{size:A4 landscape;margin:12mm 15mm}
-      *{box-sizing:border-box;margin:0;padding:0}
+      *{box-sizing:border-box;margin:0;padding:0;print-color-adjust:exact;-webkit-print-color-adjust:exact}
       body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#0f172a;background:#fff;padding:0}
       .print-btn{text-align:center;padding:12px;background:#f8fafc;border-bottom:1px solid #e2e8f0}
       .print-btn button{background:#1e293b;color:#fff;border:none;border-radius:6px;padding:8px 24px;font-size:13px;cursor:pointer;font-family:inherit}
@@ -25922,7 +25997,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       tbody td:nth-child(n+4){text-align:right}
       tfoot tr{background:#1e293b}
       tfoot td{color:#fff;font-weight:700;padding:9px 10px;font-size:10px;text-align:right}
-      tfoot td:nth-child(1),tfoot td:nth-child(2),tfoot td:nth-child(3){text-align:center;color:rgba(255,255,255,.7);font-size:9px;font-weight:400}
+      tfoot td:nth-child(1),tfoot td:nth-child(2){text-align:center;color:rgba(255,255,255,.7);font-size:9px;font-weight:400}
       .total-due{color:#f97316!important;font-size:13px!important;font-weight:900!important}
       .notes{border:1px solid #e2e8f0;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:9px;color:#475569}
       .notes b{color:#0f172a;font-size:9px}
@@ -26146,7 +26221,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       {/* KPIs */}
       <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:16}}>
         {[
-          {l:"Total Billed",      v:fmt(allBilled),                c:"#3b82f6"},
+          {l:"Total Billed (VAT-ex)",v:fmt(allBilled),             c:"#3b82f6"},
           {l:"Total Collected",   v:fmt(allCollected),             c:"#059669"},
           {l:"Outstanding",       v:fmt(allOutstanding), c:allOutstanding>0?"#ef4444":"#059669", filter:"outstanding", hint:"View all clients with a balance →"},
           {l:"Overdue Invoices",  v:overdue.length,                c:overdue.length>0?"#ef4444":"#94a3b8", filter:"overdue", hint:"View overdue invoices →"},
@@ -29902,7 +29977,7 @@ function BOQHomeView({standaloneBoqs=[],deals=[],session,role,today,onOpenStanda
         {(()=>{
           const s=dq.trim().toLowerCase();
           const pickable=deals
-            .filter(d=>!isLostStage(d.stage))
+            .filter(d=>!isLostStage(d.stage)&&!isMotherPO(d))
             .filter(d=>!s||(d.client||"").toLowerCase().includes(s)||(d.ceNo||"").toLowerCase().includes(s)||(d.contact||"").toLowerCase().includes(s))
             .sort((a,b)=>String(b.dateAcquired||b.addedAt||"").localeCompare(String(a.dateAcquired||a.addedAt||"")));
           if(!pickable.length) return <div style={{padding:"24px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No matching deals. Create the deal in the Pipeline first, then come back to build its BOQ.</div>;
