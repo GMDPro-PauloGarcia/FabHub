@@ -1144,9 +1144,14 @@ export const woRetentionAmt=w=>Math.min(Number(w.retentionPct)||0,100)/100*(Numb
 // subconNoWoLimit: a subcontractor payable (PRV or AP) of this amount or more must
 //   be linked to a Work Order, so Operations confirms the work before it's paid.
 //   Hard block, no override (decision D3, Paulo, 9 Oct 2026). The database
-//   enforces the same rule (migration 20261009120000_subcon_payable_needs_wo.sql):
-//   keep the limit, the account codes and the conditions in sync.
-export const AP_RULES={subconRetentionPct:10,subconNoWoLimit:50000};
+//   enforces the same rule (migrations 20261009120000_subcon_payable_needs_wo.sql
+//   and 20261012120000_subcon_no_wo_cumulative.sql): keep the limit, the window,
+//   the account codes and the conditions in sync.
+// subconNoWoWindowDays: the limit is also cumulative per subcontractor, so two
+//   ₱49,000 requests in the same month can't split their way past it. All of one
+//   subcontractor's no-WO payables created in the last N days (today included)
+//   count toward the limit.
+export const AP_RULES={subconRetentionPct:10,subconNoWoLimit:50000,subconNoWoWindowDays:30};
 // 5070 Production - Subcon, 5100 Sub-Con Prof Fee, 5200 the old default that
 // earlier code stamped on subcontractor payables (5200 is "Load Allowance" in
 // the chart, so it is kept here only to recognise those older rows).
@@ -1154,10 +1159,24 @@ export const SUBCON_ACCOUNT_CODES=["5070","5100","5200"];
 export const isSubconPayable=p=>!!p&&(p.category==="Subcontractor"||SUBCON_ACCOUNT_CODES.includes(String(p.accountCode||"")));
 // D3: subcontractor payable at/above the limit with no Work Order linked.
 export const subconNeedsWo=p=>isSubconPayable(p)&&!String(p.poNumber||"").trim()&&(Number(p.amount)||0)>=AP_RULES.subconNoWoLimit;
-// Refuse a save that creates such a payable, turns an existing one into one, or
-// raises its amount. Older rows that already break the rule can still be edited
-// and paid, as long as the amount doesn't go up. Mirrors the database trigger.
-export const subconNoWoRefused=(next,prev)=>subconNeedsWo(next)&&(!prev||!subconNeedsWo(prev)||(Number(next.amount)||0)>(Number(prev.amount)||0));
+// Vendor names are free text: match them case- and spacing-insensitively.
+export const vendorKey=v=>String(v||"").trim().replace(/\s+/g," ").toLowerCase();
+const isSubconNoWo=p=>isSubconPayable(p)&&!String(p.poNumber||"").trim();
+// D3 check for a save. Returns null when it may be saved, otherwise
+// {total, others}: this payable plus the same subcontractor's other no-WO
+// payables in the window reach the limit. An edit that keeps an existing no-WO
+// payable's vendor and doesn't raise its amount is always allowed, so older
+// rows can still be edited and paid. Mirrors the database trigger.
+export const subconNoWoBlock=(next,prev,all,todayISO=today)=>{
+  if(!isSubconNoWo(next)) return null;
+  const amt=p=>Number(p&&p.amount)||0, key=vendorKey(next.vendor);
+  if(prev&&isSubconNoWo(prev)&&amt(next)<=amt(prev)&&vendorKey(prev.vendor)===key) return null;
+  const cutoff=addDaysISO(todayISO,-(AP_RULES.subconNoWoWindowDays-1));
+  const skip=new Set([next.id,prev&&prev.id].filter(Boolean));
+  const others=(all||[]).filter(p=>!skip.has(p.id)&&isSubconNoWo(p)&&vendorKey(p.vendor)===key&&(String(p.createdAt||"")||cutoff)>=cutoff).reduce((t,p)=>t+amt(p),0);
+  const total=amt(next)+others;
+  return total>=AP_RULES.subconNoWoLimit?{total,others}:null;
+};
 // Which retention rate applies to a subcontractor payable, and why. Only what
 // the Work Order (or the bill itself) says — never a default on top of a signed WO.
 export const payableRetentionPct=(p,wos=[])=>{
