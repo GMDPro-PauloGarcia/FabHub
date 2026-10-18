@@ -17323,7 +17323,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       upDeals(ds=>ds.map(d=>d.id===dealId?{...d,boqData,...(pegValue?{value:net}:{})}:d));
       // The linked BOQ's decided VAT choice sets the deal's receipt type (BOQ is
       // the VAT authority — see onBoqVat below).
-      if(typeof boqData.vatEnabled==="boolean"){const rt=boqData.vatEnabled?"OR":"AR";const cur=deals.find(d=>d.id===dealId);if(cur&&cur.receiptType!==rt){upDeals(ds=>ds.map(d=>d.id===dealId?{...d,receiptType:rt,withholding:rt==="AR"?false:d.withholding}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{receipt_type:rt,...(rt==="AR"?{withholding:false}:{})}).catch(()=>{});}}
+      if(typeof boqData.vatEnabled==="boolean"){const rt=boqData.vatEnabled?"OR":"AR";const cur=deals.find(d=>d.id===dealId);if(cur&&cur.receiptType!==rt){if(["OR","AR"].includes(cur.receiptType))toastEmit&&toastEmit(`Project receipt type changed ${cur.receiptType} → ${rt} to match the BOQ (${boqData.vatEnabled?"VAT 12%":"No VAT"})${billings.some(b=>b.dealId===dealId)?" — existing invoices keep their tax; adjust one in the billing modal if needed":""}`,"info",8000);upDeals(ds=>ds.map(d=>d.id===dealId?{...d,receiptType:rt,withholding:rt==="AR"?false:d.withholding}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{receipt_type:rt,...(rt==="AR"?{withholding:false}:{})}).catch(()=>{});}}
       return true;
     };
     const duplicateBoqToDeal=async(dealId,boqData,opts)=>{
