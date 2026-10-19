@@ -6548,9 +6548,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       const totalInvoiced=allMs.reduce((s,b)=>s+Number(b.amount||0),0);
       upDeals(ds=>ds.map(d=>{
         if(d.id!==rec.dealId) return d;
-        const nd={...d,invoiced:totalInvoiced};
-        if(isSupabaseReady()) sbSyncOne("deals",nd,toSbDeal);
-        return nd;
+        // Totals (invoiced / amount_paid / payment_status) are kept by the database
+        // (trg_billing_totals_sync, migration 20261012010000); this only updates the screen.
+        return {...d,invoiced:totalInvoiced};
       }));
     }
   };
@@ -6687,7 +6687,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         if(d.id!==dealId) return d;
         const nd={...d,invoiced};
         if(touchesPayments){const refVal=dealNetDue(dealId,updatedBillings,d)||Number(d.value||0);nd.amountPaid=paid;nd.paymentStatus=paid>=refVal&&refVal>0?'Paid':paid>0?'Deposited':'Unpaid';}
-        if(isSupabaseReady()) sbSyncOne("deals",nd,toSbDeal);
+        // Screen only — the database recomputes and stores the totals (trg_billing_totals_sync).
         return nd;
       }));
     }
@@ -6726,9 +6726,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       const newStatus=newPaid>=refVal&&refVal>0?'Paid':newPaid>0?'Deposited':'Unpaid';
       upDeals(ds=>ds.map(d=>{
         if(d.id!==dealId) return d;
-        const nd={...d,invoiced:total,amountPaid:newPaid,paymentStatus:newStatus};
-        if(isSupabaseReady()) sbSyncOne("deals",nd,toSbDeal);
-        return nd;
+        // Screen only — the database recomputes and stores the totals (trg_billing_totals_sync).
+        return {...d,invoiced:total,amountPaid:newPaid,paymentStatus:newStatus};
       }));
     }
     if(isSupabaseReady()){
@@ -6758,9 +6757,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     upBillings(bs=>bs.filter(b=>b.dealId!==dealId));
     upDeals(ds=>ds.map(d=>{
       if(d.id!==dealId) return d;
-      const nd={...d,invoiced:0,amountPaid:0};
-      if(isSupabaseReady()) sbSyncOne("deals",nd,toSbDeal);
-      return nd;
+      // Screen only — the database zeroes the totals once the milestones are gone (trg_billing_totals_sync).
+      return {...d,invoiced:0,amountPaid:0};
     }));
     if(isSupabaseReady()){
       ms.forEach(m=>{
@@ -6822,8 +6820,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         },0);
       const refVal=dealNetDue(dealId,billings,d0)||Number(d0?.value||0);
       const newStatus=(newPaid>=refVal&&refVal>0)?'Paid':newPaid>0?'Deposited':'Unpaid';
+      // Screen only — the database recomputes and stores the totals (trg_billing_totals_sync).
       upDeals(ds=>ds.map(d=>d.id===dealId?{...d,amountPaid:newPaid,paymentStatus:newStatus}:d));
-      if(isSupabaseReady()) sbUpdate('deals',dealId,{amount_paid:newPaid,payment_status:newStatus}).catch(()=>{});
     }
     // NOTE: we deliberately do NOT inject this collection into the daily cash
     // position here. The Daily Cash Position derives collections directly from
@@ -6864,8 +6862,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       const d0=deals.find(d=>d.id===dealId);
       const refVal=dealNetDue(dealId,updatedBillings,d0)||Number(d0?.value||0);
       const newStatus=(newPaid>=refVal&&refVal>0)?'Paid':newPaid>0?'Deposited':'Unpaid';
+      // Screen only — the database recomputes and stores the totals (trg_billing_totals_sync).
       upDeals(ds=>ds.map(d=>d.id===dealId?{...d,amountPaid:newPaid,paymentStatus:newStatus}:d));
-      if(isSupabaseReady()) sbUpdate('deals',dealId,{amount_paid:newPaid,payment_status:newStatus}).catch(()=>{});
     }
     // No cash-position reversal needed: collections are no longer injected into
     // the daily position (see logBillingPayment). The Daily Cash Position reads
@@ -17523,19 +17521,22 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         session={session} role={role}
         clientProfiles={clientProfiles}
         upDeals={upDeals}
-        onSaveOnboarding={(dealId,fields)=>{
+        onSaveOnboarding={async(dealId,fields)=>{
           upDeals(ds=>ds.map(d=>d.id===dealId?{...d,...fields}:d));
           if(isSupabaseReady()){
+            // Saved through the save_deal_onboarding RPC (migration 20261012020000):
+            // Finance can't UPDATE deals directly, so a plain update matched 0 rows
+            // and these fields were silently lost. Keep the field list in sync.
             const snake={};
-            if('bir2303Url' in fields) snake.bir_2303_url=fields.bir2303Url||null;
+            if('bir2303Url' in fields) snake.bir_2303_url=fields.bir2303Url||"";
             if('bir2303OnFile' in fields) snake.bir_2303_on_file=!!fields.bir2303OnFile;
-            if('vatTreatment' in fields) snake.vat_treatment=fields.vatTreatment||null;
-            if('downpaymentPct' in fields) snake.downpayment_pct=fields.downpaymentPct!==""&&fields.downpaymentPct!=null?Number(fields.downpaymentPct):null;
-            if('paymentTermsText' in fields) snake.payment_terms_text=fields.paymentTermsText||null;
+            if('vatTreatment' in fields) snake.vat_treatment=fields.vatTreatment||"";
+            if('downpaymentPct' in fields) snake.downpayment_pct=fields.downpaymentPct!==""&&fields.downpaymentPct!=null?String(Number(fields.downpaymentPct)):"";
+            if('paymentTermsText' in fields) snake.payment_terms_text=fields.paymentTermsText||"";
             if('clientSatisfied' in fields) snake.client_satisfied=!!fields.clientSatisfied;
-            if('satisfactionNote' in fields) snake.satisfaction_note=fields.satisfactionNote||null;
-            snake.updated_at=new Date().toISOString();
-            sbUpdate('deals',dealId,snake).catch(()=>{});
+            if('satisfactionNote' in fields) snake.satisfaction_note=fields.satisfactionNote||"";
+            const{error}=await _rpcWithTimeout(supabase.rpc('save_deal_onboarding',{p_deal_id:dealId,p_fields:snake}));
+            if(error) toastEmit(`⚠️ Onboarding details not saved: ${error.message}`,"error",9000);
           }
         }}
         onOpenPayTerms={id=>setPayTermsModal(id)}
