@@ -6546,9 +6546,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       const totalInvoiced=allMs.reduce((s,b)=>s+Number(b.amount||0),0);
       upDeals(ds=>ds.map(d=>{
         if(d.id!==rec.dealId) return d;
-        const nd={...d,invoiced:totalInvoiced};
-        if(isSupabaseReady()) sbSyncOne("deals",nd,toSbDeal);
-        return nd;
+        // Totals (invoiced / amount_paid / payment_status) are kept by the database
+        // (trg_billing_totals_sync, migration 20261012010000); this only updates the screen.
+        return {...d,invoiced:totalInvoiced};
       }));
     }
   };
@@ -6688,7 +6688,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         if(d.id!==dealId) return d;
         const nd={...d,invoiced};
         if(touchesPayments){const refVal=dealNetDue(dealId,updatedBillings,d)||Number(d.value||0);nd.amountPaid=paid;nd.paymentStatus=paid>=refVal&&refVal>0?'Paid':paid>0?'Deposited':'Unpaid';}
-        if(isSupabaseReady()) sbSyncOne("deals",nd,toSbDeal);
+        // Screen only — the database recomputes and stores the totals (trg_billing_totals_sync).
         return nd;
       }));
     }
@@ -6727,9 +6727,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       const newStatus=newPaid>=refVal&&refVal>0?'Paid':newPaid>0?'Deposited':'Unpaid';
       upDeals(ds=>ds.map(d=>{
         if(d.id!==dealId) return d;
-        const nd={...d,invoiced:total,amountPaid:newPaid,paymentStatus:newStatus};
-        if(isSupabaseReady()) sbSyncOne("deals",nd,toSbDeal);
-        return nd;
+        // Screen only — the database recomputes and stores the totals (trg_billing_totals_sync).
+        return {...d,invoiced:total,amountPaid:newPaid,paymentStatus:newStatus};
       }));
     }
     if(isSupabaseReady()){
@@ -6759,9 +6758,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     upBillings(bs=>bs.filter(b=>b.dealId!==dealId));
     upDeals(ds=>ds.map(d=>{
       if(d.id!==dealId) return d;
-      const nd={...d,invoiced:0,amountPaid:0};
-      if(isSupabaseReady()) sbSyncOne("deals",nd,toSbDeal);
-      return nd;
+      // Screen only — the database zeroes the totals once the milestones are gone (trg_billing_totals_sync).
+      return {...d,invoiced:0,amountPaid:0};
     }));
     if(isSupabaseReady()){
       ms.forEach(m=>{
@@ -6823,8 +6821,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         },0);
       const refVal=dealNetDue(dealId,billings,d0)||Number(d0?.value||0);
       const newStatus=(newPaid>=refVal&&refVal>0)?'Paid':newPaid>0?'Deposited':'Unpaid';
+      // Screen only — the database recomputes and stores the totals (trg_billing_totals_sync).
       upDeals(ds=>ds.map(d=>d.id===dealId?{...d,amountPaid:newPaid,paymentStatus:newStatus}:d));
-      if(isSupabaseReady()) sbUpdate('deals',dealId,{amount_paid:newPaid,payment_status:newStatus}).catch(()=>{});
     }
     // NOTE: we deliberately do NOT inject this collection into the daily cash
     // position here. The Daily Cash Position derives collections directly from
@@ -6865,8 +6863,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       const d0=deals.find(d=>d.id===dealId);
       const refVal=dealNetDue(dealId,updatedBillings,d0)||Number(d0?.value||0);
       const newStatus=(newPaid>=refVal&&refVal>0)?'Paid':newPaid>0?'Deposited':'Unpaid';
+      // Screen only — the database recomputes and stores the totals (trg_billing_totals_sync).
       upDeals(ds=>ds.map(d=>d.id===dealId?{...d,amountPaid:newPaid,paymentStatus:newStatus}:d));
-      if(isSupabaseReady()) sbUpdate('deals',dealId,{amount_paid:newPaid,payment_status:newStatus}).catch(()=>{});
     }
     // No cash-position reversal needed: collections are no longer injected into
     // the daily position (see logBillingPayment). The Daily Cash Position reads
@@ -17591,14 +17589,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         session={session} role={role}
         clientProfiles={clientProfiles}
         upDeals={upDeals}
-        onSaveOnboarding={(dealId,fields)=>{
+        onSaveOnboarding={async(dealId,fields)=>{
           upDeals(ds=>ds.map(d=>d.id===dealId?{...d,...fields}:d));
           if(isSupabaseReady()){
             // Through the set_deal_onboarding RPC, not sbUpdate: Finance and
             // FinanceAssistant edit this panel but deals_upd doesn't admit
             // them, so a direct update matched 0 rows and was silently lost.
             const snake={};
-            if('bir2303Url' in fields) snake.bir_2303_url=fields.bir2303Url||null;
+            if('bir2303Url' in fields) snake.bir_2303_url=fields.bir2303Url||"";
             if('bir2303OnFile' in fields) snake.bir_2303_on_file=!!fields.bir2303OnFile;
             if('signedCeUrl' in fields) snake.signed_ce_url=fields.signedCeUrl||null;
             if('signedCeOnFile' in fields) snake.signed_ce_on_file=!!fields.signedCeOnFile;

@@ -51,3 +51,8 @@ For the smoke test locally, run `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers
 - Only a Manager can clear a deal's BOQ. Every BOQ change and deal delete keeps the previous BOQ in `deals_boq_history` (restore steps are in the migration).
 - Enforced in `attachBoqToDeal` (`src/App.jsx`), the Clear Draft gate in `src/views/BOQBuilder.jsx`, and migration `20261006010000_deals_boq_safeguards.sql` — keep them in sync.
 - Supabase MCP `execute_sql`/`apply_migration` hang on any `DROP` (they wait for a confirmation that never comes). Write migrations with `create or replace` / `if not exists` instead.
+
+## Deal billing totals (database-owned)
+- For any deal with billing milestones, `deals.invoiced`, `amount_paid` and `payment_status` are computed by the database (`recompute_deal_billing_totals`, triggers on `billing_milestones` / `billing_payments`, migration `20261012010000`). Only that function may change them: `trg_deals_protect_billing_totals` (`20261012030000`) silently keeps the old values on any other update.
+- The app only updates these on screen. Do not add client writes of them; Finance can't update `deals` under RLS, which is how ₱5.67M of collections went missing (fixed 2026-10-12).
+- Finance's Billing onboarding fields save through the `set_deal_onboarding` RPC (`20261018010000`). The earlier `save_deal_onboarding` RPC (`20261012020000`) is superseded and unused by the app.
