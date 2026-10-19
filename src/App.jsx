@@ -17512,8 +17512,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const now=new Date();
         const aging={current:0,d30:0,d60:0,d90:0,over90:0};
         billings.forEach(b=>{
+          // Same basis as the Outstanding figure (arSummary): any milestone with a
+          // balance counts, even one marked Fully Paid — a short payment shouldn't
+          // drop out of the aging just because of its status.
           const outstanding=milestoneBalance(b,dealById.get(b.dealId));
-          if(outstanding<=0||b.status==="Paid"||b.status==="Fully Paid") return;
+          if(outstanding<=0.005) return;
           const days=b.dueDate?Math.floor((now-new Date(b.dueDate))/(1000*60*60*24)):0;
           if(days<=0)       aging.current+=outstanding;
           else if(days<=30) aging.d30+=outstanding;
@@ -17526,17 +17529,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         return(
           <div style={{marginBottom:16}}>
             <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem",marginBottom:10}}>📊 AR Aging</div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8}}>
-              {[["Current",aging.current,"#10b981"],["1–30 days",aging.d30,"#f59e0b"],
+            {/* Mobile: Total across the top, buckets two per row. Desktop: Total + five buckets in one row. */}
+            <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(6,1fr)",gap:8}}>
+              {[["Total",total,"#0f172a"],["Current",aging.current,"#10b981"],["1–30 days",aging.d30,"#f59e0b"],
                 ["31–60 days",aging.d60,"#f97316"],["61–90 days",aging.d90,"#ef4444"],["90+ days",aging.over90,"#dc2626"]
-              ].map(([l,v,c])=>(
-                <div key={l} style={{background:"#fff",border:`1.5px solid ${c}33`,borderRadius:10,padding:"12px 14px",textAlign:"center"}}>
-                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:c}}>
-                    ₱{v.toLocaleString("en-PH",{minimumFractionDigits:0})}
+              ].map(([l,v,c])=>{const isTot=l==="Total";return(
+                <div key={l} style={{background:isTot?"#1e293b":"#fff",border:`1.5px solid ${isTot?"#1e293b":c+"33"}`,borderRadius:10,padding:isMobile?"10px 8px":"12px 14px",textAlign:"center",minWidth:0,gridColumn:isMobile&&isTot?"1 / -1":undefined}}>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:isMobile&&!isTot?"1rem":"1.1rem",color:isTot?"#f59e0b":c,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                    ₱{v.toLocaleString("en-PH",{minimumFractionDigits:0,maximumFractionDigits:2})}
                   </div>
-                  <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:3,textTransform:"uppercase",letterSpacing:".8px"}}>{l}</div>
-                </div>
-              ))}
+                  <div style={{fontSize:".68rem",color:isTot?"rgba(255,255,255,.6)":"#94a3b8",marginTop:3,textTransform:"uppercase",letterSpacing:".8px"}}>{isTot?"Total outstanding":l}</div>
+                </div>);})}
             </div>
           </div>
         );
@@ -17554,7 +17557,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         if(!callList.length) return null;
         return(
           <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",marginBottom:16,overflow:"hidden"}}>
-            <div style={{background:"#1e293b",padding:"12px 18px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div style={{background:"#1e293b",padding:"12px 18px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"4px 12px"}}>
               <span style={{fontWeight:700,color:"#f59e0b",fontSize:".88rem"}}>📞 Priority Call List — ₱{callList.reduce((s,x)=>s+x.totalDue,0).toLocaleString("en-PH",{minimumFractionDigits:0})} outstanding</span>
               <span style={{fontSize:".72rem",color:"rgba(255,255,255,.5)"}}>{callList.length} clients to follow up</span>
             </div>
