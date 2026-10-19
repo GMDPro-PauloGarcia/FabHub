@@ -8,7 +8,7 @@ import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDa
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneReceivable, arSummary, costNet, costSummary, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -4547,7 +4547,7 @@ export default function App(){
           console.info("[FabHub] sbLoadAll result — deals:",data?.deals?.length||0,"jos:",data?.jos?.length||0,"users:",data?.users?.length||0);
           if(data){
             const idbE=[];
-            const _deals=data.deals?.length?data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,standbyPO:d.standby_po||false,poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})):null;
+            const _deals=data.deals?.length?data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,standbyPO:d.standby_po||false,poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,signedCeUrl:d.signed_ce_url||"",signedCeOnFile:d.signed_ce_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})):null;
             if(_deals){
               // Reconcile legacy non-UUID "ghost" deals against the server.
               // Before the deals.id → UUID migration, deals were keyed by local
@@ -4889,7 +4889,7 @@ export default function App(){
         // once/30s) — far more often than a manual page refresh — so a blind
         // overwrite here was the single biggest way to lose a just-added record
         // that hadn't synced yet (e.g. still in flight when the user tabbed away).
-        if(data?.deals?.length) setDeals(prev=>mlo(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,standbyPO:d.standby_po||false,poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})),prev));
+        if(data?.deals?.length) setDeals(prev=>mlo(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,standbyPO:d.standby_po||false,poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,signedCeUrl:d.signed_ce_url||"",signedCeOnFile:d.signed_ce_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})),prev));
         if(data?.jos?.length) setJos(prev=>mlo(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no})),prev));
         if(Object.keys(data?.pcards||{}).length) setPcards(prev=>mergeLocalOnlyObj(data.pcards,prev));
         // Map the same camelCase fields the initial load does. Omitting dueDate
@@ -4923,7 +4923,7 @@ export default function App(){
     // clicks it is right after a save looked stuck, which is also the exact
     // moment a blind overwrite would erase the very record they're trying to
     // recover.
-    if(data.deals?.length){const ds=data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,standbyPO:d.standby_po||false,poBudget:d.standby_po?(Number(d.po_budget)||0):"",leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,boqData:d.boq_data||null,bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null}));setDeals(prev=>mlo(ds,prev));idbE.push([KEYS.deals,ds]);}
+    if(data.deals?.length){const ds=data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,standbyPO:d.standby_po||false,poBudget:d.standby_po?(Number(d.po_budget)||0):"",leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,boqData:d.boq_data||null,bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,signedCeUrl:d.signed_ce_url||"",signedCeOnFile:d.signed_ce_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null}));setDeals(prev=>mlo(ds,prev));idbE.push([KEYS.deals,ds]);}
     if(data.jos?.length){const js=data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned}));setJos(prev=>mlo(js,prev));idbE.push([KEYS.jos,js]);}
     if(Object.keys(data.pcards||{}).length){setPcards(data.pcards);idbE.push([KEYS.pcards,data.pcards]);}
     if(data.billings?.length){const bs=data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by,retentionHeld:m.retention_held!=null?Number(m.retention_held):undefined,isRetentionRelease:m.is_retention_release||undefined,plannedDate:m.planned_bill_date||undefined,msType:m.ms_type||undefined,payments:(m.payments||[]).map(p=>({...p,milestoneId:p.milestone_id??p.milestoneId,refNo:p.ref_no??p.refNo,recordedBy:p.recorded_by??p.recordedBy,valueDate:p.value_date??p.valueDate,method:p.payment_method??p.method,bounced:!!(p.bounced??false)}))}));setBillings(prev=>mlo(bs,prev));idbE.push([KEYS.billings,bs]);}
@@ -6149,6 +6149,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           standbyPO:rec.standby_po||false,poBudget:rec.standby_po?(Number(rec.po_budget)||0):"",
           billingGenerated:rec.billing_generated||false,
           bir2303Url:rec.bir_2303_url||"",bir2303OnFile:rec.bir_2303_on_file||false,
+          signedCeUrl:rec.signed_ce_url||"",signedCeOnFile:rec.signed_ce_on_file||false,
           vatTreatment:rec.vat_treatment||"",downpaymentPct:rec.downpayment_pct??null,
           paymentTermsText:rec.payment_terms_text||"",clientSatisfied:rec.client_satisfied||false,
           satisfactionNote:rec.satisfaction_note||"",
@@ -7741,14 +7742,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const pipeDeals      =useMemo(()=>deals.filter(d=>isActivePipeline(d.stage)),[deals]);
   const pipeVal        =useMemo(()=>pipeDeals.reduce((s,d)=>s+Number(d.value||0),0),[pipeDeals]);
   const awardReqCnt    =useMemo(()=>deals.filter(d=>d.notes&&d.notes.includes("[AWARD REQUEST")).length,[deals]);
-  const overdueInvCnt  =useMemo(()=>billings.filter(b=>b.dueDate&&b.dueDate<today&&b.status!=="Fully Paid"&&b.status!=="Cancelled").length,[billings]);
+  const overdueInvCnt  =useMemo(()=>billings.filter(b=>isBillingOverdue(b,today)).length,[billings]);
   const overdueTATCnt  =useMemo(()=>wonDeals.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed"&&pcards[d.id]?.targetEndDate&&pcards[d.id].targetEndDate<today&&!DEPT_ORDER.every(dept=>pcards[d.id]?.departments?.[dept]?.done)).length,[wonDeals,pcards]);
   const qsPendingCnt   =useMemo(()=>jos.filter(j=>j.budgetStatus==="QS Budget Pending"&&!Object.values(budgets[j.dealId]||{}).some(v=>Number(v)>0)).length,[jos,budgets]);
   const mrPendingCnt   =useMemo(()=>mreqs.filter(m=>m.status==="Submitted").length,[mreqs]);
   const addendaAlertCnt=useMemo(()=>addenda.filter(a=>!a.salesNotified&&a.status!=="Rejected").length,[addenda]);
   const activeJOCnt    =useMemo(()=>jos.filter(j=>j.status==="Active").length,[jos]);
   const pendingPRCnt   =useMemo(()=>prs.filter(p=>p.status==="Pending Approval").length,[prs]);
-  const overdueInvMs   =useMemo(()=>billings.filter(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled").length,[billings]);
+  const overdueInvMs   =useMemo(()=>billings.filter(m=>isBillingOverdue(m,today)).length,[billings]);
   const breqPendingCnt =useMemo(()=>breqs.filter(b=>b.status==="Pending").length,[breqs]);
   const openPOCnt      =useMemo(()=>prs.filter(p=>["Pending Approval","Approved","PO Issued"].includes(p.status)).length,[prs]);
   const toBuyCnt       =useMemo(()=>swatches.filter(s=>s.status==="To Buy").length,[swatches]);
@@ -8079,7 +8080,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // the form is only ever a local suggestion (set when the Add Deal form
     // opened), which can be stale/colliding if another device saved a deal
     // since then.
-    const claimedCeNo=editDeal?data.ceNo:await claimCENo(data.ceNo,deals.map(d=>d.ceNo));
+    // An edit never blanks the CE number (trg_deals_keep_ce_no enforces the same).
+    const claimedCeNo=editDeal?(String(data.ceNo||"").trim()?data.ceNo:(deals.find(d=>d.id===editDeal)?.ceNo||data.ceNo)):await claimCENo(data.ceNo,deals.map(d=>d.ceNo));
     const prob=WON_STAGES.includes(data.stage)?100:isLostStage(data.stage)?0:Number(data.probability);
     const rec={...data,ceNo:claimedCeNo,product:data.product||data.ceType||"",id:editDeal||uid(),value:data.standbyPO?0:Number(data.value),poBudget:data.standbyPO?(Number(data.poBudget)||0):"",invoiced:Number(data.invoiced||0),amountPaid:Number(data.amountPaid||0),probability:prob,
       addedBy:editDeal?(data.addedBy||""):(session?.name||""),
@@ -10493,8 +10495,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const totalBilled=_ar.billed;
         const totalPaid=_ar.collected;
         const totalOutstanding=_ar.outstanding;
-        const today2=new Date();
-        const overdue30=allMs.filter(m=>m.dueDate&&new Date(m.dueDate)<today2&&m.status!=="Fully Paid");
+        const overdue30=allMs.filter(m=>isBillingOverdue(m,today));
         const todayCash=Object.values(cashPositions).find(c=>c.date===today)||null;
         return(
           <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:12,marginBottom:24}}>
@@ -10551,7 +10552,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           <div style={{padding:"0"}}>
             {(()=>{
               const today2=new Date();
-              const od=billings.filter(m=>m.dueDate&&new Date(m.dueDate)<today2&&m.status!=="Fully Paid")
+              const od=billings.filter(m=>isBillingOverdue(m,today))
                 .sort((a,b)=>new Date(a.dueDate)-new Date(b.dueDate)).slice(0,5);
               if(!od.length) return <div style={{padding:"16px",color:"#94a3b8",fontSize:".82rem",textAlign:"center"}}>✅ No overdue invoices</div>;
               return od.map((m,i)=>{
@@ -11540,7 +11541,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const totalPaid     = arTot.collected;
         const outstanding   = arTot.outstanding;
         const today2        = new Date();
-        const overdue       = allMs.filter(m=>m.dueDate&&new Date(m.dueDate)<today2&&m.status!=="Fully Paid");
+        const overdue       = allMs.filter(m=>isBillingOverdue(m,today));
         const overdueValue  = overdue.reduce((s,m)=>s+milestoneBalance(m,dealById.get(m.dealId)),0);
         const _cash         = bankCashSummary(cashPositions,today);
         const latestCash    = _cash.latest;
@@ -11832,7 +11833,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const totalPaid=arTot.collected;
         const outstanding=arTot.outstanding;
         const newScope=addenda.filter(a=>a.status==="Discovered"||a.status==="Sales Notified");
-        const overdue=allMs.filter(m=>m.dueDate&&new Date(m.dueDate)<today2&&m.status!=="Fully Paid");
+        const overdue=allMs.filter(m=>isBillingOverdue(m,today));
 
         // AE performance — derive from actual deal data instead of a hardcoded
         // roster, so a new AE (or one who was simply missing from a stale list,
@@ -11965,9 +11966,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           items.push({icon:"⚠️",n:escalations.length,l:"Escalations",sub:hi?`${hi} high severity`:"needs review",tone:"crit",rows,unit:"escalation",fullPage:()=>setPage("projects"),fullPageLabel:"Open Projects →"});
         }
         if(overdueInvCnt){
-          const ov=billings.filter(b=>b.dueDate&&b.dueDate<today&&b.status!=="Fully Paid"&&b.status!=="Cancelled");
+          const ov=billings.filter(b=>isBillingOverdue(b,today));
           const rows=ov.map(b=>{const d=attnWonMap.get(b.dealId);return{name:d?.contact||d?.client||b.client||"Invoice",sub:`${b.name||b.label||"Invoice"} · due ${b.dueDate}`,amt:milestoneBalance(b,d),id:b.dealId};});
           items.push({icon:"🚨",n:overdueInvCnt,l:"Overdue Invoices",sub:"past due date",tone:"crit",rows,unit:"invoice",fullPage:()=>setPage("billing"),fullPageLabel:"Open Billing →"});
+        }
+        {
+          const ul=billings.filter(b=>isBillingUnsentLate(b,today));
+          if(ul.length){
+            const rows=ul.map(b=>{const d=attnWonMap.get(b.dealId);return{name:d?.contact||d?.client||b.client||"Invoice",sub:`${b.name||b.label||"Invoice"} · was due ${b.dueDate}`,amt:milestoneBalance(b,d),id:b.dealId};});
+            items.push({icon:"📤",n:ul.length,l:"Not Yet Sent",sub:"drafts past due date",tone:"warn",rows,unit:"invoice",fullPage:()=>setPage("billing"),fullPageLabel:"Open Billing →"});
+          }
         }
         if(overdueTATCnt){
           const od=wonDeals.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed"&&pcards[d.id]?.targetEndDate&&pcards[d.id].targetEndDate<today&&!DEPT_ORDER.every(dept=>pcards[d.id]?.departments?.[dept]?.done));
@@ -14840,7 +14848,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           const overduePayables=payables.filter(p=>p.status==="Unpaid"&&p.dueDate&&p.dueDate<today).length;
 
           // ── DAILY DIGEST ─────────────────────────────────────────────────
-          const overdueBillings=billings.filter(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled");
+          const overdueBillings=billings.filter(m=>isBillingOverdue(m,today));
+          const unsentLateBillings=billings.filter(m=>isBillingUnsentLate(m,today));
           const unbilledProjects=wonDeals.filter(d=>billings.filter(b=>b.dealId===d.id&&b.status!=="Cancelled").length===0);
           const fmtM=v=>"₱"+Number(v).toLocaleString("en-PH",{maximumFractionDigits:0});
 
@@ -14858,6 +14867,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           // Build digest alerts list
           const digestAlerts=[];
           if(overdueBillings.length>0) digestAlerts.push({icon:"🚨",level:"danger",text:`${overdueBillings.length} overdue invoice${overdueBillings.length!==1?"s":""} — ₱${Number(overdueBillings.reduce((s,m)=>s+milestoneBalance(m,dealById.get(m.dealId)),0)).toLocaleString("en-PH",{maximumFractionDigits:0})} uncollected`});
+          if(unsentLateBillings.length>0) digestAlerts.push({icon:"📤",level:"warning",text:`${unsentLateBillings.length} draft invoice${unsentLateBillings.length!==1?"s":""} past due and not yet sent — ${fmtM(unsentLateBillings.reduce((s,m)=>s+milestoneBalance(m,dealById.get(m.dealId)),0))}`});
           if(grossMargin<25) digestAlerts.push({icon:"📉",level:"warning",text:`Gross margin at ${grossMargin}% — below 25% target`});
           if(dso>90) digestAlerts.push({icon:"⏳",level:"warning",text:`DSO is ${dso} days — clients are paying very slowly`});
           if(outstanding>0) digestAlerts.push({icon:"💰",level:"info",text:`Outstanding AR: ${fmtM(outstanding)} across ${arTot.openMilestones} milestone${arTot.openMilestones!==1?"s":""}`});
@@ -14947,6 +14957,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 `• Overdue Invoices: ${overdueBillings.length} — ${fmtM(arOverdueAmt)}`,
                 `  1–30d: ${arAge30}  |  31–60d: ${arAge60}  |  60d+: ${arAge90p}`,
               ]:[`• No overdue invoices ✅`]),
+              ...(unsentLateBillings.length>0?[`• Not yet sent (drafts past due): ${unsentLateBillings.length}`]:[]),
               ...(topClients.length>0?[`• Top Client: ${topClients[0][0]} (${fmtM(topClients[0][1])} collected)`]:[]),
               ``,
               `━━━━━━━━━━━━━━━━━━━━━━`,
@@ -17581,19 +17592,22 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         onSaveOnboarding={async(dealId,fields)=>{
           upDeals(ds=>ds.map(d=>d.id===dealId?{...d,...fields}:d));
           if(isSupabaseReady()){
-            // Saved through the save_deal_onboarding RPC (migration 20261012020000):
-            // Finance can't UPDATE deals directly, so a plain update matched 0 rows
-            // and these fields were silently lost. Keep the field list in sync.
+            // Through the set_deal_onboarding RPC, not sbUpdate: Finance and
+            // FinanceAssistant edit this panel but deals_upd doesn't admit
+            // them, so a direct update matched 0 rows and was silently lost.
             const snake={};
             if('bir2303Url' in fields) snake.bir_2303_url=fields.bir2303Url||"";
             if('bir2303OnFile' in fields) snake.bir_2303_on_file=!!fields.bir2303OnFile;
-            if('vatTreatment' in fields) snake.vat_treatment=fields.vatTreatment||"";
-            if('downpaymentPct' in fields) snake.downpayment_pct=fields.downpaymentPct!==""&&fields.downpaymentPct!=null?String(Number(fields.downpaymentPct)):"";
-            if('paymentTermsText' in fields) snake.payment_terms_text=fields.paymentTermsText||"";
+            if('signedCeUrl' in fields) snake.signed_ce_url=fields.signedCeUrl||null;
+            if('signedCeOnFile' in fields) snake.signed_ce_on_file=!!fields.signedCeOnFile;
+            if('vatTreatment' in fields) snake.vat_treatment=fields.vatTreatment||null;
+            if('downpaymentPct' in fields) snake.downpayment_pct=fields.downpaymentPct!==""&&fields.downpaymentPct!=null?Number(fields.downpaymentPct):null;
+            if('paymentTermsText' in fields) snake.payment_terms_text=fields.paymentTermsText||null;
             if('clientSatisfied' in fields) snake.client_satisfied=!!fields.clientSatisfied;
-            if('satisfactionNote' in fields) snake.satisfaction_note=fields.satisfactionNote||"";
-            const{error}=await _rpcWithTimeout(supabase.rpc('save_deal_onboarding',{p_deal_id:dealId,p_fields:snake}));
-            if(error) toastEmit(`⚠️ Onboarding details not saved: ${error.message}`,"error",9000);
+            if('satisfactionNote' in fields) snake.satisfaction_note=fields.satisfactionNote||null;
+            supabase.rpc('set_deal_onboarding',{p_deal_id:dealId,p_fields:snake}).then(({error})=>{
+              if(error){console.error('set_deal_onboarding:',error.message);toastEmit("⚠ Onboarding details not saved: "+error.message,"error");}
+            },e=>toastEmit("⚠ Onboarding details not saved: "+(e?.message||e),"error"));
           }
         }}
         onOpenPayTerms={id=>setPayTermsModal(id)}
@@ -25565,7 +25579,10 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     const byId=new Map(deals.map(d=>[d.id,d]));
     return arSummary(billings,id=>byId.get(id)).outstanding;
   },[billings,deals]);
-  const overdue=useMemo(()=>billings.filter(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled"),[billings]);
+  const overdue=useMemo(()=>billings.filter(m=>isBillingOverdue(m,today)),[billings]);
+  // Drafts past their due date: never sent to the client, so not "overdue" — but
+  // the money is late all the same. Shown apart so Finance sends them or re-dates them.
+  const unsentLate=useMemo(()=>billings.filter(m=>isBillingUnsentLate(m,today)),[billings]);
 
   // ── Collection Forecast — how much net cash we can expect to collect within a
   // horizon (today / next 7 days / next 30 days), driven entirely off billing
@@ -26101,17 +26118,18 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     const grossBase=tot.gross, vat=tot.vat, total=tot.total, collectible=tot.collectible;
     const collected=ms.reduce((s,m)=>s+(m.payments||[]).filter(p=>!p.bounced).reduce((ps,p)=>ps+n(p.amount),0),0);
     const balance  =Math.max(0,collectible-collected);
-    const hasOverdue=ms.some(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled");
+    const hasOverdue=ms.some(m=>isBillingOverdue(m,today));
+    const hasUnsent=ms.some(m=>isBillingUnsentLate(m,today));
     const fullyPaid=total>0&&balance===0;
     const toBill=ms.filter(m=>m.status==="Draft"&&m.plannedDate&&m.plannedDate<today).length;
-    return{d,ms,grossBase,vat,total,collected,collectible,balance,hasOverdue,fullyPaid,toBill,milestoneCount:ms.length};
+    return{d,ms,grossBase,vat,total,collected,collectible,balance,hasOverdue,hasUnsent,fullyPaid,toBill,milestoneCount:ms.length};
   });
   // Count of awarded projects with no billing set up yet — hidden by default.
   const notBilledCount=_allSummaries.filter(s=>s.milestoneCount===0).length;
-  const projectSummaries=_allSummaries.filter(({d,total,collected,balance,hasOverdue,fullyPaid,milestoneCount})=>{
+  const projectSummaries=_allSummaries.filter(({d,total,collected,balance,hasOverdue,hasUnsent,fullyPaid,milestoneCount})=>{
     const q=billingSearch.toLowerCase();
     const matchSearch=!q||(d.client||"").toLowerCase().includes(q)||(d.ceNo||"").toLowerCase().includes(q)||(d.contact||"").toLowerCase().includes(q);
-    const matchFilter=billingFilter==="all"||(billingFilter==="outstanding"&&balance>0&&!fullyPaid)||(billingFilter==="paid"&&fullyPaid)||(billingFilter==="overdue"&&hasOverdue)||(billingFilter==="collected"&&collected>0)||(billingFilter==="uncollected"&&total>0&&collected===0);
+    const matchFilter=billingFilter==="all"||(billingFilter==="outstanding"&&balance>0&&!fullyPaid)||(billingFilter==="paid"&&fullyPaid)||(billingFilter==="overdue"&&hasOverdue)||(billingFilter==="unsent"&&hasUnsent)||(billingFilter==="collected"&&collected>0)||(billingFilter==="uncollected"&&total>0&&collected===0);
     // Hide "Not billed" (0-milestone) projects unless the toggle is on or the user is searching.
     const matchNotBilled=milestoneCount>0||showNotBilled||!!q;
     return matchSearch&&matchFilter&&matchNotBilled;
@@ -26225,12 +26243,13 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       )}
 
       {/* KPIs */}
-      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:16}}>
+      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(5,1fr)",gap:10,marginBottom:16}}>
         {[
           {l:"Total Billed (VAT-ex)",v:fmt(allBilled),             c:"#3b82f6"},
           {l:"Total Collected",   v:fmt(allCollected),             c:"#059669"},
           {l:"Outstanding",       v:fmt(allOutstanding), c:allOutstanding>0?"#ef4444":"#059669", filter:"outstanding", hint:"View all clients with a balance →"},
           {l:"Overdue Invoices",  v:overdue.length,                c:overdue.length>0?"#ef4444":"#94a3b8", filter:"overdue", hint:"View overdue invoices →"},
+          {l:"Not Yet Sent",      v:unsentLate.length,             c:unsentLate.length>0?"#d97706":"#94a3b8", filter:"unsent", hint:unsentLate.length>0?"Drafts past due — send or re-date →":"No late drafts"},
         ].map(({l,v,c,filter,hint})=>{
           const isLink=!!filter;
           return(
@@ -26339,7 +26358,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
             style={{width:"100%",paddingLeft:32,paddingRight:10,paddingTop:8,paddingBottom:8,border:"1.5px solid #e2e8f0",borderRadius:8,fontFamily:"inherit",fontSize:".82rem",color:"#0f172a",outline:"none",boxSizing:"border-box"}}/>
         </div>
         <div style={{display:"flex",gap:6}}>
-          {[["all","All"],["outstanding","Outstanding"],["overdue","Overdue"],["collected","Has Collections"],["uncollected","Uncollected"],["paid","Fully Paid"]].map(([v,l])=>(
+          {[["all","All"],["outstanding","Outstanding"],["overdue","Overdue"],["unsent","Not Yet Sent"],["collected","Has Collections"],["uncollected","Uncollected"],["paid","Fully Paid"]].map(([v,l])=>(
             <button key={v} onClick={()=>setBillingFilter(v)}
               style={{padding:"7px 13px",borderRadius:20,border:`1.5px solid ${billingFilter===v?"#1e293b":"#e2e8f0"}`,background:billingFilter===v?"#1e293b":"#fff",color:billingFilter===v?"#fff":"#64748b",fontFamily:"inherit",fontSize:".75rem",fontWeight:billingFilter===v?700:400,cursor:"pointer",whiteSpace:"nowrap"}}>
               {l}
@@ -26387,12 +26406,13 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
               </div>
             );
           }
-          const {d,ms,grossBase,vat,total,collected,collectible,balance,hasOverdue,fullyPaid,toBill,milestoneCount,groupOverdue,childOf,addendumCount}=row;
+          const {d,ms,grossBase,vat,total,collected,collectible,balance,hasOverdue,hasUnsent,fullyPaid,toBill,milestoneCount,groupOverdue,childOf,addendumCount}=row;
           const statusBadge=(
             <>
               {hasOverdue&&<span style={{fontSize:".68rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Overdue</span>}
+              {hasUnsent&&<span title="A Draft milestone is past its due date and hasn't been sent" style={{fontSize:".68rem",background:"#fffbeb",color:"#b45309",border:"1px solid #fcd34d",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Not sent</span>}
               {fullyPaid&&<span style={{fontSize:".68rem",background:"#f0fdf4",color:"#059669",border:"1px solid #6ee7b7",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Paid</span>}
-              {!hasOverdue&&!fullyPaid&&milestoneCount>0&&<span style={{fontSize:".68rem",background:"#eff6ff",color:"#3b82f6",border:"1px solid #93c5fd",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Active</span>}
+              {!hasOverdue&&!hasUnsent&&!fullyPaid&&milestoneCount>0&&<span style={{fontSize:".68rem",background:"#eff6ff",color:"#3b82f6",border:"1px solid #93c5fd",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Active</span>}
               {milestoneCount===0&&<span style={{fontSize:".68rem",color:"#e2e8f0"}}>—</span>}
             </>
           );
@@ -26692,6 +26712,14 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                 </div>
                 {canEdit?(
                   <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:10}}>
+                    <Fld label="Signed C.E. / client PO">
+                      <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                        <Inp type="url" value={deal.signedCeUrl||""} placeholder="Drive link to signed C.E. or PO" onChange={e=>save({signedCeUrl:e.target.value})} style={{flex:1}}/>
+                        <label style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:".72rem",color:"#475569",whiteSpace:"nowrap"}}>
+                          <input type="checkbox" checked={!!deal.signedCeOnFile} onChange={e=>save({signedCeOnFile:e.target.checked})}/> On file
+                        </label>
+                      </div>
+                    </Fld>
                     <Fld label="BIR Form 2303">
                       <div style={{display:"flex",gap:6,alignItems:"center"}}>
                         <Inp type="url" value={deal.bir2303Url||""} placeholder="Drive link to 2303" onChange={e=>save({bir2303Url:e.target.value})} style={{flex:1}}/>
@@ -26861,7 +26889,8 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
               const balance=Math.max(0,tx.netReceivable-paidTotal);
               const pct=tx.netReceivable>0?Math.round(paidTotal/tx.netReceivable*100):0;
               const sClr=BILLING_STATUS_CLR[ms.status]||"#94a3b8";
-              const isOverdue=ms.dueDate&&ms.dueDate<today&&ms.status!=="Fully Paid"&&ms.status!=="Cancelled";
+              const isOverdue=isBillingOverdue(ms,today);
+              const isUnsentLate=isBillingUnsentLate(ms,today);
               // Receivables lifecycle: Drafted → Sent → Paid (half = partially paid).
               const msSent=["Sent to Client","Partially Paid","Fully Paid","Overdue"].includes(ms.status);
               const msFullyPaid=ms.status==="Fully Paid"||(tx.netReceivable>0&&paidTotal>=tx.netReceivable);
@@ -26872,13 +26901,14 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                 {label:msFullyPaid?"Paid":msPartlyPaid?"Part. paid":"Paid", done:msFullyPaid, half:msPartlyPaid, color:T.success},
               ];
               return(
-                <div key={ms.id} style={{background:"#f8fafc",borderRadius:10,border:`1.5px solid ${isOverdue?"#fecaca":sClr+"33"}`,padding:"12px 16px"}}>
+                <div key={ms.id} style={{background:"#f8fafc",borderRadius:10,border:`1.5px solid ${isOverdue?"#fecaca":isUnsentLate?"#fcd34d":sClr+"33"}`,padding:"12px 16px"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,flexWrap:"wrap"}}>
                     <div style={{flex:1}}>
                       <div style={{display:"flex",gap:7,alignItems:"center",flexWrap:"wrap",marginBottom:5}}>
                         <span style={{fontWeight:700,color:"#0f172a"}}>{ms.name}</span>
                         <span style={{fontSize:".68rem",background:sClr+"22",color:sClr,border:`1px solid ${sClr}44`,borderRadius:20,padding:"1px 8px",fontWeight:700}}>{ms.status}</span>
                         {isOverdue&&<span style={{fontSize:".68rem",color:T.danger,background:T.dangerBg,border:`1px solid ${T.dangerLine}`,borderRadius:20,padding:"1px 8px",fontWeight:700}}>🚨 Overdue</span>}
+                        {isUnsentLate&&<span title="Still a Draft after its due date. Send it to the client and mark it Sent, or change the due date." style={{fontSize:".68rem",color:"#b45309",background:"#fffbeb",border:"1px solid #fcd34d",borderRadius:20,padding:"1px 8px",fontWeight:700}}>📤 Not sent — was due {ms.dueDate}</span>}
                         <span style={{fontSize:".68rem",color:T.inkFaint}}>{ms.invoiceNo}</span>
                       </div>
                       {!ms.isRetentionRelease&&<div style={{marginBottom:8}}><LifecycleStrip nodes={msNodes}/></div>}
@@ -26890,7 +26920,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                         <span><span style={{color:"#94a3b8"}}>Net Collectible: </span><strong style={{color:"#3b82f6"}}>₱{tx.netReceivable.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>
                         <span><span style={{color:"#94a3b8"}}>Paid: </span><strong style={{color:"#059669"}}>₱{paidTotal.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>
                         {balance>0&&<span><span style={{color:"#94a3b8"}}>Balance: </span><strong style={{color:"#ef4444"}}>₱{balance.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>}
-                        {ms.dueDate&&<span style={{color:isOverdue?"#ef4444":"#64748b",fontWeight:isOverdue?700:400}}>Due: {ms.dueDate}</span>}
+                        {ms.dueDate&&<span style={{color:isOverdue?"#ef4444":isUnsentLate?"#b45309":"#64748b",fontWeight:isOverdue||isUnsentLate?700:400}}>Due: {ms.dueDate}</span>}
                         {ms.status==="Draft"&&ms.plannedDate&&<span style={{color:ms.plannedDate<today?"#d97706":"#64748b",fontWeight:ms.plannedDate<today?700:400}}>{ms.plannedDate<today?"⏰ ":""}Bill on: {ms.plannedDate}</span>}
                         <span title="Month this revenue is counted in the chart. Click Edit to change.">
                           <span style={{color:"#94a3b8"}}>Rev. Period: </span>
@@ -29515,7 +29545,8 @@ function FinanceDigestPanel({billings=[],exps=[],wonDeals=[],completedDeals=[],d
   const topClients=Object.entries(clientMap).sort(([,a],[,b])=>b-a).slice(0,5);
   const totalPayables=payables.filter(p=>p.status==="Unpaid").reduce((s,p)=>s+Number(p.amount||0),0);
   const overduePayables=payables.filter(p=>p.status==="Unpaid"&&p.dueDate&&p.dueDate<today).length;
-  const overdueBillings=billings.filter(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled");
+  const overdueBillings=billings.filter(m=>isBillingOverdue(m,today));
+  const unsentLateBillings=billings.filter(m=>isBillingUnsentLate(m,today));
   const unbilledProjects=wonDeals.filter(d=>billings.filter(b=>b.dealId===d.id&&b.status!=="Cancelled").length===0);
   const fmtM=v=>"₱"+Number(v).toLocaleString("en-PH",{maximumFractionDigits:0});
   const todayPos=cashPositions[today]||null;
@@ -29539,6 +29570,7 @@ function FinanceDigestPanel({billings=[],exps=[],wonDeals=[],completedDeals=[],d
   const revTrend=prevMonthRev>0?Math.round((thisMonthRev-prevMonthRev)/prevMonthRev*100):0;
   const digestAlerts=[];
   if(overdueBillings.length>0) digestAlerts.push({icon:"🚨",text:`${overdueBillings.length} overdue invoice${overdueBillings.length!==1?"s":""} — ${fmtM(arOverdueAmt)} uncollected`});
+  if(unsentLateBillings.length>0) digestAlerts.push({icon:"📤",text:`${unsentLateBillings.length} draft invoice${unsentLateBillings.length!==1?"s":""} past due and not yet sent — ${fmtM(unsentLateBillings.reduce((s,m)=>s+milestoneBalance(m,(deals||[]).find(d=>d.id===m.dealId)),0))}`});
   if(grossMargin<25) digestAlerts.push({icon:"📉",text:`Gross margin at ${grossMargin}% — below 25% target`});
   if(dso>90) digestAlerts.push({icon:"⏳",text:`DSO is ${dso} days — clients are paying very slowly`});
   if(unbilledProjects.length>0) digestAlerts.push({icon:"📋",text:`${unbilledProjects.length} awarded project${unbilledProjects.length!==1?"s":""} with no milestones billed yet`});
@@ -29559,6 +29591,7 @@ function FinanceDigestPanel({billings=[],exps=[],wonDeals=[],completedDeals=[],d
       `• Outstanding AR: ${fmtM(outstanding)}`,
       `• DSO: ${dso} days`,
       ...(overdueBillings.length>0?[`• Overdue Invoices: ${overdueBillings.length} — ${fmtM(arOverdueAmt)}`]:[`• No overdue invoices ✅`]),
+      ...(unsentLateBillings.length>0?[`• Not yet sent (drafts past due): ${unsentLateBillings.length}`]:[]),
       ``,
       `💵 <b>DAILY CASH POSITION</b>  ${cpStatus==="ok"?"✅":cpStatus==="danger"?"🔴":"⚠️"}`,
       ...(todayPos?[`• Opening: ${fmtM(cpTotalBeg)}`,`• Closing: ${fmtM(cpTotalEnd)}`,`• Collections Today: ${fmtM(cpCollections)}`,`• Net Movement: ${cpNetMove>=0?"▲":"▼"} ${fmtM(Math.abs(cpNetMove))}`]:[`• ⚠️ No cash position logged for today`]),
@@ -29616,6 +29649,7 @@ function FinanceDigestPanel({billings=[],exps=[],wonDeals=[],completedDeals=[],d
           <Row label="DSO" value={dso+" days"} color={dso>90?"#dc2626":dso>60?"#d97706":"#059669"}/>
           {overdueBillings.length>0&&<Row label="Overdue Invoices" value={`${overdueBillings.length} — ${fmtM(arOverdueAmt)}`} color="#dc2626"/>}
           {overdueBillings.length===0&&<Row label="Overdue" value="None ✅" color="#059669"/>}
+          {unsentLateBillings.length>0&&<Row label="Not Yet Sent (past due)" value={`${unsentLateBillings.length} drafts`} color="#d97706"/>}
         </ReviewSection>
         <ReviewSection icon="💵" title="Daily Cash Position" status={cpStatus}>
           {todayPos?<>

@@ -532,6 +532,13 @@ export const milestonePaid = (b={}) =>
   (b.payments||[]).filter(p=>!p.bounced).reduce((s,p)=>s+(Number(p.amount)||0),0);
 export const milestoneBalance = (b={}, deal) =>
   b.status==="Cancelled" ? 0 : Math.max(0, milestoneReceivable(b,deal) - milestonePaid(b));
+// Past due, split by whether the client was actually billed. A Draft hasn't been
+// sent, so it can't be overdue — it's an invoice nobody has sent yet, which is
+// Finance's to chase internally, not the client's. Keep the two apart everywhere.
+export const isBillingOverdue = (b={}, today) =>
+  !!b.dueDate && b.dueDate < today && !["Draft","Fully Paid","Cancelled"].includes(b.status);
+export const isBillingUnsentLate = (b={}, today) =>
+  !!b.dueDate && b.dueDate < today && b.status === "Draft";
 // Portfolio totals over a list of milestones. `dealOf(dealId)` returns the deal (or
 // undefined) so receipt type / EWT can fall back to it.
 export const arSummary = (billings=[], dealOf=()=>undefined) => {
@@ -1011,7 +1018,7 @@ export const dealOnboardingGate=(deal,opts={})=>{
   const terms=d.paymentTerms||{};
   const dp=d.downpaymentPct??terms.dp;
   const checks=[
-    {ok:!!d.ceNo,                       label:"Signed C.E. (CE No.)"},
+    {ok:!!d.signedCeOnFile||!!d.signedCeUrl, label:"Signed C.E. / client PO"},
     {ok:!!d.bir2303OnFile||!!d.bir2303Url, label:"BIR Form 2303 on file"},
     !opts.scheduleInBuilder&&{ok:!!(d.paymentTermsText||terms.netDays!=null&&terms.netDays!==""||terms.notes), label:"Payment terms"},
     {ok:!!d.vatTreatment,               label:"VAT treatment (incl./excl.)"},
