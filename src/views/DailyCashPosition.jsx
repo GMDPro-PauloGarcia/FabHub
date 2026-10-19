@@ -59,7 +59,7 @@ const WrapCell=({value,onType,placeholder})=>{
 // are computed from three manual entry tables below the report. Floating checks
 // carry from day to day until they are marked cleared.
 function DailyCashPosition({
-  cashPositions={},saveDayPos=()=>{},billings=[],wonDeals=[],payables=[],loans=[],userName="",
+  cashPositions={},saveDayPos=()=>{},billings=[],wonDeals=[],payables=[],loans=[],suppliers=[],subcons=[],userName="",
   role="",username="",cashStale=false
 }){
   const[selDate,setSelDate]=useState(today);
@@ -399,20 +399,57 @@ function DailyCashPosition({
   const payablesUnpaid=useMemo(()=>openPayables.reduce((s,p)=>s+payBal(p),0),[openPayables]);
 
   // ── Payables aging — bucket each open balance by its due date ──────────────
-  // Dated payables split into Overdue / Due ≤7d / Due ≤30d / Later. Payables with
-  // NO due date can't be aged, so they get their own bucket and are surfaced as a
-  // data-quality gap (Finance should fill the due date so the forecast is honest).
+  // A payable with a due date uses it. One without is ESTIMATED: bill date
+  // (invoice date, else the date it was encoded) + the vendor's payment terms
+  // from the Supplier / Subcontractor master ("Cash Basis" = 0 days; "30-45 Days"
+  // takes the first, conservative number). Anything still unplaceable (vendor not
+  // in the master, terms blank or unreadable) is aged by how old the bill is and
+  // listed by vendor, so Finance fixes the terms once instead of 500 bills.
+  const vendorTerms=useMemo(()=>{
+    const m=new Map();
+    // Subcontractors first so a Supplier entry with the same name wins.
+    [...(subcons||[]),...(suppliers||[])].forEach(s=>{
+      const k=(s.companyName||s.company_name||"").trim().toLowerCase();
+      if(k) m.set(k,String(s.paymentTerms||s.payment_terms||"").trim());
+    });
+    return m;
+  },[suppliers,subcons]);
   const payAging=useMemo(()=>{
     const b={overdue:0,d7:0,d30:0,later:0,undated:0};
+    const est={overdue:0,d7:0,d30:0,later:0,count:0};
+    const age={a30:0,a60:0,a90:0,a90p:0};
+    const fix=new Map();
     let undatedCount=0;
+    const dayDiff=(a,c)=>Math.round((Date.parse(a)-Date.parse(c))/86400000);
+    const termDays=t=>{
+      if(!t) return null;
+      if(/^(cash|c\.?o\.?d)/i.test(t)) return 0;
+      const m=t.match(/^\s*(\d+)/);
+      return m?Number(m[1]):null;
+    };
+    const put=(days,bal,isEst)=>{
+      const k=days<0?"overdue":days<=7?"d7":days<=30?"d30":"later";
+      b[k]+=bal; if(isEst){est[k]+=bal;est.count++;}
+    };
     openPayables.forEach(p=>{
       const bal=payBal(p); if(bal<=0) return;
-      if(!p.dueDate){b.undated+=bal;undatedCount++;return;}
-      const days=Math.ceil((new Date(p.dueDate)-new Date(selDate))/86400000);
-      if(days<0) b.overdue+=bal; else if(days<=7) b.d7+=bal; else if(days<=30) b.d30+=bal; else b.later+=bal;
+      if(p.dueDate){put(Math.ceil((new Date(p.dueDate)-new Date(selDate))/86400000),bal,false);return;}
+      const base=(p.invoiceDate||p.createdAt||"").slice(0,10);
+      const vkey=(p.vendor||"").trim().toLowerCase();
+      const terms=vendorTerms.get(vkey);
+      const td=termDays(terms);
+      if(base&&td!=null){put(dayDiff(base,selDate)+td,bal,true);return;}
+      b.undated+=bal;undatedCount++;
+      const old=base?dayDiff(selDate,base):null;
+      if(old==null||old>90) age.a90p+=bal; else if(old>60) age.a90+=bal; else if(old>30) age.a60+=bal; else age.a30+=bal;
+      const why=!base?"No bill date":terms===undefined?"Not in supplier list":!terms?"Terms blank":`Terms unclear ("${terms}")`;
+      const f=fix.get(vkey)||{vendor:(p.vendor||"").trim()||"(no vendor)",why,count:0,bal:0};
+      f.count++;f.bal+=bal;fix.set(vkey,f);
     });
-    return{...b,undatedCount,due30:b.overdue+b.d7+b.d30};
-  },[openPayables,selDate]);
+    const fixList=[...fix.values()].sort((x,y)=>y.bal-x.bal);
+    return{...b,est,age,fixList,undatedCount,due30:b.overdue+b.d7+b.d30};
+  },[openPayables,selDate,vendorTerms]);
+  const[showAllFix,setShowAllFix]=useState(false);
 
   // ── Bank Account Detail column totals ──
   const tot={
@@ -763,17 +800,30 @@ function DailyCashPosition({
           {/* PAYABLES AGING & CASH COVERAGE — answers "can we actually pay this?" */}
           {(()=>{
             const spendable=opBook;                 // operating book cash (ending − uncleared checks)
-            const due30=payAging.due30;             // overdue + due within 30 days
+            const due30=payAging.due30;             // overdue + due within 30 days (actual + estimated)
             const gap=spendable-due30;              // >0 = covered, <0 = shortfall
             const covered=gap>=0;
-            const pct=due30>0?Math.min(100,Math.round((spendable/due30)*100)):100;
+            const ratio=due30>0?spendable/due30:Infinity;
+            const thin=covered&&ratio<1.5;          // covered, but one bad week away from a shortfall
+            const tone=!covered?{bg:"#fef2f2",bd:"#fecaca",fg:"#b91c1c",bar:"#ef4444"}:thin?{bg:"#fffbeb",bd:"#fde68a",fg:"#b45309",bar:"#f59e0b"}:{bg:"#f0fdf4",bd:"#bbf7d0",fg:"#15803d",bar:"#22c55e"};
+            const pct=due30>0?Math.min(100,Math.round((due30/Math.max(spendable,1))*100)):0;
+            const E=payAging.est;
             const buckets=[
-              {l:"Overdue",     v:payAging.overdue,c:"#dc2626"},
-              {l:"Due ≤ 7 days", v:payAging.d7,    c:"#ea580c"},
-              {l:"Due ≤ 30 days",v:payAging.d30,   c:"#d97706"},
-              {l:"Later",       v:payAging.later,  c:"#0f766e"},
-              {l:"No due date", v:payAging.undated,c:"#64748b"},
+              {l:"Overdue",      v:payAging.overdue,e:E.overdue,c:"#dc2626"},
+              {l:"Due ≤ 7 days", v:payAging.d7,     e:E.d7,     c:"#ea580c"},
+              {l:"Due ≤ 30 days",v:payAging.d30,    e:E.d30,    c:"#d97706"},
+              {l:"Later",        v:payAging.later,  e:E.later,  c:"#0f766e"},
+              {l:"No terms on file",v:payAging.undated,e:0,     c:"#64748b",sub:payAging.undatedCount?`${payAging.undatedCount} bill${payAging.undatedCount!==1?"s":""} · aged below`:""},
             ];
+            const ages=[
+              {l:"0–30 days old", v:payAging.age.a30, c:"#475569"},
+              {l:"31–60 days old",v:payAging.age.a60, c:"#d97706",sub:"past any 30-day term"},
+              {l:"61–90 days old",v:payAging.age.a90, c:"#dc2626",sub:"past any 60-day term"},
+              {l:"90+ days / no date",v:payAging.age.a90p,c:"#991b1b"},
+            ];
+            const estTag=<span style={{fontSize:".52rem",fontWeight:800,letterSpacing:".4px",background:"#fffbeb",color:"#b45309",border:"1px solid #fde68a",borderRadius:4,padding:"0 4px",marginLeft:4}}>EST</span>;
+            const fixShown=showAllFix?payAging.fixList:payAging.fixList.slice(0,8);
+            const subHdr=t=><div style={{fontSize:".62rem",fontWeight:800,textTransform:"uppercase",letterSpacing:".5px",color:"#64748b",margin:"12px 0 6px"}}>{t}</div>;
             return(
               <div style={{marginTop:12,border:`1px solid ${C.grid}`,borderRadius:10,overflow:"hidden"}}>
                 <div style={{background:"#0f172a",color:"#fff",padding:"7px 12px",fontSize:".68rem",fontWeight:800,letterSpacing:".5px",textTransform:"uppercase",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -781,37 +831,82 @@ function DailyCashPosition({
                   <span style={{fontWeight:600,color:"#94a3b8",textTransform:"none",letterSpacing:0}}>Total open ₱{fmt2(payablesUnpaid)}</span>
                 </div>
                 <div style={{padding:"12px",background:"#fff"}}>
-                  {/* Aging buckets */}
+                  {/* 1 · By due date — actual, or estimated from supplier terms */}
+                  <div style={{fontSize:".62rem",fontWeight:800,textTransform:"uppercase",letterSpacing:".5px",color:"#64748b",marginBottom:6}}>By due date {E.count>0&&<span style={{fontWeight:600,textTransform:"none",letterSpacing:0,color:"#94a3b8"}}>· {E.count} bill{E.count!==1?"s":""} estimated from supplier terms</span>}</div>
                   <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(5,1fr)",gap:8}}>
-                    {buckets.map(({l,v,c})=>(
+                    {buckets.map(({l,v,e,c,sub})=>(
                       <div key={l} style={{background:"#f8fafc",border:`1px solid ${C.grid}`,borderRadius:8,padding:"8px 10px"}}>
                         <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".5px",color:"#94a3b8",fontWeight:700}}>{l}</div>
                         <div style={{fontWeight:800,fontSize:".92rem",color:v>0?c:"#cbd5e1",marginTop:2,fontVariantNumeric:"tabular-nums"}}>{peso(v)}</div>
+                        {e>0?<div style={{fontSize:".6rem",color:"#64748b",marginTop:1}}>{e>=v-0.005?"all":peso(e)}{estTag}</div>
+                          :sub?<div style={{fontSize:".6rem",color:"#64748b",marginTop:1}}>{sub}</div>:null}
                       </div>
                     ))}
                   </div>
-                  {/* Coverage verdict */}
-                  <div style={{marginTop:12,background:covered?"#f0fdf4":"#fef2f2",border:`1.5px solid ${covered?"#bbf7d0":"#fecaca"}`,borderRadius:9,padding:"11px 13px"}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",flexWrap:"wrap",gap:6}}>
-                      <span style={{fontWeight:800,fontSize:".82rem",color:covered?"#15803d":"#b91c1c"}}>
-                        {covered?"✓ Cash covers all payables due within 30 days":"⚠ Cash shortfall on payables due within 30 days"}
-                      </span>
-                      <span style={{fontSize:".72rem",fontWeight:700,color:"#475569"}}>{pct}% covered</span>
+                  {/* 2 · Bills with no usable terms — aged by bill date */}
+                  {payAging.undated>0&&(<>
+                    {subHdr("No terms on file · by age (days since bill date)")}
+                    <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(4,1fr)",gap:8}}>
+                      {ages.map(({l,v,c,sub})=>(
+                        <div key={l} style={{background:"#f8fafc",border:`1px solid ${C.grid}`,borderRadius:8,padding:"8px 10px"}}>
+                          <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".5px",color:"#94a3b8",fontWeight:700}}>{l}</div>
+                          <div style={{fontWeight:800,fontSize:".92rem",color:v>0?c:"#cbd5e1",marginTop:2,fontVariantNumeric:"tabular-nums"}}>{peso(v)}</div>
+                          {sub&&v>0&&<div style={{fontSize:".6rem",color:"#64748b",marginTop:1}}>{sub}</div>}
+                        </div>
+                      ))}
                     </div>
-                    <div style={{height:7,background:"#e2e8f0",borderRadius:4,overflow:"hidden",margin:"8px 0"}}>
-                      <div style={{width:pct+"%",height:"100%",background:covered?"#22c55e":"#ef4444",transition:"width .3s"}}/>
+                  </>)}
+                  {/* Coverage verdict */}
+                  <div style={{marginTop:12,background:tone.bg,border:`1.5px solid ${tone.bd}`,borderRadius:9,padding:"11px 13px"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",flexWrap:"wrap",gap:6}}>
+                      <span style={{fontWeight:800,fontSize:".82rem",color:tone.fg}}>
+                        {!covered?"⚠ Cash shortfall on payables overdue or due within 30 days":thin?`⚠ Covered, but thin — ${peso(gap)} cushion`:"✓ Cash covers all payables overdue or due within 30 days"}
+                      </span>
+                      <span style={{fontSize:".72rem",fontWeight:700,color:"#475569"}}>{due30>0?`${ratio.toFixed(2)}× coverage`:"Nothing due"}</span>
+                    </div>
+                    <div style={{height:7,background:"#e2e8f0",borderRadius:4,overflow:"hidden",margin:"8px 0"}} title="Share of spendable cash already committed to payables overdue or due within 30 days">
+                      <div style={{width:pct+"%",height:"100%",background:tone.bar,transition:"width .3s"}}/>
                     </div>
                     <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:"2px 16px",fontSize:".7rem",color:"#475569"}}>
                       <span>Spendable operating cash (book): <strong>{peso(spendable)}</strong></span>
-                      <span>Due within 30 days: <strong>{peso(due30)}</strong></span>
-                      <span style={{fontWeight:700,color:covered?"#15803d":"#b91c1c"}}>{covered?"Surplus":"Shortfall"}: {peso(Math.abs(gap))}</span>
+                      <span>Overdue + due within 30 days: <strong>{peso(due30)}</strong></span>
+                      <span style={{fontWeight:700,color:tone.fg}}>{covered?"Surplus":"Shortfall"}: {peso(Math.abs(gap))}</span>
                     </div>
                   </div>
                   {payAging.undatedCount>0&&(
                     <div style={{marginTop:8,fontSize:".68rem",color:"#b45309",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:7,padding:"7px 10px"}}>
-                      ⚠ {payAging.undatedCount} open payable{payAging.undatedCount!==1?"s":""} ({peso(payAging.undated)}) {payAging.undatedCount!==1?"have":"has"} no due date — not counted in the 30-day coverage above. Add due dates so this figure is complete.
+                      ⚠ {payAging.undatedCount} open payable{payAging.undatedCount!==1?"s":""} ({peso(payAging.undated)}) can't be dated — not counted in the 30-day coverage above{payAging.age.a60+payAging.age.a90+payAging.age.a90p>0?`, and ${peso(payAging.age.a60+payAging.age.a90+payAging.age.a90p)} of it is already over 30 days old`:""}. Fill the supplier terms below to firm up this figure.
                     </div>
                   )}
+                  {/* 3 · Fix list — vendors whose terms are missing */}
+                  {payAging.fixList.length>0&&(<>
+                    {subHdr(`Fix list · ${payAging.fixList.length} vendor${payAging.fixList.length!==1?"s":""} holding up the forecast (fix once in Supplier / Subcon master)`)}
+                    <div style={{overflowX:"auto",border:`1px solid ${C.grid}`,borderRadius:8}}>
+                      <table style={{width:"100%",borderCollapse:"collapse",fontSize:".72rem"}}>
+                        <thead><tr style={{background:"#f8fafc"}}>
+                          {["Vendor","Problem","Bills","Open balance"].map((h,i)=><th key={h} style={{padding:"6px 10px",textAlign:i>=2?"right":"left",fontSize:".58rem",textTransform:"uppercase",letterSpacing:".5px",color:"#94a3b8",fontWeight:700,borderBottom:`1px solid ${C.grid}`}}>{h}</th>)}
+                        </tr></thead>
+                        <tbody>
+                          {fixShown.map(f=>(
+                            <tr key={f.vendor}>
+                              <td style={{padding:"6px 10px",borderBottom:`1px solid ${C.grid}`,color:"#0f172a",fontWeight:600}}>{f.vendor}</td>
+                              <td style={{padding:"6px 10px",borderBottom:`1px solid ${C.grid}`}}><span style={{fontSize:".62rem",fontWeight:700,borderRadius:20,padding:"1px 8px",whiteSpace:"nowrap",...(f.why==="Not in supplier list"?{color:"#b91c1c",background:"#fef2f2",border:"1px solid #fecaca"}:{color:"#b45309",background:"#fffbeb",border:"1px solid #fde68a"})}}>{f.why}</span></td>
+                              <td style={{padding:"6px 10px",borderBottom:`1px solid ${C.grid}`,textAlign:"right",fontVariantNumeric:"tabular-nums"}}>{f.count}</td>
+                              <td style={{padding:"6px 10px",borderBottom:`1px solid ${C.grid}`,textAlign:"right",fontVariantNumeric:"tabular-nums",fontWeight:700}}>{peso(f.bal)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {payAging.fixList.length>8&&(
+                      <button onClick={()=>setShowAllFix(v=>!v)} style={{marginTop:6,background:"none",border:"none",color:"#2563eb",fontFamily:"inherit",fontWeight:700,fontSize:".68rem",cursor:"pointer",padding:0}}>
+                        {showAllFix?"Show top 8 only":`Show all ${payAging.fixList.length} vendors`}
+                      </button>
+                    )}
+                  </>)}
+                  <div style={{marginTop:8,fontSize:".6rem",color:"#94a3b8"}}>
+                    EST = due date estimated as bill date (invoice date, else date encoded) + vendor payment terms. Cash Basis = 0 days; a range like "30–45 Days" uses the shorter term.
+                  </div>
                 </div>
               </div>
             );

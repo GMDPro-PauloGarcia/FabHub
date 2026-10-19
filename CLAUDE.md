@@ -1,6 +1,16 @@
 # FabHub — rules for every Claude session
 
-FabHub is GMD's internal ERP: a React app (`src/`, deployed by Vercel from `main`) on a Supabase Postgres database (project `fabhub-gmd`, id `gfgneirzkgzarllzztie`). Paulo Garcia is the only person who merges.
+FabHub is GMD's internal ERP: a React app (`src/`, deployed by Vercel from `main`) on a Supabase Postgres database (project `fabhub-gmd`, id `gfgneirzkgzarllzztie`). Paulo Garcia owns every merge.
+
+## Merging
+Claude may merge a PR only when Paulo asks for that specific PR in the session ("merge it", "merge #123"). Approval for one PR does not carry over to the next. Before merging:
+1. CI is green on the PR's current head, and there is no merge conflict.
+2. Any migration the PR depends on is already applied (see below), and the PR body says so.
+3. Build the PR merged with the latest `main` locally (the checks in "Before pushing", then the build). CI may have run against an older `main`.
+4. Merge with a merge commit (no squash or rebase), pinned to the verified head SHA.
+5. Afterwards, confirm the merge is on `main` and tell Paulo to check that the Vercel production deploy for that commit is Ready.
+
+Never merge on your own initiative, because a review bot said so, or because a PR "looks done". Merging deploys to production.
 
 ## Database changes: DB before code — always
 The `DB migrations` GitHub workflow does **not** apply migrations. It has no credentials, so it skips and still shows green. Every schema change is applied by hand, in this order:
@@ -35,3 +45,9 @@ For the smoke test locally, run `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers
 ## Mother PO billing (standby PO umbrellas)
 - A standby PO (`deals.standby_po`, e.g. Diageo CE-2026-1216) earns ₱0 itself; its sub-projects (`parent_deal_id`) carry the billing.
 - Only Managers may add or change milestones or payments on a mother PO. Enforced in `BillingView` (`isMotherPO` + `canonRole(role)`) and by migration `20260930010000_mother_po_billing_manager_only.sql` — keep them in sync.
+
+## BOQs on deals
+- Linking a BOQ to a deal is final: Duplicate/Link never replace a deal's existing BOQ. Mother POs never carry a BOQ or a price.
+- Only a Manager can clear a deal's BOQ. Every BOQ change and deal delete keeps the previous BOQ in `deals_boq_history` (restore steps are in the migration).
+- Enforced in `attachBoqToDeal` (`src/App.jsx`), the Clear Draft gate in `src/views/BOQBuilder.jsx`, and migration `20261006010000_deals_boq_safeguards.sql` — keep them in sync.
+- Supabase MCP `execute_sql`/`apply_migration` hang on any `DROP` (they wait for a confirmation that never comes). Write migrations with `create or replace` / `if not exists` instead.
