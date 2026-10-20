@@ -77,3 +77,8 @@ For the smoke test locally, run `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers
 - Look up a deal's project code with `dealJo(jos, dealId)` (`src/core.js`), never `jos.find(...)`; it skips Void JOs and mirrors `deal_base_jo()`.
 - The awarded-stage list in `jo_awarded_stage()` mirrors `WON_STAGES` in `src/core.js`: keep them in sync.
 - Every JO edit and delete, including one cascaded from a deal delete, is kept in `audit_log` (`trg_audit_job_order`, `20261020070000`; restore steps are in the migration). `purchase_requests` has the same audit (`20261020010000`).
+
+## Down payment before production (POs / subcon work orders)
+- "NO DP = NO production": a PO can't move to `PO Issued` / `Partially Delivered` / `Delivered`, and a subcon work order to `Issued` / `In Progress` / `Completed`, on a client deal until the client has paid something on it or a Manager has waived the down payment (`deals.dp_waived_by/at/reason`, reason required, every change in `audit_log`).
+- A sub-project or addendum is clear when its parent deal is paid or waived; internal GMD jobs (client "GMD Productions…") and stock POs (no deal) are exempt. POs already issued are untouched.
+- Enforced in `dealDpClear` (`src/core.js`), the PO / SWO issue gates and `DpGate` (`src/App.jsx`), and migrations `20261020110000_po_require_down_payment.sql` (rule + waiver guard) / `20261020110100_po_require_down_payment_triggers.sql` (the blocks) — keep them in sync. Never add `dp_waived_*` to `toSbDeal`: a stale full-row save would trip the Manager-only guard; waivers save only through `waiveDp`.

@@ -853,6 +853,20 @@ export const scheduleSummary = (terms) => {
 // its own; its sub-projects carry the billing. Anything billed or collected on the
 // mother PO is usually a copy of a sub-project's and double-counts Collected.
 export const isMotherPO = (deal) => !!deal?.standbyPO;
+// "NO DP = NO production": a PO or subcon work order can only be issued on a
+// client deal once the client has paid something, or a Manager has waived the
+// down payment (credit-term clients). A sub-project or addendum is clear when
+// its parent deal is paid or waived; a mother PO once any sub-project is; internal
+// GMD jobs and stock POs (no deal) are always clear. Enforced in the database
+// by migrations 20261020110000 / 20261020110100 — keep in sync.
+export const dealDpClear = (deal, deals = []) => {
+  if (!deal) return true;
+  if (/^GMD Production/i.test(deal.client || "")) return true;
+  if (deal.dpWaivedAt || Number(deal.amountPaid) > 0) return true;
+  const parent = deal.parentDealId && deals.find(d => d.id === deal.parentDealId);
+  if (parent && (parent.dpWaivedAt || Number(parent.amountPaid) > 0)) return true;
+  return !!deal.standbyPO && deals.some(c => c.parentDealId === deal.id && (c.dpWaivedAt || Number(c.amountPaid) > 0));
+};
 const _familyRoot = (dealId, byId) => { const d = byId.get(dealId); return d?.parentDealId || dealId; };
 // The same money already recorded in this contract family (the mother PO / main
 // contract and everything linked under it): same amount to the centavo on the

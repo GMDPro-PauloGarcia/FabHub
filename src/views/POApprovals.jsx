@@ -1,6 +1,6 @@
 import React,{useState,useMemo} from "react";
 import {uiConfirm} from "../shared";
-import {canApprovePO} from "../core";
+import {canApprovePO,dealDpClear} from "../core";
 
 // ─── PO APPROVALS (Purchase Orders page) ───────────────────────────────────
 // Since 19 Sep 2026 only a Manager, a Procurement Manager or a designated PO
@@ -35,7 +35,11 @@ export default function POApprovals({prs=[],deals=[],role,session,poApprovers=""
       .map(([no,ls])=>{
         const f=ls[0];
         const gross=ls.reduce((s,i)=>s+(num(i.actUnitCost)||num(i.estUnitCost))*num(i.qty),0);
+        // "NO DP = NO production": can't be issued while any line's deal has no
+        // payment and no Manager waiver (dealDpClear; the database refuses it too).
+        const held=ls.map(l=>deals.find(x=>x.id===(l.projectId||l.dealId))).find(d=>d&&!dealDpClear(d,deals));
         return{no,lines:ls.length,supplier:f.supplier||"",project:f.projectName||dealName(f.projectId||f.dealId)||"GMD Stock",
+          dpHold:held?(held.ceNo||held.client||"this project"):"",
           requestedBy:f.requestedBy||"",date:f.poDate||f.createdDate||String(f.createdAt||"").slice(0,10),gross:Math.round(gross*(f.withVat?1.12:1))};
       })
       .sort((a,b)=>String(a.date).localeCompare(String(b.date)));
@@ -48,9 +52,9 @@ export default function POApprovals({prs=[],deals=[],role,session,poApprovers=""
   const shown=rows.slice(0,limit);
   const picked=pos.filter(p=>sel.has(p.no));
   const pickedTotal=picked.reduce((s,p)=>s+p.gross,0);
-  const allShown=shown.length>0&&shown.every(p=>sel.has(p.no));
+  const allShown=shown.some(p=>!p.dpHold)&&shown.filter(p=>!p.dpHold).every(p=>sel.has(p.no));
   const toggle=no=>setSel(prev=>{const n=new Set(prev);n.has(no)?n.delete(no):n.add(no);return n;});
-  const toggleShown=()=>setSel(prev=>{const n=new Set(prev);shown.forEach(p=>allShown?n.delete(p.no):n.add(p.no));return n;});
+  const toggleShown=()=>setSel(prev=>{const n=new Set(prev);shown.filter(p=>!p.dpHold).forEach(p=>allShown?n.delete(p.no):n.add(p.no));return n;});
   const approve=async()=>{
     if(!picked.length||busy) return;
     if(!(await uiConfirm({title:`Approve ${picked.length} PO${picked.length>1?"s":""}`,confirmLabel:"Approve and issue",
@@ -93,9 +97,9 @@ export default function POApprovals({prs=[],deals=[],role,session,poApprovers=""
             <tbody>
               {shown.map(p=>(
                 <tr key={p.no} style={{borderTop:"1px solid #f1f5f9",background:sel.has(p.no)?"#f0fdf4":undefined}}>
-                  <td style={td}><input type="checkbox" aria-label={`Select PO ${p.no}`} checked={sel.has(p.no)} onChange={()=>toggle(p.no)}/></td>
+                  <td style={td}><input type="checkbox" aria-label={`Select PO ${p.no}`} checked={sel.has(p.no)} disabled={!!p.dpHold} title={p.dpHold?"No down payment yet: a Manager must waive it on the deal first":undefined} onChange={()=>toggle(p.no)}/></td>
                   <td style={td}><div style={{fontWeight:700,color:"#0f172a"}}>{p.no}</div><div style={{fontSize:".68rem",color:"#94a3b8"}}>{p.date||"—"} · {p.lines} line{p.lines>1?"s":""}</div></td>
-                  <td style={td}><div style={{fontWeight:600,color:"#0f172a"}}>{p.supplier||"—"}</div><div style={{fontSize:".7rem",color:"#64748b"}}>{p.project}</div></td>
+                  <td style={td}><div style={{fontWeight:600,color:"#0f172a"}}>{p.supplier||"—"}</div><div style={{fontSize:".7rem",color:"#64748b"}}>{p.project}</div>{p.dpHold&&<div style={{fontSize:".68rem",color:"#b91c1c",fontWeight:700,marginTop:2}}>No down payment yet on {p.dpHold}: waive it on the deal first</div>}</td>
                   <td style={{...td,color:"#475569"}}>{p.requestedBy||"—"}</td>
                   <td style={{...td,textAlign:"right",fontWeight:800,whiteSpace:"nowrap"}}>{pesoAmt(p.gross)}</td>
                 </tr>
