@@ -10,6 +10,8 @@ Claude may merge a PR only when Paulo asks for that specific PR in the session (
 4. Merge with a merge commit (no squash or rebase), pinned to the verified head SHA.
 5. Afterwards, confirm the merge is on `main` and tell Paulo to check that the Vercel production deploy for that commit is Ready.
 
+When Paulo asks for several PRs ("merge #380 then #381"), merge them one at a time in the order he gives. Before each one, rebuild it on top of the `main` that the previous merge produced (steps 1–4), and wait until that previous merge's Vercel production deploy is Ready. Naming several PRs approves only those PRs.
+
 Never merge on your own initiative, because a review bot said so, or because a PR "looks done". Merging deploys to production.
 
 ## Database changes: DB before code — always
