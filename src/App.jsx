@@ -8,7 +8,7 @@ import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDa
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -2767,7 +2767,7 @@ function AddendaPageContent({role,wonDeals,deals,jos,session,addenda,upAddenda,u
   const canApprove=["Manager","Sales","Operations","ProjectMover","SalesOpsAdmin"].includes(role)&&typeof updateAddendum==="function";
   const myName=session?.name||"";
   const myProjects=wonDeals.filter(d=>{
-    const jo=jos.find(j=>j.dealId===d.id);
+    const jo=dealJo(jos,d.id);
     return jo&&[jo.pm1,jo.pm2,jo.pm3,jo.coordinator].filter(Boolean).some(p=>
       p===myName||p.toLowerCase().includes((myName||"").split(" ")[0]?.toLowerCase()||""));
   });
@@ -4574,7 +4574,7 @@ export default function App(){
               idbE.push([KEYS.deals,_deals]);
             }
             const _jos=data.jos?.length?data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})):null;
-            if(_jos){setJos(prev=>mlo(_jos,prev));idbE.push([KEYS.jos,_jos]);}
+            if(_jos){setJos(prev=>mlo(_jos,dropStaleJos(_jos,prev)));idbE.push([KEYS.jos,_jos]);}
             if(Object.keys(data.pcards||{}).length){setPcards(prev=>mergeLocalOnlyObj(data.pcards,prev));idbE.push([KEYS.pcards,data.pcards]);}
             const mapSbPayment=p=>({...p,milestoneId:p.milestone_id??p.milestoneId,refNo:p.ref_no??p.refNo,recordedBy:p.recorded_by??p.recordedBy,valueDate:p.value_date??p.valueDate,method:p.payment_method??p.method,bounced:!!(p.bounced??false)});
             const _billings=data.billings?.length?data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by,receiptType:m.receipt_type||null,withholding:m.withholding??null,retentionHeld:m.retention_held!=null?Number(m.retention_held):undefined,isRetentionRelease:m.is_retention_release||undefined,plannedDate:m.planned_bill_date||undefined,msType:m.ms_type||undefined,payments:(m.payments||[]).map(mapSbPayment)})):null;
@@ -4689,6 +4689,7 @@ export default function App(){
               const sbDealIds=new Set((data.deals||[]).map(d=>d.id));
               const sbPrIds=new Set((data.prs||[]).map(r=>r.id));
               const sbJoIds=new Set((data.jos||[]).map(j=>j.id));
+              const sbJos=(data.jos||[]).map(j=>({id:j.id,joNo:j.jo_no}));
               const sbSwoIds=new Set((data.swos||[]).map(s=>s.id));
               const sbMrIds=new Set((data.mreqs||[]).map(r=>r.id));
               const sbBrIds=new Set((data.breqs||[]).map(r=>r.id));
@@ -4704,7 +4705,7 @@ export default function App(){
                 return localPrs;
               });
               setJos(localJos=>{
-                const missing=localJos.filter(j=>uuidRe.test(j.id||"")&&!sbJoIds.has(j.id));
+                const missing=dropStaleJos(sbJos,localJos).filter(j=>uuidRe.test(j.id||"")&&!sbJoIds.has(j.id));
                 if(missing.length){console.info("[FabHub] Auto-syncing",missing.length,"local-only JOs to Supabase");missing.forEach(j=>sbSyncOne("job_orders",j,toSbJO));}
                 return localJos;
               });
@@ -4890,7 +4891,7 @@ export default function App(){
         // overwrite here was the single biggest way to lose a just-added record
         // that hadn't synced yet (e.g. still in flight when the user tabbed away).
         if(data?.deals?.length) setDeals(prev=>mlo(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,standbyPO:d.standby_po||false,poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,signedCeUrl:d.signed_ce_url||"",signedCeOnFile:d.signed_ce_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})),prev));
-        if(data?.jos?.length) setJos(prev=>mlo(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no})),prev));
+        if(data?.jos?.length){const js=data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no}));setJos(prev=>mlo(js,dropStaleJos(js,prev)));}
         if(Object.keys(data?.pcards||{}).length) setPcards(prev=>mergeLocalOnlyObj(data.pcards,prev));
         // Map the same camelCase fields the initial load does. Omitting dueDate
         // (leaving only the raw due_date) made the Field Board — which filters on
@@ -4924,7 +4925,7 @@ export default function App(){
     // moment a blind overwrite would erase the very record they're trying to
     // recover.
     if(data.deals?.length){const ds=data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,standbyPO:d.standby_po||false,poBudget:d.standby_po?(Number(d.po_budget)||0):"",leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,boqData:d.boq_data||null,bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,signedCeUrl:d.signed_ce_url||"",signedCeOnFile:d.signed_ce_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null}));setDeals(prev=>mlo(ds,prev));idbE.push([KEYS.deals,ds]);}
-    if(data.jos?.length){const js=data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned}));setJos(prev=>mlo(js,prev));idbE.push([KEYS.jos,js]);}
+    if(data.jos?.length){const js=data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned}));setJos(prev=>mlo(js,dropStaleJos(js,prev)));idbE.push([KEYS.jos,js]);}
     if(Object.keys(data.pcards||{}).length){setPcards(data.pcards);idbE.push([KEYS.pcards,data.pcards]);}
     if(data.billings?.length){const bs=data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by,retentionHeld:m.retention_held!=null?Number(m.retention_held):undefined,isRetentionRelease:m.is_retention_release||undefined,plannedDate:m.planned_bill_date||undefined,msType:m.ms_type||undefined,payments:(m.payments||[]).map(p=>({...p,milestoneId:p.milestone_id??p.milestoneId,refNo:p.ref_no??p.refNo,recordedBy:p.recorded_by??p.recordedBy,valueDate:p.value_date??p.valueDate,method:p.payment_method??p.method,bounced:!!(p.bounced??false)}))}));setBillings(prev=>mlo(bs,prev));idbE.push([KEYS.billings,bs]);}
     if(data.exps?.length){const mappedExps=data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,createdBy:e.created_by,bankAccount:e.bank_account||"",expDate:e.date||null,poRef:e.po_ref||"",payee:e.supplier||"",vatable:e.vatable??undefined,inputVat:e.input_vat!=null?Number(e.input_vat):undefined,ewtRate:e.ewt_rate!=null?Number(e.ewt_rate):undefined,ewtAmount:e.ewt_amount!=null?Number(e.ewt_amount):undefined,netAmount:e.net_amount!=null?Number(e.net_amount):undefined,month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};});setExps(prev=>mlo(mappedExps,prev));idbE.push([KEYS.expenses,mappedExps]);}
@@ -6218,7 +6219,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           specialInstructions:rec.special_instructions,designer:rec.designer||"",
           location:rec.location||"",budgetStatus:rec.budget_status,
           issuedDate:rec.issued_date,aeAssigned:rec.ae_assigned};
-        setJos(js=>{const ex=js.find(j=>j.id===rec.id);
+        setJos(prev=>{const js=dropStaleJos([mapped],prev);const ex=js.find(j=>j.id===rec.id);
           return ex?js.map(j=>j.id===rec.id?{...j,...mapped}:j):[...js,mapped];});
       }
       if(eventType==='DELETE') setJos(js=>js.filter(j=>j.id!==oldRow.id));
@@ -7018,7 +7019,6 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     upAddenda(as=>as.filter(a=>a.id!==id));
     if(isSupabaseReady()) sbDelete('addenda',id).catch(()=>{});
   };
-  const delJo        =(id)=>{const jo=jos.find(j=>j.id===id);upJos(js=>js.filter(j=>j.id!==id));if(isSupabaseReady()) sbDelete('job_orders',id).catch(()=>{});logActivity(id,"JO Deleted",`JO ${jo?.joNo||id} deleted`,session?.name||role);};
   const updateJO     =(id,changes)=>{upJos(js=>js.map(j=>{if(j.id!==id)return j;const u={...j,...changes};if(isSupabaseReady())sbSyncOne("job_orders",u,toSbJO);return u;}));}
   const delMR        =(id)=>{
     const mr=mreqs.find(m=>m.id===id);
@@ -7998,10 +7998,6 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   useEffect(()=>{if(session&&page)sessionStorage.setItem("gmd:lastPage",page);},[page,session]);
   const smartImportInputRef=useRef(null);
   showExportRef.current=showExport;
-  const[joStep,     setJoStep]     =useState("select");
-  const[joSel,      setJoSel]      =useState(null);
-  const[joExtra,    setJoExtra]    =useState({address:"",phone:"",priority:"Normal",extraNotes:""});
-  const[viewJO,     setViewJO]     =useState(null);
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   const openAddDeal=()=>{setDealForm({...emptyDeal,ceNo:nextCENo()});setEditDeal(null);setDealModal(true);};
@@ -8496,7 +8492,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // Update deal — payment is Unpaid (Finance will bill separately)
     const awardedDate=form.triggerDate||today;
     const savingToastId=isSupabaseReady()?toastEmit(`⏳ Awarding ${awardModal.client} — saving to server…`,"pending",15000):null;
-    const joNo=await claimDocNumber("JO",jos.map(j=>j.joNo),4,true);
+    // The JO number is the project code and the database issues it: a blank
+    // number lets trg_job_orders_adopt_auto keep the JO the deal got when it
+    // reached Kickoff (or give a child deal its parent's JO + -01), and
+    // trg_job_orders_assign_no number anything else. Read back after sync.
+    const joNo="";
     upDeals(ds=>ds.map(d=>d.id===id?{...d,
       stage:"06 · Kickoff",
       probability:100,
@@ -8574,6 +8574,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(isSupabaseReady()){
       const joOk=await sbSyncOne("job_orders",jo,toSbJO);
       stepResults.push({label:"Job Order",ok:joOk});
+      if(joOk){
+        try{
+          const{data:joRow}=await supabase.from('job_orders').select('jo_no').eq('id',jo.id).maybeSingle();
+          if(joRow?.jo_no){jo.joNo=joRow.jo_no;upJos(js=>dropStaleJos([jo],js).map(j=>j.id===jo.id?{...j,joNo:joRow.jo_no}:j));}
+        }catch(e){ /* the number still arrives over realtime */ }
+      }
     }
     // Create project card with PM/AE pre-populated — awaited so Ops/Sales
     // don't see "awarded" without the department task checklists existing yet.
@@ -8619,7 +8625,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       stepResults.push({label:"Starting Budget",ok:budgetOk});
     }
     // Log
-    logActivity(id,"Project Awarded",`${awardModal.client} — JO ${jo.joNo} issued. PM: ${pmDisplay}. AE: ${jo.aeAssigned||"—"}. Awarded by: ${session?.name}.`,session?.name);
+    logActivity(id,"Project Awarded",`${awardModal.client} — JO ${jo.joNo||"(number pending sync)"} issued. PM: ${pmDisplay}. AE: ${jo.aeAssigned||"—"}. Awarded by: ${session?.name}.`,session?.name);
     // Notify ALL departments
     sendToAllChannels(
       `🏆 <b>PROJECT AWARDED!</b>\n\n` +
@@ -8631,7 +8637,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       `\n👷 PM: ${pmDisplay}\n` +
       `🤝 AE: ${jo.aeAssigned||"—"}\n` +
       (jo.designer?`🎨 Designer: ${jo.designer}\n`:"")+
-      `📋 JO: ${jo.joNo}\n` +
+      `📋 JO: ${jo.joNo||"(number pending sync)"}\n` +
       (jo.startDate?`🗓 Target Turnover: ${jo.startDate}\n`:"")+
       `Awarded by: ${session?.name||"Manager"}\n` +
       (form.scopeNotes?`\n📝 Scope:\n${form.scopeNotes}\n`:"")+
@@ -9474,20 +9480,6 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     }
     setDesignModal(false);
   };
-  const issueJO=()=>{
-    const d=deals.find(x=>x.id===joSel),p=projs[joSel];
-    // An addendum / linked deal must never spin up its own Job Order — added
-    // scope belongs to the parent project. Steer it to the change-order flow.
-    if(d?.parentDealId){
-      const par=deals.find(x=>x.id===d.parentDealId);
-      toastEmit(`"${d.contact||d.client}" is an addendum of ${par?.client||"another project"}${par?.ceNo?` (${par.ceNo})`:""}. Don't issue a separate Job Order for it — the added scope runs under the parent project's Job Order.`,"error",9000);
-      return;
-    }
-    const matT=(p?.materials||[]).reduce((s,m)=>s+m.cost,0);
-    const totC=p?matT+(p.laborCost||0)+(p.overhead||0):0;
-    const jo={joNum:`JO-${new Date().getFullYear()}-${String(jos.length+1).padStart(3,"0")}`,dateIssued:todayL,deal:d,project:p,matTotal:matT,totalCost:totC,...joExtra};
-    upJos(j=>[jo,...j]);setViewJO(jo);setJoStep("preview");
-  };
 
   // ── SHARED NAV ────────────────────────────────────────────────────────────
   const roleColor=ROLE_CLR[role]||"#64748b";
@@ -9622,7 +9614,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       const icon=NAV_ICONS[id]||NAV_ICONS[l]||"•";
       const fav=favNav.includes(id);
       return(
-        <button key={id} onClick={()=>{if(id==="payables"){setPage("finance");setFinTab("payables");}else if(id==="cashposition"){setPage("finance");setFinTab("cash");}else if(id==="executive"){setPage("finance");setFinTab("overview");}else if(id==="finance"){setPage("acctdash");}else{setPage(id);}setSelProj(null);setJoStep("select");setDealModal(false);setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(null);}}
+        <button key={id} onClick={()=>{if(id==="payables"){setPage("finance");setFinTab("payables");}else if(id==="cashposition"){setPage("finance");setFinTab("cash");}else if(id==="executive"){setPage("finance");setFinTab("overview");}else if(id==="finance"){setPage("acctdash");}else{setPage(id);}setSelProj(null);setDealModal(false);setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(null);}}
           title={collapsed?l:""}
           style={{display:"flex",alignItems:"center",gap:10,width:"100%",border:"none",borderRadius:0,padding:collapsed?"10px 0":"8px 16px",justifyContent:collapsed?"center":"flex-start",background:active?"rgba(245,158,11,.15)":"transparent",color:active?"#f59e0b":"#94a3b8",fontFamily:"inherit",fontSize:".82rem",fontWeight:active?700:400,cursor:"pointer",borderLeft:active?"3px solid #f59e0b":"3px solid transparent",transition:"all .12s"}}>
           <span style={{fontSize:"1rem",flexShrink:0}}>{icon}</span>
@@ -9794,7 +9786,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       else if(id==="payables"){setFinTab("payables");pg="finance";}
       else if(id==="executive"){setFinTab("overview");pg="finance";}
       else if(id==="finance"){pg="acctdash";} // Finance home = ERP operational dashboard
-      setPage(pg);setSelProj(null);setJoStep("select");setDealModal(false);setMoreNavOpen(false);setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(null);if(id==="home")setFromHome(false);
+      setPage(pg);setSelProj(null);setDealModal(false);setMoreNavOpen(false);setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(null);if(id==="home")setFromHome(false);
     };
     // Favorites (if the user set any) drive the mobile bottom bar and lead the More sheet,
     // matching the desktop sidebar. Only ids present in this role's nav are kept.
@@ -10641,7 +10633,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           const contractVal=Number(d.value||0);
           const projectedCost=budgetTotal>0?Math.max(spent,budgetTotal):spent;
           const margin=contractVal>0?Math.round((contractVal-projectedCost)/contractVal*100):null;
-          const jo=jos.find(j=>j.dealId===d.id);
+          const jo=dealJo(jos,d.id);
           return{d,margin,spent,budgetTotal,contractVal,jo,isAuto:b?.autoGenerated,needsReview:b?.autoGenerated};
         }).filter(x=>x.contractVal>0);
 
@@ -10718,7 +10710,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 const b=budgets[d.id];
                 const total=(b.Materials||0)+(b.Labor||0)+(b.Overhead||0)+(b.Subcon||0);
                 const margin=Number(d.value||0)>0?Math.round((Number(d.value||0)-total)/Number(d.value||0)*100):0;
-                const jo=jos.find(j=>j.dealId===d.id);
+                const jo=dealJo(jos,d.id);
                 return(
                   <div key={d.id} onClick={()=>setPage("costanalysis")} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:i<autoBudgets.length-1?"1px solid #dbeafe":"",cursor:"pointer",background:"#fff"}}
                     onMouseEnter={e=>e.currentTarget.style.background="#eff6ff"}
@@ -11001,7 +10993,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const myName=session?.name||"";
         const firstWord=(myName||"").split(" ")[0]?.toLowerCase()||"";
         const myProjects=wonDeals.filter(d=>{
-          const jo=jos.find(j=>j.dealId===d.id);
+          const jo=dealJo(jos,d.id);
           return jo&&[jo.pm1,jo.pm2,jo.pm3,jo.coordinator].filter(Boolean).some(p=>p===myName||p.toLowerCase().includes(firstWord));
         });
         const display=myProjects.length>0?myProjects:wonDeals;
@@ -11101,7 +11093,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               {display.length===0&&<div style={{padding:"20px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No active projects assigned to you.</div>}
               {display.slice(0,8).map((d,i)=>{
                 const pc=pcards[d.id];
-                const jo=jos.find(j=>j.dealId===d.id);
+                const jo=dealJo(jos,d.id);
                 const depsTotal=Object.values(pc?.departments||{}).length||6;
                 const depsDone=Object.values(pc?.departments||{}).filter(dept=>dept.done).length;
                 const pct=Math.round(depsDone/depsTotal*100);
@@ -11280,7 +11272,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   const hist=p?.design?.statusHistory||[];
                   const revEntry=[...hist].reverse().find(h=>h.status==="Revision");
                   const days=revEntry?Math.floor((now-new Date(revEntry.date))/(1000*60*60*24)):null;
-                  const jo=jos.find(j=>j.dealId===d.id);
+                  const jo=dealJo(jos,d.id);
                   return(
                     <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:i<stuckInRevision.length-1?"1px solid #fee2e2":"",background:"#fff"}}>
                       <div>
@@ -11400,7 +11392,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {(()=>{
         const myName=session?.name||"";
         const myProjects=wonDeals.filter(d=>{
-          const jo=jos.find(j=>j.dealId===d.id);
+          const jo=dealJo(jos,d.id);
           return jo&&[jo.pm1,jo.pm2,jo.pm3,jo.coordinator].filter(Boolean).some(p=>
             p===myName||p.toLowerCase().includes((myName||"").split(" ")[0]?.toLowerCase()||""));
         });
@@ -11442,7 +11434,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       return da-db;
                     })
                     .map((d,i)=>{
-                      const jo=jos.find(j=>j.dealId===d.id);
+                      const jo=dealJo(jos,d.id);
                       const pc=pcards[d.id];
                       const pct=pc?Math.round(Object.values(pc.departments||{}).filter(dept=>dept.done).length/6*100):0;
                       const daysLeft=pc?.targetEndDate?Math.ceil((new Date(pc.targetEndDate)-today2)/(1000*60*60*24)):null;
@@ -11496,7 +11488,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   <span style={{fontSize:".72rem",color:"rgba(255,255,255,.5)"}}>Read-only</span>
                 </div>
                 {otherProjects.slice(0,5).map((d,i)=>{
-                  const jo=jos.find(j=>j.dealId===d.id);
+                  const jo=dealJo(jos,d.id);
                   const pc=pcards[d.id];
                   const pct=pc?Math.round(Object.values(pc.departments||{}).filter(dept=>dept.done).length/6*100):0;
                   return(
@@ -11707,7 +11699,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 ?<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>✅ No overdue projects</div>
                 :overdueProjects.sort((a,b)=>new Date(pcards[a.id]?.targetEndDate||0)-new Date(pcards[b.id]?.targetEndDate||0)).slice(0,6).map((d,i)=>{
                   const pc=pcards[d.id];
-                  const jo=jos.find(j=>j.dealId===d.id);
+                  const jo=dealJo(jos,d.id);
                   const daysOver=Math.ceil((today2-new Date(pc.targetEndDate))/(1000*60*60*24));
                   return(<div key={d.id} onClick={()=>setPage("projects")} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 14px",borderBottom:i<5?"1px solid #f8fafc":"",cursor:"pointer"}}
                     onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
@@ -14204,7 +14196,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 // project type inline (not just via its group header).
                 const TYPE_CLR_PIPE={"Fabrication / General":"#0891b2","Construction":"#b45309","Retail Fit-Out":"#7c3aed","Kiosk":"#0d9488","Signage":"#db2777","Event / Activation":"#e11d48","Repair / Refurbishment":"#4f46e5","Other":"#64748b"};
                 const AwardRow=({d,isChild=false})=>{
-                  const jo=jos.find(j=>j.dealId===d.id);
+                  const jo=dealJo(jos,d.id);
                   const pc=pcards[d.id];
                   // Award date is editable inline (Manager/Sales/SalesOpsAdmin) so a
                   // mis-dated award can be corrected without a DB touch — it drives the
@@ -16395,7 +16387,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   <div style={{background:"#dc2626",padding:"10px 16px"}}><span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>🚨 Due Today — Receive and Inspect ({arrivedToday.length})</span></div>
                   {arrivedToday.map((pr,i)=>{
                     const d=wonDeals.find(x=>x.id===pr.projectId);
-                    const joW=jos.find(j=>j.dealId===pr.projectId);
+                    const joW=dealJo(jos,pr.projectId);
                     const pmW=pcards[pr.projectId]?.pm1||joW?.pm1;
                     return(
                       <div key={pr.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",borderBottom:i<arrivedToday.length-1?"1px solid #fee2e2":"",background:"#fff"}}>
@@ -16421,7 +16413,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   <div style={{background:"#d97706",padding:"10px 16px"}}><span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>⏰ Overdue — Follow Up with Procurement ({overdueDeliveries.length})</span></div>
                   {overdueDeliveries.map((pr,i)=>{
                     const d=wonDeals.find(x=>x.id===pr.projectId);
-                    const joW=jos.find(j=>j.dealId===pr.projectId);
+                    const joW=dealJo(jos,pr.projectId);
                     const pmW=pcards[pr.projectId]?.pm1||joW?.pm1;
                     const daysLate=Math.ceil((now-new Date(pr.deliveryDate))/(1000*60*60*24));
                     return(
@@ -16913,7 +16905,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {(()=>{
         const myName=session?.name||"";
         const myProjects=wonDeals.filter(d=>{
-          const jo=jos.find(j=>j.dealId===d.id);
+          const jo=dealJo(jos,d.id);
           return jo&&[jo.pm1,jo.pm2,jo.pm3,jo.coordinator].filter(Boolean).some(p=>
             p===myName||p.toLowerCase().includes((myName||"").split(" ")[0]?.toLowerCase()||""));
         });
@@ -16922,7 +16914,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           : (
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
               {myProjects.map(d=>{
-                const jo=jos.find(j=>j.dealId===d.id);
+                const jo=dealJo(jos,d.id);
                 const pc=pcards[d.id];
                 const pct=pc?Math.round(Object.values(pc.departments||{}).filter(dept=>dept.done).length/6*100):0;
                 const myUpdates=actLog.filter(a=>a.dealId===d.id&&a.action==="PM Update").slice(0,3);
@@ -20032,208 +20024,6 @@ function ProcurementView({swatches,projList,clientName,openAddSwatch,openEditSwa
       {shown.length===0&&<EmptyState icon="🛒" msg={`No ${filter==="All"?"items":filter.toLowerCase()} in the swatchboard yet.`}/>}
     </div>
   );
-}
-
-// ─── JOB ORDERS VIEW ─────────────────────────────────────────────────────────
-function JOView({deals,wonDeals,projs,jos,joStep,setJoStep,joSel,setJoSel,joExtra,setJoExtra,viewJO,setViewJO,issueJO,overallProg,updateJO,delJo,role,Wrap}){
-  const canEdit=role==="Manager"||role==="Finance"||role==="Operations"||role==="SalesOpsAdmin";
-  const[editJOForm,setEditJOForm]=React.useState({});
-
-  if(joStep==="editjo"&&viewJO) return(
-    <Wrap>
-      <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:18}}>
-        <Btn variant="ghost" small onClick={()=>setJoStep("select")}>← Back</Btn>
-        <div style={{flex:1}}>
-          <div style={{fontWeight:800,color:"#0f172a"}}>Edit {viewJO.joNo||viewJO.joNum}</div>
-          <div style={{fontSize:".75rem",color:"#64748b"}}>{viewJO.client}</div>
-        </div>
-        <Btn variant="green" onClick={()=>{updateJO(viewJO.id,editJOForm);setJoStep("select");}}>✓ Save Changes</Btn>
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
-        <Card>
-          <div style={{fontWeight:700,color:"#0f172a",marginBottom:14}}>Team Assignment</div>
-          <Fld label="PM 1"><Inp value={editJOForm.pm1??viewJO.pm1??""} onChange={e=>setEditJOForm(p=>({...p,pm1:e.target.value}))} placeholder="Project Manager"/></Fld>
-          <Fld label="PM 2 (optional)"><Inp value={editJOForm.pm2??viewJO.pm2??""} onChange={e=>setEditJOForm(p=>({...p,pm2:e.target.value}))} placeholder="Second PM"/></Fld>
-          <Fld label="PM 3 (optional)"><Inp value={editJOForm.pm3??viewJO.pm3??""} onChange={e=>setEditJOForm(p=>({...p,pm3:e.target.value}))} placeholder="Third PM"/></Fld>
-          <Fld label="Coordinator"><Inp value={editJOForm.coordinator??viewJO.coordinator??""} onChange={e=>setEditJOForm(p=>({...p,coordinator:e.target.value}))} placeholder="Project Coordinator"/></Fld>
-          <Fld label="AE Assigned"><Inp value={editJOForm.aeAssigned??viewJO.aeAssigned??""} onChange={e=>setEditJOForm(p=>({...p,aeAssigned:e.target.value}))} placeholder="Account Executive"/></Fld>
-        </Card>
-        <div style={{display:"flex",flexDirection:"column",gap:14}}>
-          <Card>
-            <div style={{fontWeight:700,color:"#0f172a",marginBottom:14}}>Schedule & Links</div>
-            <Fld label="Start Date"><Inp type="date" value={editJOForm.startDate??viewJO.startDate??""} onChange={e=>setEditJOForm(p=>({...p,startDate:e.target.value}))}/></Fld>
-            <Fld label="Comms Group Link"><Inp type="url" value={editJOForm.commsLink??viewJO.commsLink??""} onChange={e=>setEditJOForm(p=>({...p,commsLink:e.target.value}))} placeholder="WhatsApp/Viber group link"/></Fld>
-            <Fld label="Status">
-              <Sel value={editJOForm.status??viewJO.status??"Active"} onChange={e=>setEditJOForm(p=>({...p,status:e.target.value}))}>
-                <option>Active</option><option>On Hold</option><option>Completed</option><option>Cancelled</option>
-              </Sel>
-            </Fld>
-          </Card>
-          <Card>
-            <div style={{fontWeight:700,color:"#0f172a",marginBottom:14}}>Notes</div>
-            <Fld label="Scope Notes"><Inp rows={3} value={editJOForm.scopeNotes??viewJO.scopeNotes??""} onChange={e=>setEditJOForm(p=>({...p,scopeNotes:e.target.value}))} placeholder="Scope of work…"/></Fld>
-            <Fld label="Special Instructions"><Inp rows={2} value={editJOForm.specialInstructions??viewJO.specialInstructions??""} onChange={e=>setEditJOForm(p=>({...p,specialInstructions:e.target.value}))} placeholder="Special instructions…"/></Fld>
-          </Card>
-        </div>
-      </div>
-    </Wrap>
-  );
-
-  if(joStep==="select") return(
-    <Wrap>
-      <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:16}}>
-        <div>
-          <SecHead title="Job Order Builder" sub="Select a Won deal to generate a job order"/>
-          {/* Addenda / linked deals are excluded — added scope runs under the
-              parent project's Job Order, so they never get their own. */}
-          {(()=>{const joEligible=wonDeals.filter(d=>!d.parentDealId),joAddenda=wonDeals.filter(d=>d.parentDealId);return(<>
-          {joAddenda.length>0&&(
-            <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"9px 13px",marginBottom:10,fontSize:".76rem",color:"#92400e"}}>
-              ⚠️ {joAddenda.length} linked deal{joAddenda.length!==1?"s":""} (addend{joAddenda.length!==1?"a":"um"}) hidden — these are addendums that run under their parent project's Job Order, not a separate one.
-            </div>
-          )}
-          {joEligible.map(d=>{const p=projs[d.id];return(
-            <Card key={d.id} onClick={()=>{setJoSel(d.id);setJoExtra({address:"",phone:"",priority:d.priority||"Normal",extraNotes:""});setJoStep("review");}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <div><div style={{fontWeight:700,color:"#0f172a"}}>{d.client}</div><div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{d.product} · {d.contact}</div></div>
-                <div style={{display:"flex",gap:7,alignItems:"center"}}><Badge label={d.paymentStatus} color={PAY_CLR[d.paymentStatus]}/><Badge label={p?.currentStage||"Design"} color={PROD_CLR[p?.currentStage||"Design"]}/><span style={{fontWeight:800,color:"#10b981"}}>{fmt(d.value)}</span></div>
-              </div>
-              {p&&<div style={{marginTop:10}}><ProgBar pct={overallProg(p)} color={PROD_CLR[p.currentStage]}/></div>}
-            </Card>
-          );})}
-          {joEligible.length===0&&<EmptyState icon="📋" msg="No won deals yet. Mark a deal as Won in the Pipeline first."/>}
-          </>);})()}
-        </div>
-        <div>
-          <SecHead title="Issued JOs"/>
-          {jos.map((jo,i)=>(
-            <Card key={i}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
-                <div style={{flex:1,cursor:"pointer"}} onClick={()=>{setViewJO(jo);setJoStep("preview");}}>
-                  <div style={{fontWeight:700,color:"#0f172a"}}>{jo.joNo||jo.joNum}</div>
-                  <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{jo.client||jo.deal?.client}</div>
-                  <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>{jo.issuedDate||jo.dateIssued}</div>
-                  {jo.pm1&&<div style={{fontSize:".68rem",color:"#3b82f6",marginTop:2}}>PM: {[jo.pm1,jo.pm2,jo.pm3].filter(Boolean).join(", ")}</div>}
-                </div>
-                <div style={{display:"flex",gap:5,flexShrink:0}}>
-                  <button onClick={e=>{e.stopPropagation();printJO(jo,deals);}}
-                    style={{background:"#1e293b",border:"none",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".72rem",color:"#fff",cursor:"pointer",fontWeight:600}}>
-                    🖨 Print
-                  </button>
-                  {canEdit&&<button onClick={e=>{e.stopPropagation();setViewJO(jo);setEditJOForm({});setJoStep("editjo");}}
-                    style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".72rem",color:"#1d4ed8",cursor:"pointer",fontWeight:600}}>
-                    ✏ Edit
-                  </button>}
-                  {canEdit&&<button onClick={async e=>{e.stopPropagation();if((await uiConfirm(`Delete ${jo.joNo||jo.joNum}? This cannot be undone.`)))delJo(jo.id);}}
-                    style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontWeight:600}}>
-                    🗑
-                  </button>}
-                </div>
-              </div>
-            </Card>
-          ))}
-          {jos.length===0&&<EmptyState icon="📄" msg="No JOs issued yet."/>}
-        </div>
-      </div>
-    </Wrap>
-  );
-  if(joStep==="review"){
-    const d=deals.find(x=>x.id===joSel),p=projs[joSel];
-    const matT=(p?.materials||[]).reduce((s,m)=>s+m.cost,0);
-    return(
-      <Wrap>
-        <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:18}}>
-          <Btn variant="ghost" small onClick={()=>setJoStep("select")}>← Back</Btn>
-          <div style={{flex:1}}><div style={{fontWeight:800,color:"#0f172a"}}>{d?.client} — Review Job Order</div><div style={{fontSize:".75rem",color:"#64748b"}}>All details auto-filled. Add any missing info below.</div></div>
-          <Btn variant="green" onClick={issueJO}>✓ Issue Job Order</Btn>
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
-          <Card>
-            <div style={{fontWeight:700,color:"#0f172a",marginBottom:14}}>Client Details</div>
-            {[["Client",d?.client],["Contact",d?.contact],["Product",d?.product],["Value",fmt(d?.value)],["Payment",d?.paymentStatus]].map(([l,v])=>(
-              <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:"1px solid #f1f5f9",fontSize:".85rem"}}><span style={{color:"#64748b"}}>{l}</span><span style={{fontWeight:600,color:"#0f172a"}}>{v}</span></div>
-            ))}
-            <div style={{marginTop:14}}>
-              <Fld label="Delivery Address"><Inp value={joExtra.address} onChange={e=>setJoExtra(x=>({...x,address:e.target.value}))} placeholder="Site / delivery address"/></Fld>
-              <Fld label="Contact Phone"><Inp value={joExtra.phone} onChange={e=>setJoExtra(x=>({...x,phone:e.target.value}))} placeholder="Client phone number"/></Fld>
-              <Fld label="Additional Notes"><Inp rows={3} value={joExtra.extraNotes} onChange={e=>setJoExtra(x=>({...x,extraNotes:e.target.value}))} placeholder="Special instructions…"/></Fld>
-            </div>
-          </Card>
-          <div>
-            <Card>
-              <div style={{fontWeight:700,color:"#0f172a",marginBottom:12}}>Production Stages</div>
-              {["Design","Fabrication","QC","Delivery"].map((s,i)=>{
-                const done=["Design","Fabrication","QC","Delivery"].indexOf(p?.currentStage||"Design")>i,cur=p?.currentStage===s;
-                return <div key={s} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #f1f5f9",fontSize:".83rem"}}><span style={{color:cur?PROD_CLR[s]:done?"#94a3b8":"#cbd5e1",fontWeight:cur?700:400}}>{s}</span><span style={{color:done?"#059669":cur?PROD_CLR[s]:"#94a3b8",fontSize:".75rem"}}>{done?"✓ Complete":cur?"In Progress":"Pending"}</span></div>;
-              })}
-            </Card>
-            <Card>
-              <div style={{fontWeight:700,color:"#0f172a",marginBottom:12}}>Cost Summary</div>
-              {[["Materials",matT,"#f59e0b"],["Labor",p?.laborCost||0,"#8b5cf6"],["Overhead",p?.overhead||0,"#3b82f6"],["Total",matT+(p?.laborCost||0)+(p?.overhead||0),"#ef4444"]].map(([l,v,c],i)=>(
-                <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:i<3?"1px solid #f1f5f9":"none",fontSize:".85rem"}}><span style={{color:"#64748b",fontWeight:i===3?700:400}}>{l}</span><span style={{fontWeight:700,color:c}}>{fmt(v)}</span></div>
-              ))}
-            </Card>
-          </div>
-        </div>
-      </Wrap>
-    );
-  }
-  if(joStep==="preview"&&viewJO) return(
-    <Wrap>
-      <div style={{display:"flex",gap:10,marginBottom:18}} className="noprint">
-        <Btn variant="ghost" small onClick={()=>setJoStep("select")}>← Back</Btn>
-        <Btn variant="accent" small onClick={()=>window.print()}>🖨 Print / Save PDF</Btn>
-      </div>
-      <div style={{background:"#fff",borderRadius:14,overflow:"hidden",maxWidth:720,margin:"0 auto",boxShadow:"0 4px 24px rgba(0,0,0,.1)"}}>
-        <div style={{background:"#0f172a",padding:"22px 28px",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-          <div>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.7rem",color:"#fff",letterSpacing:-.5}}>JOB ORDER</div>
-            <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:3,textTransform:"uppercase",letterSpacing:"1px"}}>GMD Productions Inc.</div>
-          </div>
-          <div style={{textAlign:"right"}}>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.2rem",color:"#f59e0b"}}>{viewJO.joNum}</div>
-            <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:4}}>{viewJO.dateIssued}</div>
-          </div>
-        </div>
-        <div style={{height:3,background:"linear-gradient(90deg,#f59e0b,#10b981)"}}/>
-        <div style={{padding:"22px 28px",fontFamily:"'Segoe UI',sans-serif"}}>
-          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:20,marginBottom:18}}>
-            {[["CLIENT",["Client",viewJO.deal?.client],["Contact",viewJO.deal?.contact],["Address",viewJO.address||"—"],["Phone",viewJO.phone||"—"]],
-              ["PROJECT",["Product",viewJO.deal?.product],["Value",fmt(viewJO.deal?.value)],["Payment",viewJO.deal?.paymentStatus],["Delivery",viewJO.project?.stageDates?.Delivery?.e||"—"]]
-            ].map(([head,...fields])=>(
-              <div key={head}>
-                <div style={{fontWeight:700,fontSize:".68rem",textTransform:"uppercase",letterSpacing:"1.5px",color:"#64748b",marginBottom:8,borderLeft:"3px solid #f59e0b",paddingLeft:8}}>{head}</div>
-                {fields.map(([l,v])=><div key={l} style={{marginBottom:6}}><div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8"}}>{l}</div><div style={{fontSize:".85rem",fontWeight:500,color:"#0f172a"}}>{v}</div></div>)}
-              </div>
-            ))}
-          </div>
-          <div style={{marginBottom:18}}>
-            <div style={{fontWeight:700,fontSize:".68rem",textTransform:"uppercase",letterSpacing:"1.5px",color:"#64748b",marginBottom:8,borderLeft:"3px solid #10b981",paddingLeft:8}}>PRODUCTION STAGES</div>
-            <table style={{width:"100%",borderCollapse:"collapse",fontSize:".8rem"}}>
-              <thead><tr style={{background:"#f8fafc"}}>{["Stage","Start","End","Team","Status"].map(h=><th key={h} style={{padding:"6px 10px",textAlign:"left",fontWeight:600,fontSize:".68rem",textTransform:"uppercase",color:"#64748b"}}>{h}</th>)}</tr></thead>
-              <tbody>{["Design","Fabrication","QC","Delivery"].map((s,i)=>{
-                const p=viewJO.project;const done=["Design","Fabrication","QC","Delivery"].indexOf(p?.currentStage||"Design")>i,cur=p?.currentStage===s;
-                return <tr key={s} style={{borderBottom:"1px solid #f1f5f9"}}>
-                  <td style={{padding:"6px 10px",fontWeight:600,color:cur?"#f97316":done?"#64748b":"#0f172a"}}>{s}</td>
-                  <td style={{padding:"6px 10px",color:"#64748b"}}>{p?.stageDates?.[s]?.s||"—"}</td>
-                  <td style={{padding:"6px 10px",color:"#64748b"}}>{p?.stageDates?.[s]?.e||"—"}</td>
-                  <td style={{padding:"6px 10px",fontSize:".75rem"}}>{s==="Design"?p?.design?.designer||"TBD":cur||done?(p?.team||[]).join(", ")||"TBD":"TBD"}</td>
-                  <td style={{padding:"6px 10px",fontWeight:700,color:done?"#059669":cur?"#f97316":"#94a3b8"}}>{done?"Complete":cur?"In Progress":"Pending"}</td>
-                </tr>;
-              })}</tbody>
-            </table>
-          </div>
-          {viewJO.extraNotes&&<div style={{background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:".82rem",color:"#92400e"}}><strong>Notes:</strong> {viewJO.extraNotes}</div>}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,borderTop:"1px solid #e2e8f0",paddingTop:18}}>
-            {["Prepared by (Sales)","Approved by (Manager)","Received by (Production)"].map(l=>(
-              <div key={l} style={{textAlign:"center"}}><div style={{height:1,background:"#0f172a",marginBottom:5,marginTop:32}}/><div style={{fontSize:".65rem",color:"#64748b"}}>{l}</div></div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </Wrap>
-  );
-  return <Wrap><EmptyState icon="📋" msg="Select a deal to get started."/></Wrap>;
 }
 
 
@@ -27306,7 +27096,7 @@ function ProjectCards({syncProjectCard,pcards,wonDeals,completedDeals,deals,togg
 
   const today2=new Date();
   const card=selDeal?pcards[selDeal]:null;
-  const jo=jos.find(j=>j.dealId===selDeal);
+  const jo=dealJo(jos,selDeal);
 
   const PHASES=[
     {id:"design",    label:"Design",     icon:"🎨", stgs:["06 · Kickoff","07 · Briefing"]},
@@ -27342,7 +27132,7 @@ function ProjectCards({syncProjectCard,pcards,wonDeals,completedDeals,deals,togg
     if(!pc||!deal) return{score:0,grade:"F",color:"#ef4444",gcolor:"#fef2f2",breakdown:{completeness:{earned:0,max:40,items:{hasPM:false,hasDate:false,hasBudget:false,hasDesigner:false,hasCE:false}},recency:{earned:0,max:30,label:"No updates yet",count:0},timeline:{earned:0,max:30,label:"—"}}};
     let score=0;
     // ─ Completeness (40pts) ────────────────────────────────────────────────
-    const joR=jos.find(j=>j.dealId===deal.id);
+    const joR=dealJo(jos,deal.id);
     const hasPM=!!(pc.pm1||joR?.pm1);
     const hasDate=!!pc.targetEndDate;
     const b=budgets[deal.id];
@@ -27402,7 +27192,7 @@ function ProjectCards({syncProjectCard,pcards,wonDeals,completedDeals,deals,togg
   };
   // Shared owner-key resolver — used by both the rollup and the grid filter
   const ownerKeys=(d,tab)=>{
-    const pc=pcards[d.id],jo=jos.find(j=>j.dealId===d.id);
+    const pc=pcards[d.id],jo=dealJo(jos,d.id);
     if(tab==="pm")return[pc?.pm1||jo?.pm1||"Unassigned"];
     if(tab==="coor")return[pc?.coordinator||jo?.coordinator||"Unassigned"];
     const ws=(swos||[]).filter(w=>w.projectId===d.id||w.dealId===d.id);
@@ -27611,7 +27401,7 @@ function ProjectCards({syncProjectCard,pcards,wonDeals,completedDeals,deals,togg
               const pc=pcards[d.id];
               const g=calcCardGrade(d,pc);
               const h=getHealth(d,pc);const[hc]=HC[h];
-              const joR=jos.find(j=>j.dealId===d.id);
+              const joR=dealJo(jos,d.id);
               const projB=(blockers||[]).filter(b=>b.dealId===d.id&&b.status==="Open").length;
               const pct=projPct(pc,d);
               const pm=[pc?.pm1||joR?.pm1,pc?.pm2||joR?.pm2,pc?.pm3||joR?.pm3].filter(Boolean)[0]||"—";
@@ -27648,7 +27438,7 @@ function ProjectCards({syncProjectCard,pcards,wonDeals,completedDeals,deals,togg
                 {parentList.map(d=>{
                   const pc=pcards[d.id];
                   const h=getHealth(d,pc);const[hc]=HC[h];
-                  const joC=jos.find(j=>j.dealId===d.id);
+                  const joC=dealJo(jos,d.id);
                   const dLeftC=pc?.targetEndDate?Math.ceil((new Date(pc.targetEndDate)-today2)/86400000):null;
                   const isOverC=dLeftC!==null&&dLeftC<0;
                   const projSwos=(swos||[]).filter(w=>w.projectId===d.id||w.dealId===d.id);
@@ -27777,7 +27567,7 @@ function ProjectCards({syncProjectCard,pcards,wonDeals,completedDeals,deals,togg
                       {parentList.map(d=>{
                         const pcL=pcards[d.id];
                         const hL=getHealth(d,pcL);const[hcL]=HC[hL];
-                        const joL=jos.find(j=>j.dealId===d.id);
+                        const joL=dealJo(jos,d.id);
                         const dLeftL=pcL?.targetEndDate?Math.ceil((new Date(pcL.targetEndDate)-today2)/86400000):null;
                         const isOverL=dLeftL!==null&&dLeftL<0;
                         const aeL=pcL?.aeAssigned||joL?.aeAssigned||d.salesOwner||"—";

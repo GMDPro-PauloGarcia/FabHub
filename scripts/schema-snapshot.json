@@ -546,7 +546,9 @@
   ],
   "job_orders": [
     "ae_assigned",
+    "auto_issued",
     "award_trigger",
+    "backfilled_at",
     "budget_status",
     "ce_no",
     "client",

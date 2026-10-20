@@ -1,5 +1,5 @@
 -- ============================================================================
--- Migration 20261020a — offset / credit note settlements: Manager only
+-- Migration 20261020e — offset / credit note settlements: Manager only
 --
 -- Owner request (Paulo Garcia, 2026-10-20): Makerlab SM Nuvali (CE-2026-1242)
 -- was paid by cancelling a ₱525,000 (VAT incl.) debt GMD owed Makerlab, under a
