@@ -57,6 +57,11 @@ For the smoke test locally, run `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers
 - It counts wherever FabHub measures what's settled (balances, Fully Paid, AR, collected-to-date) and is excluded wherever FabHub counts cash by date. Use `isCashPayment(p)` in any new cash figure (cash flow, monthly collections, cash-in).
 - Only a Manager may record or change one, and it needs a reference. Enforced in BillingView's Log/Edit Payment and by migration `20261020050000_billing_offset_manager_only.sql`. Keep them in sync.
 
+## Billing deductions (database-kept)
+- A deduction on a billing milestone goes only through the `record_billing_deduction` / `reverse_billing_deduction` RPCs (migration `20261020060000_billing_deductions.sql`): Manager only, reason required, never more than the invoice or below what has been paid.
+- Each one is a row in `billing_deductions`, kept forever. A reversal puts the amount back and marks the row reversed; nothing is deleted. The table has no insert/update/delete policies, so don't add client writes to it.
+- The app mirrors the result on screen only (`applyDeduction`); never lower a milestone `amount` from the client to record a deduction.
+
 ## Deal billing totals (database-owned)
 - For any deal with billing milestones, `deals.invoiced`, `amount_paid` and `payment_status` are computed by the database (`recompute_deal_billing_totals`, triggers on `billing_milestones` / `billing_payments`, migration `20261012010000`). Only that function may change them: `trg_deals_protect_billing_totals` (`20261012030000`) silently keeps the old values on any other update.
 - The app only updates these on screen. Do not add client writes of them; Finance can't update `deals` under RLS, which is how ₱5.67M of collections went missing (fixed 2026-10-12).
