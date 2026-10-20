@@ -4,6 +4,7 @@ import {supabase,isSupabaseReady,sbInsert,sbUpdate,sbDelete} from "../supabaseCl
 // Clearing a deal's BOQ is Manager-only, also enforced by migration
 // 20261006010000_deals_boq_safeguards.sql — keep in sync.
 import {canonRole} from "../core";
+import {downloadBoqXlsx,boqXlsxFileName} from "./boqExcel";
 
 // A textarea that grows to fit its content. BOQ line-item descriptions are
 // often multi-line spec lists (a title + "Specifications:" + bullets), so a
@@ -397,7 +398,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
     const skipRe=/^(sub-?\s*total|vat\b|value added|discount|prepared by|approved|accepted|checked by|noted by|bank details|payment terms|general notes?|terms|notes?:|account name|•|bdo|bpi|metrobank)/i;
     const stopRe=/grand\s*total/i;
     const secRe=/^\s*([A-Za-z]{1,2}|\d{1,3})[\.\)]\s+(.+)$/;
-    const sections=[],items=[];let curId=null,curGroup=null;
+    const sections=[],items=[];let curId=null,curGroup=null,curGroupNo="";
     for(let r=headerIdx+1;r<aoa.length;r++){
       const row=aoa[r]||[];
       const itemNo=String(cell(row,cm.itemNo)||"").trim();
@@ -414,11 +415,18 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       // Label-only row (no qty, no cost): a section, a sub-group, or a flat section.
       if(deepText&&qtyN===null&&costN===null){
         const m=deepText.match(secRe);
+        // "2.3  Supervision" under section 2 is a sub-section heading (FabHub's
+        // own Excel export numbers them this way); its items are "2.3.1", "2.3.2"…
+        const subNo=itemNo.match(/^([A-Za-z0-9]+)\.\d+$/);
+        if(subNo&&curId&&subNo[1]===curId){
+          curGroup=deepText;curGroupNo=itemNo;
+          continue;
+        }
         if(itemNo&&itemNo.length<=3){
           const id=(itemNo).replace(/[.\)]+$/,"").trim();
           const label=(m?m[2]:deepText).trim();
           if(!sections.find(s=>s.id===id)) sections.push({id,label});
-          curId=id;curGroup=null;
+          curId=id;curGroup=null;curGroupNo="";
         }else if(nested){
           curGroup=firstText||deepText;
         }else{
@@ -441,7 +449,8 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       // top-level item → clear the group so it sits directly under the section.
       let name=deepText,subsection="";
       if(deepIdx>0){ if(curGroup) subsection=curGroup; }
-      else { curGroup=null; }
+      else if(curGroup&&curGroupNo&&itemNo.startsWith(curGroupNo+".")) subsection=curGroup;
+      else { curGroup=null;curGroupNo=""; }
       const q=qtyN==null?1:qtyN,uc=costN==null?(totalN!=null&&q?totalN/q:0):costN;
       items.push({section:String(secId),subsection,description:name,unit:unitVal||"lot",qty:q,baseCost:uc,unitCost:uc,total:q*uc,remarks:String(cell(row,cm.remarks)||"").trim(),markup:0});
     }
@@ -988,29 +997,26 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
     if(w){w.document.write(html);w.document.close();}
   };
 
-  const exportCSV=()=>{
-    const rows=[["Item No.","Description","Qty","Unit","Unit Cost (₱)","Total Amount (₱)","Remarks"]];
-    sections.forEach(sec=>{
-      const si=items.filter(it=>it.section===sec.id);
-      if(!si.length) return;
-      rows.push([sec.id,sec.label,"","","","",""]);
-      const {ungrouped,subs}=groupSection(si);
-      ungrouped.forEach((it,idx)=>rows.push([`${sec.id}.${idx+1}`,it.description,it.qty,it.unit,it.unitCost,it.total,it.remarks||""]));
-      subs.forEach(sub=>{
-        rows.push([`${sec.id}.${sub.num}`,sub.label,"","","","",""]);
-        sub.items.forEach((it,mi)=>rows.push([`${sec.id}.${sub.num}.${mi+1}`,it.description,it.qty,it.unit,it.unitCost,it.total,it.remarks||""]));
-        rows.push(["",`Sub-total ${sub.label}`,"","","","",sub.items.reduce((s,it)=>s+it.total,0)]);
-      });
-      rows.push(["",`Sub-total ${sec.label}`,"","","","",si.reduce((s,it)=>s+it.total,0)]);
-    });
-    rows.push(["","GRAND TOTAL","","","","",grandTotal]);
-    if(discountVal>0){rows.push(["","DISCOUNT","","","","",-discountVal]);rows.push(["","NET TOTAL","","","","",netTotal]);}
-    if(vatEnabled){rows.push(["","VAT 12%","","","","",vatAmount]);rows.push(["","GRAND TOTAL w/ VAT","","","","",netTotal+vatAmount]);}
-    const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
-    const a=document.createElement("a");
-    a.href="data:text/csv;charset=utf-8,﻿"+encodeURIComponent(csv);
-    a.download=`BOQ_${(boqTitle||"draft").replace(/[^a-zA-Z0-9]/g,"_")}_${new Date().toISOString().slice(0,10)}.csv`;
-    a.click();
+  // Excel export (see ./boqExcel). The internal copy shows direct cost and
+  // margin, so only Managers and QS get it; the client copy is the quotation.
+  const canExportInternal=["Manager","QS"].includes(canonRole(role));
+  const[xlsxBusy,setXlsxBusy]=useState("");
+  const exportXlsx=async(mode)=>{
+    if(xlsxBusy) return;
+    if(mode==="internal"&&!canExportInternal) return;
+    const projectName=(boqTitle&&boqTitle.trim())||dealLabel(deal)||"";
+    const ref=deal||coParentDeal;
+    const now=new Date();
+    setXlsxBusy(mode);
+    try{
+      await downloadBoqXlsx({mode,sections,items,groupSection,discount:discountVal,vatEnabled,notes:boqGeneralNotes(vatEnabled),
+        meta:{projectName,locationName:(location&&location.trim())||ref?.location||"",client:ref?.client||"",ceNo:ref?.ceNo||"",
+          quotationNo,status:boqStatus,dateStr:boqDate?new Date(boqDate+"T00:00:00").toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"}):"",
+          exportedBy:session?.name||"",exportedAt:now.toLocaleString("en-PH")}},
+        boqXlsxFileName(mode,projectName,today));
+    }catch(e){
+      toastEmit&&toastEmit("Excel export failed: "+(e?.message||e),"error");
+    }finally{setXlsxBusy("");}
   };
 
   const mob=window.innerWidth<768;
@@ -1108,7 +1114,8 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
           </button>}
           {items.length>0&&<button onClick={printBOQ} style={{background:"#f0fdf4",border:"1.5px solid #86efac",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#166534",cursor:"pointer"}}>🖨 Preview / Print</button>}
           {onDuplicateToDeal&&!coId&&!srvLoading&&items.length>0&&<button onClick={()=>openXfer("duplicate")} title="Copy this BOQ onto another deal (e.g. the same store package at a new location). This BOQ stays as it is." style={{background:"#fdf4ff",border:"1.5px solid #f0abfc",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#a21caf",cursor:"pointer"}}>⧉ Duplicate to deal</button>}
-          {items.length>0&&<button onClick={exportCSV} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>}
+          {items.length>0&&<button onClick={()=>exportXlsx("client")} disabled={!!xlsxBusy} title="Download the quotation as an Excel file — selling prices only, safe to send to the client" style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#1d4ed8",cursor:xlsxBusy?"wait":"pointer"}}>{xlsxBusy==="client"?"Preparing…":"⬇ Excel"}</button>}
+          {items.length>0&&canExportInternal&&<button onClick={()=>exportXlsx("internal")} disabled={!!xlsxBusy} title="Internal Excel: direct cost, markup and margin per line. Do not send to the client." style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#b91c1c",cursor:xlsxBusy?"wait":"pointer"}}>{xlsxBusy==="internal"?"Preparing…":"⬇ Excel (internal)"}</button>}
           {!ro&&!srvLoading&&(selDeal||items.length>0||sections.length>0)&&(!selDeal||canonRole(role)==="Manager")&&<button onClick={()=>{deleteDraft(selDeal||BOQ_SCRATCH_KEY);if(selDeal&&isSupabaseReady())sbUpdate('deals',selDeal,{boq_data:null}).catch(()=>{});setItems(BLANK_ITEMS());setSections([]);setBoqTitle("");setLocation(deal?.location||"");setQuotationNo(deal?.ceNo||"");setBoqDate(today);setVatEnabled(null);setDiscount("");setMarkupPct("");setDraftSaved(false);}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#c2410c",cursor:"pointer"}} title="Clear saved draft and reset">✕ Clear Draft</button>}
           {!ro&&(items.length>0||sections.length>0)&&(()=>{
             // Sync badge — reflects the REAL cloud-save state, not just the local draft.
