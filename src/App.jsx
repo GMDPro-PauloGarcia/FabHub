@@ -4,7 +4,7 @@ const WrapCtx = createContext(false);
 const BUDGET_ONLY=["Design","Operations","ProjectMover"];
 import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbInsertIfMissing,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbPendingIds,sbOnQueueChange,appLogin,appLogout,restoreAppToken,hasAppToken,appTokenExpired,setSessionExpiredHandler,logClientError} from './supabaseClient';
 import{idbGetMany,idbSetMany}from'./idb.js';
-import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable} from './shared';
+import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable,HIDDEN_NAV_IDS,AP_HIDDEN,WAREHOUSE_HIDDEN,isHiddenView} from './shared';
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
@@ -7988,6 +7988,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[showExport, setShowExport] =useState(false);
   const showExportRef=useRef(false);
   useEffect(()=>{if(session&&page)sessionStorage.setItem("gmd:lastPage",page);},[page,session]);
+  // Hidden modules (see HIDDEN_PAGES in shared.jsx): any link, favorite or
+  // restored last page that still points at one lands on Home instead.
+  useEffect(()=>{if(isHiddenView(page,finTab))setPage("home");},[page,finTab]);
   const smartImportInputRef=useRef(null);
   showExportRef.current=showExport;
   const[joStep,     setJoStep]     =useState("select");
@@ -9489,7 +9492,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     Manager:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Reports"}]},
-      {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"BOQ"}]},
+      {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"}]},
       {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},...((session?.username==="paulo"||session?.username==="mar")?[{id:"projectmargins",l:"Project Margins"}]:[]),{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"finance-reports",l:"Reports"}]},
       {group:"Accounting",  items:[{id:"coa",l:"Chart of Accounts"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
@@ -9503,7 +9506,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Projects",     items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
       {group:"Billing",      items:[{id:"billing",l:"Billing"}]},
       {group:"Deliverables", items:[{id:"designstatus",l:"Design Status"},{id:"drf",l:"Design Requests"}]},
-      {group:"QS",           items:[{id:"ceqs",l:"CE Requests"},{id:"boq",l:"BOQ"}]},
+      {group:"QS",           items:[{id:"ceqs",l:"CE Requests"}]},
     ],
     Finance:[
       {group:"Overview",    items:[{id:"home",l:"Cash Position"},{id:"calendar",l:"Calendar"}]},
@@ -9513,7 +9516,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
-      {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"BOQ"}]},
+      {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"}]},
       {group:"Warehousing", items:[{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"}]},
       {group:"Admin",       items:[{id:"audit",l:"Audit"},{id:"botsettings",l:"Bot Settings"},{id:"activity",l:"Team Activity"}]},
     ],
@@ -9540,7 +9543,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     QS:[
       {group:"Overview", items:[{id:"home",l:"Dashboard"}]},
       {group:"Sales",    items:[{id:"pipeline",l:"Sales Pipeline"}]},
-      {group:"CE / QS",  items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"BOQ"}]},
+      {group:"CE / QS",  items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"}]},
       {group:"Operations", items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
     ],
     Operations:[
@@ -9570,7 +9573,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     SalesOpsAdmin:[
       {group:"Overview",   items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
-      {group:"Sales",      items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Reports"},{id:"ceqs",l:"CE Requests"},{id:"boq",l:"BOQ"}]},
+      {group:"Sales",      items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Reports"},{id:"ceqs",l:"CE Requests"}]},
       {group:"Billing",    items:[{id:"billing",l:"Billing"}]},
       {group:"Finance",    items:[{id:"financecal",l:"Finance Calendar"}]},
       {group:"Operations", items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
@@ -9589,6 +9592,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Projects",   items:[{id:"projects",l:"Projects"},{id:"clients",l:"Clients"}]},
     ],
   };
+  // Hidden modules drop out of every role's nav; a group left empty goes too.
+  const visibleNav=r=>(navMap[r]||[]).map(g=>({...g,items:(g.items||[]).filter(it=>!HIDDEN_NAV_IDS.has(it.id))})).filter(g=>g.items.length);
   const Nav=useStableComponent(()=>{
     const NAV_ICONS={
       home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   cashposition:"🏦",   cashflow:"📈",   payables:"📤",   billing:"🧾",
@@ -9600,7 +9605,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       subcontractors:"👷",materialreq:"🔧",budgetreq:"💳",collections:"💵",
       checklist:"✅",joborders:"📄", ops:"⚙️",        datamanagement:"⚙️", myfolder:"📁",
     };
-    const groups=navMap[role]||[];
+    const groups=visibleNav(role);
     const allItems=groups.flatMap(g=>g.items||[]);
     const pauloExtra=session?.username==="paulo"?[{id:"datamanagement",l:"Data"}]:[];
     const NavBtn=({id,l,collapsed})=>{
@@ -9610,6 +9615,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         :id==="cashposition"?(page==="finance"&&finTab==="cash")
         :id==="executive"?(page==="finance"&&["overview","pl","loans"].includes(finTab))
         :id==="finance"?(page==="acctdash")
+        :id==="pipeline"?(page==="pipeline"||page==="boq")
         :page===id;
       const icon=NAV_ICONS[id]||NAV_ICONS[l]||"•";
       const fav=favNav.includes(id);
@@ -9739,7 +9745,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ── MOBILE BOTTOM NAV ─────────────────────────────────────────────────────
   const MobileBottomNav=useStableComponent(()=>{
     if(!isMobile) return null;
-    const groups=navMap[role]||[];
+    const groups=visibleNav(role);
     const allItems=groups.flatMap(g=>g.items||[]);
     const NAV_ICONS={
       home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   cashposition:"🏦",   cashflow:"📈",   payables:"📤",   billing:"🧾",
@@ -9796,7 +9802,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const primaryIds=favItemsM.length>0
       ? favItemsM.slice(0,4).map(x=>x.id)
       : role==="Manager"
-        ? ["home","pipeline","projects","finance"]
+        ? ["home","pipeline","projects",AP_HIDDEN?"cashposition":"finance"]
         : allItems.slice(0,4).map(x=>x.id);
     const moreBadge=Object.entries(BADGE_MAP).filter(([id])=>!primaryIds.includes(id)).reduce((s,[,v])=>s+v,0);
     const tabs=[
@@ -13049,14 +13055,20 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     );
   }
   // ── Pipeline tab bar (shared) ───────────────────────────────────────────
+  // BOQ lives here now (it left the sidebar): the BOQ tab opens the BOQ page,
+  // which shows this same bar, for the roles that had BOQ in their nav.
+  const boqInPipeline=["Manager","Sales","Finance","QS","SalesOpsAdmin"].includes(role);
   const PipeTabBar=()=>(
     <div style={{display:"flex",gap:0,borderBottom:"2px solid #e2e8f0",marginBottom:20}}>
-      {[["pipeline","📊 Pipeline"],["awarded","💰 Commissions"],["updates","📝 AE Updates"]].map(([t,l])=>(
-        <button key={t} onClick={()=>setPipeTab(t)}
-          style={{padding:"9px 20px",border:"none",background:"none",cursor:"pointer",fontSize:".88rem",fontWeight:pipeTab===t?700:500,color:pipeTab===t?"#3b82f6":"#64748b",borderBottom:pipeTab===t?"2px solid #3b82f6":"2px solid transparent",marginBottom:-2,fontFamily:"inherit"}}>
+      {[["pipeline","📊 Pipeline"],["awarded","💰 Commissions"],["updates","📝 AE Updates"],...(boqInPipeline?[["boq","🧮 BOQ"]]:[])].map(([t,l])=>{
+        const on=t==="boq"?page==="boq":page==="pipeline"&&pipeTab===t;
+        return(
+        <button key={t} onClick={()=>{if(t==="boq"){setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(null);setPage("boq");}else{setPipeTab(t);setPage("pipeline");}}}
+          style={{padding:"9px 20px",border:"none",background:"none",cursor:"pointer",fontSize:".88rem",fontWeight:on?700:500,color:on?"#3b82f6":"#64748b",borderBottom:on?"2px solid #3b82f6":"2px solid transparent",marginBottom:-2,fontFamily:"inherit"}}>
           {l}{t==="updates"&&aeUpdates.length>0&&<span style={{marginLeft:5,background:"#3b82f6",color:"#fff",borderRadius:20,padding:"1px 6px",fontSize:".65rem",fontWeight:700}}>{aeUpdates.filter(u=>u.date===today).length||""}</span>}
         </button>
-      ))}
+        );
+      })}
     </div>
   );
 
@@ -14789,10 +14801,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             tabs (Accounts Payable, Payments). The owner/executive views — Executive
             dashboard (overview/P&L/Loans) and Cash Position — are their own pages. */}
         {["payables","payments"].includes(finTab)&&<FinanceErpBar active={finTab==="payables"?"ap":"payments"} go={financeErpGo} counts={financeErpCounts()}/>}
-        {/* Weekly Dues board toggle — always reachable from anywhere in Finance. */}
-        <div style={{display:"flex",justifyContent:"flex-end",marginBottom:12}}>
+        {/* Weekly Dues board toggle — always reachable from anywhere in Finance
+            (hidden with the AP while the new AP/AR system is built). */}
+        {!AP_HIDDEN&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:12}}>
           <button onClick={()=>setFinTab(finTab==="duesboard"?"overview":"duesboard")} style={{whiteSpace:"nowrap",padding:"6px 14px",borderRadius:20,border:`1px solid ${finTab==="duesboard"?ERP.navy:ERP.line}`,background:finTab==="duesboard"?ERP.navy:"#fff",color:finTab==="duesboard"?"#fff":ERP.muted,cursor:"pointer",fontSize:".78rem",fontWeight:600,fontFamily:"inherit"}}>📅 Weekly Dues</button>
-        </div>
+        </div>}
         {finTab==="duesboard"&&(
           <FinanceWeeklyDues billings={billings} payables={payables} wonDeals={wonDeals} deals={deals} completedDeals={completedDeals} today={today} setPage={setPage} setFinTab={setFinTab} role={role}/>
         )}
@@ -16324,6 +16337,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   // ─── OPERATIONS ───────────────────────────────────────────────────────────
   // ── WAREHOUSE ───────────────────────────────────────────────────────────────
+  // Warehousing is hidden (shared.jsx): the Warehouse role's whole workspace
+  // was Deliveries / Inventory / Stock Movements, so it gets a notice instead.
+  if(role==="Warehouse"&&WAREHOUSE_HIDDEN) return(<Wrap><EmptyState icon="🏭" msg="Warehousing is offline while FabHub's modules are being rebuilt. Please coordinate deliveries and stock with Procurement for now."/></Wrap>);
   if(role==="Warehouse"||(["Manager","Finance"].includes(role)&&page==="deliveries")){
     if(role==="Warehouse"&&page==="stockmove") return(<Wrap><StockMovementView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} logStockMove={logStockMove} session={session} role={role}/></Wrap>);
     if(role==="Warehouse"&&page==="inventory") return(<Wrap><InventoryView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} prs={prs} updatePR={updatePR} addPR={addPR} addInventoryItem={addInventoryItem} updateInventoryItem={updateInventoryItem} deleteInventoryItem={deleteInventoryItem} clearAllInventory={clearAllInventory} logStockMove={logStockMove} mergeInventoryItems={mergeInventoryItems} suppliers={suppliers} addSupplier={addSupplier} printDR={printDR} tools={tools} upTools={upTools} saveTool={saveTool} deleteTool={deleteTool} drs={drs} saveDr={saveDr} deleteDr={deleteDr} projs={projs} upProjs={upProjs} deals={wonDeals} session={session} role={role}/></Wrap>);
@@ -17388,7 +17404,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       if(isSupabaseReady())sbUpdate('deals',dealId,{receipt_type:rt,...(rt==="AR"?{withholding:false}:{})}).catch(()=>{});
     }}/></Wrap>);
     if(boqStandaloneId) return(<Wrap><BOQBuilder key={"sa:"+boqStandaloneId} onDuplicateToDeal={duplicateBoqToDeal} wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} standaloneBoqs={standaloneBoqs} saveStandaloneBoq={saveStandaloneBoq} initialStandaloneId={boqStandaloneId} clearBoqStandalone={()=>setBoqStandaloneId(null)} onBack={()=>setBoqStandaloneId(null)} onLinkToDeal={async(dealId,boqData,opts)=>{const sid=boqStandaloneId;if(!(await attachBoqToDeal(dealId,boqData,opts)))return false;deleteStandaloneBoq(sid);setBoqStandaloneId(null);setBoqDealId(dealId);toastEmit&&toastEmit(opts?.setValue?"✅ BOQ linked to project — deal value set from BOQ":"✅ BOQ linked to project","success");return true;}}/></Wrap>);
-    return(<Wrap><BOQHomeView standaloneBoqs={standaloneBoqs} deals={deals} session={session} role={role} today={today} onOpenStandalone={id=>{setBoqCoId(null);setBoqDealId(null);setBoqStandaloneId(id);}} onOpenDeal={id=>{setBoqCoId(null);setBoqStandaloneId(null);setBoqDealId(id);}} onNewStandalone={()=>{const id=uid();saveStandaloneBoq({id,title:"",location:"",quotationNo:"",boqDate:today,items:[],sections:[],vatEnabled:true,discount:"",createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});setBoqCoId(null);setBoqDealId(null);setBoqStandaloneId(id);}} onDeleteStandalone={deleteStandaloneBoq}/></Wrap>);
+    return(<Wrap>{boqInPipeline&&<PipeTabBar/>}<BOQHomeView standaloneBoqs={standaloneBoqs} deals={deals} session={session} role={role} today={today} onOpenStandalone={id=>{setBoqCoId(null);setBoqDealId(null);setBoqStandaloneId(id);}} onOpenDeal={id=>{setBoqCoId(null);setBoqStandaloneId(null);setBoqDealId(id);}} onNewStandalone={()=>{const id=uid();saveStandaloneBoq({id,title:"",location:"",quotationNo:"",boqDate:today,items:[],sections:[],vatEnabled:true,discount:"",createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});setBoqCoId(null);setBoqDealId(null);setBoqStandaloneId(id);}} onDeleteStandalone={deleteStandaloneBoq}/></Wrap>);
   }
 
   if(page==="tvboard"&&role==="Manager") return(<Wrap><TVBoardAdmin announcements={announcements} upAnnouncements={upAnnouncements} session={session} today={today}/></Wrap>);
@@ -23643,13 +23659,16 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
     return {anyDelivered,fullyDelivered,hasPayable:linkedAP.length>0,linkedAP,apNos,paid,partiallyPaid};
   };
   // Slim 4-stage strip: Issued → Received → Payable → Paid. Answers "why can't
-  // Finance pay this yet?" at a glance, without opening the row.
+  // Finance pay this yet?" at a glance, without opening the row. While the AP
+  // is hidden (shared.jsx) POs stand on their own: Issued → Received only.
   const lifecycleStrip=(lc)=>{
     const nodes=[
       {label:"Issued", done:true, color:STATUS_CLR["PO Issued"]},
       {label:lc.fullyDelivered?"Received":lc.anyDelivered?"Part. recv":"Received", done:lc.anyDelivered, half:lc.anyDelivered&&!lc.fullyDelivered, color:STATUS_CLR["Delivered"]},
-      {label:lc.apNos[0]||"Payable", done:lc.hasPayable, color:"#6366f1"},
-      {label:lc.paid?"Paid":lc.partiallyPaid?"Part. paid":"Paid", done:lc.paid, half:lc.partiallyPaid&&!lc.paid, color:T.success},
+      ...(AP_HIDDEN?[]:[
+        {label:lc.apNos[0]||"Payable", done:lc.hasPayable, color:"#6366f1"},
+        {label:lc.paid?"Paid":lc.partiallyPaid?"Part. paid":"Paid", done:lc.paid, half:lc.partiallyPaid&&!lc.paid, color:T.success},
+      ]),
     ];
     return <LifecycleStrip nodes={nodes}/>;
   };
@@ -23680,7 +23699,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
     // Auto-created PO payables are keyed by poId=PO number (and carry poNumber);
     // deletePR doesn't touch payables, so warn how many will be left behind.
     const linked=(payables||[]).filter(p=>poNos.has(p.poId)||poNos.has(p.poNumber));
-    const note=linked.length?`\n\n⚠️ ${linked.length} linked Accounts Payable ${linked.length>1?"entries":"entry"} will remain — remove ${linked.length>1?"them":"it"} in Accounts Payable if needed.`:"";
+    const note=!linked.length?"":AP_HIDDEN?`\n\nℹ️ ${linked.length} linked payable record${linked.length>1?"s":""} will stay on file for the new AP system.`:`\n\n⚠️ ${linked.length} linked Accounts Payable ${linked.length>1?"entries":"entry"} will remain — remove ${linked.length>1?"them":"it"} in Accounts Payable if needed.`;
     if(!(await uiConfirm(`Delete ${poCount} purchase order${poCount>1?"s":""} (${itemCount} line item${itemCount>1?"s":""})? This cannot be undone.${note}`))) return;
     groups.forEach(g=>g.items.forEach(i=>deletePR(i.id)));
     setSelectedPOs(new Set());
@@ -24162,7 +24181,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
                       // entry can't be deleted silently — deleting the PR leaves the
                       // payable (and any expense) orphaned and breaks the document
                       // trail. Warn, name the AP, and let Finance clean up there.
-                      const apNote=lc.hasPayable?`\n\n⚠️ This PO has ${lc.linkedAP.length} linked Accounts Payable ${lc.linkedAP.length>1?"entries":"entry"}${lc.apNos.length?` (${lc.apNos.join(", ")})`:""} that will remain. Remove ${lc.linkedAP.length>1?"them":"it"} in Accounts Payable if this is a mistake.`:"";
+                      const apNote=!lc.hasPayable?"":AP_HIDDEN?`\n\nℹ️ This PO's payable record${lc.linkedAP.length>1?"s":""}${lc.apNos.length?` (${lc.apNos.join(", ")})`:""} will stay on file for the new AP system.`:`\n\n⚠️ This PO has ${lc.linkedAP.length} linked Accounts Payable ${lc.linkedAP.length>1?"entries":"entry"}${lc.apNos.length?` (${lc.apNos.join(", ")})`:""} that will remain. Remove ${lc.linkedAP.length>1?"them":"it"} in Accounts Payable if this is a mistake.`;
                       if((await uiConfirm({title:"Delete purchase order",tone:"danger",confirmLabel:"Delete PO",message:`Delete PO ${poNo}?${apNote}\n\nThis cannot be undone.`})))items.forEach(i=>deletePR(i.id));
                     }} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"3px 7px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✕</button>}
                   </div>

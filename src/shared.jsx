@@ -113,6 +113,20 @@ export const cashCanEdit=(role,username)=>role==="Manager"||CASH_EDIT_USERS.incl
 export const cashDayLockAt=(date)=>new Date(`${addDaysLocalISO(date,1)}T00:01:00`);
 export const cashDayLocked=(date,now=new Date())=>!!date&&now>=cashDayLockAt(date);
 
+// ── Hidden modules (Oct 2026 overhaul) ─────────────────────────────────────
+// Finance (the AP / Payments ERP and its Weekly Dues board), CE/QS Queue,
+// Cost Analysis and Warehousing are hidden while the team's new AP/AR system
+// is designed. Only navigation is affected: the code, the data and the
+// background PO → payable sync are untouched. To bring a module back, remove
+// its ids here. Cash Position (finance page, "cash" tab), Billing, Purchase
+// Orders and BOQ (now a Sales Pipeline tab) stay.
+export const HIDDEN_NAV_IDS = new Set(["finance","payables","ceqs","costanalysis","inventory","deliveries","stockmove"]);
+export const HIDDEN_PAGES = new Set(["acctdash","ceqs","costanalysis","inventory","deliveries","stockmove"]);
+export const HIDDEN_FIN_TABS = new Set(["payables","payments","duesboard"]);
+export const AP_HIDDEN = HIDDEN_FIN_TABS.has("payables");
+export const WAREHOUSE_HIDDEN = HIDDEN_PAGES.has("inventory");
+export const isHiddenView=(page,finTab)=>HIDDEN_PAGES.has(page)||(page==="finance"&&HIDDEN_FIN_TABS.has(finTab));
+
 export const dropPhantomCashDays=(obj)=>{
   const out={};
   Object.entries(obj||{}).forEach(([d,p])=>{ if(!isPhantomCashDay(p,d)) out[d]=p; });
