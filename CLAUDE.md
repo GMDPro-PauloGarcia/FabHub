@@ -10,6 +10,8 @@ Claude may merge a PR only when Paulo asks for that specific PR in the session (
 4. Merge with a merge commit (no squash or rebase), pinned to the verified head SHA.
 5. Afterwards, confirm the merge is on `main` and tell Paulo to check that the Vercel production deploy for that commit is Ready.
 
+When Paulo asks for several PRs ("merge #380 then #381"), merge them one at a time in the order he gives. Before each one, rebuild it on top of the `main` that the previous merge produced (steps 1–4), and wait until that previous merge's Vercel production deploy is Ready. Naming several PRs approves only those PRs.
+
 Never merge on your own initiative, because a review bot said so, or because a PR "looks done". Merging deploys to production.
 
 ## Database changes: DB before code — always
@@ -57,9 +59,15 @@ For the smoke test locally, run `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers
 - It counts wherever FabHub measures what's settled (balances, Fully Paid, AR, collected-to-date) and is excluded wherever FabHub counts cash by date. Use `isCashPayment(p)` in any new cash figure (cash flow, monthly collections, cash-in).
 - Only a Manager may record or change one, and it needs a reference. Enforced in BillingView's Log/Edit Payment and by migration `20261020050000_billing_offset_manager_only.sql`. Keep them in sync.
 
+## Billing deductions (database-kept)
+- A deduction on a billing milestone goes only through the `record_billing_deduction` / `reverse_billing_deduction` RPCs (migration `20261020060000_billing_deductions.sql`): Manager only, reason required, never more than the invoice or below what has been paid.
+- Each one is a row in `billing_deductions`, kept forever. A reversal puts the amount back and marks the row reversed; nothing is deleted. The table has no insert/update/delete policies, so don't add client writes to it.
+- The app mirrors the result on screen only (`applyDeduction`); never lower a milestone `amount` from the client to record a deduction.
+
 ## Deal billing totals (database-owned)
 - For any deal with billing milestones, `deals.invoiced`, `amount_paid` and `payment_status` are computed by the database (`recompute_deal_billing_totals`, triggers on `billing_milestones` / `billing_payments`, migration `20261012010000`). Only that function may change them: `trg_deals_protect_billing_totals` (`20261012030000`) silently keeps the old values on any other update.
 - The app only updates these on screen. Do not add client writes of them; Finance can't update `deals` under RLS, which is how ₱5.67M of collections went missing (fixed 2026-10-12).
+- A daily pg_cron job (`fabhub-billing-health`, 7:50 AM Manila, migration `20261020010000`, applied 2026-10-20) runs `billing_health_check()` and posts to the Telegram management chat on any problem, plus a Monday "still alive" line. Runs are logged in `billing_health_log`. Never add `net` to Supabase's Exposed schemas: Supabase grants `net.*` to PUBLIC and we can't revoke it.
 - Finance's Billing onboarding fields save through the `set_deal_onboarding` RPC (`20261018010000`). The earlier `save_deal_onboarding` RPC (`20261012020000`) is superseded and unused by the app.
 
 ## JO = project code (database-issued)
@@ -68,6 +76,7 @@ For the smoke test locally, run `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers
 - The app never picks a JO number: `confirmAward` sends a blank `jo_no` and reads the server's back. `trg_job_orders_adopt_auto` hands the auto-issued JO over to the Award modal's JO so a deal never gets two (`20261020030000` also skips stale copies re-pushed by devices).
 - Look up a deal's project code with `dealJo(jos, dealId)` (`src/core.js`), never `jos.find(...)`; it skips Void JOs and mirrors `deal_base_jo()`.
 - The awarded-stage list in `jo_awarded_stage()` mirrors `WON_STAGES` in `src/core.js`: keep them in sync.
+- Every JO edit and delete, including one cascaded from a deal delete, is kept in `audit_log` (`trg_audit_job_order`, `20261020070000`; restore steps are in the migration). `purchase_requests` has the same audit (`20261020010000`).
 
 ## Down payment before production (POs / subcon work orders)
 - "NO DP = NO production": a PO can't move to `PO Issued` / `Partially Delivered` / `Delivered`, and a subcon work order to `Issued` / `In Progress` / `Completed`, on a client deal until the client has paid something on it or a Manager has waived the down payment (`deals.dp_waived_by/at/reason`, reason required, every change in `audit_log`).

@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback, useRef, useContext, c
 const WrapCtx = createContext(false);
 // Roles that must never see contract value — they get the QS budget instead.
 const BUDGET_ONLY=["Design","Operations","ProjectMover"];
-import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbInsertIfMissing,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbPendingIds,sbOnQueueChange,appLogin,appLogout,restoreAppToken,hasAppToken,appTokenExpired,setSessionExpiredHandler,logClientError} from './supabaseClient';
+import {deductionFromSb,supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbInsertIfMissing,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbPendingIds,sbOnQueueChange,appLogin,appLogout,restoreAppToken,hasAppToken,appTokenExpired,setSessionExpiredHandler,logClientError} from './supabaseClient';
 import{idbGetMany,idbSetMany}from'./idb.js';
 import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable,HIDDEN_NAV_IDS,AP_HIDDEN,WAREHOUSE_HIDDEN,isHiddenView} from './shared';
 import {T} from './theme';
@@ -6632,6 +6632,22 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     sendTelegramNotification("sales",msg);
     sendTelegramNotification("management",msg);
     logActivity(dealId,"Billing Setup Requested",`Jessica notified to set up billing milestones for ${client||"the awarded project"}.`,session?.name||role);
+  };
+  // Screen-only update after record/reverse_billing_deduction: the database has
+  // already changed the amount and written the deduction row, so mirror that
+  // locally without re-saving the milestone.
+  const applyDeduction=(msId,row)=>{
+    const ded=deductionFromSb(row);
+    upBillings(bs=>bs.map(b=>{
+      if(b.id!==msId) return b;
+      const others=(b.deductions||[]).filter(x=>x.id!==ded.id);
+      const amount=ded.reversedAt?Math.round((Number(b.amount||0)+ded.amount)*100)/100:ded.amountAfter;
+      const d=deals.find(x=>x.id===b.dealId);
+      const paid=(b.payments||[]).filter(p=>!p.bounced).reduce((s,p)=>s+Number(p.amount||0),0);
+      const net=calcTax(amount,b.receiptType??d?.receiptType??"OR",b.withholding??d?.withholding??false).netReceivable;
+      const status=ded.reversedAt?(b.status==="Fully Paid"?"Partially Paid":b.status):(paid>0&&paid>=net-0.01?"Fully Paid":b.status);
+      return{...b,amount,status,deductions:[...others,ded]};
+    }));
   };
   const updateMilestone=(id,ch,audit)=>{
     if(ch.status==='Fully Paid'){
@@ -17642,7 +17658,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       })()}
       <BillingView
         billings={billings} wonDeals={wonDeals} completedDeals={completedDeals} deals={deals} addenda={addenda}
-        addMilestone={addMilestone} updateMilestone={updateMilestone}
+        addMilestone={addMilestone} updateMilestone={updateMilestone} applyDeduction={applyDeduction}
         deleteMilestone={deleteMilestone} deleteProjectBilling={deleteProjectBilling} createMilestoneSchedule={createMilestoneSchedule} logBillingPayment={logBillingPayment}
         deleteBillingPayment={deleteBillingPayment}
         setConfirmDel={setConfirmDel} canDeleteDeal={canDeleteDeal}
@@ -25291,29 +25307,40 @@ function PMFeedView({projs,wonDeals,deals,session,role,upProj}){
   );
 }
 
-function DeductionForm({ms,updateMilestone,session,role,today,toastEmit,sendTelegramNotification,deal}){
+function DeductionForm({ms,applyDeduction,session,today,toastEmit,sendTelegramNotification,deal}){
   const[showDed,setShowDed]=useState(false);
   const[dedForm,setDedForm]=useState({reason:"",amount:""});
+  const[saving,setSaving]=useState(false);
   if(!showDed) return(
     <button onClick={()=>setShowDed(true)} style={{background:"none",border:"1px dashed #f97316",borderRadius:6,padding:"3px 10px",fontSize:".68rem",color:"#c2410c",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>+ Record Deduction</button>
   );
+  // The database lowers the amount and keeps the record in one step
+  // (record_billing_deduction, migration 20261020060000): Manager only, reason
+  // required, never more than the invoice or below what has been paid.
+  const save=async()=>{
+    const amt=Number(dedForm.amount);
+    if(!String(dedForm.reason).trim()){toastEmit&&toastEmit("Give the reason for the deduction.","warning");return;}
+    if(!isFinite(amt)||amt<=0){toastEmit&&toastEmit("Enter a deduction amount greater than zero.","warning");return;}
+    if(amt>Number(ms.amount||0)+0.005){toastEmit&&toastEmit(`Deduction is more than the milestone amount (₱${Number(ms.amount||0).toLocaleString("en-PH")}).`,"warning");return;}
+    if(!isSupabaseReady()){toastEmit&&toastEmit("No server connection — a deduction can only be recorded online.","error",8000);return;}
+    setSaving(true);
+    const{data,error}=await _rpcWithTimeout(supabase.rpc('record_billing_deduction',{p_milestone_id:ms.id,p_amount:amt,p_reason:String(dedForm.reason).trim()}));
+    setSaving(false);
+    if(error){toastEmit&&toastEmit("Deduction not recorded: "+error.message,"error",9000);return;}
+    applyDeduction(ms.id,data);
+    sendTelegramNotification&&sendTelegramNotification("financialcontrol",`📉 <b>Billing Deduction Approved — ${deal?.client||""}</b>\nMilestone: ${ms.name}${ms.invoiceNo?` (${ms.invoiceNo})`:""}\nDeduction: ₱${amt.toLocaleString("en-PH")}\nAmount: ₱${Number(data.amount_before).toLocaleString("en-PH")} → ₱${Number(data.amount_after).toLocaleString("en-PH")}\nReason: ${data.reason}\nApproved by: ${session?.name||data.recorded_by} · ${today}`);
+    toastEmit&&toastEmit("Deduction recorded — Finance notified","success");
+    setShowDed(false);setDedForm({reason:"",amount:""});
+  };
   return(
     <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"10px 12px"}}>
       <div style={{fontWeight:700,color:"#c2410c",fontSize:".76rem",marginBottom:8}}>📉 Record Deduction</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
-        <Fld label="Reason"><Inp value={dedForm.reason} onChange={e=>setDedForm(p=>({...p,reason:e.target.value}))} placeholder="e.g. Penalty, Incomplete works"/></Fld>
-        <Fld label="Amount (₱)"><Inp type="number" value={dedForm.amount} onChange={e=>setDedForm(p=>({...p,amount:e.target.value}))} placeholder="0.00"/></Fld>
+        <Fld label="Reason" required><Inp value={dedForm.reason} onChange={e=>setDedForm(p=>({...p,reason:e.target.value}))} placeholder="e.g. Penalty, Incomplete works"/></Fld>
+        <Fld label="Amount (₱, VAT-ex)" required><Inp type="number" value={dedForm.amount} onChange={e=>setDedForm(p=>({...p,amount:e.target.value}))} placeholder="0.00"/></Fld>
       </div>
       <div style={{display:"flex",gap:6}}>
-        <button onClick={()=>{
-          if(!dedForm.reason||!dedForm.amount) return;
-          const ded={id:uid(),reason:dedForm.reason,amount:Number(dedForm.amount),approvedBy:session?.name||"Manager",approvedOn:today};
-          const updated=[...(ms.deductions||[]),ded];
-          updateMilestone(ms.id,{deductions:updated,amount:Math.max(0,Number(ms.amount)-Number(dedForm.amount))});
-          sendTelegramNotification&&sendTelegramNotification("financialcontrol",`📉 <b>Billing Deduction Approved — ${deal?.client||""}</b>\nMilestone: ${ms.name}\nDeduction: ₱${Number(dedForm.amount).toLocaleString("en-PH")}\nReason: ${dedForm.reason}\nApproved by: ${session?.name||"Manager"} · ${today}`);
-          toastEmit&&toastEmit("Deduction recorded — Finance notified","success");
-          setShowDed(false);setDedForm({reason:"",amount:""});
-        }} style={{background:"#c2410c",border:"none",borderRadius:6,padding:"5px 14px",fontSize:".74rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>Approve & Record</button>
+        <button onClick={save} disabled={saving} style={{background:"#c2410c",border:"none",borderRadius:6,padding:"5px 14px",fontSize:".74rem",color:"#fff",cursor:saving?"wait":"pointer",fontFamily:"inherit",fontWeight:700,opacity:saving?.6:1}}>{saving?"Saving…":"Approve & Record"}</button>
         <button onClick={()=>setShowDed(false)} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 10px",fontSize:".74rem",color:"#64748b",cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
       </div>
     </div>
@@ -25444,7 +25471,7 @@ function AuditView({findings,addFinding,updateFinding,session,role}){
   );
 }
 
-function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMilestone,updateMilestone,deleteMilestone,deleteProjectBilling,createMilestoneSchedule,logBillingPayment,deleteBillingPayment,setConfirmDel,canDeleteDeal,session,role,cocDeals,clientProfiles,initialDeal,clearInitialDeal,upDeals,onSaveOnboarding,onOpenPayTerms,projs,overallProg,toastEmit,sendTelegramNotification}){
+function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMilestone,updateMilestone,applyDeduction,deleteMilestone,deleteProjectBilling,createMilestoneSchedule,logBillingPayment,deleteBillingPayment,setConfirmDel,canDeleteDeal,session,role,cocDeals,clientProfiles,initialDeal,clearInitialDeal,upDeals,onSaveOnboarding,onOpenPayTerms,projs,overallProg,toastEmit,sendTelegramNotification}){
   const mob=window.innerWidth<768;
   const[selDeal,  setSelDeal]  =useState(initialDeal||null);
   React.useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearInitialDeal&&clearInitialDeal();}},[]);
@@ -27027,29 +27054,41 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                           </div>
                         </div>
                       )}
-                    {/* Deductions (Manager-only approval trail) */}
+                    {/* Deductions (Manager-only; kept in billing_deductions, reversed rows stay listed) */}
                     {(()=>{
                       const deds=(ms.deductions||[]);
-                      const totalDed=deds.reduce((s,d)=>s+Number(d.amount||0),0);
+                      const totalDed=deds.filter(d=>!d.reversedAt).reduce((s,d)=>s+Number(d.amount||0),0);
+                      const isMgrB=canonRole(role)==="Manager";
+                      const reverseDed=async(d)=>{
+                        const why=await uiPrompt(`Reverse the ₱${Number(d.amount).toLocaleString("en-PH")} deduction ("${d.reason}")?\n\nThe amount goes back on ${ms.name||"this milestone"}. The deduction stays on record, marked reversed.\nReason (required):`,"");
+                        if(why==null) return;
+                        if(!String(why).trim()){toastEmit&&toastEmit("A reason is required to reverse a deduction.","warning");return;}
+                        const{data,error}=await _rpcWithTimeout(supabase.rpc('reverse_billing_deduction',{p_id:d.id,p_reason:String(why).trim()}));
+                        if(error){toastEmit&&toastEmit("Deduction not reversed: "+error.message,"error",9000);return;}
+                        applyDeduction(ms.id,data);
+                        sendTelegramNotification&&sendTelegramNotification("financialcontrol",`↺ <b>Billing Deduction Reversed — ${deal?.client||""}</b>\nMilestone: ${ms.name}${ms.invoiceNo?` (${ms.invoiceNo})`:""}\nRestored: ₱${Number(d.amount).toLocaleString("en-PH")}\nOriginal reason: ${d.reason}\nWhy reversed: ${data.reverse_reason}\nBy: ${session?.name||data.reversed_by} · ${today}`);
+                        toastEmit&&toastEmit("Deduction reversed — amount restored","success");
+                      };
                       return(
                         <div style={{marginTop:8}}>
                           {deds.length>0&&(
                             <div style={{background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:8,padding:"8px 12px",marginBottom:6}}>
-                              <div style={{fontSize:".67rem",fontWeight:700,color:"#c2410c",marginBottom:5,textTransform:"uppercase",letterSpacing:".5px"}}>Deductions — ₱{totalDed.toLocaleString("en-PH")} total</div>
+                              <div style={{fontSize:".67rem",fontWeight:700,color:"#c2410c",marginBottom:5,textTransform:"uppercase",letterSpacing:".5px"}}>Deductions — ₱{totalDed.toLocaleString("en-PH")} in effect</div>
                               {deds.map((d,di)=>(
-                                <div key={d.id||di} style={{display:"flex",justifyContent:"space-between",fontSize:".72rem",color:"#78350f",marginBottom:3,gap:8,alignItems:"center"}}>
+                                <div key={d.id||di} style={{display:"flex",justifyContent:"space-between",fontSize:".72rem",color:d.reversedAt?"#94a3b8":"#78350f",marginBottom:3,gap:8,alignItems:"center"}}>
                                   <div>
-                                    <span style={{fontWeight:700}}>₱{Number(d.amount).toLocaleString("en-PH")}</span>
+                                    <span style={{fontWeight:700,textDecoration:d.reversedAt?"line-through":"none"}}>₱{Number(d.amount).toLocaleString("en-PH")}</span>
                                     <span style={{margin:"0 5px",color:"#c2410c"}}>·</span>
-                                    <span>{d.reason}</span>
+                                    <span style={{textDecoration:d.reversedAt?"line-through":"none"}}>{d.reason}</span>
                                     {d.approvedBy&&<span style={{color:"#059669",fontWeight:600,marginLeft:6}}>✓ {d.approvedBy} · {d.approvedOn}</span>}
+                                    {d.reversedAt&&<span style={{color:"#64748b",fontWeight:600,marginLeft:6}}>↺ Reversed by {d.reversedBy} · {String(d.reversedAt).slice(0,10)} — {d.reverseReason}</span>}
                                   </div>
-                                  {role==="Manager"&&<button onClick={()=>{const updated=(ms.deductions||[]).filter((_,i)=>i!==di);updateMilestone(ms.id,{deductions:updated});}} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".7rem",padding:0}}>×</button>}
+                                  {isMgrB&&!d.reversedAt&&<button onClick={()=>reverseDed(d)} title="Put the amount back (the record is kept)" style={{background:"none",border:"1px solid #fed7aa",borderRadius:5,color:"#c2410c",cursor:"pointer",fontSize:".65rem",padding:"1px 7px",fontFamily:"inherit",fontWeight:600}}>↺ Reverse</button>}
                                 </div>
                               ))}
                             </div>
                           )}
-                          {role==="Manager"&&<DeductionForm ms={ms} updateMilestone={updateMilestone} session={session} role={role} today={today} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} deal={deal}/>}
+                          {isMgrB&&ms.status!=="Cancelled"&&<DeductionForm ms={ms} applyDeduction={applyDeduction} session={session} today={today} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} deal={deal}/>}
                         </div>
                       );
                     })()}
