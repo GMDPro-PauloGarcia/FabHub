@@ -542,14 +542,17 @@ export const isBillingUnsentLate = (b={}, today) =>
 // Portfolio totals over a list of milestones. `dealOf(dealId)` returns the deal (or
 // undefined) so receipt type / EWT can fall back to it.
 export const arSummary = (billings=[], dealOf=()=>undefined) => {
-  let billed=0, receivable=0, collected=0, outstanding=0, open=0;
+  let billed=0, receivable=0, collected=0, offset=0, outstanding=0, open=0;
   billings.forEach(b=>{
     if(b.status==="Cancelled") return;
     const d=dealOf(b.dealId), r=milestoneReceivable(b,d), p=milestonePaid(b), bal=Math.max(0,r-p);
     billed+=Number(b.amount)||0; receivable+=r; collected+=p; outstanding+=bal; if(bal>0.005) open++;
+    offset+=(b.payments||[]).filter(x=>!x.bounced&&isOffsetPayment(x)).reduce((s,x)=>s+(Number(x.amount)||0),0);
   });
   const r2=x=>Math.round(x*100)/100;
-  return { billed:r2(billed), receivable:r2(receivable), collected:r2(collected), outstanding:r2(outstanding),
+  // `collected` is everything settled against invoices, offsets included; `offset`
+  // is the part of it settled without cash (see OFFSET_METHOD).
+  return { billed:r2(billed), receivable:r2(receivable), collected:r2(collected), offset:r2(offset), outstanding:r2(outstanding),
            collectedBase:r2(receivable>0 ? collected*billed/receivable : 0),   // collections restated VAT-ex
            openMilestones:open, collectionRate: receivable>0 ? collected/receivable : 0 };
 };
@@ -660,6 +663,15 @@ export const dueDateFromTerms=(terms,fromISO)=>{const t=String(terms||"").toLowe
 // method. Legacy payments with neither method nor valueDate clear on their
 // receipt date, preserving existing behaviour.
 export const PAYMENT_METHODS=["Cash","Bank Transfer","Cheque","Online","Other"];
+// A receivable settled without cash — e.g. Makerlab CE-2026-1242, paid by
+// cancelling a debt GMD owed them under a credit note. It clears the invoice
+// (balance, Fully Paid, AR) but is left out of every cash figure (cash flow,
+// monthly collections, cash-in). Manager only, reference required — enforced by
+// migration 20261020050000_billing_offset_manager_only.sql; keep in sync.
+export const OFFSET_METHOD="Offset / Credit Note";
+export const isOffsetPayment=(p)=>!!p&&(p.method??p.payment_method)===OFFSET_METHOD;
+// Money that actually reached GMD: not bounced, not an offset.
+export const isCashPayment=(p)=>!!p&&!p.bounced&&!isOffsetPayment(p);
 export const CHEQUE_CLEAR_DAYS=3; // banking days a cheque takes to clear
 // Add N banking days (skip Sat/Sun) to an ISO date string.
 export const addBankingDaysISO=(fromISO,n)=>{

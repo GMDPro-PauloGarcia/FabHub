@@ -52,6 +52,11 @@ For the smoke test locally, run `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers
 - Enforced in `attachBoqToDeal` (`src/App.jsx`), the Clear Draft gate in `src/views/BOQBuilder.jsx`, and migration `20261006010000_deals_boq_safeguards.sql` — keep them in sync.
 - Supabase MCP `execute_sql`/`apply_migration` hang on any `DROP` (they wait for a confirmation that never comes). Write migrations with `create or replace` / `if not exists` instead.
 
+## Offset / credit note settlements
+- A receivable settled without cash (e.g. Makerlab CE-2026-1242, paid by cancelling GMD's ₱525K debt to them) is a billing payment with method `Offset / Credit Note` (`OFFSET_METHOD`, `src/core.js`).
+- It counts wherever FabHub measures what's settled (balances, Fully Paid, AR, collected-to-date) and is excluded wherever FabHub counts cash by date. Use `isCashPayment(p)` in any new cash figure (cash flow, monthly collections, cash-in).
+- Only a Manager may record or change one, and it needs a reference. Enforced in BillingView's Log/Edit Payment and by migration `20261020050000_billing_offset_manager_only.sql`. Keep them in sync.
+
 ## Deal billing totals (database-owned)
 - For any deal with billing milestones, `deals.invoiced`, `amount_paid` and `payment_status` are computed by the database (`recompute_deal_billing_totals`, triggers on `billing_milestones` / `billing_payments`, migration `20261012010000`). Only that function may change them: `trg_deals_protect_billing_totals` (`20261012030000`) silently keeps the old values on any other update.
 - The app only updates these on screen. Do not add client writes of them; Finance can't update `deals` under RLS, which is how ₱5.67M of collections went missing (fixed 2026-10-12).
