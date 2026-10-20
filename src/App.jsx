@@ -8,7 +8,7 @@ import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDa
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -4549,7 +4549,7 @@ export default function App(){
           console.info("[FabHub] sbLoadAll result — deals:",data?.deals?.length||0,"jos:",data?.jos?.length||0,"users:",data?.users?.length||0);
           if(data){
             const idbE=[];
-            const _deals=data.deals?.length?data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,standbyPO:d.standby_po||false,poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,signedCeUrl:d.signed_ce_url||"",signedCeOnFile:d.signed_ce_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})):null;
+            const _deals=data.deals?.length?data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,standbyPO:d.standby_po||false,dpWaivedBy:d.dp_waived_by||"",dpWaivedAt:d.dp_waived_at||null,dpWaivedReason:d.dp_waived_reason||"",poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,signedCeUrl:d.signed_ce_url||"",signedCeOnFile:d.signed_ce_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})):null;
             if(_deals){
               // Reconcile legacy non-UUID "ghost" deals against the server.
               // Before the deals.id → UUID migration, deals were keyed by local
@@ -4892,7 +4892,7 @@ export default function App(){
         // once/30s) — far more often than a manual page refresh — so a blind
         // overwrite here was the single biggest way to lose a just-added record
         // that hadn't synced yet (e.g. still in flight when the user tabbed away).
-        if(data?.deals?.length) setDeals(prev=>mlo(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,standbyPO:d.standby_po||false,poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,signedCeUrl:d.signed_ce_url||"",signedCeOnFile:d.signed_ce_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})),prev));
+        if(data?.deals?.length) setDeals(prev=>mlo(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,standbyPO:d.standby_po||false,dpWaivedBy:d.dp_waived_by||"",dpWaivedAt:d.dp_waived_at||null,dpWaivedReason:d.dp_waived_reason||"",poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,signedCeUrl:d.signed_ce_url||"",signedCeOnFile:d.signed_ce_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})),prev));
         if(data?.jos?.length){const js=data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no}));setJos(prev=>mlo(js,dropStaleJos(js,prev)));}
         if(Object.keys(data?.pcards||{}).length) setPcards(prev=>mergeLocalOnlyObj(data.pcards,prev));
         // Map the same camelCase fields the initial load does. Omitting dueDate
@@ -4926,7 +4926,7 @@ export default function App(){
     // clicks it is right after a save looked stuck, which is also the exact
     // moment a blind overwrite would erase the very record they're trying to
     // recover.
-    if(data.deals?.length){const ds=data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,standbyPO:d.standby_po||false,poBudget:d.standby_po?(Number(d.po_budget)||0):"",leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,boqData:d.boq_data||null,bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,signedCeUrl:d.signed_ce_url||"",signedCeOnFile:d.signed_ce_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null}));setDeals(prev=>mlo(ds,prev));idbE.push([KEYS.deals,ds]);}
+    if(data.deals?.length){const ds=data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,standbyPO:d.standby_po||false,dpWaivedBy:d.dp_waived_by||"",dpWaivedAt:d.dp_waived_at||null,dpWaivedReason:d.dp_waived_reason||"",poBudget:d.standby_po?(Number(d.po_budget)||0):"",leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,boqData:d.boq_data||null,bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,signedCeUrl:d.signed_ce_url||"",signedCeOnFile:d.signed_ce_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null}));setDeals(prev=>mlo(ds,prev));idbE.push([KEYS.deals,ds]);}
     if(data.jos?.length){const js=data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned}));setJos(prev=>mlo(js,dropStaleJos(js,prev)));idbE.push([KEYS.jos,js]);}
     if(Object.keys(data.pcards||{}).length){setPcards(data.pcards);idbE.push([KEYS.pcards,data.pcards]);}
     if(data.billings?.length){const bs=data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by,retentionHeld:m.retention_held!=null?Number(m.retention_held):undefined,isRetentionRelease:m.is_retention_release||undefined,plannedDate:m.planned_bill_date||undefined,msType:m.ms_type||undefined,payments:(m.payments||[]).map(p=>({...p,milestoneId:p.milestone_id??p.milestoneId,refNo:p.ref_no??p.refNo,recordedBy:p.recorded_by??p.recordedBy,valueDate:p.value_date??p.valueDate,method:p.payment_method??p.method,bounced:!!(p.bounced??false)}))}));setBillings(prev=>mlo(bs,prev));idbE.push([KEYS.billings,bs]);}
@@ -6149,7 +6149,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           proposalFolderLink:rec.proposal_folder_link,stage:normalizeStage(rec.stage),
           location:rec.location||"",addedBy:rec.added_by||"",addedAt:rec.added_at||"",
           awardRequestData:rec.award_request_data||null,boqData:rec.boq_data||null,
-          standbyPO:rec.standby_po||false,poBudget:rec.standby_po?(Number(rec.po_budget)||0):"",
+          standbyPO:rec.standby_po||false,dpWaivedBy:rec.dp_waived_by||"",dpWaivedAt:rec.dp_waived_at||null,dpWaivedReason:rec.dp_waived_reason||"",poBudget:rec.standby_po?(Number(rec.po_budget)||0):"",
           billingGenerated:rec.billing_generated||false,
           bir2303Url:rec.bir_2303_url||"",bir2303OnFile:rec.bir_2303_on_file||false,
           signedCeUrl:rec.signed_ce_url||"",signedCeOnFile:rec.signed_ce_on_file||false,
@@ -7202,6 +7202,30 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     }
   };
   const upDeals    =useCallback(fn=>setDeals(p=>{const n=fn(p);persist(KEYS.deals,n);return n;}),[persist]);
+  // A Manager waives (reason given) or restores the down payment on a deal, so
+  // POs and subcon work orders can be issued before the client pays (credit-term
+  // clients). The database allows only Managers, requires the reason and writes
+  // every change to audit_log (migration 20261020110000). reason=null restores.
+  const waiveDp=async(dealId,reason)=>{
+    const d=deals.find(x=>x.id===dealId);
+    if(!d) return false;
+    if(canonRole(role)!=="Manager"){toastEmit("Only a Manager can waive the down payment.","error");return false;}
+    const r=(reason||"").trim();
+    if(reason!==null&&r.length<5){toastEmit("Give a reason for the waiver (at least 5 characters).","error");return false;}
+    if(!isSupabaseReady()){toastEmit("No server connection. Try again when you're back online.","error");return false;}
+    const patch=reason===null
+      ?{dp_waived_by:null,dp_waived_at:null,dp_waived_reason:null}
+      :{dp_waived_by:session?.name||"",dp_waived_at:new Date().toISOString(),dp_waived_reason:r};
+    if(!(await sbUpdate('deals',dealId,patch))) return false;
+    upDeals(ds=>ds.map(x=>x.id===dealId?{...x,dpWaivedBy:patch.dp_waived_by||"",dpWaivedAt:patch.dp_waived_at,dpWaivedReason:patch.dp_waived_reason||""}:x));
+    const label=`${d.client||""}${d.ceNo?" ("+d.ceNo+")":""}`;
+    logActivity(dealId,reason===null?"DP waiver removed":"DP waived",reason===null?"Down payment required again before POs":`POs allowed before down payment: ${r}`);
+    sendTelegramNotification("management",reason===null
+      ?`↩️ <b>DP waiver removed</b>\n${label}\nBy: ${session?.name||"?"}`
+      :`⚠️ <b>Down payment waived</b>\n${label}\nPaid so far: ₱${(Number(d.amountPaid)||0).toLocaleString("en-PH")}\nReason: ${r}\nBy: ${session?.name||"?"}`);
+    toastEmit(reason===null?"Waiver removed — POs need a down payment again":"Down payment waived — POs can be issued","success");
+    return true;
+  };
   const upProjs    =useCallback(fn=>setProjs(p=>{const n=fn(p);persist(KEYS.projects,n);return n;}),[persist]);
   const upExps     =useCallback(fn=>setExps(p=>{const n=fn(p);persist(KEYS.expenses,n);return n;}),[persist]);
   const upVouchers =useCallback(fn=>setVouchers(p=>{const n=fn(p);persist(KEYS.vouchers,n);return n;}),[persist]);
@@ -15960,8 +15984,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         })()}
       </Wrap>
     );
-    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} poApprovers={botSettings?.poApprovers||""} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} chartOfAccounts={chartOfAccounts}/></Wrap>);
-    if(page==="subconwo") return(<Wrap><SubconWOView swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} poApprovers={botSettings?.poApprovers||""} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 onWaiveDp={waiveDp} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} poApprovers={botSettings?.poApprovers||""} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} poApprovers={botSettings?.poApprovers||""} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="costing") return(<Wrap><CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} deleteMR={delMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
@@ -16304,8 +16328,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       </Wrap>
     );
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
-    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} poApprovers={botSettings?.poApprovers||""} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} chartOfAccounts={chartOfAccounts}/></Wrap>);
-    if(page==="subconwo") return(<Wrap><SubconWOView swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} poApprovers={botSettings?.poApprovers||""} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 onWaiveDp={waiveDp} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} poApprovers={botSettings?.poApprovers||""} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} poApprovers={botSettings?.poApprovers||""} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap} addMR={addMR} wonDeals={wonDeals} session={session}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} deleteMR={delMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView sendTelegramNotification={sendTelegramNotification} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
@@ -16801,8 +16825,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   if(role==="Operations"){
     if(page==="home") return <OpsView sendTelegramNotification={sendTelegramNotification} projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role} openPmModal={d=>setPmUpdateModal(d)} onCloseProject={(dealId,stage)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,stage}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{stage}).catch(()=>{});logActivity(dealId,"Stage Change",`Pipeline stage → ${stage}`,session?.name);["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,`📌 <b>Project Stage Updated</b>\nClient: <b>${projDeal?.client||"?"}</b>${projDeal?.ceNo?`\nCE: ${projDeal.ceNo}`:""}\nNew Stage: ${stage}\nBy: ${session?.name||"Ops"}`));}}/>;
-    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} poApprovers={botSettings?.poApprovers||""} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} chartOfAccounts={chartOfAccounts}/></Wrap>);
-    if(page==="subconwo") return(<Wrap><SubconWOView swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} poApprovers={botSettings?.poApprovers||""} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 onWaiveDp={waiveDp} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} poApprovers={botSettings?.poApprovers||""} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} poApprovers={botSettings?.poApprovers||""} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} deleteMR={delMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView sendTelegramNotification={sendTelegramNotification} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
@@ -18435,7 +18459,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   if((["Cost Control","Finance","Manager","Operations"].includes(role))&&page==="procurement") return(
     <Wrap>
-      <ProcurementView2
+      <ProcurementView2 onWaiveDp={waiveDp}
         prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR}
         wonDeals={wonDeals} deals={deals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}
         upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} chartOfAccounts={chartOfAccounts}/>
@@ -22059,7 +22083,7 @@ function CEQSView({ceReqs,addCEReq,updateCEReq,session,role,toastEmit,deals}){
 // ─── BOQ MODAL (opened from pipeline 📋 button) ──────────────────────────────
 
 // ─── SUBCON WORK ORDERS VIEW ───────────────────────────────────────────────────
-function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,subcons,session,role,toastEmit,poApprovers,sendTelegramNotification,chartOfAccounts=[]}){
+function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,deals,subcons,session,role,toastEmit,poApprovers,sendTelegramNotification,chartOfAccounts=[],onWaiveDp}){
   const today=new Date().toISOString().split("T")[0];
   const[mode,setMode]=useState("list");
   const[editingId,setEditingId]=useState(null);
@@ -22099,6 +22123,12 @@ function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,subc
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
   const canManage=role==="Manager"||isProcurementRole(role);
   const woDirect=canApprovePO(role,session?.name||"",session?.name||"",poApprovers);
+  // Down payment gate (same rule as POs): no work order is issued on a deal the
+  // client hasn't paid on, unless a Manager waived the down payment.
+  const WO_ISSUED=["Issued","In Progress","Completed"];
+  const allD=deals||wonDeals||[];
+  const dpBlockedDeal=pid=>{const d=allD.find(x=>x.id===pid);return d&&!dealDpClear(d,allD)?d:null;};
+  const dpMsg=d=>`No down payment received on ${d.ceNo||d.client||"this project"}. A Manager must waive it before a work order can be issued.`;
   // Where a WO sits in the engage → complete → pay chain (Policy v2.0). Derived
   // from the WO's own workflow + accounting fields: a subcontractor is only
   // payable once the work is issued, and paid via the Accounting board
@@ -22349,6 +22379,8 @@ function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,subc
     const base={...form,projectName:projDisplayName(deal)||form.projectName||"",contractAmount:n(form.contractAmount),retentionPct:n(form.retentionPct)};
     if(editingId){
       const orig=swos.find(w=>w.id===editingId);
+      const dpBlk=orig&&WO_ISSUED.includes(base.status)&&!WO_ISSUED.includes(orig.status)&&dpBlockedDeal(base.projectId);
+      if(dpBlk){toastEmit&&toastEmit(dpMsg(dpBlk),"error",9000);return;}
       if(base.status==="Issued"&&orig&&(orig.status==="Pending Approval"||orig.status==="Draft")&&!canApprovePO(role,session?.name||"",orig.requestedBy,poApprovers)){toastEmit&&toastEmit("Needs a Manager (or designated approver) to approve.","error");return;}
       if(base.status==="Issued"&&orig&&orig.status!=="Issued") Object.assign(base,{approvedBy:session?.name||"",acctStatus:base.acctStatus||"For Accounting"});
       updateSWO(editingId,base);
@@ -22360,9 +22392,12 @@ function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,subc
     let woNo;
     try{ woNo=await claimWoNumber({typed:form.woNumber,suggested:suggestedNo,swos}); }
     finally{ setSubmitting(false); }
-    addSWO({...base,woNumber:woNo,status:woDirect?"Issued":"Pending Approval",
-      requestedBy:session?.name||"",approvedBy:woDirect?session?.name||"":"",
-      acctStatus:woDirect?"For Accounting":""});
+    const dpBlkNew=woDirect&&dpBlockedDeal(base.projectId);
+    if(dpBlkNew) toastEmit&&toastEmit(`Saved as Pending Approval. ${dpMsg(dpBlkNew)}`,"error",9000);
+    const issueNow=woDirect&&!dpBlkNew;
+    addSWO({...base,woNumber:woNo,status:issueNow?"Issued":"Pending Approval",
+      requestedBy:session?.name||"",approvedBy:issueNow?session?.name||"":"",
+      acctStatus:issueNow?"For Accounting":""});
     toastEmit&&toastEmit(woNo!==(form.woNumber||"").trim()
       ?`Saved as ${woNo} — ${(form.woNumber||"").trim()} was already taken`
       :woDirect?`Work Order ${woNo} issued to ${form.subcontractor.trim()}`
@@ -22590,6 +22625,7 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
                 noneLabel="— Select Project —"
                 noneValue=""
               />
+              {(()=>{const d=allD.find(x=>x.id===form.projectId);return d&&(d.dpWaivedAt||!dealDpClear(d,allD))?<div style={{marginTop:6}}><DpGate deal={d} deals={allD} role={role} onWaiveDp={onWaiveDp} what="Work orders"/></div>:null;})()}
             </Fld>
             <Fld label="WO Number" required hint={editingId?undefined:"Suggested — confirmed on submit to avoid duplicates"}>
               <Inp value={form.woNumber} onChange={e=>f("woNumber",e.target.value)} placeholder="WO-0001"/>
@@ -22876,6 +22912,8 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
                       })()}
                       <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
                         <select value={w.status} onChange={e=>{const st=e.target.value;
+                          const dpBlk=WO_ISSUED.includes(st)&&!WO_ISSUED.includes(w.status)&&dpBlockedDeal(w.projectId);
+                          if(dpBlk){toastEmit&&toastEmit(dpMsg(dpBlk),"error",9000);return;}
                           if(st==="Issued"&&(w.status==="Pending Approval"||w.status==="Draft")&&!canApprovePO(role,session?.name||"",w.requestedBy,poApprovers)){toastEmit&&toastEmit("Needs a Manager (or designated approver) to approve.","error");return;}
                           updateSWO(w.id,{status:st,...(st==="Issued"&&w.status!=="Issued"?{approvedBy:session?.name||"",acctStatus:w.acctStatus||"For Accounting"}:{})});}} style={{border:"1.5px solid #e2e8f0",borderRadius:6,padding:"3px 6px",fontFamily:"inherit",fontSize:".7rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
                           {SWO_STATUSES.map(s=><option key={s}>{s}</option>)}
@@ -22884,6 +22922,8 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
                         <div style={{marginLeft:"auto",display:"flex",gap:6}}>
                           {(w.status==="Pending Approval"||w.status==="Draft")&&canApprovePO(role,session?.name||"",w.requestedBy,poApprovers)&&(
                             <button onClick={()=>{
+                              const dpBlk=dpBlockedDeal(w.projectId);
+                              if(dpBlk){toastEmit&&toastEmit(dpMsg(dpBlk),"error",9000);return;}
                               updateSWO(w.id,{status:"Issued",approvedBy:session?.name||"",acctStatus:"For Accounting"});
                               const aMsg=`✅ <b>Work Order Approved — ${w.woNumber}</b>\nSubcontractor: ${w.subcontractor||"—"}\nAmount: ${fmt(w.contractAmount)}\nRequested by: ${w.requestedBy||"—"}\nApproved by: ${session?.name||"?"} · ${today}\n→ Sent to Accounting for documentation`;
                               sendTelegramNotification("procurement",aMsg);
@@ -23161,8 +23201,39 @@ ${a.acctNotes?`<div class="trail"><b>Accounting notes:</b><br>${esc(a.acctNotes)
 
 // ─── COSTING STUDY ────────────────────────────────────────────────────────────
 
+// ─── DOWN PAYMENT GATE (POs / subcon WOs) ────────────────────────────────────
+// Shown wherever a PO or work order is about to be issued on a deal that has no
+// payment yet ("NO DP = NO production"). Managers can waive the down payment
+// for the deal right here, with a reason; everyone else is told who can.
+// Rule: dealDpClear (core.js) + migration 20261020110000.
+function DpGate({deal,deals,role,onWaiveDp,what="POs"}){
+  const[reason,setReason]=useState("");
+  const[busy,setBusy]=useState(false);
+  if(!deal) return null;
+  const mgr=canonRole(role)==="Manager";
+  const label=`${deal.client||"This deal"}${deal.ceNo?" ("+deal.ceNo+")":""}`;
+  const waive=async(r)=>{if(busy||!onWaiveDp)return;setBusy(true);const ok=await onWaiveDp(deal.id,r);setBusy(false);if(ok)setReason("");};
+  if(deal.dpWaivedAt) return(
+    <div style={{fontSize:".72rem",color:"#92400e",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"7px 10px",marginBottom:8,lineHeight:1.5}}>
+      Down payment waived on {label} by {deal.dpWaivedBy||"a Manager"}{deal.dpWaivedAt?" on "+String(deal.dpWaivedAt).slice(0,10):""}: {deal.dpWaivedReason||"—"}
+      {mgr&&onWaiveDp&&<button type="button" disabled={busy} onClick={()=>waive(null)} style={{marginLeft:8,background:"none",border:"none",color:"#b45309",fontWeight:700,cursor:"pointer",fontFamily:"inherit",fontSize:".72rem",textDecoration:"underline",padding:0}}>Remove waiver</button>}
+    </div>);
+  if(dealDpClear(deal,deals)) return null;
+  return(
+    <div role="alert" style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:10,padding:"10px 12px",marginBottom:10,fontSize:".76rem",color:"#991b1b",lineHeight:1.5}}>
+      <b>No down payment received on {label}.</b> {what} can't be issued until the client pays, or a Manager waives the down payment for this deal (for example, a client on credit terms).
+      {mgr&&onWaiveDp
+        ?<div style={{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}}>
+            <input value={reason} onChange={e=>setReason(e.target.value)} placeholder="Reason, e.g. SM credit terms, pays 30 days after delivery" aria-label="Reason for waiving the down payment"
+              style={{flex:"1 1 220px",minWidth:0,border:"1.5px solid #fecaca",borderRadius:7,padding:"6px 9px",fontFamily:"inherit",fontSize:".76rem",background:"#fff",boxSizing:"border-box"}}/>
+            <button type="button" disabled={busy||reason.trim().length<5} onClick={()=>waive(reason)} style={{background:reason.trim().length<5?"#fca5a5":"#b91c1c",border:"none",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#fff",cursor:reason.trim().length<5?"not-allowed":"pointer"}}>{busy?"Saving…":"Waive down payment"}</button>
+          </div>
+        :<div style={{marginTop:4,color:"#7f1d1d"}}>Ask a Manager to waive it, or wait for Finance to record the client's payment.</div>}
+    </div>);
+}
+
 // ─── PROCUREMENT VIEW 2 (Full PO → Multi-item → Delivery) ───────────────────
-function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allDeals,budgets,exps,swos,session,role,toastEmit,suppliers,addSupplier,poApprovers="",upPayables,payables,sendTelegramNotification,isSupabaseReady,sbUpsert,payableToSb,syncPoPayable,chartOfAccounts=[]}){
+function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allDeals,budgets,exps,swos,session,role,toastEmit,suppliers,addSupplier,poApprovers="",upPayables,payables,sendTelegramNotification,isSupabaseReady,sbUpsert,payableToSb,syncPoPayable,chartOfAccounts=[],onWaiveDp}){
   const activeDeals=React.useMemo(()=>(allDeals||wonDeals||[]).filter(d=>!isLostStage(d.stage)),[allDeals,wonDeals]);
   const today=new Date().toISOString().split("T")[0];
   // ── PO approval gate ────────────────────────────────────────────────────────
@@ -23173,10 +23244,17 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
   // approver stamp, so the printed PO never shows the preparer as the approver.
   // Same helper (canApprovePO) already gates Subcon Work Orders.
   const canApproveFor=requestedBy=>canApprovePO(role,session?.name||"",requestedBy,poApprovers);
+  // Down payment gate: the deal a PO line is for, when that deal still needs a
+  // down payment (or a Manager's waiver) before anything can be issued on it.
+  const ISSUED_ST=["PO Issued","Partially Delivered","Delivered"];
+  const dpBlockedDeal=projectId=>{const d=(allDeals||wonDeals||[]).find(x=>x.id===projectId);return d&&!dealDpClear(d,allDeals||wonDeals||[])?d:null;};
+  const dpMsg=d=>`No down payment received on ${d.ceNo||d.client||"this project"}. A Manager must waive it before a PO can be issued.`;
   // Apply a status change to one PR, enforcing the issue gate. onDone(patch)
   // runs after the update with the patch that was actually written.
   const changePoStatus=(pr,st,onDone)=>{
     let patch={status:st};
+    const blocked=ISSUED_ST.includes(st)&&!ISSUED_ST.includes(pr.status)&&dpBlockedDeal(pr.projectId||pr.dealId);
+    if(blocked){toastEmit&&toastEmit(dpMsg(blocked),"error",9000);return;}
     if(st==="PO Issued"&&pr.status!=="PO Issued"){
       if(!canApproveFor(pr.requestedBy)){
         toastEmit&&toastEmit("Needs a Manager or the designated PO approver — held at Pending Approval.","error");
@@ -23383,8 +23461,10 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
     // create/save a PO already in "PO Issued". Everyone else (the preparer) is
     // held at "Pending Approval" so they can't self-approve their own PO.
     const canIssueNow=canApproveFor(session?.name||"");
-    const effStatus=(poStatus==="PO Issued"&&!canIssueNow)?"Pending Approval":poStatus;
-    if(poStatus==="PO Issued"&&!canIssueNow) toastEmit&&toastEmit("Saved as Pending Approval — a Manager or the designated PO approver must issue it.","info");
+    const dpBlocked=ISSUED_ST.includes(poStatus)&&poItems.map(i=>dpBlockedDeal(i.projectId)).find(Boolean);
+    const effStatus=dpBlocked?"Pending Approval":(poStatus==="PO Issued"&&!canIssueNow)?"Pending Approval":poStatus;
+    if(dpBlocked) toastEmit&&toastEmit(`Saved as Pending Approval. ${dpMsg(dpBlocked)}`,"error",9000);
+    else if(poStatus==="PO Issued"&&!canIssueNow) toastEmit&&toastEmit("Saved as Pending Approval — a Manager or the designated PO approver must issue it.","info");
     const buildUpdate=(item)=>{
       // Resolve against all active deals, not just awarded ones — procurement
       // often buys swatches/materials for deals that haven't been won yet, and
@@ -23582,9 +23662,11 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
             <button onClick={()=>{
               const orig=prs.find(p=>p.id===editingId);
               let patch={...editForm};
+              const dpBlk=orig&&ISSUED_ST.includes(editForm.status)&&!ISSUED_ST.includes(orig.status)&&dpBlockedDeal(editForm.projectId||orig.projectId||orig.dealId);
+              if(dpBlk){toastEmit&&toastEmit(dpMsg(dpBlk),"error",9000);patch={...patch,status:orig.status,approvedBy:orig.approvedBy||"",approvedAt:orig.approvedAt||""};}
               // Enforce the PO issue gate on edits too — a non-approver cannot
               // flip an existing PO to "PO Issued" via the edit form.
-              if(editForm.status==="PO Issued"&&orig&&orig.status!=="PO Issued"){
+              else if(editForm.status==="PO Issued"&&orig&&orig.status!=="PO Issued"){
                 if(!canApproveFor(editForm.requestedBy||orig.requestedBy)){
                   toastEmit&&toastEmit("Needs a Manager or the designated PO approver — held at Pending Approval.","error");
                   patch={...patch,status:"Pending Approval",approvedBy:"",approvedAt:""};
@@ -23695,6 +23777,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
               );
             })}
           </div>
+          {[...new Set(poItems.map(i=>i.projectId))].map(pid=>{const d=(allDeals||wonDeals||[]).find(x=>x.id===pid);return d&&(d.dpWaivedAt||!dealDpClear(d,allDeals||wonDeals||[]))?<DpGate key={pid} deal={d} deals={allDeals||wonDeals||[]} role={role} onWaiveDp={onWaiveDp}/>:null;})}
           <button onClick={addPoItem} style={{background:"#f8fafc",border:"1.5px dashed #cbd5e1",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontSize:".82rem",color:"#64748b",cursor:"pointer",fontWeight:700,width:"100%",marginBottom:16}}>+ Add Item</button>
           {/* PO-level discount */}
           <div style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:10,padding:"12px 16px",marginBottom:12}}>
@@ -24106,7 +24189,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
                   <button onClick={()=>{setPoImportModal(false);setPoImportRows([]);setPoImportStatus("");}} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"9px 20px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#475569",cursor:"pointer"}}>Cancel</button>
                   <button onClick={async()=>{
                     setPoImportStatus("Saving…");
-                    let saved=0,failed=0;
+                    let saved=0,failed=0;const dpSkipped=new Set();
                     for(const r of poImportRows){
                       const allDealsAll=[...wonDeals,...(allDeals||[])];
                       const matchDeal=allDealsAll.find(d=>(d.client||"").toLowerCase()===r.projectName.toLowerCase()||(d.contact||"").toLowerCase()===r.projectName.toLowerCase())||(r.projectName==="GMD Stocks"?{id:"__gmd_stocks__"}:null);
@@ -24128,6 +24211,9 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
                         created_by:session?.name||"Import",
                         requested_by:session?.name||"Import",
                       };
+                      // The database refuses an issued PO on a deal with no down payment
+                      // (migration 20261020110000); skip it here and say why.
+                      if(ISSUED_ST.includes(rec.status)&&dpBlockedDeal(rec.deal_id)){failed++;dpSkipped.add(matchDeal?.ceNo||matchDeal?.client||r.projectName);continue;}
                       const res=await sbInsert("purchase_requests",rec);
                       if(res){
                         saved++;
@@ -24144,7 +24230,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
                       sendTelegramNotification("procurement",importMsg);
                       sendTelegramNotification("management",importMsg);
                     } else {
-                      setPoImportStatus(`⚠️ ${saved} saved, ${failed} failed. Check console for details.`);
+                      setPoImportStatus(`⚠️ ${saved} saved, ${failed} failed.${dpSkipped.size?` No down payment yet on ${[...dpSkipped].join(", ")}: a Manager must waive it first.`:" Check console for details."}`);
                     }
                   }} style={{background:"#16a34a",border:"none",borderRadius:8,padding:"9px 24px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>
                     ✅ Import {poImportRows.length} Row{poImportRows.length>1?"s":""}
@@ -24704,11 +24790,12 @@ function MaterialRequestView({sendTelegramNotification,mreqs,addMR,updateMR,dele
                         itemName:mr.itemName, category:mr.category,
                         qty:mr.qty, unit:mr.unit, estUnitCost:mr.estUnitCost||0, actUnitCost:0,
                         supplier:convSupplier.trim(), poNumber:convPoNo.trim(),
-                        poDate:new Date().toISOString().split("T")[0], status:"PO Issued",
-                        requestedBy:mr.requestedBy||"", approvedBy:session?.name||"",
+                        poDate:new Date().toISOString().split("T")[0], status:dealDpClear(dealN,wonDeals)?"PO Issued":"Pending Approval",
+                        requestedBy:mr.requestedBy||"", approvedBy:dealDpClear(dealN,wonDeals)?session?.name||"":"",
                         budgetCategory:"Materials", notes:`From MR: ${mr.notes||""}`,
                         description:mr.purpose||"",
                       });
+                      if(!dealDpClear(dealN,wonDeals)) toastEmit&&toastEmit(`Saved as Pending Approval: no down payment received on ${dealN?.ceNo||dealN?.client||"this project"} yet. A Manager must waive it before the PO can be issued.`,"error",9000);
                       updateMR(mr.id,{status:"Converted to PR",statusChangedAt:new Date().toISOString().split("T")[0]});
                       sendTelegramNotification("operations",`✅ <b>Material Request → PO Issued</b>\n${mr.itemName}\nProject: ${dealN?.client||"?"}${dealN?.contact?" — "+dealN.contact:""}\nSupplier: ${convSupplier.trim()}\nPO: ${convPoNo.trim()}\nBy: ${session?.name}`);
                       setConvertingId(null); setConvSupplier(""); setConvPoNo("");
