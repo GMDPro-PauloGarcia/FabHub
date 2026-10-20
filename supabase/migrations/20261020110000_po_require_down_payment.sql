@@ -20,6 +20,12 @@
 -- checked. Only a Manager can set or clear a waiver, and every change is
 -- written to audit_log.
 --
+-- Part 1 of 2: the waiver columns, the rule (deal_dp_clear) and the
+-- Manager-only waiver guard. It blocks nothing by itself, so it is applied
+-- BEFORE the app ships. Part 2 (20261020110100_po_require_down_payment_
+-- triggers.sql) adds the PO / work-order blocks AFTER the app with the waive
+-- button is live, so Procurement is never blocked without a way to waive.
+--
 -- Mirrors dealDpClear (src/core.js) and the PO / SWO issue gates in
 -- src/App.jsx — keep in sync. Callers with no JWT (SQL editor) are exempt.
 -- Idempotent; no DROP statements.
@@ -58,76 +64,6 @@ as $fn$
        ))
 $fn$;
 revoke execute on function public.deal_dp_clear(uuid) from public, anon, authenticated;
-
--- Purchase requests ------------------------------------------------------------
-create or replace function public.po_require_dp()
-returns trigger
-language plpgsql
-security definer
-set search_path = pg_catalog, public
-as $fn$
-declare
-  issued text[] := array['PO Issued', 'Partially Delivered', 'Delivered'];
-  ce text;
-begin
-  if coalesce(current_setting('request.jwt.claims', true), '') = '' then
-    return new;
-  end if;
-  if not (coalesce(new.status, '') = any(issued)) then
-    return new;
-  end if;
-  if tg_op = 'UPDATE' and coalesce(old.status, '') = any(issued)
-     and new.deal_id is not distinct from old.deal_id then
-    return new;
-  end if;
-  if public.deal_dp_clear(new.deal_id) then
-    return new;
-  end if;
-  select ce_no into ce from public.deals where id = new.deal_id;
-  raise exception 'No down payment received on % yet. A Manager must waive the down payment on the deal before this PO can be issued.', coalesce(ce, 'this project')
-    using errcode = 'check_violation';
-end
-$fn$;
-revoke execute on function public.po_require_dp() from public, anon, authenticated;
-
-create or replace trigger trg_po_require_dp
-  before insert or update of status, deal_id on public.purchase_requests
-  for each row execute function public.po_require_dp();
-
--- Subcon work orders -----------------------------------------------------------
-create or replace function public.swo_require_dp()
-returns trigger
-language plpgsql
-security definer
-set search_path = pg_catalog, public
-as $fn$
-declare
-  issued text[] := array['Issued', 'In Progress', 'Completed'];
-  ce text;
-begin
-  if coalesce(current_setting('request.jwt.claims', true), '') = '' then
-    return new;
-  end if;
-  if not (coalesce(new.status, '') = any(issued)) then
-    return new;
-  end if;
-  if tg_op = 'UPDATE' and coalesce(old.status, '') = any(issued)
-     and new.deal_id is not distinct from old.deal_id then
-    return new;
-  end if;
-  if public.deal_dp_clear(new.deal_id) then
-    return new;
-  end if;
-  select ce_no into ce from public.deals where id = new.deal_id;
-  raise exception 'No down payment received on % yet. A Manager must waive the down payment on the deal before this work order can be issued.', coalesce(ce, 'this project')
-    using errcode = 'check_violation';
-end
-$fn$;
-revoke execute on function public.swo_require_dp() from public, anon, authenticated;
-
-create or replace trigger trg_swo_require_dp
-  before insert or update of status, deal_id on public.subcon_work_orders
-  for each row execute function public.swo_require_dp();
 
 -- Waiver: Manager only, with a reason, always audited ----------------------------
 create or replace function public.deals_dp_waiver_guard()
@@ -173,14 +109,10 @@ create or replace trigger trg_deals_dp_waiver_guard
   before insert or update of dp_waived_by, dp_waived_at, dp_waived_reason on public.deals
   for each row execute function public.deals_dp_waiver_guard();
 
-select 'Migration 20261020110000 applied — POs / subcon WOs need a down payment or a Manager waiver' as status;
+select 'Migration 20261020110000 applied — DP waiver columns, rule and guard (no blocking yet)' as status;
 
--- ── ROLLBACK (run by hand) ──
+-- ── ROLLBACK (run by hand; roll back part 2 first) ──
 --   drop trigger if exists trg_deals_dp_waiver_guard on public.deals;
---   drop trigger if exists trg_swo_require_dp on public.subcon_work_orders;
---   drop trigger if exists trg_po_require_dp on public.purchase_requests;
 --   drop function if exists public.deals_dp_waiver_guard();
---   drop function if exists public.swo_require_dp();
---   drop function if exists public.po_require_dp();
 --   drop function if exists public.deal_dp_clear(uuid);
 --   -- the dp_waived_* columns can stay; they are inert without the triggers.

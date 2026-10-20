@@ -858,7 +858,7 @@ export const isMotherPO = (deal) => !!deal?.standbyPO;
 // down payment (credit-term clients). A sub-project or addendum is clear when
 // its parent deal is paid or waived; a mother PO once any sub-project is; internal
 // GMD jobs and stock POs (no deal) are always clear. Enforced in the database
-// by migration 20261020110000_po_require_down_payment.sql — keep in sync.
+// by migrations 20261020110000 / 20261020110100 — keep in sync.
 export const dealDpClear = (deal, deals = []) => {
   if (!deal) return true;
   if (/^GMD Production/i.test(deal.client || "")) return true;
