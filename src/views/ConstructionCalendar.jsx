@@ -72,7 +72,7 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
     setProjOpen(false);
     setSchedModal(true);
   };
-  const saveSched=()=>{
+  const saveSched=async()=>{
     // A job belongs to a project (its title IS the project) OR carries a free-text
     // title for work not yet tied to a won project. One of the two is required.
     const customTitle=(schedForm.title||"").trim();
@@ -87,7 +87,14 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
     // so blanking it for non-"O" types silently erased it on every save.
     const data={type:CAT_LABEL_BY_CODE[cat]||"Repair",category:cat,workDetail,location:schedForm.location||"",title,dueDate:schedForm.date,projectId:schedForm.projectId||"",dealId:schedForm.projectId||"",assignedTo:schedForm.assignedTo||"",notes:schedForm.notes||"",status:schedForm.status||"Scheduled",priority:"Normal"};
     if(editSchedId) updateOpsEvent?.(editSchedId,data);
-    else addOpsEvent?.(data);
+    else{
+      // Same project (or same free-text title), same day, same type of work is
+      // almost always a re-entry of a job already on the board — warn first.
+      const norm=s=>(s||"").trim().toLowerCase();
+      const dup=checklists.find(c=>c.dueDate===data.dueDate&&(c.category||catFromType(c.type))===cat&&(data.projectId?c.projectId===data.projectId:norm(c.title)===norm(title)));
+      if(dup&&!await uiConfirm({title:"Already on the board?",message:`${dup.title||"Untitled job"} · ${dup.dueDate}${dup.assignedTo?` · ${dup.assignedTo}`:""}\n\nThis job is already scheduled for that day. Add another one anyway?`,tone:"warning",confirmLabel:"Add anyway"})) return;
+      addOpsEvent?.(data);
+    }
     setSchedModal(false);setEditSchedId(null);
   };
 
