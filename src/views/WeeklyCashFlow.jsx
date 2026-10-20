@@ -1,6 +1,6 @@
 import React,{useState,useMemo} from "react";
 import {today,BANKS,payeeOf,particularsOf} from "../shared";
-import {paymentClearDate} from "../core";
+import {paymentClearDate, isCashPayment} from "../core";
 
 // ─── WEEKLY CASH FLOW SUMMARY — Owners' Review (weekly roll-up of the daily data) ───
 // Aggregates a week of collections (billing payments that clear + manual collections)
@@ -59,7 +59,7 @@ function WeeklyCashFlow({cashPositions={},billings=[],setPage,mode="weekly"}){
   const disbText=(r)=>`${payeeOf(r)} ${particularsOf(r)}`;
   const collectionsFor=(date)=>{
     let s=0;
-    (billings||[]).forEach(b=>{if(b.status==="Cancelled")return;(b.payments||[]).forEach(p=>{if(!p.bounced&&paymentClearDate(p)===date)s+=Number(p.amount||0);});});
+    (billings||[]).forEach(b=>{if(b.status==="Cancelled")return;(b.payments||[]).forEach(p=>{if(isCashPayment(p)&&paymentClearDate(p)===date)s+=Number(p.amount||0);});});
     (cashPositions[date]?.collections?.manualCollections||[]).forEach(r=>s+=n(r.amount));
     return s;
   };
