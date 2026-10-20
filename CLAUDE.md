@@ -56,3 +56,10 @@ For the smoke test locally, run `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers
 - For any deal with billing milestones, `deals.invoiced`, `amount_paid` and `payment_status` are computed by the database (`recompute_deal_billing_totals`, triggers on `billing_milestones` / `billing_payments`, migration `20261012010000`). Only that function may change them: `trg_deals_protect_billing_totals` (`20261012030000`) silently keeps the old values on any other update.
 - The app only updates these on screen. Do not add client writes of them; Finance can't update `deals` under RLS, which is how ₱5.67M of collections went missing (fixed 2026-10-12).
 - Finance's Billing onboarding fields save through the `set_deal_onboarding` RPC (`20261018010000`). The earlier `save_deal_onboarding` RPC (`20261012020000`) is superseded and unused by the app.
+
+## JO = project code (database-issued)
+- The JO number is GMD's internal project code. Every deal in an awarded stage has one: `trg_deals_ensure_jo` issues it when a deal enters an awarded stage, by any route. A child deal (`parent_deal_id`) gets its parent's JO plus `-01`, `-02` (migration `20261020020000_jo_project_code.sql`).
+- An issued JO number is never changed. Duplicates are marked `status = 'Void'`, never deleted or renumbered.
+- The app never picks a JO number: `confirmAward` sends a blank `jo_no` and reads the server's back. `trg_job_orders_adopt_auto` hands the auto-issued JO over to the Award modal's JO so a deal never gets two (`20261020030000` also skips stale copies re-pushed by devices).
+- Look up a deal's project code with `dealJo(jos, dealId)` (`src/core.js`), never `jos.find(...)`; it skips Void JOs and mirrors `deal_base_jo()`.
+- The awarded-stage list in `jo_awarded_stage()` mirrors `WON_STAGES` in `src/core.js`: keep them in sync.

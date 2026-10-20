@@ -624,6 +624,30 @@ export const mergeLocalOnly=(serverList,localList,keepIds=null)=>{
 
 export const mergeLocalOnlyObj=(serverObj,localObj)=>({...(localObj||{}),...(serverObj||{})});
 
+// ── JO = project code (owner decision, 2026-10-20) ───────────────────────────
+// Every awarded deal has a JO; a child deal's is its parent's plus -01, -02.
+// The database issues them (migration 20261020020000_jo_project_code.sql).
+// dealJo returns a deal's project-code JO: its earliest non-Void JO, plain
+// JO-NNNN before suffixed ones. Mirrors deal_base_jo() in that migration.
+const _joPlain=j=>/^JO-\d+$/.test(j.joNo||"")?0:1;
+const _joCmp=(a,b)=>_joPlain(a)-_joPlain(b)
+  ||String(a.created_at||"").localeCompare(String(b.created_at||""))
+  ||String(a.joNo||"").localeCompare(String(b.joNo||""));
+export const dealJo=(jos,dealId)=>{
+  let best=null;
+  for(const j of jos||[]) if(j.dealId===dealId&&j.status!=="Void"&&(!best||_joCmp(j,best)<0)) best=j;
+  return best;
+};
+// Local JOs minus stale copies: a local row whose number the server already
+// has under another id. trg_job_orders_adopt_auto hands an auto-issued JO
+// over to the Award modal's JO by giving the row the modal's id, so a device
+// that had the auto JO keeps its old id; never show or re-push that copy.
+export const dropStaleJos=(serverJos,localJos)=>{
+  const ids=new Set((serverJos||[]).map(j=>j.id));
+  const nos=new Set((serverJos||[]).map(j=>j.joNo).filter(Boolean));
+  return (localJos||[]).filter(j=>ids.has(j.id)||!j.joNo||!nos.has(j.joNo));
+};
+
 export const addDaysISO=(fromISO,days)=>{const b=fromISO?new Date(fromISO+"T00:00:00"):new Date();const d=new Date(b.getTime()+(Number(days)||0)*86400000);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
 
 export const dueDateFromTerms=(terms,fromISO)=>{const t=String(terms||"").toLowerCase();if(/\b(cod|cash|cwo)\b/.test(t))return addDaysISO(fromISO,0);const m=t.match(/(\d+)/);if(!m)return "";return addDaysISO(fromISO,parseInt(m[1],10));};
