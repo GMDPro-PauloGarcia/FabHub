@@ -68,3 +68,4 @@ For the smoke test locally, run `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers
 - The app never picks a JO number: `confirmAward` sends a blank `jo_no` and reads the server's back. `trg_job_orders_adopt_auto` hands the auto-issued JO over to the Award modal's JO so a deal never gets two (`20261020030000` also skips stale copies re-pushed by devices).
 - Look up a deal's project code with `dealJo(jos, dealId)` (`src/core.js`), never `jos.find(...)`; it skips Void JOs and mirrors `deal_base_jo()`.
 - The awarded-stage list in `jo_awarded_stage()` mirrors `WON_STAGES` in `src/core.js`: keep them in sync.
+- Every JO edit and delete, including one cascaded from a deal delete, is kept in `audit_log` (`trg_audit_job_order`, `20261020070000`; restore steps are in the migration). `purchase_requests` has the same audit (`20261020010000`).
