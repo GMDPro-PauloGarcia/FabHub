@@ -1,7 +1,10 @@
-// BOQ → Excel (.xlsx) export, in two versions:
+// BOQ → Excel (.xlsx) export, in three versions:
 //   client   — the quotation as printed: selling prices only, safe to send out.
 //   internal — direct cost, quoted price, markup and margin per line. Manager/QS
 //              only (gated in BOQBuilder); never send it to a client.
+//   rfq      — request for quotation to suppliers/subcons: the chosen sections'
+//              lines with qty and unit, blank price cells for the supplier, and
+//              no client name, prices, costs or markup.
 // Line totals, sub-totals, discount, VAT and margins are live formulas, so a
 // quantity edited in Excel re-foots the sheet. Unit prices are written as the
 // stored quoted figures, not re-derived from cost × markup: the app rounds with
@@ -32,17 +35,40 @@ const LAYOUT={
     sum:["F"],main:"F",last:"G"},
   internal:{cols:[["Item No.",9],["Description",50],["Qty",8],["Unit",9],["Direct Unit Cost (₱)",17],["Direct Total (₱)",17],["Unit Price (₱)",16],["Total Amount (₱)",18],["Markup %",10],["Margin (₱)",16],["Margin %",10],["Remarks",22]],
     sum:["F","H","J"],main:"H",last:"L"},
+  rfq:{cols:[["Item No.",9],["Description",58],["Qty",8],["Unit",9],["Unit Price (₱)",16],["Total Amount (₱)",18],["Supplier Remarks",26]],
+    sum:["F"],main:"F",last:"G"},
 };
+const INPUT="FFFFF9DB";   // pale yellow: cells the supplier fills in
+const RFQ_NOTES=[
+  "Fill in a unit price for each line you can supply. Totals calculate automatically.",
+  "Write \"N/A\" under Supplier Remarks for any line you cannot supply. Do not change the quantities; note any discrepancy under Supplier Remarks.",
+  "State whether prices are VAT-inclusive, VAT-exclusive or non-VAT in the supplier details above.",
+  "Include delivery and installation to the site unless stated otherwise.",
+  "Quantities are from GMD's bill of quantities. Verify against drawings before quoting.",
+];
 
-export function buildBoqWorkbook(ExcelJS,{mode="client",sections=[],items=[],groupSection,meta={},discount=0,vatEnabled=null,notes=[]}){
-  const internal=mode==="internal";
-  const L=LAYOUT[internal?"internal":"client"];
+export function buildBoqWorkbook(ExcelJS,{mode="client",sections=[],items=[],groupSection,meta={},discount=0,vatEnabled=null,notes=[],sectionIds=null}){
+  const internal=mode==="internal",rfq=mode==="rfq";
+  const L=LAYOUT[internal?"internal":rfq?"rfq":"client"];
+  // RFQ lines keep their BOQ numbers even when lines around them are left
+  // out, so a supplier's "B.1.2" is the BOQ's B.1.2.
+  const numOf=new Map(),subNumOf={};
+  sections.forEach(sec=>{
+    const g=groupSection(items.filter(it=>it.section===sec.id));
+    g.ungrouped.forEach((it,i)=>numOf.set(it,`${sec.id}.${i+1}`));
+    g.subs.forEach(sub=>{subNumOf[sec.id+"::"+sub.label]=`${sec.id}.${sub.num}`;sub.items.forEach((it,mi)=>numOf.set(it,`${sec.id}.${sub.num}.${mi+1}`));});
+  });
+  if(rfq){
+    // Only the chosen sections, and only lines with something to supply.
+    items=items.filter(it=>Number(it.qty)>0&&(!sectionIds||sectionIds.includes(it.section)));
+    discount=0;
+  }
   const wb=new ExcelJS.Workbook();
   wb.creator="FabHub";wb.created=new Date();
   wb.calcProperties.fullCalcOnLoad=true;
-  const ws=wb.addWorksheet(internal?"BOQ Internal":"BOQ",{
+  const ws=wb.addWorksheet(internal?"BOQ Internal":rfq?"RFQ":"BOQ",{
     pageSetup:{paperSize:9,orientation:internal?"landscape":"portrait",fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:.4,right:.4,top:.5,bottom:.5,header:.2,footer:.2}},
-    headerFooter:{oddFooter:internal?"&LINTERNAL — cost and margin&RPage &P of &N":"&RPage &P of &N"},
+    headerFooter:{oddFooter:internal?"&LINTERNAL — cost and margin&RPage &P of &N":rfq?"&LRequest for quotation — GMD Productions Inc.&RPage &P of &N":"&RPage &P of &N"},
   });
   ws.columns=L.cols.map(([,w])=>({width:w}));
   const M=L.main,lastCol=L.last;
@@ -53,10 +79,10 @@ export function buildBoqWorkbook(ExcelJS,{mode="client",sections=[],items=[],gro
 
   // ── Header ────────────────────────────────────────────────────────────────
   ws.getCell(`A${r}`).value="GMD Productions Inc.";ws.getCell(`A${r}`).font={bold:true,size:16,color:{argb:DARK}};
-  ws.getCell(`${M}${r}`).value=internal?"INTERNAL BOQ":"QUOTATION";ws.getCell(`${M}${r}`).font={bold:true,size:14,color:{argb:DARK}};ws.getCell(`${M}${r}`).alignment={horizontal:"right"};
+  ws.getCell(`${M}${r}`).value=internal?"INTERNAL BOQ":rfq?"REQUEST FOR QUOTATION":"QUOTATION";ws.getCell(`${M}${r}`).font={bold:true,size:14,color:{argb:DARK}};ws.getCell(`${M}${r}`).alignment={horizontal:"right"};
   r++;
   ws.getCell(`A${r}`).value="Fabrication & Project Management";ws.getCell(`A${r}`).font={size:9,color:{argb:MUTED}};
-  ws.getCell(`${M}${r}`).value="Bill of Quantities";ws.getCell(`${M}${r}`).font={size:9,color:{argb:MUTED}};ws.getCell(`${M}${r}`).alignment={horizontal:"right"};
+  ws.getCell(`${M}${r}`).value=rfq?"Supplier / subcontractor price request":"Bill of Quantities";ws.getCell(`${M}${r}`).font={size:9,color:{argb:MUTED}};ws.getCell(`${M}${r}`).alignment={horizontal:"right"};
   r++;
   if(internal){
     ws.mergeCells(span(r));
@@ -75,7 +101,12 @@ export function buildBoqWorkbook(ExcelJS,{mode="client",sections=[],items=[],gro
     }
   }
   r++;
-  const metaRows=[
+  // The RFQ never names the client: suppliers get GMD's reference and the site.
+  const metaRows=rfq?[
+    ["Reference",meta.ceNo||meta.quotationNo,"RFQ date",meta.todayStr],
+    ["Site",meta.locationName,"Reply by",""],
+    ["Requested by","GMD Productions Inc.","Contact",meta.exportedBy],
+  ]:[
     ["Project",meta.projectName,"Date",meta.dateStr],
     ["Location",meta.locationName,"Quotation No.",meta.quotationNo],
     ["Client",meta.client,"CE No.",meta.ceNo],
@@ -87,9 +118,21 @@ export function buildBoqWorkbook(ExcelJS,{mode="client",sections=[],items=[],gro
     ws.getCell(`A${r}`).value=l1;ws.getCell(`A${r}`).font={size:9,color:{argb:MUTED}};
     ws.getCell(`B${r}`).value=v1||"—";ws.getCell(`B${r}`).font={bold:true};
     ws.getCell(`${vl}${r}`).value=l2;ws.getCell(`${vl}${r}`).font={size:9,color:{argb:MUTED}};
-    ws.getCell(`${vv}${r}`).value=v2||"—";ws.getCell(`${vv}${r}`).font={bold:true};
+    ws.getCell(`${vv}${r}`).value=v2||(rfq?"":"—");ws.getCell(`${vv}${r}`).font={bold:true};
+    if(rfq&&!v2){ws.getCell(`${vv}${r}`).fill=fill(INPUT);ws.getCell(`${vv}${r}`).border=xlBorder;}
     r++;
   });
+  if(rfq){
+    r++;
+    ws.getCell(`A${r}`).value="Supplier details (to be filled in by the supplier)";ws.getCell(`A${r}`).font={bold:true};
+    r++;
+    ["Supplier","Contact person","Phone / Email","Quote valid until","Lead time","VAT basis (incl. / excl. / non-VAT)"].forEach(l=>{
+      ws.getCell(`A${r}`).value=l;ws.getCell(`A${r}`).font={size:9,color:{argb:MUTED}};
+      ws.mergeCells(`C${r}:E${r}`);
+      const c=ws.getCell(`C${r}`);c.fill=fill(INPUT);c.border=xlBorder;
+      r++;
+    });
+  }
   // Internal summary block — filled with formulas once the totals rows exist.
   const summaryAt=internal?r+1:0;
   if(internal) r+=7;
@@ -124,7 +167,15 @@ export function buildBoqWorkbook(ExcelJS,{mode="client",sections=[],items=[],gro
     row.getCell(2).value=it.description||"";
     row.getCell(3).value=qty;
     row.getCell(4).value=it.unit||"";
-    if(internal){
+    if(rfq){
+      // GMD's own remarks (drawing refs, elevations) travel with the description.
+      row.getCell(2).value=(it.description||"")+(it.remarks?`\nNote: ${it.remarks}`:"");
+      row.getCell(5).value=null;
+      row.getCell(6).value={formula:`ROUND(C${r}*E${r},2)`,result:0};
+      row.getCell(7).value=null;
+      val["F"+r]=0;
+      [5,6].forEach(i=>{row.getCell(i).numFmt=PESO;});
+    }else if(internal){
       row.getCell(5).value=base;
       row.getCell(6).value={formula:`ROUND(C${r}*E${r},2)`,result:r2(qty*base)};
       row.getCell(7).value=price;
@@ -144,6 +195,7 @@ export function buildBoqWorkbook(ExcelJS,{mode="client",sections=[],items=[],gro
     }
     eachCol(row,(c,i)=>{c.border=xlBorder;c.alignment={vertical:"top",wrapText:i===2||i===L.cols.length,horizontal:i>=3&&i<L.cols.length&&i!==4?"right":"left"};});
     row.getCell(1).border={...xlBorder,left:{style:"thick",color:{argb:argb(clr)}}};
+    if(rfq){row.getCell(5).fill=fill(INPUT);row.getCell(7).fill=fill(INPUT);}
     r++;
   };
   const writeSubtotal=(label,parts,bg,bold)=>{
@@ -177,15 +229,15 @@ export function buildBoqWorkbook(ExcelJS,{mode="client",sections=[],items=[],gro
     const secParts={ranges:[],cells:[]};
     const {ungrouped,subs}=groupSection(si);
     if(ungrouped.length) secParts.ranges.push([r,r+ungrouped.length-1]);
-    ungrouped.forEach((it,idx)=>writeItem(it,`${sec.id}.${idx+1}`,clr));
+    ungrouped.forEach(it=>writeItem(it,numOf.get(it),clr));
     subs.forEach(sub=>{
       const sh=ws.getRow(r);
-      sh.getCell(1).value=`${sec.id}.${sub.num}`;
+      sh.getCell(1).value=subNumOf[sec.id+"::"+sub.label];
       sh.getCell(2).value=sub.label;
       eachCol(sh,(c,i)=>{c.fill=fill(tint(clr,.85));c.font={bold:true,color:{argb:argb(clr)}};c.border=xlBorder;});
       r++;
       const from=r;
-      sub.items.forEach((it,mi)=>writeItem(it,`${sec.id}.${sub.num}.${mi+1}`,clr));
+      sub.items.forEach(it=>writeItem(it,numOf.get(it),clr));
       secParts.cells.push(writeSubtotal(`Sub-total ${sub.label}`,{ranges:[[from,r-1]]},tint(clr,.92),false));
     });
     sectionTotals.push(writeSubtotal(`Sub-total ${sec.label}`,secParts,tint(clr,.8),true));
@@ -220,7 +272,7 @@ export function buildBoqWorkbook(ExcelJS,{mode="client",sections=[],items=[],gro
     const mv=r2(netVal-tot.F);
     marginRow=totalRow("Margin after discount",{J:{f:`H${net}-F${g}`,res:mv},K:{f:`IF(H${net}=0,"",J${r}/H${net})`,res:pct(mv,netVal),fmt:PCT}},"");
   }
-  if(vatEnabled===true){
+  if(vatEnabled===true&&!rfq){
     const vv=netVal*0.12;
     const v=totalRow("VAT 12%",{[M]:{f:`${M}${net}*0.12`,res:vv}},"");
     totalRow("GRAND TOTAL w/ VAT",{[M]:{f:`${M}${net}+${M}${v}`,res:netVal+vv}},"dark");
@@ -244,7 +296,14 @@ export function buildBoqWorkbook(ExcelJS,{mode="client",sections=[],items=[],gro
   }
 
   // ── Notes, terms and signatories — as on the printed quotation ───────────
-  if(!internal){
+  if(rfq){
+    r++;
+    const line=t=>{ws.mergeCells(`A${r}:${lastCol}${r}`);const c=ws.getCell(`A${r}`);c.value=t;c.font={size:9,color:{argb:"FF475569"}};c.alignment={wrapText:true,vertical:"top"};r++;};
+    ws.getCell(`A${r}`).value="Instructions";ws.getCell(`A${r}`).font={bold:true};r++;
+    RFQ_NOTES.forEach(n=>line("• "+n));
+    r+=3;
+    [["Prepared by (supplier)","A"],["Signature over printed name / date","F"]].forEach(([l,col])=>{const c=ws.getCell(`${col}${r}`);c.value=l;c.font={size:9,color:{argb:MUTED}};c.border={top:{style:"thin",color:{argb:DARK}}};});
+  }else if(!internal){
     r++;
     const head=t=>{ws.getCell(`A${r}`).value=t;ws.getCell(`A${r}`).font={bold:true};r++;};
     const line=t=>{ws.mergeCells(`A${r}:${lastCol}${r}`);const c=ws.getCell(`A${r}`);c.value=t;c.font={size:9,color:{argb:"FF475569"}};c.alignment={wrapText:true,vertical:"top"};r++;};
@@ -270,7 +329,7 @@ export function buildBoqWorkbook(ExcelJS,{mode="client",sections=[],items=[],gro
 }
 
 export const boqXlsxFileName=(mode,title,date)=>
-  `BOQ${mode==="internal"?"_INTERNAL":""}_${(String(title||"").trim()||"draft").replace(/[^\p{L}\p{N}-]+/gu,"_").replace(/^_+|_+$/g,"")}_${date}.xlsx`;
+  `${mode==="rfq"?"RFQ":"BOQ"}${mode==="internal"?"_INTERNAL":""}_${(String(title||"").trim()||"draft").replace(/[^\p{L}\p{N}-]+/gu,"_").replace(/^_+|_+$/g,"")}_${date}.xlsx`;
 
 export async function downloadBoqXlsx(opts,fileName){
   const mod=await import(/* webpackChunkName: "exceljs" */ "exceljs");
