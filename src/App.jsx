@@ -49,6 +49,7 @@ const LiquidationView=_lazyView(()=>import('./views/LiquidationView'));
 const DailyCashPosition=_lazyView(()=>import('./views/DailyCashPosition'));
 const CashPositionPayables=_lazyView(()=>import('./views/CashPositionPayables'));
 const CERequestTracker=_lazyView(()=>import('./views/CERequestTracker'));
+const POApprovals=_lazyView(()=>import('./views/POApprovals'));
 const WeeklyCashFlow=_lazyView(()=>import('./views/WeeklyCashFlow'));
 const FinanceWeeklyDues=_lazyView(()=>import('./views/FinanceWeeklyDues'));
 const InventoryView=_lazyView(()=>import('./views/Warehouse').then(m=>({default:m.InventoryView})));
@@ -7138,6 +7139,45 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       sendTelegramNotification("procurement",msg);
       sendTelegramNotification("management",msg);
     }
+  };
+  // Bulk PO approval (PO Approvals panel). Issues every Pending Approval line of
+  // the given POs in one write, raises each PO's payable, and sends ONE Telegram
+  // summary instead of one message per line (updatePR's per-line notice).
+  // Authority is re-checked per PO with canApprovePO.
+  const approvePOs=async(poNos)=>{
+    const want=new Set(poNos||[]);
+    const me=session?.name||"";
+    const poApprovers=botSettings?.poApprovers||"";
+    const pending=prs.filter(p=>want.has(p.poNumber)&&p.status==="Pending Approval"&&canApprovePO(role,me,p.requestedBy,poApprovers));
+    // Down payment gate: a PO with any line on a deal that has no payment (and
+    // no Manager waiver) is skipped whole. The database rejects those writes,
+    // and one bad row would fail its entire 200-row batch below.
+    const dpBlockedNos=new Map();
+    pending.forEach(p=>{const d=deals.find(x=>x.id===(p.projectId||p.dealId));if(d&&!dealDpClear(d,deals))dpBlockedNos.set(p.poNumber,d.ceNo||d.client||"?");});
+    if(dpBlockedNos.size) toastEmit(`Not approved — no down payment yet: ${[...dpBlockedNos].map(([no,ce])=>`${no} (${ce})`).join(", ")}. A Manager must waive it on the deal first.`,"error",10000);
+    const lines=pending.filter(p=>!dpBlockedNos.has(p.poNumber));
+    if(!lines.length){if(!dpBlockedNos.size)toastEmit("Nothing to approve — those POs are no longer pending or need another approver.","error");return false;}
+    const ids=new Set(lines.map(p=>p.id));
+    const next=prs.map(p=>ids.has(p.id)?{...p,status:"PO Issued",approvedBy:me,approvedAt:today}:p);
+    upPrs(()=>next);
+    let ok=true;
+    if(isSupabaseReady()){
+      // Chunked so a large catch-up batch can't hit the request timeout.
+      const rows=next.filter(p=>ids.has(p.id)&&hasValidUUIDs({id:p.id})).map(toSbPR);
+      for(let i=0;i<rows.length;i+=200){
+        if(!(await sbUpsert("purchase_requests",rows.slice(i,i+200),"id").catch(()=>false))) ok=false;
+      }
+      if(!ok) toastEmit("⚠️ Approvals saved on this device but NOT confirmed by the server — do not close this tab.","warning",9000);
+    }
+    const approvedNos=[...new Set(lines.map(p=>p.poNumber))];
+    approvedNos.forEach(no=>{
+      syncPoPayable(no,next);
+      const first=lines.find(p=>p.poNumber===no);
+      if(first&&(first.projectId||first.dealId)) logActivity(first.projectId||first.dealId,"PO Issued",`PO ${no} approved by ${me} (${first.supplier||"no supplier"})`);
+    });
+    sendTelegramNotification("procurement",`✅ <b>${approvedNos.length} PO${approvedNos.length>1?"s":""} approved</b> by ${me}\n${approvedNos.slice(0,15).join(", ")}${approvedNos.length>15?` … +${approvedNos.length-15} more`:""}`);
+    toastEmit(`✅ ${approvedNos.length} PO${approvedNos.length>1?"s":""} approved (${lines.length} lines) — supplier bills raised.`,"success");
+    return ok!==false;
   };
   const updatePR=(id,changes)=>{
     const pr=prs.find(p=>p.id===id);
@@ -16000,7 +16040,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         })()}
       </Wrap>
     );
-    if(page==="procurement") return(<Wrap><ProcurementView2 onWaiveDp={waiveDp} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} poApprovers={botSettings?.poApprovers||""} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 onWaiveDp={waiveDp} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} poApprovers={botSettings?.poApprovers||""} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} poApprovers={botSettings?.poApprovers||""} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="costing") return(<Wrap><CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role}/></Wrap>);
@@ -16344,7 +16384,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       </Wrap>
     );
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
-    if(page==="procurement") return(<Wrap><ProcurementView2 onWaiveDp={waiveDp} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} poApprovers={botSettings?.poApprovers||""} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 onWaiveDp={waiveDp} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} poApprovers={botSettings?.poApprovers||""} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} poApprovers={botSettings?.poApprovers||""} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap} addMR={addMR} wonDeals={wonDeals} session={session}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} deleteMR={delMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
@@ -16841,7 +16881,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   if(role==="Operations"){
     if(page==="home") return <OpsView sendTelegramNotification={sendTelegramNotification} projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role} openPmModal={d=>setPmUpdateModal(d)} onCloseProject={(dealId,stage)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,stage}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{stage}).catch(()=>{});logActivity(dealId,"Stage Change",`Pipeline stage → ${stage}`,session?.name);["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,`📌 <b>Project Stage Updated</b>\nClient: <b>${projDeal?.client||"?"}</b>${projDeal?.ceNo?`\nCE: ${projDeal.ceNo}`:""}\nNew Stage: ${stage}\nBy: ${session?.name||"Ops"}`));}}/>;
-    if(page==="procurement") return(<Wrap><ProcurementView2 onWaiveDp={waiveDp} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} poApprovers={botSettings?.poApprovers||""} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 onWaiveDp={waiveDp} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} poApprovers={botSettings?.poApprovers||""} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} poApprovers={botSettings?.poApprovers||""} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} deleteMR={delMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
@@ -18478,7 +18518,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       <ProcurementView2 onWaiveDp={waiveDp}
         prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR}
         wonDeals={wonDeals} deals={deals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}
-        upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} chartOfAccounts={chartOfAccounts}/>
+        upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/>
     </Wrap>
   );
 
@@ -23249,7 +23289,7 @@ function DpGate({deal,deals,role,onWaiveDp,what="POs"}){
 }
 
 // ─── PROCUREMENT VIEW 2 (Full PO → Multi-item → Delivery) ───────────────────
-function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allDeals,budgets,exps,swos,session,role,toastEmit,suppliers,addSupplier,poApprovers="",upPayables,payables,sendTelegramNotification,isSupabaseReady,sbUpsert,payableToSb,syncPoPayable,chartOfAccounts=[],onWaiveDp}){
+function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allDeals,budgets,exps,swos,session,role,toastEmit,suppliers,addSupplier,poApprovers="",upPayables,payables,sendTelegramNotification,isSupabaseReady,sbUpsert,payableToSb,syncPoPayable,approvePOs,chartOfAccounts=[],onWaiveDp}){
   const activeDeals=React.useMemo(()=>(allDeals||wonDeals||[]).filter(d=>!isLostStage(d.stage)),[allDeals,wonDeals]);
   const today=new Date().toISOString().split("T")[0];
   // ── PO approval gate ────────────────────────────────────────────────────────
@@ -23958,6 +23998,8 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
         <ErpStat label="PO Issued" value={String([...new Set(prs.filter(p=>p.status==="PO Issued").map(p=>p.poNumber||p.id))].length)} foot="issued to suppliers"/>
         <ErpStat tone="ok" label="Total Value" value={"Php "+totalValue.toLocaleString("en-PH",{minimumFractionDigits:0,maximumFractionDigits:0})} foot="materials value"/>
       </div>
+      {/* Pending POs the viewer may approve, approved in bulk (hidden when none). */}
+      {approvePOs&&<POApprovals prs={prs} deals={allDeals||wonDeals} role={role} session={session} poApprovers={poApprovers} approvePOs={approvePOs}/>}
 
       <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
         <select value={filterProj} onChange={e=>setFilterProj(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>

@@ -1182,7 +1182,9 @@ export const emptyPR = () => ({
 
 export const canApprovePO=(role,sessionName,requestedBy,approvers)=>{
   // A Manager or a Procurement Manager is an approving authority for POs.
-  if(role==="Manager"||role==="ProcurementManager") return true;
+  // A Procurement Manager still can't approve a PO they requested themselves.
+  if(role==="Manager") return true;
+  if(role==="ProcurementManager") return !requestedBy||!sessionName||sessionName.trim().toLowerCase()!==requestedBy.trim().toLowerCase();
   if(role!=="Procurement"||!sessionName) return false;
   const list=String(approvers||"").split(",").map(s=>s.trim().toLowerCase()).filter(Boolean);
   if(list.length) return list.includes(sessionName.trim().toLowerCase());
