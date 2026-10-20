@@ -47,6 +47,8 @@ const PermissionsMatrix=_lazyView(()=>import('./views/PermissionsMatrix'));
 const BOQBuilder=_lazyView(()=>import('./views/BOQBuilder'));
 const LiquidationView=_lazyView(()=>import('./views/LiquidationView'));
 const DailyCashPosition=_lazyView(()=>import('./views/DailyCashPosition'));
+const CashPositionPayables=_lazyView(()=>import('./views/CashPositionPayables'));
+const CERequestTracker=_lazyView(()=>import('./views/CERequestTracker'));
 const WeeklyCashFlow=_lazyView(()=>import('./views/WeeklyCashFlow'));
 const FinanceWeeklyDues=_lazyView(()=>import('./views/FinanceWeeklyDues'));
 const InventoryView=_lazyView(()=>import('./views/Warehouse').then(m=>({default:m.InventoryView})));
@@ -13058,9 +13060,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // BOQ lives here now (it left the sidebar): the BOQ tab opens the BOQ page,
   // which shows this same bar, for the roles that had BOQ in their nav.
   const boqInPipeline=["Manager","Sales","Finance","QS","SalesOpsAdmin"].includes(role);
+  // CE Requests: a small tracker standing in for the hidden CE/QS Queue.
+  const ceInPipeline=["Manager","Sales","QS","SalesOpsAdmin"].includes(role);
   const PipeTabBar=()=>(
     <div style={{display:"flex",gap:0,borderBottom:"2px solid #e2e8f0",marginBottom:20}}>
-      {[["pipeline","📊 Pipeline"],["awarded","💰 Commissions"],["updates","📝 AE Updates"],...(boqInPipeline?[["boq","🧮 BOQ"]]:[])].map(([t,l])=>{
+      {[["pipeline","📊 Pipeline"],["awarded","💰 Commissions"],["updates","📝 AE Updates"],...(ceInPipeline?[["ce","📐 CE Requests"]]:[]),...(boqInPipeline?[["boq","🧮 BOQ"]]:[])].map(([t,l])=>{
         const on=t==="boq"?page==="boq":page==="pipeline"&&pipeTab===t;
         return(
         <button key={t} onClick={()=>{if(t==="boq"){setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(null);setPage("boq");}else{setPipeTab(t);setPage("pipeline");}}}
@@ -13072,6 +13076,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     </div>
   );
 
+  if(page==="pipeline"&&pipeTab==="ce"&&ceInPipeline) return(
+    <Wrap>
+      <PipeTabBar/>
+      <CERequestTracker ceReqs={ceReqs} deals={deals} addCEReq={addCEReq} updateCEReq={updateCEReq} session={session} role={role} toastEmit={toastEmit} today={today}/>
+    </Wrap>
+  );
   if(page==="pipeline"&&pipeTab==="updates") return(
     <Wrap>
       <PipeTabBar/>
@@ -15133,6 +15143,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 <button key={k} onClick={()=>setCashSub(k)} style={{padding:"8px 18px",border:"none",borderRadius:9,cursor:"pointer",fontFamily:"inherit",fontWeight:cashSub===k?800:600,fontSize:".82rem",background:cashSub===k?"#1f3864":"#eef2f8",color:cashSub===k?"#fff":"#475569"}}>{lbl}</button>
               ))}
             </div>
+            {/* While the AP is hidden, Finance approves and marks PO / WO bills paid
+                here, so Running Payables below stays true. */}
+            {cashSub==="daily"&&AP_HIDDEN&&(
+              <CashPositionPayables payables={payables} payPays={payPays} prs={prs} deals={deals} today={today}
+                canApprove={canApprovePayables} canPay={roleCanInsert("payable_payments")}
+                onApprove={approvePayable} onPay={(id,amt,o)=>recordPayablePayment(id,amt,o)} onCancelPay={cancelPayablePayment}/>
+            )}
             {cashSub==="daily"&&(
               <DailyCashPosition cashPositions={cashPositions} saveDayPos={saveDayPos} wonDeals={wonDeals} billings={billings} suppliers={suppliers} subcons={subcons} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps} updateMilestone={updateMilestone} upExps={upExps} toSbExpense={toSbExpense} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} vouchers={vouchers} payables={payables} loans={loans} inventory={inventory} userName={session?.name||""} role={role} username={session?.username||""} cashStale={cashStale}/>
             )}
