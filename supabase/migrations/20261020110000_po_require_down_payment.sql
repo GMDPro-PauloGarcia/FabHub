@@ -13,8 +13,8 @@
 --     deals.amount_paid > 0 for legacy deals without milestones);
 --   • a Manager has waived the down payment on the deal (credit-term clients
 --     such as SM, Diageo, Rustan's), with a reason: deals.dp_waived_*;
---   • it is a sub-project whose mother PO carries the waiver, or a mother PO
---     with a paid or waived sub-project;
+--   • it is a sub-project / addendum whose parent deal is paid or waived, or a
+--     mother PO with a paid or waived sub-project;
 --   • it is an internal GMD job (client "GMD Productions…"), or has no deal.
 -- POs already issued are untouched; only the move into an issued status is
 -- checked. Only a Manager can set or clear a waiver, and every change is
@@ -49,7 +49,8 @@ as $fn$
                      where m.deal_id = d.id and coalesce(p.amount, 0) > 0
                        and not coalesce(p.bounced, false))
          or exists (select 1 from public.deals par
-                     where par.id = d.parent_deal_id and par.dp_waived_at is not null)
+                     where par.id = d.parent_deal_id
+                       and (par.dp_waived_at is not null or coalesce(par.amount_paid, 0) > 0))
          or (coalesce(d.standby_po, false) and exists (
                select 1 from public.deals ch
                 where ch.parent_deal_id = d.id
