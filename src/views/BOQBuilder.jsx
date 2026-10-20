@@ -4,6 +4,7 @@ import {supabase,isSupabaseReady,sbInsert,sbUpdate,sbDelete} from "../supabaseCl
 // Clearing a deal's BOQ is Manager-only, also enforced by migration
 // 20261006010000_deals_boq_safeguards.sql — keep in sync.
 import {canonRole} from "../core";
+import {downloadBoqXlsx,boqXlsxFileName} from "./boqExcel";
 
 // A textarea that grows to fit its content. BOQ line-item descriptions are
 // often multi-line spec lists (a title + "Specifications:" + bullets), so a
@@ -397,7 +398,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
     const skipRe=/^(sub-?\s*total|vat\b|value added|discount|prepared by|approved|accepted|checked by|noted by|bank details|payment terms|general notes?|terms|notes?:|account name|•|bdo|bpi|metrobank)/i;
     const stopRe=/grand\s*total/i;
     const secRe=/^\s*([A-Za-z]{1,2}|\d{1,3})[\.\)]\s+(.+)$/;
-    const sections=[],items=[];let curId=null,curGroup=null;
+    const sections=[],items=[];let curId=null,curGroup=null,curGroupNo="";
     for(let r=headerIdx+1;r<aoa.length;r++){
       const row=aoa[r]||[];
       const itemNo=String(cell(row,cm.itemNo)||"").trim();
@@ -414,11 +415,18 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       // Label-only row (no qty, no cost): a section, a sub-group, or a flat section.
       if(deepText&&qtyN===null&&costN===null){
         const m=deepText.match(secRe);
+        // "2.3  Supervision" under section 2 is a sub-section heading (FabHub's
+        // own Excel export numbers them this way); its items are "2.3.1", "2.3.2"…
+        const subNo=itemNo.match(/^([A-Za-z0-9]+)\.\d+$/);
+        if(subNo&&curId&&subNo[1]===curId){
+          curGroup=deepText;curGroupNo=itemNo;
+          continue;
+        }
         if(itemNo&&itemNo.length<=3){
           const id=(itemNo).replace(/[.\)]+$/,"").trim();
           const label=(m?m[2]:deepText).trim();
           if(!sections.find(s=>s.id===id)) sections.push({id,label});
-          curId=id;curGroup=null;
+          curId=id;curGroup=null;curGroupNo="";
         }else if(nested){
           curGroup=firstText||deepText;
         }else{
@@ -441,7 +449,8 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       // top-level item → clear the group so it sits directly under the section.
       let name=deepText,subsection="";
       if(deepIdx>0){ if(curGroup) subsection=curGroup; }
-      else { curGroup=null; }
+      else if(curGroup&&curGroupNo&&itemNo.startsWith(curGroupNo+".")) subsection=curGroup;
+      else { curGroup=null;curGroupNo=""; }
       const q=qtyN==null?1:qtyN,uc=costN==null?(totalN!=null&&q?totalN/q:0):costN;
       items.push({section:String(secId),subsection,description:name,unit:unitVal||"lot",qty:q,baseCost:uc,unitCost:uc,total:q*uc,remarks:String(cell(row,cm.remarks)||"").trim(),markup:0});
     }
@@ -988,29 +997,39 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
     if(w){w.document.write(html);w.document.close();}
   };
 
-  const exportCSV=()=>{
-    const rows=[["Item No.","Description","Qty","Unit","Unit Cost (₱)","Total Amount (₱)","Remarks"]];
-    sections.forEach(sec=>{
-      const si=items.filter(it=>it.section===sec.id);
-      if(!si.length) return;
-      rows.push([sec.id,sec.label,"","","","",""]);
-      const {ungrouped,subs}=groupSection(si);
-      ungrouped.forEach((it,idx)=>rows.push([`${sec.id}.${idx+1}`,it.description,it.qty,it.unit,it.unitCost,it.total,it.remarks||""]));
-      subs.forEach(sub=>{
-        rows.push([`${sec.id}.${sub.num}`,sub.label,"","","","",""]);
-        sub.items.forEach((it,mi)=>rows.push([`${sec.id}.${sub.num}.${mi+1}`,it.description,it.qty,it.unit,it.unitCost,it.total,it.remarks||""]));
-        rows.push(["",`Sub-total ${sub.label}`,"","","","",sub.items.reduce((s,it)=>s+it.total,0)]);
-      });
-      rows.push(["",`Sub-total ${sec.label}`,"","","","",si.reduce((s,it)=>s+it.total,0)]);
-    });
-    rows.push(["","GRAND TOTAL","","","","",grandTotal]);
-    if(discountVal>0){rows.push(["","DISCOUNT","","","","",-discountVal]);rows.push(["","NET TOTAL","","","","",netTotal]);}
-    if(vatEnabled){rows.push(["","VAT 12%","","","","",vatAmount]);rows.push(["","GRAND TOTAL w/ VAT","","","","",netTotal+vatAmount]);}
-    const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
-    const a=document.createElement("a");
-    a.href="data:text/csv;charset=utf-8,﻿"+encodeURIComponent(csv);
-    a.download=`BOQ_${(boqTitle||"draft").replace(/[^a-zA-Z0-9]/g,"_")}_${new Date().toISOString().slice(0,10)}.csv`;
-    a.click();
+  // Excel export (see ./boqExcel). The internal copy shows direct cost and
+  // margin, so only Managers and QS get it; the client copy is the quotation.
+  const canExportInternal=["Manager","QS"].includes(canonRole(role));
+  const[xlsxBusy,setXlsxBusy]=useState("");
+  // RFQ to suppliers/subcons. Procurement can't open the BOQ page (it would
+  // show them costs and prices), so QS/Managers export it and pass it on.
+  const canExportRfq=canExportInternal;
+  const[rfqPick,setRfqPick]=useState(null);   // null | array of chosen section ids
+  const rfqLines=secId=>items.filter(it=>it.section===secId&&Number(it.qty)>0).length;
+  const exportXlsx=async(mode,sectionIds)=>{
+    if(xlsxBusy) return;
+    if(mode==="internal"&&!canExportInternal) return;
+    if(mode==="rfq"&&!canExportRfq) return;
+    const projectName=(boqTitle&&boqTitle.trim())||dealLabel(deal)||"";
+    const ref=deal||coParentDeal;
+    const now=new Date();
+    setXlsxBusy(mode);
+    try{
+      // The RFQ's file name is seen by suppliers: GMD's reference and the
+      // chosen sections only, never the client or project title.
+      const rfqRef=ref?.ceNo||quotationNo||"draft";
+      const picked=sections.filter(sec=>sectionIds?.includes(sec.id));
+      const rfqName=picked.length===sections.filter(sec=>rfqLines(sec.id)).length?rfqRef:`${rfqRef} ${picked.map(sec=>sec.label).join(" ")}`.slice(0,80);
+      await downloadBoqXlsx({mode,sections,items,groupSection,discount:discountVal,vatEnabled,notes:boqGeneralNotes(vatEnabled),sectionIds,
+        meta:{projectName,locationName:(location&&location.trim())||ref?.location||"",client:ref?.client||"",ceNo:ref?.ceNo||"",
+          quotationNo,status:boqStatus,dateStr:boqDate?new Date(boqDate+"T00:00:00").toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"}):"",
+          todayStr:now.toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"}),
+          exportedBy:session?.name||"",exportedAt:now.toLocaleString("en-PH")}},
+        boqXlsxFileName(mode,mode==="rfq"?rfqName:projectName,today));
+      if(mode==="rfq") setRfqPick(null);
+    }catch(e){
+      toastEmit&&toastEmit("Excel export failed: "+(e?.message||e),"error");
+    }finally{setXlsxBusy("");}
   };
 
   const mob=window.innerWidth<768;
@@ -1108,7 +1127,9 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
           </button>}
           {items.length>0&&<button onClick={printBOQ} style={{background:"#f0fdf4",border:"1.5px solid #86efac",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#166534",cursor:"pointer"}}>🖨 Preview / Print</button>}
           {onDuplicateToDeal&&!coId&&!srvLoading&&items.length>0&&<button onClick={()=>openXfer("duplicate")} title="Copy this BOQ onto another deal (e.g. the same store package at a new location). This BOQ stays as it is." style={{background:"#fdf4ff",border:"1.5px solid #f0abfc",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#a21caf",cursor:"pointer"}}>⧉ Duplicate to deal</button>}
-          {items.length>0&&<button onClick={exportCSV} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>}
+          {items.length>0&&<button onClick={()=>exportXlsx("client")} disabled={!!xlsxBusy} title="Download the quotation as an Excel file — selling prices only, safe to send to the client" style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#1d4ed8",cursor:xlsxBusy?"wait":"pointer"}}>{xlsxBusy==="client"?"Preparing…":"⬇ Excel"}</button>}
+          {items.length>0&&canExportInternal&&<button onClick={()=>exportXlsx("internal")} disabled={!!xlsxBusy} title="Internal Excel: direct cost, markup and margin per line. Do not send to the client." style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#b91c1c",cursor:xlsxBusy?"wait":"pointer"}}>{xlsxBusy==="internal"?"Preparing…":"⬇ Excel (internal)"}</button>}
+          {items.length>0&&canExportRfq&&<button onClick={()=>setRfqPick(sections.filter(sec=>rfqLines(sec.id)).map(sec=>sec.id))} disabled={!!xlsxBusy} title="Request for quotation to a supplier or subcon: quantities only, no prices, costs or client name" style={{background:"#f0fdfa",border:"1.5px solid #99f6e4",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#0f766e",cursor:xlsxBusy?"wait":"pointer"}}>{xlsxBusy==="rfq"?"Preparing…":"⬇ RFQ"}</button>}
           {!ro&&!srvLoading&&(selDeal||items.length>0||sections.length>0)&&(!selDeal||canonRole(role)==="Manager")&&<button onClick={()=>{deleteDraft(selDeal||BOQ_SCRATCH_KEY);if(selDeal&&isSupabaseReady())sbUpdate('deals',selDeal,{boq_data:null}).catch(()=>{});setItems(BLANK_ITEMS());setSections([]);setBoqTitle("");setLocation(deal?.location||"");setQuotationNo(deal?.ceNo||"");setBoqDate(today);setVatEnabled(null);setDiscount("");setMarkupPct("");setDraftSaved(false);}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#c2410c",cursor:"pointer"}} title="Clear saved draft and reset">✕ Clear Draft</button>}
           {!ro&&(items.length>0||sections.length>0)&&(()=>{
             // Sync badge — reflects the REAL cloud-save state, not just the local draft.
@@ -1264,6 +1285,39 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
               <button onClick={confirmXfer} disabled={blocked} style={{background:blocked?"#cbd5e1":"#7c3aed",border:"none",borderRadius:8,padding:"8px 16px",fontFamily:"inherit",fontSize:".8rem",fontWeight:800,color:"#fff",cursor:blocked?"not-allowed":"pointer"}}>
                 {xfer.busy?"Saving…":dup?"Duplicate to this deal":"Link to this deal"}
               </button>
+            </div>
+          </div>
+        </div>);
+      })()}
+
+      {/* RFQ section picker */}
+      {rfqPick&&(()=>{
+        const avail=sections.filter(sec=>rfqLines(sec.id));
+        const n=avail.filter(sec=>rfqPick.includes(sec.id)).reduce((t,sec)=>t+rfqLines(sec.id),0);
+        const toggle=id=>setRfqPick(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id]);
+        const close=()=>{if(!xlsxBusy)setRfqPick(null);};
+        return(
+        <div onClick={close} style={{position:"fixed",inset:0,background:"#0f172acc",zIndex:2000,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"36px 16px",overflowY:"auto"}}>
+          <div onClick={e=>e.stopPropagation()} role="dialog" aria-label="Request for quotation" style={{background:"#fff",borderRadius:16,border:"1.5px solid #e2e8f0",padding:22,maxWidth:480,width:"100%",boxShadow:"0 24px 60px #0006"}}>
+            <div style={{fontWeight:800,color:"#0f172a",fontSize:"1rem",marginBottom:6}}>⬇ Request for quotation</div>
+            <div style={{fontSize:".76rem",color:"#64748b",marginBottom:14,lineHeight:1.55}}>
+              Pick the sections this supplier or subcon should price. The file has quantities and units with blank price cells. It leaves out the client name, our prices, costs and markup, and any line with qty 0.
+            </div>
+            <div style={{display:"grid",gap:6,marginBottom:14}}>
+              {avail.map(sec=>(
+                <label key={sec.id} style={{display:"flex",gap:8,alignItems:"center",fontSize:".8rem",color:"#334155",cursor:"pointer"}}>
+                  <input type="checkbox" checked={rfqPick.includes(sec.id)} onChange={()=>toggle(sec.id)}/>
+                  <span style={{width:10,height:10,borderRadius:3,background:sec.color||"#64748b",flexShrink:0}}/>
+                  <span style={{flex:1}}>{sec.id}. {sec.label}</span>
+                  <span style={{color:"#94a3b8",fontSize:".72rem"}}>{rfqLines(sec.id)} line{rfqLines(sec.id)===1?"":"s"}</span>
+                </label>))}
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+              <span style={{fontSize:".72rem",color:"#64748b"}}>{n} line{n===1?"":"s"} in this RFQ</span>
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={close} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 16px",fontFamily:"inherit",fontSize:".8rem",fontWeight:700,color:"#475569",cursor:"pointer"}}>Cancel</button>
+                <button onClick={()=>exportXlsx("rfq",rfqPick)} disabled={!n||!!xlsxBusy} style={{background:!n?"#cbd5e1":"#0f766e",border:"none",borderRadius:8,padding:"8px 16px",fontFamily:"inherit",fontSize:".8rem",fontWeight:800,color:"#fff",cursor:!n?"not-allowed":"pointer"}}>{xlsxBusy==="rfq"?"Preparing…":"Download RFQ"}</button>
+              </div>
             </div>
           </div>
         </div>);

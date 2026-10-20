@@ -4,11 +4,11 @@ const WrapCtx = createContext(false);
 const BUDGET_ONLY=["Design","Operations","ProjectMover"];
 import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbInsertIfMissing,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbPendingIds,sbOnQueueChange,appLogin,appLogout,restoreAppToken,hasAppToken,appTokenExpired,setSessionExpiredHandler,logClientError} from './supabaseClient';
 import{idbGetMany,idbSetMany}from'./idb.js';
-import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable} from './shared';
+import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable,HIDDEN_NAV_IDS,AP_HIDDEN,WAREHOUSE_HIDDEN,isHiddenView} from './shared';
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -47,6 +47,8 @@ const PermissionsMatrix=_lazyView(()=>import('./views/PermissionsMatrix'));
 const BOQBuilder=_lazyView(()=>import('./views/BOQBuilder'));
 const LiquidationView=_lazyView(()=>import('./views/LiquidationView'));
 const DailyCashPosition=_lazyView(()=>import('./views/DailyCashPosition'));
+const CashPositionPayables=_lazyView(()=>import('./views/CashPositionPayables'));
+const CERequestTracker=_lazyView(()=>import('./views/CERequestTracker'));
 const WeeklyCashFlow=_lazyView(()=>import('./views/WeeklyCashFlow'));
 const FinanceWeeklyDues=_lazyView(()=>import('./views/FinanceWeeklyDues'));
 const InventoryView=_lazyView(()=>import('./views/Warehouse').then(m=>({default:m.InventoryView})));
@@ -6792,9 +6794,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // the date received, then today.
     const creditedOn=payment.valueDate||payment.value_date||payment.date||today;
     const payMsg=`💵 <b>Payment Received</b>\nProject: <b>${payDeal?.contact||milestone?.name||milestone?.title||"—"}</b>\nClient: ${payDeal?.client||"—"}\nDeposited to: ${depositedTo}\nAmount: ₱${Number(payment.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nCredited: ${creditedOn}\nRef: ${payment.refNo||payment.ref_no||"—"}\nRecorded by: ${payment.recordedBy||session?.name||"Finance"}${isFullyPaid?"\n✅ Milestone fully paid!":""}`;
-    sendTelegramNotification("sales",payMsg);
-    sendTelegramNotification("management",payMsg);
-    if(dealId) logActivity(dealId,"Payment Received",`₱${Number(payment.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})} on ${milestone?.name||"milestone"}${payment.refNo?` · Ref: ${payment.refNo}`:""}`,payment.recordedBy||session?.name);
+    if(isOffsetPayment(payment)){
+      // No money moved — say so, and tell Financial Control as well.
+      const offMsg=`🔁 <b>Invoice Settled by Offset / Credit Note — no cash</b>\nProject: <b>${payDeal?.contact||milestone?.name||"—"}</b>\nClient: ${payDeal?.client||"—"}\nInvoice: ${milestone?.invoiceNo||milestone?.name||"—"}\nAmount: ₱${Number(payment.amount||0).toLocaleString("en-PH",{maximumFractionDigits:2})}\nCredit note / agreement: ${payment.refNo||"—"}\nWhat was offset: ${payment.note||"—"}\nRecorded by: ${payment.recordedBy||session?.name||"Manager"}${isFullyPaid?"\n✅ Milestone settled in full":""}`;
+      sendTelegramNotification("management",offMsg);
+      sendTelegramNotification("financialcontrol",offMsg);
+      if(dealId) logActivity(dealId,"Settled by Offset",`₱${Number(payment.amount||0).toLocaleString("en-PH",{maximumFractionDigits:2})} on ${milestone?.name||"milestone"} · ${payment.refNo||""} · ${payment.note||""}`,payment.recordedBy||session?.name);
+    }else{
+      sendTelegramNotification("sales",payMsg);
+      sendTelegramNotification("management",payMsg);
+      if(dealId) logActivity(dealId,"Payment Received",`₱${Number(payment.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})} on ${milestone?.name||"milestone"}${payment.refNo?` · Ref: ${payment.refNo}`:""}`,payment.recordedBy||session?.name);
+    }
     upBillings(bs=>bs.map(b=>{
       if(b.id!==msId) return b;
       const payments=[...(b.payments||[]),{...payment,id:payId,date:payment.date||today}];
@@ -7988,6 +7998,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[showExport, setShowExport] =useState(false);
   const showExportRef=useRef(false);
   useEffect(()=>{if(session&&page)sessionStorage.setItem("gmd:lastPage",page);},[page,session]);
+  // Hidden modules (see HIDDEN_PAGES in shared.jsx): any link, favorite or
+  // restored last page that still points at one lands on Home instead.
+  useEffect(()=>{if(isHiddenView(page,finTab))setPage("home");},[page,finTab]);
   const smartImportInputRef=useRef(null);
   showExportRef.current=showExport;
 
@@ -9481,7 +9494,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     Manager:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Reports"}]},
-      {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"BOQ"}]},
+      {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"}]},
       {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},...((session?.username==="paulo"||session?.username==="mar")?[{id:"projectmargins",l:"Project Margins"}]:[]),{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"finance-reports",l:"Reports"}]},
       {group:"Accounting",  items:[{id:"coa",l:"Chart of Accounts"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
@@ -9495,7 +9508,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Projects",     items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
       {group:"Billing",      items:[{id:"billing",l:"Billing"}]},
       {group:"Deliverables", items:[{id:"designstatus",l:"Design Status"},{id:"drf",l:"Design Requests"}]},
-      {group:"QS",           items:[{id:"ceqs",l:"CE Requests"},{id:"boq",l:"BOQ"}]},
+      {group:"QS",           items:[{id:"ceqs",l:"CE Requests"}]},
     ],
     Finance:[
       {group:"Overview",    items:[{id:"home",l:"Cash Position"},{id:"calendar",l:"Calendar"}]},
@@ -9505,7 +9518,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
-      {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"BOQ"}]},
+      {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"}]},
       {group:"Warehousing", items:[{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"}]},
       {group:"Admin",       items:[{id:"audit",l:"Audit"},{id:"botsettings",l:"Bot Settings"},{id:"activity",l:"Team Activity"}]},
     ],
@@ -9532,7 +9545,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     QS:[
       {group:"Overview", items:[{id:"home",l:"Dashboard"}]},
       {group:"Sales",    items:[{id:"pipeline",l:"Sales Pipeline"}]},
-      {group:"CE / QS",  items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"BOQ"}]},
+      {group:"CE / QS",  items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"}]},
       {group:"Operations", items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
     ],
     Operations:[
@@ -9562,7 +9575,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     SalesOpsAdmin:[
       {group:"Overview",   items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
-      {group:"Sales",      items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Reports"},{id:"ceqs",l:"CE Requests"},{id:"boq",l:"BOQ"}]},
+      {group:"Sales",      items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Reports"},{id:"ceqs",l:"CE Requests"}]},
       {group:"Billing",    items:[{id:"billing",l:"Billing"}]},
       {group:"Finance",    items:[{id:"financecal",l:"Finance Calendar"}]},
       {group:"Operations", items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
@@ -9581,6 +9594,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Projects",   items:[{id:"projects",l:"Projects"},{id:"clients",l:"Clients"}]},
     ],
   };
+  // Hidden modules drop out of every role's nav; a group left empty goes too.
+  const visibleNav=r=>(navMap[r]||[]).map(g=>({...g,items:(g.items||[]).filter(it=>!HIDDEN_NAV_IDS.has(it.id))})).filter(g=>g.items.length);
   const Nav=useStableComponent(()=>{
     const NAV_ICONS={
       home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   cashposition:"🏦",   cashflow:"📈",   payables:"📤",   billing:"🧾",
@@ -9592,7 +9607,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       subcontractors:"👷",materialreq:"🔧",budgetreq:"💳",collections:"💵",
       checklist:"✅",joborders:"📄", ops:"⚙️",        datamanagement:"⚙️", myfolder:"📁",
     };
-    const groups=navMap[role]||[];
+    const groups=visibleNav(role);
     const allItems=groups.flatMap(g=>g.items||[]);
     const pauloExtra=session?.username==="paulo"?[{id:"datamanagement",l:"Data"}]:[];
     const NavBtn=({id,l,collapsed})=>{
@@ -9602,6 +9617,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         :id==="cashposition"?(page==="finance"&&finTab==="cash")
         :id==="executive"?(page==="finance"&&["overview","pl","loans"].includes(finTab))
         :id==="finance"?(page==="acctdash")
+        :id==="pipeline"?(page==="pipeline"||page==="boq")
         :page===id;
       const icon=NAV_ICONS[id]||NAV_ICONS[l]||"•";
       const fav=favNav.includes(id);
@@ -9731,7 +9747,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ── MOBILE BOTTOM NAV ─────────────────────────────────────────────────────
   const MobileBottomNav=useStableComponent(()=>{
     if(!isMobile) return null;
-    const groups=navMap[role]||[];
+    const groups=visibleNav(role);
     const allItems=groups.flatMap(g=>g.items||[]);
     const NAV_ICONS={
       home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   cashposition:"🏦",   cashflow:"📈",   payables:"📤",   billing:"🧾",
@@ -9788,7 +9804,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const primaryIds=favItemsM.length>0
       ? favItemsM.slice(0,4).map(x=>x.id)
       : role==="Manager"
-        ? ["home","pipeline","projects","finance"]
+        ? ["home","pipeline","projects",AP_HIDDEN?"cashposition":"finance"]
         : allItems.slice(0,4).map(x=>x.id);
     const moreBadge=Object.entries(BADGE_MAP).filter(([id])=>!primaryIds.includes(id)).reduce((s,[,v])=>s+v,0);
     const tabs=[
@@ -12027,7 +12043,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const awardedMonth=d=>{const aw=pcards[d.id]?.awardDate;return aw?new Date(aw):null;};
         const salesData=months.map(({yr,mo})=>deals.filter(d=>{if(!WON_STAGES.includes(d.stage))return false;const dt=awardedMonth(d);return dt&&dt.getFullYear()===yr&&dt.getMonth()===mo;}).reduce((s,d)=>s+Number(d.value||0),0));
         const expData=months.map(({yr,mo})=>exps.filter(e=>{const ds=e.date||(e.year!=null&&e.month!=null?`${e.year}-${String(e.month+1).padStart(2,"0")}-01`:null);if(!ds)return false;const d=new Date(ds);return d.getFullYear()===yr&&d.getMonth()===mo;}).reduce((s,e)=>s+Number(e.amount||0),0));
-        const collData=months.map(({yr,mo})=>{let sum=0;billings.forEach(b=>{(b.payments||[]).forEach(p=>{if(!p.date)return;const d=new Date(p.date);if(d.getFullYear()===yr&&d.getMonth()===mo)sum+=Number(p.amount||0);});});return sum;});
+        const collData=months.map(({yr,mo})=>{let sum=0;billings.forEach(b=>{(b.payments||[]).forEach(p=>{if(!p.date||!isCashPayment(p))return;const d=new Date(p.date);if(d.getFullYear()===yr&&d.getMonth()===mo)sum+=Number(p.amount||0);});});return sum;});
         const awardData=months.map(({yr,mo})=>deals.filter(d=>{if(!WON_STAGES.includes(d.stage))return false;const dt=awardedMonth(d);return dt&&dt.getFullYear()===yr&&dt.getMonth()===mo;}).length);
         const fmtM=v=>v>=1000000?"₱"+Math.round(v/100000)/10+"M":v>=1000?"₱"+Math.round(v/1000)+"K":v>0?"₱"+v:"₱0";
         const BarChart=({data,color,labels})=>{
@@ -12061,7 +12077,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const pm=new Date(cyr,cmo-1,1),pyr=pm.getFullYear(),pmo=pm.getMonth();
         const salesRec=deals.filter(d=>WON_STAGES.includes(d.stage)).map(d=>({dt:awardedMonth(d),v:Number(d.value||0)}));
         const expRec=exps.map(e=>{const ds=e.date||(e.year!=null&&e.month!=null?`${e.year}-${String(e.month+1).padStart(2,"0")}-01`:null);return{dt:ds?new Date(ds):null,v:Number(e.amount||0)};});
-        const collRec=[];billings.forEach(b=>(b.payments||[]).forEach(p=>{if(p.date)collRec.push({dt:new Date(p.date),v:Number(p.amount||0)});}));
+        const collRec=[];billings.forEach(b=>(b.payments||[]).forEach(p=>{if(p.date&&isCashPayment(p))collRec.push({dt:new Date(p.date),v:Number(p.amount||0)});}));
         const pace=(rec,yr,mo,maxDay,count)=>rec.filter(x=>x.dt&&x.dt.getFullYear()===yr&&x.dt.getMonth()===mo&&x.dt.getDate()<=maxDay).reduce((s,x)=>s+(count?1:x.v),0);
         const charts=[
           {key:"sales",      title:"Sales Value",     data:salesData,  color:"#6366f1", fmt:fmtM, icon:"📊", action:()=>setPage("pipeline"), cur:pace(salesRec,cyr,cmo,D),      prev:pace(salesRec,pyr,pmo,D)},
@@ -12116,7 +12132,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             .map(e=>{const pj=e.projectId&&wonDeals.find(x=>x.id===e.projectId);return{name:e.note||e.category||"Expense",sub:(e.payee||e.supplier||e.category||"—")+(pj?` · ${pj.contact||pj.client}`:""),amt:Number(e.amount||0),dt:e._dt};})
             .sort((a,b)=>b.dt-a.dt);
         }else if(key==="collections"){
-          billings.forEach(b=>{const dl=wonDeals.find(x=>x.id===b.dealId);(b.payments||[]).forEach(p=>{if(!p.date)return;const dt=new Date(p.date);if(inThisMonth(dt))rows.push({name:dl?.contact||dl?.client||b.client||"Payment",sub:(dl?.ceNo||b.invoiceNumber||"Client payment"),amt:Number(p.amount||0),dt});});});
+          billings.forEach(b=>{const dl=wonDeals.find(x=>x.id===b.dealId);(b.payments||[]).forEach(p=>{if(!p.date||!isCashPayment(p))return;const dt=new Date(p.date);if(inThisMonth(dt))rows.push({name:dl?.contact||dl?.client||b.client||"Payment",sub:(dl?.ceNo||b.invoiceNumber||"Client payment"),amt:Number(p.amount||0),dt});});});
           rows.sort((a,b)=>b.dt-a.dt);
         }
         const total=rows.reduce((s,r)=>s+(r.amt||0),0);
@@ -12408,8 +12424,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const ceRows=Object.values(ceMap).sort((a,b)=>b.value-a.value);
     const revArr=Array(n).fill(0);billings.forEach(b=>{if(b.status==="Cancelled")return;const p=getFinPeriod(b.invoiceDate||b.dueDate);if(p>=0)revArr[p]+=Number(b.amount||0);});
     // Collections restated VAT-ex (cash × base/receivable) so Revenue, Collections and
-    // Outstanding share one basis; bounced payments excluded.
-    const collArr=Array(n).fill(0);billings.forEach(b=>{if(b.status==="Cancelled")return;const rcv=milestoneReceivable(b,deals.find(x=>x.id===b.dealId));const k=rcv>0?Number(b.amount||0)/rcv:1;(b.payments||[]).forEach(pay=>{if(pay.bounced)return;const p=getFinPeriod(pay.date);if(p>=0)collArr[p]+=Number(pay.amount||0)*k;});});
+    // Outstanding share one basis; bounced payments and offsets (no cash) excluded.
+    const collArr=Array(n).fill(0);billings.forEach(b=>{if(b.status==="Cancelled")return;const rcv=milestoneReceivable(b,deals.find(x=>x.id===b.dealId));const k=rcv>0?Number(b.amount||0)/rcv:1;(b.payments||[]).forEach(pay=>{if(!isCashPayment(pay))return;const p=getFinPeriod(pay.date);if(p>=0)collArr[p]+=Number(pay.amount||0)*k;});});
     // AP-ledger accrual basis (matches the account-code Income Statement below):
     // payables + legacy expenses not routed to a payable (no double count).
     const expArr=Array(n).fill(0);
@@ -12872,7 +12888,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               const grossProfit=revenue-cos;
               const gpMargin=revenue>0?Math.round(grossProfit/revenue*100):0;
               const netIncome=grossProfit-opex-uncoded;
-              const cashIn=billings.reduce((s,b)=>s+(b.payments||[]).filter(p=>inYear(p.date)).reduce((ss,p)=>ss+N(p.amount),0),0);
+              const cashIn=billings.reduce((s,b)=>s+(b.payments||[]).filter(p=>inYear(p.date)&&isCashPayment(p)).reduce((ss,p)=>ss+N(p.amount),0),0);
               const cashOut=payables.filter(p=>inYear(p.paidDate)).reduce((s,p)=>s+N(p.paidAmount),0);
               const netCash=cashIn-cashOut;
               const SLine=({label,value,color,bold,indent,top})=>(
@@ -13041,17 +13057,31 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     );
   }
   // ── Pipeline tab bar (shared) ───────────────────────────────────────────
+  // BOQ lives here now (it left the sidebar): the BOQ tab opens the BOQ page,
+  // which shows this same bar, for the roles that had BOQ in their nav.
+  const boqInPipeline=["Manager","Sales","Finance","QS","SalesOpsAdmin"].includes(role);
+  // CE Requests: a small tracker standing in for the hidden CE/QS Queue.
+  const ceInPipeline=["Manager","Sales","QS","SalesOpsAdmin"].includes(role);
   const PipeTabBar=()=>(
     <div style={{display:"flex",gap:0,borderBottom:"2px solid #e2e8f0",marginBottom:20}}>
-      {[["pipeline","📊 Pipeline"],["awarded","💰 Commissions"],["updates","📝 AE Updates"]].map(([t,l])=>(
-        <button key={t} onClick={()=>setPipeTab(t)}
-          style={{padding:"9px 20px",border:"none",background:"none",cursor:"pointer",fontSize:".88rem",fontWeight:pipeTab===t?700:500,color:pipeTab===t?"#3b82f6":"#64748b",borderBottom:pipeTab===t?"2px solid #3b82f6":"2px solid transparent",marginBottom:-2,fontFamily:"inherit"}}>
+      {[["pipeline","📊 Pipeline"],["awarded","💰 Commissions"],["updates","📝 AE Updates"],...(ceInPipeline?[["ce","📐 CE Requests"]]:[]),...(boqInPipeline?[["boq","🧮 BOQ"]]:[])].map(([t,l])=>{
+        const on=t==="boq"?page==="boq":page==="pipeline"&&pipeTab===t;
+        return(
+        <button key={t} onClick={()=>{if(t==="boq"){setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(null);setPage("boq");}else{setPipeTab(t);setPage("pipeline");}}}
+          style={{padding:"9px 20px",border:"none",background:"none",cursor:"pointer",fontSize:".88rem",fontWeight:on?700:500,color:on?"#3b82f6":"#64748b",borderBottom:on?"2px solid #3b82f6":"2px solid transparent",marginBottom:-2,fontFamily:"inherit"}}>
           {l}{t==="updates"&&aeUpdates.length>0&&<span style={{marginLeft:5,background:"#3b82f6",color:"#fff",borderRadius:20,padding:"1px 6px",fontSize:".65rem",fontWeight:700}}>{aeUpdates.filter(u=>u.date===today).length||""}</span>}
         </button>
-      ))}
+        );
+      })}
     </div>
   );
 
+  if(page==="pipeline"&&pipeTab==="ce"&&ceInPipeline) return(
+    <Wrap>
+      <PipeTabBar/>
+      <CERequestTracker ceReqs={ceReqs} deals={deals} addCEReq={addCEReq} updateCEReq={updateCEReq} session={session} role={role} toastEmit={toastEmit} today={today}/>
+    </Wrap>
+  );
   if(page==="pipeline"&&pipeTab==="updates") return(
     <Wrap>
       <PipeTabBar/>
@@ -14781,10 +14811,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             tabs (Accounts Payable, Payments). The owner/executive views — Executive
             dashboard (overview/P&L/Loans) and Cash Position — are their own pages. */}
         {["payables","payments"].includes(finTab)&&<FinanceErpBar active={finTab==="payables"?"ap":"payments"} go={financeErpGo} counts={financeErpCounts()}/>}
-        {/* Weekly Dues board toggle — always reachable from anywhere in Finance. */}
-        <div style={{display:"flex",justifyContent:"flex-end",marginBottom:12}}>
+        {/* Weekly Dues board toggle — always reachable from anywhere in Finance
+            (hidden with the AP while the new AP/AR system is built). */}
+        {!AP_HIDDEN&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:12}}>
           <button onClick={()=>setFinTab(finTab==="duesboard"?"overview":"duesboard")} style={{whiteSpace:"nowrap",padding:"6px 14px",borderRadius:20,border:`1px solid ${finTab==="duesboard"?ERP.navy:ERP.line}`,background:finTab==="duesboard"?ERP.navy:"#fff",color:finTab==="duesboard"?"#fff":ERP.muted,cursor:"pointer",fontSize:".78rem",fontWeight:600,fontFamily:"inherit"}}>📅 Weekly Dues</button>
-        </div>
+        </div>}
         {finTab==="duesboard"&&(
           <FinanceWeeklyDues billings={billings} payables={payables} wonDeals={wonDeals} deals={deals} completedDeals={completedDeals} today={today} setPage={setPage} setFinTab={setFinTab} role={role}/>
         )}
@@ -15112,6 +15143,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 <button key={k} onClick={()=>setCashSub(k)} style={{padding:"8px 18px",border:"none",borderRadius:9,cursor:"pointer",fontFamily:"inherit",fontWeight:cashSub===k?800:600,fontSize:".82rem",background:cashSub===k?"#1f3864":"#eef2f8",color:cashSub===k?"#fff":"#475569"}}>{lbl}</button>
               ))}
             </div>
+            {/* While the AP is hidden, Finance approves and marks PO / WO bills paid
+                here, so Running Payables below stays true. */}
+            {cashSub==="daily"&&AP_HIDDEN&&(
+              <CashPositionPayables payables={payables} payPays={payPays} prs={prs} deals={deals} today={today}
+                canApprove={canApprovePayables} canPay={roleCanInsert("payable_payments")}
+                onApprove={approvePayable} onPay={(id,amt,o)=>recordPayablePayment(id,amt,o)} onPayMany={recordPayments} onCancelPay={cancelPayablePayment}/>
+            )}
             {cashSub==="daily"&&(
               <DailyCashPosition cashPositions={cashPositions} saveDayPos={saveDayPos} wonDeals={wonDeals} billings={billings} suppliers={suppliers} subcons={subcons} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps} updateMilestone={updateMilestone} upExps={upExps} toSbExpense={toSbExpense} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} vouchers={vouchers} payables={payables} loans={loans} inventory={inventory} userName={session?.name||""} role={role} username={session?.username||""} cashStale={cashStale}/>
             )}
@@ -16316,6 +16354,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   // ─── OPERATIONS ───────────────────────────────────────────────────────────
   // ── WAREHOUSE ───────────────────────────────────────────────────────────────
+  // Warehousing is hidden (shared.jsx): the Warehouse role's whole workspace
+  // was Deliveries / Inventory / Stock Movements, so it gets a notice instead.
+  if(role==="Warehouse"&&WAREHOUSE_HIDDEN) return(<Wrap><EmptyState icon="🏭" msg="Warehousing is offline while FabHub's modules are being rebuilt. Please coordinate deliveries and stock with Procurement for now."/></Wrap>);
   if(role==="Warehouse"||(["Manager","Finance"].includes(role)&&page==="deliveries")){
     if(role==="Warehouse"&&page==="stockmove") return(<Wrap><StockMovementView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} logStockMove={logStockMove} session={session} role={role}/></Wrap>);
     if(role==="Warehouse"&&page==="inventory") return(<Wrap><InventoryView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} prs={prs} updatePR={updatePR} addPR={addPR} addInventoryItem={addInventoryItem} updateInventoryItem={updateInventoryItem} deleteInventoryItem={deleteInventoryItem} clearAllInventory={clearAllInventory} logStockMove={logStockMove} mergeInventoryItems={mergeInventoryItems} suppliers={suppliers} addSupplier={addSupplier} printDR={printDR} tools={tools} upTools={upTools} saveTool={saveTool} deleteTool={deleteTool} drs={drs} saveDr={saveDr} deleteDr={deleteDr} projs={projs} upProjs={upProjs} deals={wonDeals} session={session} role={role}/></Wrap>);
@@ -17380,7 +17421,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       if(isSupabaseReady())sbUpdate('deals',dealId,{receipt_type:rt,...(rt==="AR"?{withholding:false}:{})}).catch(()=>{});
     }}/></Wrap>);
     if(boqStandaloneId) return(<Wrap><BOQBuilder key={"sa:"+boqStandaloneId} onDuplicateToDeal={duplicateBoqToDeal} wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} standaloneBoqs={standaloneBoqs} saveStandaloneBoq={saveStandaloneBoq} initialStandaloneId={boqStandaloneId} clearBoqStandalone={()=>setBoqStandaloneId(null)} onBack={()=>setBoqStandaloneId(null)} onLinkToDeal={async(dealId,boqData,opts)=>{const sid=boqStandaloneId;if(!(await attachBoqToDeal(dealId,boqData,opts)))return false;deleteStandaloneBoq(sid);setBoqStandaloneId(null);setBoqDealId(dealId);toastEmit&&toastEmit(opts?.setValue?"✅ BOQ linked to project — deal value set from BOQ":"✅ BOQ linked to project","success");return true;}}/></Wrap>);
-    return(<Wrap><BOQHomeView standaloneBoqs={standaloneBoqs} deals={deals} session={session} role={role} today={today} onOpenStandalone={id=>{setBoqCoId(null);setBoqDealId(null);setBoqStandaloneId(id);}} onOpenDeal={id=>{setBoqCoId(null);setBoqStandaloneId(null);setBoqDealId(id);}} onNewStandalone={()=>{const id=uid();saveStandaloneBoq({id,title:"",location:"",quotationNo:"",boqDate:today,items:[],sections:[],vatEnabled:true,discount:"",createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});setBoqCoId(null);setBoqDealId(null);setBoqStandaloneId(id);}} onDeleteStandalone={deleteStandaloneBoq}/></Wrap>);
+    return(<Wrap>{boqInPipeline&&<PipeTabBar/>}<BOQHomeView standaloneBoqs={standaloneBoqs} deals={deals} session={session} role={role} today={today} onOpenStandalone={id=>{setBoqCoId(null);setBoqDealId(null);setBoqStandaloneId(id);}} onOpenDeal={id=>{setBoqCoId(null);setBoqStandaloneId(null);setBoqDealId(id);}} onNewStandalone={()=>{const id=uid();saveStandaloneBoq({id,title:"",location:"",quotationNo:"",boqDate:today,items:[],sections:[],vatEnabled:true,discount:"",createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});setBoqCoId(null);setBoqDealId(null);setBoqStandaloneId(id);}} onDeleteStandalone={deleteStandaloneBoq}/></Wrap>);
   }
 
   if(page==="tvboard"&&role==="Manager") return(<Wrap><TVBoardAdmin announcements={announcements} upAnnouncements={upAnnouncements} session={session} today={today}/></Wrap>);
@@ -18526,7 +18567,7 @@ function PLStatement({billings,exps,payables=[],wonDeals}){
     const arr=Array(12).fill(0);
     billings.forEach(b=>{
       (b.payments||[]).forEach(p=>{
-        if(!p.date) return;
+        if(!p.date||!isCashPayment(p)) return;
         const dt=new Date(p.date);
         if(dt.getFullYear()!==year) return;
         arr[dt.getMonth()]+=Number(p.amount||0);
@@ -18571,7 +18612,7 @@ function PLStatement({billings,exps,payables=[],wonDeals}){
       const d=b.invoiceDate||b.dueDate;
       if(d&&new Date(d).getFullYear()===year) map[dept].rev+=Number(b.amount||0);
       (b.payments||[]).forEach(p=>{
-        if(p.date&&new Date(p.date).getFullYear()===year) map[dept].coll+=Number(p.amount||0);
+        if(p.date&&isCashPayment(p)&&new Date(p.date).getFullYear()===year) map[dept].coll+=Number(p.amount||0);
       });
     });
     exps.forEach(e=>{
@@ -23433,13 +23474,16 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
     return {anyDelivered,fullyDelivered,hasPayable:linkedAP.length>0,linkedAP,apNos,paid,partiallyPaid};
   };
   // Slim 4-stage strip: Issued → Received → Payable → Paid. Answers "why can't
-  // Finance pay this yet?" at a glance, without opening the row.
+  // Finance pay this yet?" at a glance, without opening the row. While the AP
+  // is hidden (shared.jsx) POs stand on their own: Issued → Received only.
   const lifecycleStrip=(lc)=>{
     const nodes=[
       {label:"Issued", done:true, color:STATUS_CLR["PO Issued"]},
       {label:lc.fullyDelivered?"Received":lc.anyDelivered?"Part. recv":"Received", done:lc.anyDelivered, half:lc.anyDelivered&&!lc.fullyDelivered, color:STATUS_CLR["Delivered"]},
-      {label:lc.apNos[0]||"Payable", done:lc.hasPayable, color:"#6366f1"},
-      {label:lc.paid?"Paid":lc.partiallyPaid?"Part. paid":"Paid", done:lc.paid, half:lc.partiallyPaid&&!lc.paid, color:T.success},
+      ...(AP_HIDDEN?[]:[
+        {label:lc.apNos[0]||"Payable", done:lc.hasPayable, color:"#6366f1"},
+        {label:lc.paid?"Paid":lc.partiallyPaid?"Part. paid":"Paid", done:lc.paid, half:lc.partiallyPaid&&!lc.paid, color:T.success},
+      ]),
     ];
     return <LifecycleStrip nodes={nodes}/>;
   };
@@ -23470,7 +23514,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
     // Auto-created PO payables are keyed by poId=PO number (and carry poNumber);
     // deletePR doesn't touch payables, so warn how many will be left behind.
     const linked=(payables||[]).filter(p=>poNos.has(p.poId)||poNos.has(p.poNumber));
-    const note=linked.length?`\n\n⚠️ ${linked.length} linked Accounts Payable ${linked.length>1?"entries":"entry"} will remain — remove ${linked.length>1?"them":"it"} in Accounts Payable if needed.`:"";
+    const note=!linked.length?"":AP_HIDDEN?`\n\nℹ️ ${linked.length} linked payable record${linked.length>1?"s":""} will stay on file for the new AP system.`:`\n\n⚠️ ${linked.length} linked Accounts Payable ${linked.length>1?"entries":"entry"} will remain — remove ${linked.length>1?"them":"it"} in Accounts Payable if needed.`;
     if(!(await uiConfirm(`Delete ${poCount} purchase order${poCount>1?"s":""} (${itemCount} line item${itemCount>1?"s":""})? This cannot be undone.${note}`))) return;
     groups.forEach(g=>g.items.forEach(i=>deletePR(i.id)));
     setSelectedPOs(new Set());
@@ -23952,7 +23996,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
                       // entry can't be deleted silently — deleting the PR leaves the
                       // payable (and any expense) orphaned and breaks the document
                       // trail. Warn, name the AP, and let Finance clean up there.
-                      const apNote=lc.hasPayable?`\n\n⚠️ This PO has ${lc.linkedAP.length} linked Accounts Payable ${lc.linkedAP.length>1?"entries":"entry"}${lc.apNos.length?` (${lc.apNos.join(", ")})`:""} that will remain. Remove ${lc.linkedAP.length>1?"them":"it"} in Accounts Payable if this is a mistake.`:"";
+                      const apNote=!lc.hasPayable?"":AP_HIDDEN?`\n\nℹ️ This PO's payable record${lc.linkedAP.length>1?"s":""}${lc.apNos.length?` (${lc.apNos.join(", ")})`:""} will stay on file for the new AP system.`:`\n\n⚠️ This PO has ${lc.linkedAP.length} linked Accounts Payable ${lc.linkedAP.length>1?"entries":"entry"}${lc.apNos.length?` (${lc.apNos.join(", ")})`:""} that will remain. Remove ${lc.linkedAP.length>1?"them":"it"} in Accounts Payable if this is a mistake.`;
                       if((await uiConfirm({title:"Delete purchase order",tone:"danger",confirmLabel:"Delete PO",message:`Delete PO ${poNo}?${apNote}\n\nThis cannot be undone.`})))items.forEach(i=>deletePR(i.id));
                     }} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"3px 7px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✕</button>}
                   </div>
@@ -25364,6 +25408,8 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   // even though the underlying billing data hadn't changed.
   const allBilled=useMemo(()=>billings.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+n(m.amount),0),[billings]);
   const allCollected=useMemo(()=>billings.reduce((s,m)=>s+(m.payments||[]).filter(p=>!p.bounced).reduce((ps,p)=>ps+n(p.amount),0),0),[billings]);
+  // Part of Collected that was settled without cash (offset / credit note).
+  const allOffset=useMemo(()=>billings.reduce((s,m)=>s+(m.payments||[]).filter(p=>!p.bounced&&isOffsetPayment(p)).reduce((ps,p)=>ps+n(p.amount),0),0),[billings]);
   // Outstanding = cash receivable (VAT-incl, less EWT) minus good payments, via the
   // shared arSummary — the same figure as Daily Cash Position's Running A/R and the
   // per-project balances below. The old `amount − payments` mixed the VAT-ex base
@@ -25501,6 +25547,16 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     if(!payForm.amount||!showPay) return;
     const amt=Number(payForm.amount);
     if(!isFinite(amt)||amt<=0){toastEmit("Enter a payment amount greater than zero.","warning");return;}
+    // Offset / credit note: settles the invoice without cash. Manager only, with a
+    // reference and a reason (trg_offset_guard enforces the same in the database).
+    const isOffset=isOffsetPayment(payForm);
+    if(isOffset){
+      if(canonRole(role)!=="Manager"){toastEmit("Only a Manager can record an offset / credit note.","error",8000);return;}
+      if(!String(payForm.refNo||"").trim()){toastEmit("Enter the credit note or agreement no. for this offset.","warning",8000);return;}
+      if(!String(payForm.note||"").trim()){toastEmit("Say what was offset (e.g. which debt to the client this cancels).","warning",8000);return;}
+      if(!(await uiConfirm({title:"Settle by offset — no cash",tone:"warning",confirmLabel:"Record offset",cancelLabel:"Go back",
+        message:`₱${amt.toLocaleString("en-PH",{minimumFractionDigits:2})} will mark this invoice as settled without any money received. It will not count as cash or collections in Cash Flow or the collection charts.\n\nRecord it?`})))return;
+    }
     const ms=billings.find(b=>b.id===showPay);
     if(ms){
       const alreadyPaid=(ms.payments||[]).filter(p=>!p.bounced).reduce((s,p)=>s+Number(p.amount||0),0);
@@ -25527,7 +25583,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         message:`A payment with the same amount and date (or the same reference no.) is already logged on this PO family:\n\n${lines}\n\nRecording it again double-counts Collected. Only continue if the client really paid twice.`});
       if(!ok) return;
     }
-    logBillingPayment(showPay,{...payForm,recordedBy:session?.name||role});
+    logBillingPayment(showPay,{...payForm,...(isOffset?{bank:"",valueDate:""}:{}),recordedBy:session?.name||role});
     setPayForm({amount:"",date:today,refNo:"",note:"",valueDate:"",bank:"",method:"Bank Transfer"});
     setShowPay(null);
   };
@@ -26039,11 +26095,11 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(5,1fr)",gap:10,marginBottom:16}}>
         {[
           {l:"Total Billed (VAT-ex)",v:fmt(allBilled),             c:"#3b82f6"},
-          {l:"Total Collected",   v:fmt(allCollected),             c:"#059669"},
+          {l:"Total Collected",   v:fmt(allCollected),             c:"#059669", note:allOffset>0?`incl. ${fmt(allOffset)} by offset (no cash)`:""},
           {l:"Outstanding",       v:fmt(allOutstanding), c:allOutstanding>0?"#ef4444":"#059669", filter:"outstanding", hint:"View all clients with a balance →"},
           {l:"Overdue Invoices",  v:overdue.length,                c:overdue.length>0?"#ef4444":"#94a3b8", filter:"overdue", hint:"View overdue invoices →"},
           {l:"Not Yet Sent",      v:unsentLate.length,             c:unsentLate.length>0?"#d97706":"#94a3b8", filter:"unsent", hint:unsentLate.length>0?"Drafts past due — send or re-date →":"No late drafts"},
-        ].map(({l,v,c,filter,hint})=>{
+        ].map(({l,v,c,filter,hint,note})=>{
           const isLink=!!filter;
           return(
           <div key={l}
@@ -26056,6 +26112,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:c}}>{v}</div>
             <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:5}}>{l}</div>
             {isLink&&<div style={{fontSize:".6rem",color:c,marginTop:4,fontWeight:600,opacity:.85}}>{hint}</div>}
+            {note&&<div style={{fontSize:".6rem",color:"#7c3aed",marginTop:4,fontWeight:600}}>{note}</div>}
           </div>
           );
         })}
@@ -26737,7 +26794,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                                     <Fld label="Amount (₱)"><Inp type="number" value={editPayForm.amount??p.amount} onChange={e=>setEditPayForm(f=>({...f,amount:e.target.value}))}/></Fld>
                                     <Fld label="Date"><Inp type="date" value={editPayForm.date??p.date??today} onChange={e=>setEditPayForm(f=>({...f,date:e.target.value}))}/></Fld>
                                     <Fld label="Bank"><Sel value={editPayForm.bank??p.bank??""} onChange={e=>setEditPayForm(f=>({...f,bank:e.target.value}))}><option value="">— Select bank</option>{BANKS.map(b=><option key={b.id} value={b.id}>{b.short}</option>)}<option value="cash">Cash</option></Sel></Fld>
-                                    <Fld label="Method"><Sel value={editPayForm.method??p.method??"Bank Transfer"} onChange={e=>setEditPayForm(f=>({...f,method:e.target.value}))}>{PAYMENT_METHODS.map(m=><option key={m} value={m}>{m}</option>)}</Sel></Fld>
+                                    <Fld label="Method"><Sel value={editPayForm.method??p.method??"Bank Transfer"} onChange={e=>setEditPayForm(f=>({...f,method:e.target.value}))}>{PAYMENT_METHODS.map(m=><option key={m} value={m}>{m}</option>)}{(canonRole(role)==="Manager"||isOffsetPayment(p))&&<option value={OFFSET_METHOD}>{OFFSET_METHOD} (no cash)</option>}</Sel></Fld>
                                     <Fld label="Value Date"><Inp type="date" value={editPayForm.valueDate??p.valueDate??""} onChange={e=>setEditPayForm(f=>({...f,valueDate:e.target.value}))}/></Fld>
                                     <Fld label="Reference No."><Inp value={editPayForm.refNo??p.refNo??""} onChange={e=>setEditPayForm(f=>({...f,refNo:e.target.value}))} placeholder="Ref…"/></Fld>
                                     <Fld label="Note"><Inp value={editPayForm.note??p.note??""} onChange={e=>setEditPayForm(f=>({...f,note:e.target.value}))} placeholder="Note…"/></Fld>
@@ -26757,6 +26814,10 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                                       if(nDate&&nDate>today&&!(await uiConfirm("The Date Received is in the future. Save anyway?")))return;
                                       if(nDate&&nVal&&nVal<nDate&&!(await uiConfirm("The Value Date is before the Date Received (funds credited before payment received?). Save anyway?")))return;
                                       const updated={...p,...editPayForm,amount:amt};
+                                      if(isOffsetPayment(updated)||isOffsetPayment(p)){
+                                        if(canonRole(role)!=="Manager"){toastEmit("Only a Manager can record or change an offset / credit note.","error",8000);return;}
+                                        if(isOffsetPayment(updated)&&!String(updated.refNo||"").trim()){toastEmit("An offset needs the credit note or agreement no. in Reference No.","warning",8000);return;}
+                                      }
                                       updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?updated:px)},{action:"Payment Edited",detail:`${ms.name||"Milestone"}: ₱${Number(p.amount||0).toLocaleString("en-PH")} → ₱${amt.toLocaleString("en-PH")}`});
                                       setEditPay(null);setEditPayForm({});
                                     }} style={{background:"#1d4ed8",border:"none",borderRadius:6,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#fff",cursor:"pointer"}}>Save</button>
@@ -26771,6 +26832,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                                     {p.method&&<span style={{color:"#64748b"}}>{p.method}</span>}
                                     {p.bank&&<span style={{color:"#64748b"}}>🏦 {p.bank==="cash"?"Cash":(BANKS.find(x=>x.id===p.bank)?.short||p.bank)}</span>}
                                     {(()=>{
+                                      if(isOffsetPayment(p)) return <span style={{fontSize:".65rem",fontWeight:700,padding:"1px 7px",borderRadius:20,background:"#f5f3ff",color:"#7c3aed"}}>🔁 Offset — no cash</span>;
                                       const cd=paymentClearDate(p);
                                       if(p.bounced) return <span style={{fontSize:".65rem",fontWeight:700,padding:"1px 7px",borderRadius:20,background:"#fef2f2",color:"#dc2626"}}>✕ Bounced</span>;
                                       if(isPaymentCleared(p,today)) return <span style={{fontSize:".65rem",fontWeight:700,padding:"1px 7px",borderRadius:20,background:"#f0fdf4",color:"#059669"}}>✓ Cleared{cd&&cd!==p.date?` ${cd}`:""}</span>;
@@ -26779,14 +26841,14 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                                     {p.refNo&&<span style={{color:"#64748b"}}>Ref: {p.refNo}</span>}
                                     {p.note&&<span style={{color:"#94a3b8",fontStyle:"italic"}}>{p.note}</span>}
                                   </div>
-                                  {canEdit&&(
+                                  {canEdit&&(!isOffsetPayment(p)||canonRole(role)==="Manager")&&(
                                     <div style={{display:"flex",gap:4,flexShrink:0}}>
-                                      {!p.bounced&&!isPaymentCleared(p,today)&&(
+                                      {!p.bounced&&!isOffsetPayment(p)&&!isPaymentCleared(p,today)&&(
                                         <button onClick={()=>updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?{...px,valueDate:today,bounced:false}:px)},{action:"Payment Cleared",detail:`${ms.name||"Milestone"}: ₱${Number(p.amount||0).toLocaleString("en-PH")} marked cleared`})}
                                           title="Mark funds cleared today"
                                           style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:5,padding:"2px 7px",fontFamily:"inherit",fontSize:".65rem",color:"#059669",cursor:"pointer",fontWeight:600}}>✓ Clear</button>
                                       )}
-                                      {!p.bounced&&(
+                                      {!p.bounced&&!isOffsetPayment(p)&&(
                                         <button onClick={async ()=>{if((await uiConfirm("Mark this collection as bounced? It will stop counting as cleared cash.")))updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?{...px,bounced:true}:px)},{action:"Payment Bounced",detail:`${ms.name||"Milestone"}: ₱${Number(p.amount||0).toLocaleString("en-PH")} marked bounced`});}}
                                           title="Mark cheque bounced"
                                           style={{background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:5,padding:"2px 7px",fontFamily:"inherit",fontSize:".65rem",color:"#c2410c",cursor:"pointer",fontWeight:600}}>⤺</button>
@@ -26847,31 +26909,32 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                           <div style={{fontWeight:700,color:"#1d4ed8",marginBottom:8,fontSize:".82rem"}}>Log Payment</div>
                           <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:8}}>
                             <Fld label="Amount (₱)"><Inp type="number" value={payForm.amount} onChange={e=>fp("amount",e.target.value)} placeholder="0.00"/></Fld>
-                            <Fld label="Bank Deposited To">
+                            {!isOffsetPayment(payForm)&&<Fld label="Bank Deposited To">
                               <Sel value={payForm.bank||""} onChange={e=>fp("bank",e.target.value)}>
                                 <option value="">— Select Bank —</option>
                                 {[...BANKS.map(b=>({v:b.id,l:b.short})),{v:"cash",l:"Cash"}].map(b=><option key={b.v} value={b.v}>{b.l}</option>)}
                               </Sel>
-                            </Fld>
+                            </Fld>}
                             <Fld label="Payment Method">
                               <Sel value={payForm.method||"Bank Transfer"} onChange={e=>fp("method",e.target.value)}>
                                 {PAYMENT_METHODS.map(m=><option key={m} value={m}>{m}</option>)}
+                                {canonRole(role)==="Manager"&&<option value={OFFSET_METHOD}>{OFFSET_METHOD} (no cash)</option>}
                               </Sel>
                             </Fld>
-                            <Fld label="Date Received"><Inp type="date" value={payForm.date} onChange={e=>fp("date",e.target.value)}/></Fld>
-                            <Fld label="Value Date" hint={payForm.method==="Cheque"?"When the cheque clears — blank = auto ~3 banking days":"When funds are available — blank = same day"}><Inp type="date" value={payForm.valueDate||""} onChange={e=>fp("valueDate",e.target.value)}/></Fld>
-                            <Fld label="Reference No."><Inp value={payForm.refNo} onChange={e=>fp("refNo",e.target.value)} placeholder="Cheque / transfer ref…"/></Fld>
-                            <Fld label="Note"><Inp value={payForm.note} onChange={e=>fp("note",e.target.value)} placeholder="e.g. BPI online transfer"/></Fld>
+                            <Fld label={isOffsetPayment(payForm)?"Date Settled":"Date Received"}><Inp type="date" value={payForm.date} onChange={e=>fp("date",e.target.value)}/></Fld>
+                            {!isOffsetPayment(payForm)&&<Fld label="Value Date" hint={payForm.method==="Cheque"?"When the cheque clears — blank = auto ~3 banking days":"When funds are available — blank = same day"}><Inp type="date" value={payForm.valueDate||""} onChange={e=>fp("valueDate",e.target.value)}/></Fld>}
+                            <Fld label={isOffsetPayment(payForm)?"Credit Note / Agreement No.":"Reference No."} required={isOffsetPayment(payForm)}><Inp value={payForm.refNo} onChange={e=>fp("refNo",e.target.value)} placeholder={isOffsetPayment(payForm)?"e.g. CN-0001":"Cheque / transfer ref…"}/></Fld>
+                            <Fld label={isOffsetPayment(payForm)?"What was offset":"Note"} required={isOffsetPayment(payForm)}><Inp value={payForm.note} onChange={e=>fp("note",e.target.value)} placeholder={isOffsetPayment(payForm)?"e.g. Cancels GMD's debt to Makerlab":"e.g. BPI online transfer"}/></Fld>
                           </div>
                           {payForm.amount&&payForm.date&&(
-                            <div style={{fontSize:".72rem",color:"#64748b",marginTop:6}}>
-                              {(()=>{const cd=paymentClearDate({...payForm,method:payForm.method});const cleared=isPaymentCleared({...payForm,method:payForm.method},today);return cleared?`✅ Clears immediately — counts as available cash on ${cd}.`:`⏳ Pending clearance — funds count as available cash on ${cd}.`;})()}
+                            <div style={{fontSize:".72rem",color:isOffsetPayment(payForm)?"#7c3aed":"#64748b",marginTop:6}}>
+                              {isOffsetPayment(payForm)?"🔁 Settles the invoice without cash — not counted in Cash Flow or collection charts.":(()=>{const cd=paymentClearDate({...payForm,method:payForm.method});const cleared=isPaymentCleared({...payForm,method:payForm.method},today);return cleared?`✅ Clears immediately — counts as available cash on ${cd}.`:`⏳ Pending clearance — funds count as available cash on ${cd}.`;})()}
                             </div>
                           )}
                           <div style={{display:"flex",gap:8,marginTop:8}}>
                             <button onClick={submitPay} disabled={!payForm.amount}
                               style={{background:payForm.amount?"#1d4ed8":"#e2e8f0",border:"none",borderRadius:7,padding:"7px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:payForm.amount?"#fff":"#94a3b8",cursor:payForm.amount?"pointer":"not-allowed"}}>
-                              Save Payment
+                              {isOffsetPayment(payForm)?"Record Offset":"Save Payment"}
                             </button>
                             <button onClick={()=>setShowPay(null)} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 12px",fontFamily:"inherit",fontWeight:600,fontSize:".78rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
                           </div>
