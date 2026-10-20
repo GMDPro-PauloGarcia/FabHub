@@ -15148,7 +15148,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             {cashSub==="daily"&&AP_HIDDEN&&(
               <CashPositionPayables payables={payables} payPays={payPays} prs={prs} deals={deals} today={today}
                 canApprove={canApprovePayables} canPay={roleCanInsert("payable_payments")}
-                onApprove={approvePayable} onPay={(id,amt,o)=>recordPayablePayment(id,amt,o)} onCancelPay={cancelPayablePayment}/>
+                onApprove={approvePayable} onPay={(id,amt,o)=>recordPayablePayment(id,amt,o)} onPayMany={recordPayments} onCancelPay={cancelPayablePayment}/>
             )}
             {cashSub==="daily"&&(
               <DailyCashPosition cashPositions={cashPositions} saveDayPos={saveDayPos} wonDeals={wonDeals} billings={billings} suppliers={suppliers} subcons={subcons} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps} updateMilestone={updateMilestone} upExps={upExps} toSbExpense={toSbExpense} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} vouchers={vouchers} payables={payables} loans={loans} inventory={inventory} userName={session?.name||""} role={role} username={session?.username||""} cashStale={cashStale}/>

@@ -19,7 +19,7 @@ const pesoAmt=v=>"₱"+num(v).toLocaleString("en-PH",{minimumFractionDigits:2,ma
 const METHODS=["Check","Bank transfer","Online","Cash"];
 const PAGE=60;
 
-export default function CashPositionPayables({payables=[],payPays=[],prs=[],deals=[],today=TODAY,canApprove=false,canPay=false,onApprove,onPay,onCancelPay}){
+export default function CashPositionPayables({payables=[],payPays=[],prs=[],deals=[],today=TODAY,canApprove=false,canPay=false,onApprove,onPay,onPayMany,onCancelPay}){
   const mob=typeof window!=="undefined"&&window.innerWidth<860;
   const[open,setOpen]=useState(true);
   const[q,setQ]=useState("");
@@ -29,6 +29,7 @@ export default function CashPositionPayables({payables=[],payPays=[],prs=[],deal
   const[payFor,setPayFor]=useState(null);
   const[form,setForm]=useState({});
   const[busy,setBusy]=useState(false);
+  const[sel,setSel]=useState(()=>new Set()); // bulk: ids picked for one payment
 
   const dealName=id=>{const d=id&&deals.find(x=>x.id===id);return d?(d.client||d.name||"")+(d.ceNo?` · ${d.ceNo}`:""):"";};
   const sourceOf=p=>!p.poId?"Other":p.category==="Subcontractor"?"WO":"PO";
@@ -60,12 +61,39 @@ export default function CashPositionPayables({payables=[],payPays=[],prs=[],deal
   const overdue=openAll.filter(p=>p.dueDate&&p.dueDate<today);
   const pending=openAll.filter(p=>!approved(p)).length;
 
+  // Bulk: only approved open bills can be picked; a pick that has since been
+  // paid elsewhere simply drops out.
+  const canPick=p=>canPay&&!showPaid&&approved(p)&&isOpen(p);
+  const picked=openAll.filter(p=>sel.has(p.id)&&approved(p));
+  const pickedTotal=picked.reduce((s,p)=>s+balanceOf(p),0);
+  const shown=rows.slice(0,limit);
+  const shownPickable=shown.filter(canPick);
+  const allShownPicked=shownPickable.length>0&&shownPickable.every(p=>sel.has(p.id));
+  const togglePick=id=>setSel(prev=>{const n=new Set(prev);n.has(id)?n.delete(id):n.add(id);return n;});
+  const toggleShown=()=>setSel(prev=>{const n=new Set(prev);shownPickable.forEach(p=>allShownPicked?n.delete(p.id):n.add(p.id));return n;});
+  const startBulk=()=>{
+    setForm({date:today,method:"Check",bank:"bpi",ref:"",note:""});
+    setPayFor({bulk:true});
+  };
+  const submitBulk=async()=>{
+    if(busy||!picked.length) return;
+    const notRecv=picked.filter(p=>{const rc=sourceOf(p)==="PO"?receiptOf(p):null;return rc&&rc!=="Received";});
+    if(!(await uiConfirm({title:`Mark ${picked.length} bill${picked.length>1?"s":""} paid`,confirmLabel:"Record payment",tone:notRecv.length?"danger":undefined,
+      message:`${picked.length} bill${picked.length>1?"s":""} · ${pesoAmt(pickedTotal)} in full, recorded as one ${form.method==="Check"?"check":"payment"}${form.ref?` (${form.ref})`:""} on ${form.date}.`
+        +(notRecv.length?`\n\n⚠️ ${notRecv.length} of them ${notRecv.length>1?"are POs":"is a PO"} not fully received. Policy is to pay only what has been received.`:"")
+        +`\n\nUndoing any one of them later reopens all ${picked.length}.`}))) return;
+    setBusy(true);
+    const ok=await onPayMany(picked.map(p=>({payableId:p.id,amount:balanceOf(p)})),{date:form.date,method:form.method,bank:form.bank,ref:form.ref,note:form.note});
+    setBusy(false);
+    if(ok){setPayFor(null);setSel(new Set());}
+  };
   const startPay=p=>{
     setForm({amount:String(balanceOf(p)),date:today,method:p.payMethod||"Check",bank:p.payBank||"bpi",ref:"",note:""});
     setPayFor(p);
   };
   const submitPay=async()=>{
     const p=payFor;if(!p||busy) return;
+    if(p.bulk) return submitBulk();
     const amt=Math.round(num(form.amount)*100)/100;
     if(!(amt>0)||amt>balanceOf(p)+0.005){await uiAlert(`Enter an amount between ₱0.01 and the open balance of ${pesoAmt(balanceOf(p))}.`);return;}
     const rc=receiptOf(p);
@@ -100,19 +128,26 @@ export default function CashPositionPayables({payables=[],payPays=[],prs=[],deal
             <button key={s} onClick={()=>{setSrc(s);setLimit(PAGE);}} style={{padding:"5px 12px",borderRadius:20,border:`1px solid ${src===s?"#1e293b":"#e2e8f0"}`,background:src===s?"#1e293b":"#fff",color:src===s?"#fff":"#64748b",cursor:"pointer",fontSize:".74rem",fontWeight:600,fontFamily:"inherit"}}>{s}</button>
           ))}
           <label style={{display:"flex",alignItems:"center",gap:5,fontSize:".76rem",color:"#475569",cursor:"pointer"}}>
-            <input type="checkbox" checked={showPaid} onChange={e=>{setShowPaid(e.target.checked);setLimit(PAGE);}}/> Paid in the last 30 days
+            <input type="checkbox" checked={showPaid} onChange={e=>{setShowPaid(e.target.checked);setLimit(PAGE);setSel(new Set());}}/> Paid in the last 30 days
           </label>
         </div>
+        {picked.length>0&&<div style={{position:"sticky",top:0,zIndex:2,display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",background:"#ecfdf5",border:"1px solid #a7f3d0",borderRadius:9,padding:"8px 12px",marginBottom:10}}>
+          <span style={{flex:"1 1 auto",fontSize:".8rem",color:"#065f46",fontWeight:700}}>{picked.length} selected · {pesoAmt(pickedTotal)}</span>
+          {btn("Mark paid together",startBulk,"#059669")}
+          <button onClick={()=>setSel(new Set())} style={{background:"none",border:"none",color:"#475569",fontSize:".76rem",cursor:"pointer",fontFamily:"inherit"}}>Clear</button>
+        </div>}
         <div style={{overflowX:"auto"}}>
           <table style={{width:"100%",borderCollapse:"collapse",minWidth:mob?640:0}}>
             <thead><tr style={{background:"#f8fafc"}}>
+              {canPay&&!showPaid&&<th style={{padding:"7px 0 7px 10px",width:22}}><input type="checkbox" aria-label="Select all shown approved bills" title="Select all shown approved bills" checked={allShownPicked} disabled={!shownPickable.length} onChange={toggleShown}/></th>}
               {["Bill","Supplier / project","Due",showPaid?"Paid":"Balance",""].map((h,i)=><th key={i} style={{padding:"7px 10px",fontSize:".66rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",textAlign:i===3?"right":"left"}}>{h}</th>)}
             </tr></thead>
             <tbody>
-              {rows.slice(0,limit).map(p=>{
+              {shown.map(p=>{
                 const s=sourceOf(p),rc=s==="PO"?receiptOf(p):null,late=!showPaid&&p.dueDate&&p.dueDate<today;
                 return(
-                  <tr key={p.id} style={{borderTop:"1px solid #f1f5f9"}}>
+                  <tr key={p.id} style={{borderTop:"1px solid #f1f5f9",background:sel.has(p.id)?"#f0fdf4":undefined}}>
+                    {canPay&&!showPaid&&<td style={{padding:"9px 0 8px 10px",verticalAlign:"top"}}>{canPick(p)&&<input type="checkbox" aria-label={`Select ${p.vendor||"bill"} ${p.poId||""}`} checked={sel.has(p.id)} onChange={()=>togglePick(p.id)}/>}</td>}
                     <td style={{padding:"8px 10px",fontSize:".78rem",verticalAlign:"top"}}>
                       <div style={{fontWeight:700,color:"#0f172a"}}>{s} {p.poId||p.invoiceRef||"—"}</div>
                       <div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:3}}>
@@ -139,7 +174,7 @@ export default function CashPositionPayables({payables=[],payPays=[],prs=[],deal
                   </tr>
                 );
               })}
-              {rows.length===0&&<tr><td colSpan={5} style={{textAlign:"center",padding:22,color:"#94a3b8",fontSize:".8rem"}}>{showPaid?"Nothing marked paid in the last 30 days.":"No open supplier bills."}</td></tr>}
+              {rows.length===0&&<tr><td colSpan={canPay&&!showPaid?6:5} style={{textAlign:"center",padding:22,color:"#94a3b8",fontSize:".8rem"}}>{showPaid?"Nothing marked paid in the last 30 days.":"No open supplier bills."}</td></tr>}
             </tbody>
           </table>
         </div>
@@ -147,10 +182,14 @@ export default function CashPositionPayables({payables=[],payPays=[],prs=[],deal
         <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:10}}>Mark a bill paid only once the money has actually gone out (check released or transfer confirmed). That takes it off Running Payables. Still log the disbursement in the daily position as usual.</div>
       </div>}
 
-      <Modal open={!!payFor} onClose={()=>!busy&&setPayFor(null)} title={payFor?`Mark paid · ${payFor.vendor||""}`:""}>
+      <Modal open={!!payFor} onClose={()=>!busy&&setPayFor(null)} title={payFor?.bulk?`Mark ${picked.length} bills paid`:payFor?`Mark paid · ${payFor.vendor||""}`:""}>
         {payFor&&<div>
-          <div style={{fontSize:".8rem",color:"#475569",marginBottom:14}}>{sourceOf(payFor)} {payFor.poId||payFor.invoiceRef} · open balance <b>{pesoAmt(balanceOf(payFor))}</b></div>
-          <Fld label="Amount paid" required hint="Less than the balance records a partial payment."><Inp type="number" value={form.amount} onChange={e=>setForm(f=>({...f,amount:e.target.value}))}/></Fld>
+          {payFor.bulk
+            ?<div style={{fontSize:".8rem",color:"#475569",marginBottom:14}}>Each selected bill is paid <b>in full</b> · total <b>{pesoAmt(pickedTotal)}</b>. They are recorded together as one payment (one check paying several bills).</div>
+            :<>
+              <div style={{fontSize:".8rem",color:"#475569",marginBottom:14}}>{sourceOf(payFor)} {payFor.poId||payFor.invoiceRef} · open balance <b>{pesoAmt(balanceOf(payFor))}</b></div>
+              <Fld label="Amount paid" required hint="Less than the balance records a partial payment."><Inp type="number" value={form.amount} onChange={e=>setForm(f=>({...f,amount:e.target.value}))}/></Fld>
+            </>}
           <Fld label="Date paid" required><Inp type="date" value={form.date} onChange={e=>setForm(f=>({...f,date:e.target.value}))}/></Fld>
           <Fld label="Method"><Sel value={form.method} onChange={e=>setForm(f=>({...f,method:e.target.value}))}>{METHODS.map(m=><option key={m}>{m}</option>)}</Sel></Fld>
           <Fld label="Bank"><Sel value={form.bank} onChange={e=>setForm(f=>({...f,bank:e.target.value}))}>{BANKS.map(b=><option key={b.id} value={b.id}>{b.short}</option>)}</Sel></Fld>
