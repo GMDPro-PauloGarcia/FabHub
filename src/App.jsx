@@ -9573,7 +9573,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const navMap={
     Manager:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
-      {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Reports"}]},
+      {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"boq",l:"BOQ"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Reports"}]},
       {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"}]},
       {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},...((session?.username==="paulo"||session?.username==="mar")?[{id:"projectmargins",l:"Project Margins"}]:[]),{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"finance-reports",l:"Reports"}]},
       {group:"Accounting",  items:[{id:"coa",l:"Chart of Accounts"}]},
@@ -9584,7 +9584,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"audit",l:"Audit"},{id:"syshealth",l:"System Health"},{id:"botsettings",l:"Bot Settings"},{id:"tvboard",l:"Office TV Board"},{id:"activity",l:"Team Activity"}]},
     ],
     Sales:[
-      {group:"Pipeline",     items:[{id:"pipeline",l:"Sales Pipeline"},{id:"calendar",l:"Calendar"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Reports"}]},
+      {group:"Pipeline",     items:[{id:"pipeline",l:"Sales Pipeline"},{id:"boq",l:"BOQ"},{id:"calendar",l:"Calendar"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Reports"}]},
       {group:"Projects",     items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
       {group:"Billing",      items:[{id:"billing",l:"Billing"}]},
       {group:"Deliverables", items:[{id:"designstatus",l:"Design Status"},{id:"drf",l:"Design Requests"}]},
@@ -9592,7 +9592,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     Finance:[
       {group:"Overview",    items:[{id:"home",l:"Cash Position"},{id:"calendar",l:"Calendar"}]},
-      {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"}]},
+      {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"boq",l:"BOQ"},{id:"clients",l:"Clients"}]},
       {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"finance-reports",l:"Reports"}]},
       {group:"Accounting",  items:[{id:"coa",l:"Chart of Accounts"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
@@ -9624,7 +9624,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     QS:[
       {group:"Overview", items:[{id:"home",l:"Dashboard"}]},
-      {group:"Sales",    items:[{id:"pipeline",l:"Sales Pipeline"}]},
+      {group:"Sales",    items:[{id:"pipeline",l:"Sales Pipeline"},{id:"boq",l:"BOQ"}]},
       {group:"CE / QS",  items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"}]},
       {group:"Operations", items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
     ],
@@ -9655,7 +9655,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     SalesOpsAdmin:[
       {group:"Overview",   items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
-      {group:"Sales",      items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Reports"},{id:"ceqs",l:"CE Requests"}]},
+      {group:"Sales",      items:[{id:"pipeline",l:"Sales Pipeline"},{id:"boq",l:"BOQ"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Reports"},{id:"ceqs",l:"CE Requests"}]},
       {group:"Billing",    items:[{id:"billing",l:"Billing"}]},
       {group:"Finance",    items:[{id:"financecal",l:"Finance Calendar"}]},
       {group:"Operations", items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
@@ -9697,7 +9697,6 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         :id==="cashposition"?(page==="finance"&&finTab==="cash")
         :id==="executive"?(page==="finance"&&["overview","pl","loans"].includes(finTab))
         :id==="finance"?(page==="acctdash")
-        :id==="pipeline"?(page==="pipeline"||page==="boq")
         :page===id;
       const icon=NAV_ICONS[id]||NAV_ICONS[l]||"•";
       const fav=favNav.includes(id);
