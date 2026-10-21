@@ -13142,13 +13142,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const boqInPipeline=["Manager","Sales","Finance","QS","SalesOpsAdmin"].includes(role);
   // CE Requests: a small tracker standing in for the hidden CE/QS Queue.
   const ceInPipeline=["Manager","Sales","QS","SalesOpsAdmin"].includes(role);
+  // Five tabs are wider than a phone: the bar scrolls sideways instead of
+  // cutting off the last ones (CE Requests, BOQ).
   const PipeTabBar=()=>(
-    <div style={{display:"flex",gap:0,borderBottom:"2px solid #e2e8f0",marginBottom:20}}>
+    <div style={{display:"flex",gap:0,borderBottom:"2px solid #e2e8f0",marginBottom:20,overflowX:"auto",maxWidth:"calc(100vw - 32px)",WebkitOverflowScrolling:"touch",scrollbarWidth:"thin"}}>
       {[["pipeline","📊 Pipeline"],["awarded","💰 Commissions"],["updates","📝 AE Updates"],...(ceInPipeline?[["ce","📐 CE Requests"]]:[]),...(boqInPipeline?[["boq","🧮 BOQ"]]:[])].map(([t,l])=>{
         const on=t==="boq"?page==="boq":page==="pipeline"&&pipeTab===t;
         return(
         <button key={t} onClick={()=>{if(t==="boq"){setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(null);setPage("boq");}else{setPipeTab(t);setPage("pipeline");}}}
-          style={{padding:"9px 20px",border:"none",background:"none",cursor:"pointer",fontSize:".88rem",fontWeight:on?700:500,color:on?"#3b82f6":"#64748b",borderBottom:on?"2px solid #3b82f6":"2px solid transparent",marginBottom:-2,fontFamily:"inherit"}}>
+          style={{padding:isMobile?"9px 12px":"9px 20px",whiteSpace:"nowrap",flexShrink:0,border:"none",background:"none",cursor:"pointer",fontSize:isMobile?".82rem":".88rem",fontWeight:on?700:500,color:on?"#3b82f6":"#64748b",borderBottom:on?"2px solid #3b82f6":"2px solid transparent",marginBottom:-2,fontFamily:"inherit"}}>
           {l}{t==="updates"&&aeUpdates.length>0&&<span style={{marginLeft:5,background:"#3b82f6",color:"#fff",borderRadius:20,padding:"1px 6px",fontSize:".65rem",fontWeight:700}}>{aeUpdates.filter(u=>u.date===today).length||""}</span>}
         </button>
         );
