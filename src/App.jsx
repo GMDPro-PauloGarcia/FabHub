@@ -50,6 +50,7 @@ const DailyCashPosition=_lazyView(()=>import('./views/DailyCashPosition'));
 const CashPositionPayables=_lazyView(()=>import('./views/CashPositionPayables'));
 const CERequestTracker=_lazyView(()=>import('./views/CERequestTracker'));
 const POApprovals=_lazyView(()=>import('./views/POApprovals'));
+const ARDrill=_lazyView(()=>import('./views/ARDrill'));
 const WeeklyCashFlow=_lazyView(()=>import('./views/WeeklyCashFlow'));
 const FinanceWeeklyDues=_lazyView(()=>import('./views/FinanceWeeklyDues'));
 const InventoryView=_lazyView(()=>import('./views/Warehouse').then(m=>({default:m.InventoryView})));
@@ -7987,6 +7988,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const resetQAC=()=>setQuickAddClientForm({name:"",contactPerson:"",email:"",phone:"",mobile:"",website:"",billingAddress:"",city:"",province:"",zipCode:"",country:"Philippines",tin:"",paymentTerms:"Due on receipt",notes:""});
   const[pmUpdateModal,setPmUpdateModal]= useState(null);   // {dealId, dealName} — PM update entry
   const[billingJumpDeal,setBillingJumpDeal]=useState(null); // pre-select a deal when opening billing page
+  const[billingJumpPay,setBillingJumpPay]=useState(null);   // …and open Log Payment on this milestone
+  const[arDrill,setArDrill]=useState(null);                 // AR Aging card clicked: bucket key
   const[smartImport,  setSmartImport]  = useState(null);   // {rows, summary, rawData} — AI import preview
   const[importLoading,setImportLoading]= useState(false);  // AI analyzing flag
   const[importReview, setImportReview] = useState(null);   // [{...mapped deal fields}] for review step
@@ -17643,13 +17646,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const peso2=v=>"₱"+v.toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
         return(
           <div style={{marginBottom:16}}>
-            <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem",marginBottom:10}}>📊 AR Aging <span style={{fontWeight:500,color:"#94a3b8",fontSize:".72rem"}}>· VAT-exclusive</span></div>
+            <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem",marginBottom:10}}>📊 AR Aging <span style={{fontWeight:500,color:"#94a3b8",fontSize:".72rem"}}>· VAT-exclusive · tap a card for the list</span></div>
             {/* Mobile: Total across the top, buckets two per row. Desktop: Total + five buckets in one row. */}
             <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(6,1fr)",gap:8}}>
-              {[["Total",tot,"#0f172a"],["Current",aging.current,"#10b981"],["1–30 days",aging.d30,"#f59e0b"],
-                ["31–60 days",aging.d60,"#f97316"],["61–90 days",aging.d90,"#ef4444"],["90+ days",aging.over90,"#dc2626"]
-              ].map(([l,a,c])=>{const isTot=l==="Total";return(
-                <div key={l} style={{background:isTot?"#1e293b":"#fff",border:`1.5px solid ${isTot?"#1e293b":c+"33"}`,borderRadius:10,padding:isMobile?"10px 8px":"12px 14px",textAlign:"center",minWidth:0,gridColumn:isMobile&&isTot?"1 / -1":undefined}}>
+              {[["Total",tot,"#0f172a","all"],["Current",aging.current,"#10b981","current"],["1–30 days",aging.d30,"#f59e0b","d30"],
+                ["31–60 days",aging.d60,"#f97316","d60"],["61–90 days",aging.d90,"#ef4444","d90"],["90+ days",aging.over90,"#dc2626","over90"]
+              ].map(([l,a,c,key])=>{const isTot=l==="Total";return(
+                <div key={l} role="button" tabIndex={0} title="Show the projects to collect" onClick={()=>a.bal>0.005&&setArDrill(key)} onKeyDown={e=>{if((e.key==="Enter"||e.key===" ")&&a.bal>0.005){e.preventDefault();setArDrill(key);}}} style={{cursor:a.bal>0.005?"pointer":"default",background:isTot?"#1e293b":"#fff",border:`1.5px solid ${isTot?"#1e293b":c+"33"}`,borderRadius:10,padding:isMobile?"10px 8px":"12px 14px",textAlign:"center",minWidth:0,gridColumn:isMobile&&isTot?"1 / -1":undefined}}>
                   <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:isMobile&&!isTot?"1rem":"1.1rem",color:isTot?"#f59e0b":c,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
                     ₱{a.base.toLocaleString("en-PH",{minimumFractionDigits:0,maximumFractionDigits:2})}
                   </div>
@@ -17666,6 +17669,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           </div>
         );
       })()}
+      {arDrill&&<ARDrill bucket={arDrill} billings={billings} dealOf={id=>dealById.get(id)}
+        canPay={["Manager","Finance","FinanceAssistant","SalesOpsAdmin"].includes(role)}
+        onReceive={(dealId,msId)=>{setArDrill(null);setBillingJumpPay(msId);setBillingJumpDeal(dealId);}}
+        onClose={()=>setArDrill(null)}/>}
       {/* Priority call list */}
       {(()=>{
         const today2=new Date();
@@ -17737,6 +17744,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         }}
         onOpenPayTerms={id=>setPayTermsModal(id)}
         initialDeal={billingJumpDeal} clearInitialDeal={()=>setBillingJumpDeal(null)}
+        initialPayMs={billingJumpPay} clearInitialPayMs={()=>setBillingJumpPay(null)}
         cocDeals={Object.entries(projs).filter(([id,p])=>p?.cocCreated).map(([id])=>id)}
         projs={projs} overallProg={overallProg}
         toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification}/>
@@ -25522,10 +25530,26 @@ function AuditView({findings,addFinding,updateFinding,session,role}){
   );
 }
 
-function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMilestone,updateMilestone,applyDeduction,deleteMilestone,deleteProjectBilling,createMilestoneSchedule,logBillingPayment,deleteBillingPayment,setConfirmDel,canDeleteDeal,session,role,cocDeals,clientProfiles,initialDeal,clearInitialDeal,upDeals,onSaveOnboarding,onOpenPayTerms,projs,overallProg,toastEmit,sendTelegramNotification}){
+function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMilestone,updateMilestone,applyDeduction,deleteMilestone,deleteProjectBilling,createMilestoneSchedule,logBillingPayment,deleteBillingPayment,setConfirmDel,canDeleteDeal,session,role,cocDeals,clientProfiles,initialDeal,clearInitialDeal,initialPayMs,clearInitialPayMs,upDeals,onSaveOnboarding,onOpenPayTerms,projs,overallProg,toastEmit,sendTelegramNotification}){
   const mob=window.innerWidth<768;
   const[selDeal,  setSelDeal]  =useState(initialDeal||null);
-  React.useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearInitialDeal&&clearInitialDeal();}},[]);
+  // A jump from elsewhere (dashboard, AR Aging list) opens that project; with
+  // initialPayMs it also opens the usual Log Payment form on that invoice,
+  // pre-filled with its open balance. Runs on every jump, not only on mount,
+  // because the AR Aging list sits on this same page.
+  React.useEffect(()=>{
+    if(!initialDeal) return;
+    setSelDeal(initialDeal);clearInitialDeal&&clearInitialDeal();
+    if(initialPayMs){
+      const ms=billings.find(b=>b.id===initialPayMs);
+      if(ms&&canEdit&&ms.status!=="Cancelled"){
+        const bal=Math.round(milestoneBalance(ms,deals.find(d=>d.id===ms.dealId))*100)/100;
+        setShowPay(ms.id);setPayForm(p=>({...p,amount:bal>0?bal:""}));
+      }
+      clearInitialPayMs&&clearInitialPayMs();
+    }
+  // eslint-disable-next-line
+  },[initialDeal]);
   const[showForm, setShowForm] =useState(false);
   // Tracks which deals had their schedule set up this session so the "Set Up
   // Billing Milestones" call-to-action collapses immediately after Jessica (or
