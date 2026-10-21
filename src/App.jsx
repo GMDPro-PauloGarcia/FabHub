@@ -13145,7 +13145,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // Five tabs are wider than a phone: the bar scrolls sideways instead of
   // cutting off the last ones (CE Requests, BOQ).
   const PipeTabBar=()=>(
-    <div style={{display:"flex",gap:0,borderBottom:"2px solid #e2e8f0",marginBottom:20,overflowX:"auto",maxWidth:"calc(100vw - 32px)",WebkitOverflowScrolling:"touch",scrollbarWidth:"thin"}}>
+    <div style={{display:"flex",gap:0,borderBottom:"2px solid #e2e8f0",marginBottom:20,overflowX:"auto",maxWidth:"calc(100vw - 32px)",WebkitOverflowScrolling:"touch"}}>
       {[["pipeline","📊 Pipeline"],["awarded","💰 Commissions"],["updates","📝 AE Updates"],...(ceInPipeline?[["ce","📐 CE Requests"]]:[]),...(boqInPipeline?[["boq","🧮 BOQ"]]:[])].map(([t,l])=>{
         const on=t==="boq"?page==="boq":page==="pipeline"&&pipeTab===t;
         return(
