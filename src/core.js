@@ -672,10 +672,11 @@ export const OFFSET_METHOD="Offset / Credit Note";
 export const isOffsetPayment=(p)=>!!p&&(p.method??p.payment_method)===OFFSET_METHOD;
 // Money that actually reached GMD: not bounced, not an offset.
 export const isCashPayment=(p)=>!!p&&!p.bounced&&!isOffsetPayment(p);
-// Who may record a billing deduction: Managers plus the users below (Jessica,
-// Operations & Sales Admin; Jerwin, Finance Assistant — owner request
-// 2026-10-22). Reversing a deduction stays Manager only. Mirrored by migration
-// 20261022010000_billing_deductions_named_users.sql; keep the lists in sync.
+// Who may enter a billing deduction: Managers (applied at once) plus the users
+// below (Jessica, Operations & Sales Admin; Jerwin, Finance Assistant — owner
+// request 2026-10-22), whose entry is only a request until a Manager approves
+// it. Approving, rejecting and reversing stay Manager only. Mirrored by migration
+// 20261022010000_billing_deductions_request_approve.sql; keep the lists in sync.
 export const DEDUCTION_USERS=["jessica","jerwin"];
 export const canRecordDeduction=(role,username)=>canonRole(role)==="Manager"||DEDUCTION_USERS.includes(String(username||"").toLowerCase());
 export const CHEQUE_CLEAR_DAYS=3; // banking days a cheque takes to clear
