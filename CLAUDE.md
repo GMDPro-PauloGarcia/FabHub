@@ -60,7 +60,7 @@ For the smoke test locally, run `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers
 - Only a Manager may record or change one, and it needs a reference. Enforced in BillingView's Log/Edit Payment and by migration `20261020050000_billing_offset_manager_only.sql`. Keep them in sync.
 
 ## Billing deductions (database-kept)
-- A deduction on a billing milestone goes only through the `record_billing_deduction` / `reverse_billing_deduction` RPCs (migration `20261020060000_billing_deductions.sql`): Manager only, reason required, never more than the invoice or below what has been paid.
+- A deduction on a billing milestone goes only through the `record_billing_deduction` / `reverse_billing_deduction` RPCs (migration `20261020060000_billing_deductions.sql`): reason required, never more than the invoice or below what has been paid. Recording is open to Managers plus `DEDUCTION_USERS` (`src/core.js`, currently `jessica`, `jerwin`; migration `20261022010000`, keep in sync). Reversing is Manager only.
 - Each one is a row in `billing_deductions`, kept forever. A reversal puts the amount back and marks the row reversed; nothing is deleted. The table has no insert/update/delete policies, so don't add client writes to it.
 - The app mirrors the result on screen only (`applyDeduction`); never lower a milestone `amount` from the client to record a deduction.
 
