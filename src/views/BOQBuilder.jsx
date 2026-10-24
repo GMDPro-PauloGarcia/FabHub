@@ -1,5 +1,5 @@
 import React,{useState,useEffect,useLayoutEffect,useRef} from "react";
-import {today,uid,KEYS,Card,uiConfirm} from "../shared";
+import {today,uid,KEYS,Card,uiConfirm,addPrintClose} from "../shared";
 import {supabase,isSupabaseReady,sbInsert,sbUpdate,sbDelete} from "../supabaseClient";
 // Clearing a deal's BOQ is Manager-only, also enforced by migration
 // 20261006010000_deals_boq_safeguards.sql — keep in sync.
@@ -998,7 +998,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
 <div class="print-btn"><button onclick="window.print()">🖨️ Print / Save as PDF</button></div>
 </body></html>`;
     const w=window.open("","_blank","width=1000,height=780");
-    if(w){w.document.write(html);w.document.close();}
+    if(w){w.document.write(html);w.document.close();addPrintClose(w);}
   };
 
   // Excel export (see ./boqExcel). The internal copy shows direct cost and
