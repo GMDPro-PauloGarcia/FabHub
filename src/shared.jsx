@@ -5,6 +5,22 @@ import React,{useState,useEffect} from "react";
 import {T} from "./theme";
 
 export const fmt   = n => "₱" + Number(n||0).toLocaleString("en-PH",{minimumFractionDigits:0});
+// Print pop-ups (quotations, invoices, POs…) have no way back to FabHub on a
+// phone. Call after document.close(): adds a "✕ Close" button (hidden when
+// printing) that closes the pop-up, or says to close the tab if the browser
+// won't let it.
+export const addPrintClose=w=>{
+  try{
+    const d=w&&w.document;if(!d||!d.body)return;
+    const st=d.createElement("style");
+    st.textContent=".fh-close{position:fixed;top:10px;right:10px;z-index:9999;background:#fff;color:#1e293b;border:1.5px solid #1e293b;border-radius:8px;padding:8px 14px;font:700 13px Arial,sans-serif;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.15)}@media print{.fh-close{display:none!important}}";
+    (d.head||d.body).appendChild(st);
+    const b=d.createElement("button");
+    b.className="fh-close";b.type="button";b.textContent="✕ Close";
+    b.setAttribute("onclick","window.close();setTimeout(function(){if(!window.closed)alert('Close this tab to go back to FabHub.')},300)");
+    d.body.appendChild(b);
+  }catch(e){}
+};
 export const today=(()=>{const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;})();
 export const uid=()=>{
   if(crypto.randomUUID) return crypto.randomUUID();
