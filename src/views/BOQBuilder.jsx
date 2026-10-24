@@ -1006,6 +1006,71 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
     if(w){w.document.write(html);w.document.close();addPrintClose(w);}
   };
 
+  // ── Share PDF ────────────────────────────────────────────────────────────
+  // iPhones ignore window.print() in the print pop-up, so the quotation is also
+  // built as a real PDF file (./boqPdf) and handed to the phone's share sheet,
+  // or downloaded where sharing files isn't supported (most desktops).
+  // Anyone who can open the BOQ can share it, but only a Manager's copy is
+  // clean: everyone else's is watermarked "DRAFT – NOT FOR SUBMISSION", since
+  // every quotation carries the President's name as approver.
+  const pdfIsDraft=canonRole(role)!=="Manager";
+  const[pdfBusy,setPdfBusy]=useState(false);
+  const[pdfReady,setPdfReady]=useState(null);   // null | {file,url,canShare}
+  const boqPdfModel=()=>{
+    const pdfSections=[];
+    sections.forEach(sec=>{
+      const si=items.filter(it=>it.section===sec.id);
+      if(!si.length) return;
+      const row=(it,num)=>({kind:"item",num,description:it.description,qty:fmtQty(it.qty||1),unit:it.unit||"lot",unitCost:it.unitCost,total:it.total,remarks:it.remarks||""});
+      const {ungrouped,subs}=groupSection(si);
+      const rows=ungrouped.map((it,idx)=>row(it,`${sec.id}.${idx+1}`));
+      subs.forEach(sub=>{
+        rows.push({kind:"sub",num:`${sec.id}.${sub.num}`,label:sub.label});
+        sub.items.forEach((it,mi)=>rows.push(row(it,`${sec.id}.${sub.num}.${mi+1}`)));
+        rows.push({kind:"subtotal",label:sub.label,amount:sub.items.reduce((s,it)=>s+it.total,0)});
+      });
+      pdfSections.push({id:sec.id,label:sec.label,color:sec.color,rows,total:si.reduce((s,it)=>s+it.total,0)});
+    });
+    return{
+      draft:pdfIsDraft,
+      quotationNo:quotationNo||"",
+      dateStr:boqDate?new Date(boqDate+"T00:00:00").toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"}):"",
+      projectName:(boqTitle&&boqTitle.trim())||dealLabel(deal)||"—",
+      locationName:(location&&location.trim())||deal?.location||"—",
+      client:deal?.client||"",
+      sections:pdfSections,grandTotal,discountVal,netTotal,vatEnabled:!!vatEnabled,vatAmt:netTotal*0.12,
+      notes:boqGeneralNotes(vatEnabled),
+    };
+  };
+  const pdfFileName=()=>{
+    const ref=quotationNo||deal?.ceNo||"";
+    const name=(boqTitle&&boqTitle.trim())||deal?.client||"BOQ";
+    const base=[ref,name,"Quotation"].filter(Boolean).join(" - ").replace(/[\\/:*?"<>|]+/g," ").replace(/\s+/g," ").trim().slice(0,120);
+    return `${base}${pdfIsDraft?" (DRAFT)":""}.pdf`;
+  };
+  const makePdf=async()=>{
+    if(pdfBusy) return;
+    setPdfBusy(true);
+    try{
+      const {buildBoqPdf}=await import("./boqPdf");
+      const blob=buildBoqPdf(boqPdfModel());
+      const file=new File([blob],pdfFileName(),{type:"application/pdf"});
+      let canShare=false;
+      try{canShare=!!(navigator.canShare&&navigator.canShare({files:[file]}));}catch(e){}
+      setPdfReady({file,url:URL.createObjectURL(blob),canShare});
+    }catch(err){
+      toastEmit&&toastEmit("Couldn't make the PDF: "+(err.message||err),"error");
+    }finally{setPdfBusy(false);}
+  };
+  // Called straight from the tap on "Share", so the phone still counts it as a
+  // user action; building the PDF first (async) would make iOS refuse it.
+  const sharePdf=async()=>{
+    if(!pdfReady) return;
+    try{await navigator.share({files:[pdfReady.file],title:pdfReady.file.name});}
+    catch(err){if(err&&err.name!=="AbortError") toastEmit&&toastEmit("Sharing failed — use Download instead.","error");}
+  };
+  const closePdf=()=>{if(pdfReady?.url) URL.revokeObjectURL(pdfReady.url);setPdfReady(null);};
+
   // Excel export (see ./boqExcel). The internal copy shows direct cost and
   // margin, so only Managers and QS get it; the client copy is the quotation.
   const canExportInternal=["Manager","QS"].includes(canonRole(role));
@@ -1135,6 +1200,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
             📚 Library{boqLibrary.length>0&&<span style={{background:"#7c3aed",color:"#fff",borderRadius:20,padding:"0 6px",fontSize:".62rem",fontWeight:800,marginLeft:4}}>{boqLibrary.length}</span>}
           </button>}
           {items.length>0&&<button onClick={printBOQ} style={{background:"#f0fdf4",border:"1.5px solid #86efac",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#166534",cursor:"pointer"}}>🖨 Preview / Print</button>}
+          {items.length>0&&<button onClick={makePdf} disabled={pdfBusy} title={pdfIsDraft?"Make the quotation as a PDF to share or download. Your copy is watermarked DRAFT: only a Manager's is clean to send.":"Make the quotation as a PDF to share (Viber, Mail, Files) or download"} style={{background:"#ecfeff",border:"1.5px solid #67e8f9",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#155e75",cursor:pdfBusy?"wait":"pointer"}}>{pdfBusy?"Making PDF…":"📤 Share PDF"}</button>}
           {onDuplicateToDeal&&!coId&&!srvLoading&&items.length>0&&<button onClick={()=>openXfer("duplicate")} title="Copy this BOQ onto another deal (e.g. the same store package at a new location). This BOQ stays as it is." style={{background:"#fdf4ff",border:"1.5px solid #f0abfc",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#a21caf",cursor:"pointer"}}>⧉ Duplicate to deal</button>}
           {items.length>0&&<button onClick={()=>exportXlsx("client")} disabled={!!xlsxBusy} title="Download the quotation as an Excel file — selling prices only, safe to send to the client" style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#1d4ed8",cursor:xlsxBusy?"wait":"pointer"}}>{xlsxBusy==="client"?"Preparing…":"⬇ Excel"}</button>}
           {items.length>0&&canExportInternal&&<button onClick={()=>exportXlsx("internal")} disabled={!!xlsxBusy} title="Internal Excel: direct cost, markup and margin per line. Do not send to the client." style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#b91c1c",cursor:xlsxBusy?"wait":"pointer"}}>{xlsxBusy==="internal"?"Preparing…":"⬇ Excel (internal)"}</button>}
@@ -1300,6 +1366,20 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       })()}
 
       {/* RFQ section picker */}
+      {pdfReady&&(
+        <div onClick={closePdf} style={{position:"fixed",inset:0,background:"#0f172acc",zIndex:2000,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"36px 16px",overflowY:"auto"}}>
+          <div onClick={e=>e.stopPropagation()} role="dialog" aria-label="Share PDF" style={{background:"#fff",borderRadius:16,border:"1.5px solid #e2e8f0",padding:22,maxWidth:440,width:"100%",boxShadow:"0 24px 60px #0006"}}>
+            <div style={{fontWeight:800,color:"#0f172a",fontSize:"1rem",marginBottom:6}}>📤 PDF ready</div>
+            <div style={{fontSize:".8rem",color:"#334155",wordBreak:"break-word",marginBottom:10}}>{pdfReady.file.name}</div>
+            {pdfIsDraft&&<div style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,padding:"8px 10px",fontSize:".74rem",color:"#b91c1c",marginBottom:12}}>Watermarked <b>DRAFT – NOT FOR SUBMISSION</b>. Only a Manager's copy is clean to send to the client.</div>}
+            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              {pdfReady.canShare&&<button onClick={sharePdf} style={{flex:"1 1 120px",background:"#1e293b",color:"#fff",border:"none",borderRadius:8,padding:"10px 14px",fontFamily:"inherit",fontSize:".82rem",fontWeight:800,cursor:"pointer"}}>📤 Share</button>}
+              <a href={pdfReady.url} download={pdfReady.file.name} style={{flex:"1 1 120px",textAlign:"center",textDecoration:"none",background:"#f1f5f9",color:"#0f172a",border:"1.5px solid #cbd5e1",borderRadius:8,padding:"9px 14px",fontSize:".82rem",fontWeight:700}}>⬇ Download</a>
+              <button onClick={closePdf} style={{flex:"0 0 auto",background:"none",border:"none",color:"#64748b",fontFamily:"inherit",fontSize:".8rem",fontWeight:700,cursor:"pointer",padding:"9px 6px"}}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
       {rfqPick&&(()=>{
         const avail=sections.filter(sec=>rfqLines(sec.id));
         const n=avail.filter(sec=>rfqPick.includes(sec.id)).reduce((t,sec)=>t+rfqLines(sec.id),0);
