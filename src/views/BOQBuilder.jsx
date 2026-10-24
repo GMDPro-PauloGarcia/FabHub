@@ -34,6 +34,10 @@ const BOQ_SECTIONS=[
 ];
 const BOQ_SEC_CLR=Object.fromEntries(BOQ_SECTIONS.map(s=>[s.id,s.color]));
 const FINISH_LEVELS=["Budget","Mid-range","High-end","Premium/Luxury"];
+// Quantities computed from dimensions carry float noise (5.2139999999999995
+// sqm). Show at most 6 decimals (enough that qty × unit cost still checks
+// against the line total); the stored value is untouched.
+const fmtQty=q=>{const n=Number(q);return Number.isFinite(n)?n.toLocaleString("en-PH",{maximumFractionDigits:6}):String(q??"");};
 
 // General Notes shown on the builder and printed on the quotation. The VAT line
 // tracks the VAT-treatment toggle: VATable (VAT 12%) prints "Inclusive of Value
@@ -903,7 +907,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       // instead of collapsing into one run-on paragraph; overflow-wrap breaks any
       // over-long token so nothing spills past the cell. vertical-align:top keeps
       // the number/qty/prices aligned to the first line of a tall description.
-      const itemRowHtml=(it,num)=>`<tr style="background:#fff"><td style="font-size:11px;color:#64748b;padding:6px 10px;white-space:nowrap;vertical-align:top;border-left:4px solid ${clr}">${esc(num)}</td><td style="padding:6px 10px;font-size:12px;white-space:pre-line;overflow-wrap:break-word;line-height:1.5;vertical-align:top">${esc(it.description)||"—"}</td><td style="text-align:center;padding:6px 10px;font-size:12px;vertical-align:top">${it.qty||1}</td><td style="padding:6px 10px;font-size:12px;vertical-align:top">${esc(it.unit||"lot")}</td><td style="text-align:right;padding:6px 10px;font-size:12px;vertical-align:top">${fmtP(it.unitCost)}</td><td style="text-align:right;font-weight:700;padding:6px 10px;font-size:12px;vertical-align:top">${fmtP(it.total)}</td><td style="padding:6px 10px;font-size:11px;color:#64748b;white-space:pre-line;overflow-wrap:break-word;line-height:1.5;vertical-align:top">${esc(it.remarks||"")}</td></tr>`;
+      const itemRowHtml=(it,num)=>`<tr style="background:#fff"><td style="font-size:11px;color:#64748b;padding:6px 10px;white-space:nowrap;vertical-align:top;border-left:4px solid ${clr}">${esc(num)}</td><td style="padding:6px 10px;font-size:12px;white-space:pre-line;overflow-wrap:break-word;line-height:1.5;vertical-align:top">${esc(it.description)||"—"}</td><td style="text-align:center;padding:6px 10px;font-size:12px;vertical-align:top">${fmtQty(it.qty||1)}</td><td style="padding:6px 10px;font-size:12px;vertical-align:top">${esc(it.unit||"lot")}</td><td style="text-align:right;padding:6px 10px;font-size:12px;vertical-align:top">${fmtP(it.unitCost)}</td><td style="text-align:right;font-weight:700;padding:6px 10px;font-size:12px;vertical-align:top">${fmtP(it.total)}</td><td style="padding:6px 10px;font-size:11px;color:#64748b;white-space:pre-line;overflow-wrap:break-word;line-height:1.5;vertical-align:top">${esc(it.remarks||"")}</td></tr>`;
       const {ungrouped,subs}=groupSection(si);
       ungrouped.forEach((it,idx)=>{rows+=itemRowHtml(it,`${sec.id}.${idx+1}`);});
       subs.forEach(sub=>{
@@ -1369,7 +1373,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                           {si.map((it,i)=>(
                             <div key={i} style={{display:"grid",gridTemplateColumns:"1fr 42px 50px 96px",gap:6,padding:"4px 12px",borderBottom:"1px solid #f1f5f9",fontSize:".72rem",color:"#374151",alignItems:"center"}}>
                               <span style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}} title={it.description}>{it.description}</span>
-                              <span style={{textAlign:"right"}}>{it.qty}</span>
+                              <span style={{textAlign:"right"}}>{fmtQty(it.qty)}</span>
                               <span style={{textAlign:"center",color:"#94a3b8"}}>{it.unit}</span>
                               <span style={{textAlign:"right"}}>₱{eff(it.baseCost).toLocaleString("en-PH",{minimumFractionDigits:2})}</span>
                             </div>
