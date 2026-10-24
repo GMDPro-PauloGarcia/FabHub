@@ -322,6 +322,10 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   // marked-up figures used everywhere else (print, CSV, totals, VAT).
   const[markupPct,setMarkupPct]=useState("");
   const roundP=n=>Math.round((Number(n)||0)*100)/100;
+  // Quantities are kept to 2 decimals (Excel import and typed entry). The
+  // toPrecision step stops float noise rounding the wrong way (1.275 → 1.28,
+  // not 1.27).
+  const roundQty=n=>Math.round(parseFloat(((Number(n)||0)*100).toPrecision(12)))/100;
   const applyMk=(base,m)=>{const b=Number(base)||0,mk=Number(m)||0;return mk?roundP(b*(1+mk/100)):b;};
   // Ensure legacy items (saved before markup existed) carry baseCost/markup fields.
   const normItem=it=>({...it,baseCost:it.baseCost!=null?it.baseCost:(Number(it.unitCost)||0),markup:it.markup!=null?it.markup:0});
@@ -455,7 +459,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       if(deepIdx>0){ if(curGroup) subsection=curGroup; }
       else if(curGroup&&curGroupNo&&itemNo.startsWith(curGroupNo+".")) subsection=curGroup;
       else { curGroup=null;curGroupNo=""; }
-      const q=qtyN==null?1:qtyN,uc=costN==null?(totalN!=null&&q?totalN/q:0):costN;
+      const q=qtyN==null?1:roundQty(qtyN),uc=costN==null?(totalN!=null&&q?totalN/q:0):costN;
       items.push({section:String(secId),subsection,description:name,unit:unitVal||"lot",qty:q,baseCost:uc,unitCost:uc,total:q*uc,remarks:String(cell(row,cm.remarks)||"").trim(),markup:0});
     }
     items.forEach(it=>{if(!sections.find(s=>s.id===it.section)) sections.push({id:it.section,label:`Section ${it.section}`});});
@@ -773,6 +777,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   const updateItem=(id,key,val)=>{if(editLocked)return;markEdited();setItems(its=>its.map(it=>{
     if(it._id!==id) return it;
     const upd={...it,[key]:["description","unit","section","subsection","remarks"].includes(key)?val:Number(val)||0};
+    if(key==="qty") upd.qty=roundQty(upd.qty);
     // Unit cost / markup / qty all derive the effective cost and line total from
     // the direct cost (baseCost) and the per-item markup %.
     const base=upd.baseCost!=null?upd.baseCost:(Number(upd.unitCost)||0);
@@ -1592,7 +1597,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                             </div>
                           )}
                         </div>
-                        <input type="number" value={it.qty} onChange={e=>updateItem(it._id,"qty",e.target.value)} style={{...inpSt,fontSize:".78rem",padding:"4px 4px",textAlign:"right"}}/>
+                        <input type="number" step="0.01" value={it.qty} onChange={e=>updateItem(it._id,"qty",e.target.value)} style={{...inpSt,fontSize:".78rem",padding:"4px 4px",textAlign:"right"}}/>
                         <input value={it.unit} onChange={e=>updateItem(it._id,"unit",e.target.value)} placeholder="lot" style={{...inpSt,fontSize:".72rem",padding:"4px 4px",textAlign:"center"}}/>
                         <input type="number" value={it.baseCost!=null?it.baseCost:it.unitCost} onChange={e=>updateItem(it._id,"baseCost",e.target.value)} title="Direct cost per unit (before markup)" style={{...inpSt,fontSize:".78rem",padding:"4px 6px",textAlign:"right"}}/>
                         <div style={{position:"relative",display:"flex",alignItems:"center"}}>
