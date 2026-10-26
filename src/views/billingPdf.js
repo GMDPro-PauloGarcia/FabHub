@@ -29,12 +29,12 @@ const header=(doc,{dateStr,rightLabel})=>{
   return 36;
 };
 
-// ── Invoice ────────────────────────────────────────────────────────────────
+// ── Billing statement (a milestone's invoice; never titled "Tax Invoice") ──
 export function buildInvoicePdf(m){
   const doc=newDoc();
   const W=doc.internal.pageSize.getWidth(),L=12,R=W-12;
-  doc.setProperties({title:`Invoice ${m.invoiceNo||""} — ${m.billTo.name}`.trim(),author:"GMD Productions Inc.",creator:"FabHub"});
-  let y=header(doc,{dateStr:m.invoiceDate,rightLabel:`INVOICE NO.: ${m.invoiceNo||"—"}`});
+  doc.setProperties({title:`Billing Statement ${m.invoiceNo||""} — ${m.billTo.name}`.trim(),author:"GMD Productions Inc.",creator:"FabHub"});
+  let y=header(doc,{dateStr:m.invoiceDate,rightLabel:`BILLING NO.: ${m.invoiceNo||"—"}`});
 
   doc.setFont(F,"bold");doc.setFontSize(16);doc.setTextColor(INK);
   doc.text((m.draft?`${m.docTitle} — DRAFT`:m.docTitle).toUpperCase(),L,y+2);
@@ -50,7 +50,7 @@ export function buildInvoicePdf(m){
   [m.billTo.contact,m.billTo.address,m.billTo.email,m.billTo.tin?`TIN: ${m.billTo.tin}`:""].filter(Boolean).forEach(t=>{
     doc.splitTextToSize(t,100).forEach(l=>{doc.text(l,L,y);y+=4;});
   });
-  const meta=[["INVOICE",m.invoiceNo||"—"],...(m.poNo?[["PO #",m.poNo]]:[]),["DATE",m.invoiceDate],["TERMS",m.terms],["DUE DATE",m.dueDate]];
+  const meta=[["BILLING NO.",m.invoiceNo||"—"],...(m.poNo?[["PO #",m.poNo]]:[]),["DATE",m.invoiceDate],["TERMS",m.terms],["DUE DATE",m.dueDate]];
   let my=topY;
   meta.forEach(([k,v])=>{
     doc.setFont(F,"bold");doc.setFontSize(7);doc.setTextColor(SLATE);doc.text(k,R-58,my);
@@ -114,8 +114,10 @@ export function buildInvoicePdf(m){
   y+=14;
   doc.setDrawColor(LINE);doc.line(L,y,R,y);
   doc.setFontSize(7);doc.setTextColor("#94a3b8");doc.text(CO_FOOTER,W/2,y+4.5,{align:"center"});
+  doc.setFont(F,"bold");doc.setFontSize(8);doc.setTextColor("#475569");
+  doc.text("This is a billing statement, not an official receipt or BIR invoice. The official invoice is issued separately.",W/2,y+10,{align:"center",maxWidth:R-L});
 
-  stampPages(doc,{footer:`GMD Productions Inc. · Invoice ${m.invoiceNo||""}`.trim(),draft:m.draft,
+  stampPages(doc,{footer:`GMD Productions Inc. · Billing Statement ${m.invoiceNo||""}`.trim(),draft:m.draft,
     draftNote:"DRAFT – NOT FOR SUBMISSION · Finance or a Manager issues the client copy"});
   return doc.output("blob");
 }

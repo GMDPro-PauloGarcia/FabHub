@@ -25691,7 +25691,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     const{d,tx,totalPaid,balance,cp,clientAddr}=invoiceData(ms);
     const model={
       draft:billingPdfDraft,
-      docTitle:d?.receiptType==="SI"?"Tax Invoice":"Invoice",
+      docTitle:"Billing Statement",
       invoiceNo:ms.invoiceNo||"",invoiceDate:ms.invoiceDate||today,
       dueDate:ms.dueDate||ms.invoiceDate||today,overdue:!!(ms.dueDate&&ms.dueDate<today),
       terms:cp.paymentTerms||"Due on receipt",poNo:dealClientPo(d,deals),
@@ -25701,7 +25701,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       subtotal:Number(ms.amount)||0,vat:tx.vat,gross:tx.gross,ewt:tx.ewt,paid:totalPaid,balance,
     };
     billingPdf.make(async()=>{const {buildInvoicePdf}=await import("./views/billingPdf");return buildInvoicePdf(model);},
-      [ms.invoiceNo,d?.client,"Invoice"].filter(Boolean).join(" - "),
+      [ms.invoiceNo,d?.client,"Billing Statement"].filter(Boolean).join(" - "),
       {draft:billingPdfDraft,draftNote:"Only Finance's or a Manager's copy is clean to send."});
   };
   const shareSoaPdf=(clientName)=>{
@@ -25949,7 +25949,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const printInvoice=(ms)=>{
     const{d,tx,totalPaid,balance,cp,clientAddr}=invoiceData(ms);
     const win=window.open("","_blank");
-    win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Invoice ${ms.invoiceNo}</title>
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Billing Statement ${ms.invoiceNo}</title>
 <style>
   @page{size:A4;margin:12mm 14mm}
   *{box-sizing:border-box;margin:0;padding:0;}
@@ -26025,12 +26025,15 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
 </div>
 <div class="sub-bar">
   <span class="tagline">Retail Design &amp; Build | Construction | Modular Fit-outs | Signage | POP Displays</span>
-  <span class="tagline">INVOICE NO.: ${ms.invoiceNo||"—"}</span>
+  <span class="tagline">BILLING NO.: ${ms.invoiceNo||"—"}</span>
 </div>
 
 <div class="wrap">
   <!-- Document title -->
-  <div class="doc-title">${d?.receiptType==="SI"?"Tax Invoice":"Invoice"}</div>
+  <!-- Never "Tax Invoice": GMD issues its official BIR invoice / receipt
+       separately, so this document is a billing statement only (Paulo,
+       2026-10-26). Same title and note on the Share PDF (billingPdf.js). -->
+  <div class="doc-title">Billing Statement</div>
 
   <!-- Bill-to + Invoice meta -->
   <div class="meta-row">
@@ -26043,7 +26046,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       ${cp.tin?`<div class="bill-addr">TIN: ${cp.tin}</div>`:""}
     </div>
     <table class="meta-table">
-      <tr><td class="label">INVOICE</td><td class="val">${ms.invoiceNo||"—"}</td></tr>
+      <tr><td class="label">BILLING NO.</td><td class="val">${ms.invoiceNo||"—"}</td></tr>
       ${dealClientPo(d,deals)?`<tr><td class="label">PO #</td><td class="val">${String(dealClientPo(d,deals)).replace(/&/g,"&amp;").replace(/</g,"&lt;")}</td></tr>`:""}
       <tr><td class="label">DATE</td><td class="val">${ms.invoiceDate||today}</td></tr>
       <tr><td class="label">TERMS</td><td class="val">${cp.paymentTerms||"Due on receipt"}</td></tr>
@@ -26123,6 +26126,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   </div>
 
   <!-- Company footer -->
+  <div style="text-align:center;margin-top:18px;font-size:10px;font-weight:700;color:#475569">This is a billing statement, not an official receipt or BIR invoice. The official invoice is issued separately.</div>
   <div class="co-footer">
     GMD PRODUCTIONS INC &nbsp;·&nbsp; 32 Santan Unit H Brgy Fortune, Marikina, NCR 1802 PH &nbsp;·&nbsp; TIN 010-063-229-000<br/>
     +63 9189338436 &nbsp;·&nbsp; sales@gmd.ph &nbsp;·&nbsp; www.gmd.ph
@@ -27338,8 +27342,8 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                     </div>
                     {/* Action buttons */}
                     <div style={{display:"flex",flexDirection:"column",gap:5,flexShrink:0}}>
-                      <button onClick={()=>printInvoice(ms)} style={{background:"#1e293b",border:"none",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#fff",cursor:"pointer"}}>🖨 Invoice</button>
-                      <button onClick={()=>shareInvoicePdf(ms)} disabled={billingPdf.busy} title="Invoice as a PDF to share (Viber, Mail, Files) or download" style={{background:"#ecfeff",border:"1.5px solid #67e8f9",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#155e75",cursor:billingPdf.busy?"wait":"pointer"}}>{billingPdf.busy?"Making PDF…":"📤 Invoice PDF"}</button>
+                      <button onClick={()=>printInvoice(ms)} style={{background:"#1e293b",border:"none",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#fff",cursor:"pointer"}}>🖨 Billing Statement</button>
+                      <button onClick={()=>shareInvoicePdf(ms)} disabled={billingPdf.busy} title="Billing statement as a PDF to share (Viber, Mail, Files) or download" style={{background:"#ecfeff",border:"1.5px solid #67e8f9",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#155e75",cursor:billingPdf.busy?"wait":"pointer"}}>{billingPdf.busy?"Making PDF…":"📤 Billing PDF"}</button>
                       {canPayDeal(deal)&&ms.status!=="Fully Paid"&&ms.status!=="Cancelled"&&(
                         <button onClick={()=>{const opening=showPay!==ms.id;setShowPay(showPay===ms.id?null:ms.id);if(opening){const totalPaid=(ms.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);const bal=tx.netReceivable-totalPaid;setPayForm(p=>({...p,amount:bal>0?bal:tx.netReceivable}));}}} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#059669",cursor:"pointer"}}>+ Payment</button>
                       )}
