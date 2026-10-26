@@ -4550,7 +4550,7 @@ export default function App(){
           console.info("[FabHub] sbLoadAll result — deals:",data?.deals?.length||0,"jos:",data?.jos?.length||0,"users:",data?.users?.length||0);
           if(data){
             const idbE=[];
-            const _deals=data.deals?.length?data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,standbyPO:d.standby_po||false,dpWaivedBy:d.dp_waived_by||"",dpWaivedAt:d.dp_waived_at||null,dpWaivedReason:d.dp_waived_reason||"",poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,signedCeUrl:d.signed_ce_url||"",signedCeOnFile:d.signed_ce_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})):null;
+            const _deals=data.deals?.length?data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,standbyPO:d.standby_po||false,dpWaivedBy:d.dp_waived_by||"",dpWaivedAt:d.dp_waived_at||null,dpWaivedReason:d.dp_waived_reason||"",poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,signedCeUrl:d.signed_ce_url||"",signedCeOnFile:d.signed_ce_on_file||false,clientPoNo:d.client_po_no||"",vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})):null;
             if(_deals){
               // Reconcile legacy non-UUID "ghost" deals against the server.
               // Before the deals.id → UUID migration, deals were keyed by local
@@ -4893,7 +4893,7 @@ export default function App(){
         // once/30s) — far more often than a manual page refresh — so a blind
         // overwrite here was the single biggest way to lose a just-added record
         // that hadn't synced yet (e.g. still in flight when the user tabbed away).
-        if(data?.deals?.length) setDeals(prev=>mlo(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,standbyPO:d.standby_po||false,dpWaivedBy:d.dp_waived_by||"",dpWaivedAt:d.dp_waived_at||null,dpWaivedReason:d.dp_waived_reason||"",poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,signedCeUrl:d.signed_ce_url||"",signedCeOnFile:d.signed_ce_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})),prev));
+        if(data?.deals?.length) setDeals(prev=>mlo(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,standbyPO:d.standby_po||false,dpWaivedBy:d.dp_waived_by||"",dpWaivedAt:d.dp_waived_at||null,dpWaivedReason:d.dp_waived_reason||"",poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,signedCeUrl:d.signed_ce_url||"",signedCeOnFile:d.signed_ce_on_file||false,clientPoNo:d.client_po_no||"",vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})),prev));
         if(data?.jos?.length){const js=data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no}));setJos(prev=>mlo(js,dropStaleJos(js,prev)));}
         if(Object.keys(data?.pcards||{}).length) setPcards(prev=>mergeLocalOnlyObj(data.pcards,prev));
         // Map the same camelCase fields the initial load does. Omitting dueDate
@@ -4927,7 +4927,7 @@ export default function App(){
     // clicks it is right after a save looked stuck, which is also the exact
     // moment a blind overwrite would erase the very record they're trying to
     // recover.
-    if(data.deals?.length){const ds=data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,standbyPO:d.standby_po||false,dpWaivedBy:d.dp_waived_by||"",dpWaivedAt:d.dp_waived_at||null,dpWaivedReason:d.dp_waived_reason||"",poBudget:d.standby_po?(Number(d.po_budget)||0):"",leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,boqData:d.boq_data||null,bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,signedCeUrl:d.signed_ce_url||"",signedCeOnFile:d.signed_ce_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null}));setDeals(prev=>mlo(ds,prev));idbE.push([KEYS.deals,ds]);}
+    if(data.deals?.length){const ds=data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,standbyPO:d.standby_po||false,dpWaivedBy:d.dp_waived_by||"",dpWaivedAt:d.dp_waived_at||null,dpWaivedReason:d.dp_waived_reason||"",poBudget:d.standby_po?(Number(d.po_budget)||0):"",leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,boqData:d.boq_data||null,bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,signedCeUrl:d.signed_ce_url||"",signedCeOnFile:d.signed_ce_on_file||false,clientPoNo:d.client_po_no||"",vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null}));setDeals(prev=>mlo(ds,prev));idbE.push([KEYS.deals,ds]);}
     if(data.jos?.length){const js=data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned}));setJos(prev=>mlo(js,dropStaleJos(js,prev)));idbE.push([KEYS.jos,js]);}
     if(Object.keys(data.pcards||{}).length){setPcards(data.pcards);idbE.push([KEYS.pcards,data.pcards]);}
     if(data.billings?.length){const bs=data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by,retentionHeld:m.retention_held!=null?Number(m.retention_held):undefined,isRetentionRelease:m.is_retention_release||undefined,plannedDate:m.planned_bill_date||undefined,msType:m.ms_type||undefined,payments:(m.payments||[]).map(p=>({...p,milestoneId:p.milestone_id??p.milestoneId,refNo:p.ref_no??p.refNo,recordedBy:p.recorded_by??p.recordedBy,valueDate:p.value_date??p.valueDate,method:p.payment_method??p.method,bounced:!!(p.bounced??false)}))}));setBillings(prev=>mlo(bs,prev));idbE.push([KEYS.billings,bs]);}
@@ -6153,7 +6153,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           standbyPO:rec.standby_po||false,dpWaivedBy:rec.dp_waived_by||"",dpWaivedAt:rec.dp_waived_at||null,dpWaivedReason:rec.dp_waived_reason||"",poBudget:rec.standby_po?(Number(rec.po_budget)||0):"",
           billingGenerated:rec.billing_generated||false,
           bir2303Url:rec.bir_2303_url||"",bir2303OnFile:rec.bir_2303_on_file||false,
-          signedCeUrl:rec.signed_ce_url||"",signedCeOnFile:rec.signed_ce_on_file||false,
+          signedCeUrl:rec.signed_ce_url||"",signedCeOnFile:rec.signed_ce_on_file||false,clientPoNo:rec.client_po_no||"",
           vatTreatment:rec.vat_treatment||"",downpaymentPct:rec.downpayment_pct??null,
           paymentTermsText:rec.payment_terms_text||"",clientSatisfied:rec.client_satisfied||false,
           satisfactionNote:rec.satisfaction_note||"",
@@ -25514,6 +25514,42 @@ function AuditView({findings,addFinding,updateFinding,session,role}){
   );
 }
 
+// The client's PO number for a deal. A sub-project billed under a mother PO
+// (parentDealId) shows its parent's number unless it has its own.
+const dealClientPo=(d,deals)=>{
+  if(!d) return "";
+  if((d.clientPoNo||"").trim()) return d.clientPoNo.trim();
+  const p=d.parentDealId&&(deals||[]).find(x=>x.id===d.parentDealId);
+  return (p?.clientPoNo||"").trim();
+};
+// Client PO # on the Billing page. Keeps its own draft so typing is never
+// trimmed or reformatted mid-word; it saves on blur / Enter only.
+function ClientPoField({deal,inherited,canEdit,onSave}){
+  const[draft,setDraft]=useState(deal?.clientPoNo||"");
+  const[busy,setBusy]=useState(false);
+  useEffect(()=>{setDraft(deal?.clientPoNo||"");},[deal?.id,deal?.clientPoNo]);
+  const commit=async()=>{
+    if(busy||draft.trim()===(deal?.clientPoNo||"").trim()) return;
+    setBusy(true);
+    const ok=await onSave(deal.id,draft);
+    setBusy(false);
+    if(!ok) setDraft(deal?.clientPoNo||"");
+  };
+  return(
+    <div style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"10px 16px",marginBottom:14,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+      <span style={{fontSize:".8rem",fontWeight:800,color:"#475569"}}>📄 Client PO #</span>
+      {canEdit?(
+        <input value={draft} disabled={busy} maxLength={100} onChange={e=>setDraft(e.target.value)} onBlur={commit}
+          onKeyDown={e=>{if(e.key==="Enter")e.currentTarget.blur();}}
+          placeholder={inherited?`From mother PO: ${inherited}`:"Optional: the client's PO number, if they issued one"}
+          style={{flex:"1 1 220px",minWidth:0,fontFamily:"inherit",fontSize:".82rem",padding:"6px 10px",border:"1.5px solid #cbd5e1",borderRadius:8,outline:"none",background:"#fff"}}/>
+      ):(
+        <span style={{fontSize:".82rem",color:(deal?.clientPoNo||inherited)?"#0f172a":"#94a3b8",fontWeight:600}}>{deal?.clientPoNo||(inherited?`${inherited} (mother PO)`:"None")}</span>
+      )}
+      <span style={{fontSize:".7rem",color:"#94a3b8"}}>Prints on the SOA and invoice{busy?" · saving…":""}</span>
+    </div>
+  );
+}
 function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMilestone,updateMilestone,applyDeduction,deleteMilestone,deleteProjectBilling,createMilestoneSchedule,logBillingPayment,deleteBillingPayment,setConfirmDel,canDeleteDeal,session,role,cocDeals,clientProfiles,initialDeal,clearInitialDeal,upDeals,onSaveOnboarding,onOpenPayTerms,projs,overallProg,toastEmit,sendTelegramNotification}){
   const mob=window.innerWidth<768;
   const[selDeal,  setSelDeal]  =useState(initialDeal||null);
@@ -25552,6 +25588,17 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const fp =(k,v)=>setPayForm(p=>({...p,[k]:v}));
   const fme=(k,v)=>setEditMsForm(p=>({...p,[k]:v}));
   const canEdit=role==="Manager"||role==="Finance"||role==="FinanceAssistant"||role==="SalesOpsAdmin";
+  // Client PO # — same roles as set_deal_client_po (migration
+  // 20261026010000_deals_client_po_no.sql): keep them in sync.
+  const canEditClientPo=["Manager","Finance","FinanceAssistant","Sales","SalesOpsAdmin"].includes(role);
+  const saveClientPo=async(dealId,value)=>{
+    if(!isSupabaseReady()){toastEmit&&toastEmit("Offline: the PO # can't be saved right now.","error");return false;}
+    const{data,error}=await _rpcWithTimeout(supabase.rpc('set_deal_client_po',{p_deal_id:dealId,p_po:value}));
+    if(error){toastEmit&&toastEmit(`PO # not saved: ${error.message}`,"error",9000);return false;}
+    upDeals&&upDeals(ds=>ds.map(d=>d.id===dealId?{...d,clientPoNo:data||""}:d));
+    toastEmit&&toastEmit(data?`Client PO # saved: ${data}`:"Client PO # cleared","success");
+    return true;
+  };
   // Look up across ALL deals, not just wonDeals — addendum child-deals live in
   // their own (often non-won) stage, so a wonDeals-only lookup returned undefined
   // and every tax calc below fell back to "OR", applying 12% VAT to AR/VAT-exempt
@@ -25869,6 +25916,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     </div>
     <table class="meta-table">
       <tr><td class="label">INVOICE</td><td class="val">${ms.invoiceNo||"—"}</td></tr>
+      ${dealClientPo(d,deals)?`<tr><td class="label">PO #</td><td class="val">${String(dealClientPo(d,deals)).replace(/&/g,"&amp;").replace(/</g,"&lt;")}</td></tr>`:""}
       <tr><td class="label">DATE</td><td class="val">${ms.invoiceDate||today}</td></tr>
       <tr><td class="label">TERMS</td><td class="val">${cp.paymentTerms||"Due on receipt"}</td></tr>
       <tr><td class="label">DUE DATE</td><td class="val" style="color:${ms.dueDate&&ms.dueDate<today?"#dc2626":"inherit"}">${ms.dueDate||ms.invoiceDate||today}</td></tr>
@@ -25982,11 +26030,17 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     const tB=rows.reduce((s,r)=>s+r.balance,0);
     const dateStr=new Date().toLocaleDateString("en-US",{month:"numeric",day:"numeric",year:"numeric"});
     const preparedBy=session?.name||"";
+    // Billing address from the client's profile (Clients → Profile), the same
+    // source the invoice uses. It used to print blank for every client.
+    const cpSoa=(clientProfiles||{})[clientName]||(clientProfiles||{})[clientDeals[0]?.client||""]||{};
+    const soaAddr=[cpSoa.billingAddress,cpSoa.city,cpSoa.province,cpSoa.zipCode].filter(Boolean).join(", ");
+    // AR (no VAT) projects have no "vatable" amount; don't label them as such.
+    const amtLbl=tVat>0?"VATABLE AMOUNT":"AMOUNT (NO VAT)";
     const invoiceNos=[...new Set(billings.filter(b=>clientDeals.some(d=>d.id===b.dealId)&&b.invoiceNo&&b.status!=="Cancelled").map(b=>b.invoiceNo))].join(", ");
     const rowsHtml=rows.map((r,i)=>`<tr>
       <td style="text-align:center;color:#64748b">${i+1}</td>
       <td style="color:#2563eb;font-weight:600">${esc(r.d.client)}</td>
-      <td style="text-align:left"><div style="color:#2563eb;font-weight:600">${esc(r.d.contact||r.d.product||r.d.ceNo||"—")}</div>${r.d.ceNo&&(r.d.contact||r.d.product)?`<div style="color:#64748b;font-size:8.5px;margin-top:1px">${esc(r.d.ceNo)}</div>`:""}</td>
+      <td style="text-align:left"><div style="color:#2563eb;font-weight:600">${esc(r.d.contact||r.d.product||r.d.ceNo||"—")}</div>${(()=>{const po=dealClientPo(r.d,deals);const ref=[r.d.ceNo&&(r.d.contact||r.d.product)?r.d.ceNo:"",po?"PO# "+po:""].filter(Boolean).join(" · ");return ref?`<div style="color:#64748b;font-size:8.5px;margin-top:1px">${esc(ref)}</div>`:"";})()}</td>
       <td style="text-align:right">${f(r.vatable)}</td>
       <td style="text-align:right">${f(r.vat)}</td>
       <td style="text-align:right">${f(r.gross)}</td>
@@ -26055,10 +26109,10 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         <span class="cv">${esc(clientName)}</span>
         <span></span>
         <span class="cl">BILLING ADDRESS:</span>
-        <span class="cv">&nbsp;</span>
+        <span class="cv">${soaAddr?esc(soaAddr):"&nbsp;"}</span>
       </div>
       <div class="summary">
-        <div class="sb"><div class="sl">TOTAL VATABLE AMOUNT</div><div class="sv">${f(tV)}</div></div>
+        <div class="sb"><div class="sl">TOTAL ${amtLbl}</div><div class="sv">${f(tV)}</div></div>
         <div class="sb"><div class="sl">TOTAL VAT</div><div class="sv">${f(tVat)}</div></div>
         <div class="sb"><div class="sl">TOTAL PAYMENTS MADE</div><div class="sv">${f(tP)}</div></div>
         <div class="sb"><div class="sl">TOTAL BALANCE</div><div class="sv">${f(tB)}</div></div>
@@ -26068,7 +26122,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         <thead><tr>
           <th style="width:30px;text-align:center">#</th>
           <th>CLIENT NAME</th><th>PROJECT NAME</th>
-          <th>VATABLE AMOUNT</th><th>VAT</th><th>SALES AMOUNT</th>
+          <th>${amtLbl}</th><th>VAT</th><th>SALES AMOUNT</th>
           <th>PAYMENT MADE</th><th>WHT</th><th>TOTAL AMOUNT DUE</th><th>BALANCE</th>
         </tr></thead>
         <tbody>${rowsHtml}</tbody>
@@ -26663,6 +26717,9 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
             }
             return null;
           })()}
+
+          {deal&&<ClientPoField deal={deal} canEdit={canEditClientPo} onSave={saveClientPo}
+            inherited={deal.clientPoNo?"":dealClientPo(deal,deals)}/>}
 
           {/* Project VAT when the BOQ hasn't decided it. The BOQ's VAT choice sets
              receipt type (see onBoqVat); with no BOQ decision, Finance or a Manager
