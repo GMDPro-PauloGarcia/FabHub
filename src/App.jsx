@@ -28770,6 +28770,9 @@ function BotSettingsView({botSettings,saveBotSettings,role,Wrap}){
   const[testResult,setTestResult]=React.useState({});
   const[saved,setSaved]=React.useState(false);
 
+  // Chat IDs and privacy save only for a Manager (migration 20261026123914):
+  // whoever sets the chat IDs decides where management alerts go.
+  const canEdit=role==="Manager";
   const[tokenStatus,setTokenStatus]=React.useState(null);
   const loadTokenStatus=React.useCallback(()=>{
     if(!isSupabaseReady()) return;
@@ -28855,7 +28858,7 @@ function BotSettingsView({botSettings,saveBotSettings,role,Wrap}){
                   {testing===ch.id?"Testing...":"Test →"}
                 </button>
               </div>
-              <input value={form.chatIds?.[ch.id]||""} onChange={e=>setForm(f=>({...f,chatIds:{...(f.chatIds||{}),[ch.id]:e.target.value}}))} placeholder="-100123456789"
+              <input value={form.chatIds?.[ch.id]||""} readOnly={!canEdit} onChange={e=>setForm(f=>({...f,chatIds:{...(f.chatIds||{}),[ch.id]:e.target.value}}))} placeholder="-100123456789"
                 style={{width:"100%",border:`1.5px solid ${testResult[ch.id]?.ok?"#6ee7b7":testResult[ch.id]?.ok===false?"#fecaca":"#e2e8f0"}`,borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a",boxSizing:"border-box"}}/>
               {testResult[ch.id]&&<div style={{fontSize:".72rem",marginTop:4,color:testResult[ch.id].ok?"#059669":"#dc2626",fontWeight:600}}>{testResult[ch.id].msg}</div>}
             </div>
@@ -28889,7 +28892,7 @@ function BotSettingsView({botSettings,saveBotSettings,role,Wrap}){
         <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"16px",marginBottom:16}}>
           <div style={{fontWeight:700,color:"#0f172a",marginBottom:10}}>🔒 Privacy Settings</div>
           <label style={{display:"flex",alignItems:"center",gap:12,cursor:"pointer"}}>
-            <div onClick={()=>setForm(f=>({...f,hideValueInBots:!f.hideValueInBots}))}
+            <div onClick={()=>canEdit&&setForm(f=>({...f,hideValueInBots:!f.hideValueInBots}))}
               style={{width:42,height:24,borderRadius:12,background:form.hideValueInBots?"#1e293b":"#e2e8f0",position:"relative",transition:"background .2s",cursor:"pointer",flexShrink:0}}>
               <div style={{position:"absolute",top:3,left:form.hideValueInBots?19:3,width:18,height:18,borderRadius:9,background:"#fff",transition:"left .2s",boxShadow:"0 1px 3px rgba(0,0,0,.2)"}}/>
             </div>
@@ -28900,10 +28903,10 @@ function BotSettingsView({botSettings,saveBotSettings,role,Wrap}){
           </label>
         </div>
 
-        <button onClick={doSave}
+        {canEdit?<button onClick={doSave}
           style={{background:saved?"#059669":"#1e293b",border:"none",borderRadius:10,padding:"12px 28px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".88rem",cursor:"pointer",width:"100%",transition:"background .3s"}}>
           {saved?"✅ Settings Saved!":"💾 Save Bot Settings"}
-        </button>
+        </button>:<div style={{textAlign:"center",fontSize:".78rem",color:"#64748b",padding:"10px 0"}}>View only: a Manager changes the bot token, chat IDs and privacy settings.</div>}
       </div>
     </Wrap>
   );
