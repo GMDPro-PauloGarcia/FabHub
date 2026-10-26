@@ -163,7 +163,7 @@ export const DESIGN_STATUSES = ["Briefing","On-going","First Pass","Revision","P
 
 export const PRODUCT_TYPES   = ["Custom Shelving","Display Fixtures","Signage","Countertops","Retail Cabinetry","Kiosks","Wall Panels","Millwork","Other"];
 
-export const SALES_TEAM        = ["Paulo Garcia","Paolo Gomez","April Gail De Ello","Jena De Asis","Don Wyn Celmar","Aerwin Del Rosario (CE)","Marian Prile (CE)"];
+export const SALES_TEAM        = ["Paulo Garcia","Paolo Gomez","April Gail De Ello","Jena De Asis","Don Wyn Celmar","Jessica Castro","Aerwin Del Rosario (CE)","Marian Prile (CE)"];
 
 export const COST_CONTROL_TEAM = ["Aerwin Del Rosario (Finance Manager)","Marian Prile (Procurement Manager)"];
 
@@ -243,6 +243,19 @@ export const collectedBase = (deal, collectedCash)=>{
 // Earned so far = rate × VAT-ex collected; projected = rate × VAT-ex contract value.
 export const commissionEarned   = (deal, collectedCash)=>Math.round(collectedBase(deal,collectedCash)*commissionRate(deal));
 export const commissionProjected= (deal)=>Math.round((Number(deal&&deal.value)||0)*commissionRate(deal));
+// Nobody but a Manager records, edits or removes a collection on a deal they own
+// as Sales Owner: their commission is a share of those collections. Mirrors
+// migration 20261026063330_billing_payments_not_own_deal.sql (is_own_sales_deal_milestone);
+// keep them in sync.
+const normName=(v)=>String(v||"").trim().toLowerCase();
+export const ownsDealCommission=(deal, userName, role)=>
+  canonRole(role)!=="Manager"&&!!normName(deal&&deal.salesOwner)&&normName(deal&&deal.salesOwner)===normName(userName);
+// Once a deal has collections only a Manager may change its Sales Owner, so the
+// commission can't be moved after the fact. Mirrors migration
+// 20261026063739_deals_sales_owner_lock.sql (which also counts bounced
+// payments; amountPaid here excludes them). Keep them in sync.
+export const salesOwnerLocked=(deal, role)=>
+  !!deal&&canonRole(role)!=="Manager"&&(Number(deal.amountPaid)||0)!==0;
 
 // ── Commission payouts (what's actually been disbursed to the rep) ───────────
 // Earned (above) is what a rep has accrued on cash collected. A PAYOUT is money
@@ -394,7 +407,7 @@ export const PERMISSIONS = {
   projects:            { label:"Projects",                 group:"Operations",  select:[AUTH], insert:["Manager","ProjectMover"], update:["Manager","ProjectMover"], delete:["Manager"] },
   project_cards:       { label:"Project Cards",            group:"Operations",  select:[AUTH], insert:["Manager","ProjectMover","Finance"], update:["Manager","ProjectMover","Finance"], delete:["Manager"] },
   daily_logs:          { label:"Daily Site Logs",          group:"Operations",  select:["Manager","ProjectMover","Sales"], insert:["Manager","ProjectMover"], update:["Manager","ProjectMover"], delete:["Manager"] },
-  checklists:          { label:"Calendar / Checklists",    group:"Operations",  select:[AUTH], insert:[AUTH], update:[AUTH], delete:["Manager","ProjectMover"] },
+  checklists:          { label:"Calendar / Checklists",    group:"Operations",  select:[AUTH], insert:[AUTH], update:[AUTH], delete:["Manager","ProjectMover","SalesOpsAdmin"] },
   addenda:             { label:"Scope Changes (Addenda)",  group:"Operations",  select:["Manager","ProjectMover","Sales","Finance","FinanceAssistant","Procurement","SalesOpsAdmin"], insert:["Manager","ProjectMover","Procurement","Design"], update:["Manager","ProjectMover","Sales","SalesOpsAdmin"], delete:["Manager"] },
   project_blockers:    { label:"Project Blockers",         group:"Operations",  select:[AUTH], insert:["Manager","ProjectMover"], update:["Manager","ProjectMover"], delete:["Manager"] },
   ae_updates:          { label:"Account / PM Updates",     group:"Operations",  select:["Manager","ProjectMover","Sales","Finance","QS","SalesOpsAdmin"], insert:["Manager","ProjectMover","Sales","Finance","QS","SalesOpsAdmin"], update:["Manager","ProjectMover"], delete:["Manager","ProjectMover","Sales","Finance","QS","SalesOpsAdmin"] },
@@ -532,17 +545,39 @@ export const milestonePaid = (b={}) =>
   (b.payments||[]).filter(p=>!p.bounced).reduce((s,p)=>s+(Number(p.amount)||0),0);
 export const milestoneBalance = (b={}, deal) =>
   b.status==="Cancelled" ? 0 : Math.max(0, milestoneReceivable(b,deal) - milestonePaid(b));
+// The open balance split into what it is made of, in proportion to the invoice:
+// VAT-exclusive base + VAT − EWT = balance (cash basis). Non-VAT receipts carry
+// no VAT; EWT only applies to VAT receipts with withholding (see calcTax).
+export const milestoneBalanceParts = (b={}, deal) => {
+  const bal = milestoneBalance(b, deal);
+  const rt = b.receiptType || b.receipt_type || (deal && deal.receiptType) || "OR";
+  const wh = b.withholding != null ? !!b.withholding : !!(deal && deal.withholding);
+  const t = calcTax(Number(b.amount)||0, rt, wh);
+  if(!(bal>0) || !(t.netReceivable>0)) return { bal, base:bal, vat:0, ewt:0 };
+  const k = bal / t.netReceivable;
+  return { bal, base:t.base*k, vat:t.vat*k, ewt:t.ewt*k };
+};
+// Past due, split by whether the client was actually billed. A Draft hasn't been
+// sent, so it can't be overdue — it's an invoice nobody has sent yet, which is
+// Finance's to chase internally, not the client's. Keep the two apart everywhere.
+export const isBillingOverdue = (b={}, today) =>
+  !!b.dueDate && b.dueDate < today && !["Draft","Fully Paid","Cancelled"].includes(b.status);
+export const isBillingUnsentLate = (b={}, today) =>
+  !!b.dueDate && b.dueDate < today && b.status === "Draft";
 // Portfolio totals over a list of milestones. `dealOf(dealId)` returns the deal (or
 // undefined) so receipt type / EWT can fall back to it.
 export const arSummary = (billings=[], dealOf=()=>undefined) => {
-  let billed=0, receivable=0, collected=0, outstanding=0, open=0;
+  let billed=0, receivable=0, collected=0, offset=0, outstanding=0, open=0;
   billings.forEach(b=>{
     if(b.status==="Cancelled") return;
     const d=dealOf(b.dealId), r=milestoneReceivable(b,d), p=milestonePaid(b), bal=Math.max(0,r-p);
     billed+=Number(b.amount)||0; receivable+=r; collected+=p; outstanding+=bal; if(bal>0.005) open++;
+    offset+=(b.payments||[]).filter(x=>!x.bounced&&isOffsetPayment(x)).reduce((s,x)=>s+(Number(x.amount)||0),0);
   });
   const r2=x=>Math.round(x*100)/100;
-  return { billed:r2(billed), receivable:r2(receivable), collected:r2(collected), outstanding:r2(outstanding),
+  // `collected` is everything settled against invoices, offsets included; `offset`
+  // is the part of it settled without cash (see OFFSET_METHOD).
+  return { billed:r2(billed), receivable:r2(receivable), collected:r2(collected), offset:r2(offset), outstanding:r2(outstanding),
            collectedBase:r2(receivable>0 ? collected*billed/receivable : 0),   // collections restated VAT-ex
            openMilestones:open, collectionRate: receivable>0 ? collected/receivable : 0 };
 };
@@ -617,6 +652,30 @@ export const mergeLocalOnly=(serverList,localList,keepIds=null)=>{
 
 export const mergeLocalOnlyObj=(serverObj,localObj)=>({...(localObj||{}),...(serverObj||{})});
 
+// ── JO = project code (owner decision, 2026-10-20) ───────────────────────────
+// Every awarded deal has a JO; a child deal's is its parent's plus -01, -02.
+// The database issues them (migration 20261020020000_jo_project_code.sql).
+// dealJo returns a deal's project-code JO: its earliest non-Void JO, plain
+// JO-NNNN before suffixed ones. Mirrors deal_base_jo() in that migration.
+const _joPlain=j=>/^JO-\d+$/.test(j.joNo||"")?0:1;
+const _joCmp=(a,b)=>_joPlain(a)-_joPlain(b)
+  ||String(a.created_at||"").localeCompare(String(b.created_at||""))
+  ||String(a.joNo||"").localeCompare(String(b.joNo||""));
+export const dealJo=(jos,dealId)=>{
+  let best=null;
+  for(const j of jos||[]) if(j.dealId===dealId&&j.status!=="Void"&&(!best||_joCmp(j,best)<0)) best=j;
+  return best;
+};
+// Local JOs minus stale copies: a local row whose number the server already
+// has under another id. trg_job_orders_adopt_auto hands an auto-issued JO
+// over to the Award modal's JO by giving the row the modal's id, so a device
+// that had the auto JO keeps its old id; never show or re-push that copy.
+export const dropStaleJos=(serverJos,localJos)=>{
+  const ids=new Set((serverJos||[]).map(j=>j.id));
+  const nos=new Set((serverJos||[]).map(j=>j.joNo).filter(Boolean));
+  return (localJos||[]).filter(j=>ids.has(j.id)||!j.joNo||!nos.has(j.joNo));
+};
+
 export const addDaysISO=(fromISO,days)=>{const b=fromISO?new Date(fromISO+"T00:00:00"):new Date();const d=new Date(b.getTime()+(Number(days)||0)*86400000);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
 
 export const dueDateFromTerms=(terms,fromISO)=>{const t=String(terms||"").toLowerCase();if(/\b(cod|cash|cwo)\b/.test(t))return addDaysISO(fromISO,0);const m=t.match(/(\d+)/);if(!m)return "";return addDaysISO(fromISO,parseInt(m[1],10));};
@@ -629,6 +688,15 @@ export const dueDateFromTerms=(terms,fromISO)=>{const t=String(terms||"").toLowe
 // method. Legacy payments with neither method nor valueDate clear on their
 // receipt date, preserving existing behaviour.
 export const PAYMENT_METHODS=["Cash","Bank Transfer","Cheque","Online","Other"];
+// A receivable settled without cash — e.g. Makerlab CE-2026-1242, paid by
+// cancelling a debt GMD owed them under a credit note. It clears the invoice
+// (balance, Fully Paid, AR) but is left out of every cash figure (cash flow,
+// monthly collections, cash-in). Manager only, reference required — enforced by
+// migration 20261020050000_billing_offset_manager_only.sql; keep in sync.
+export const OFFSET_METHOD="Offset / Credit Note";
+export const isOffsetPayment=(p)=>!!p&&(p.method??p.payment_method)===OFFSET_METHOD;
+// Money that actually reached GMD: not bounced, not an offset.
+export const isCashPayment=(p)=>!!p&&!p.bounced&&!isOffsetPayment(p);
 export const CHEQUE_CLEAR_DAYS=3; // banking days a cheque takes to clear
 // Add N banking days (skip Sat/Sun) to an ISO date string.
 export const addBankingDaysISO=(fromISO,n)=>{
@@ -810,6 +878,20 @@ export const scheduleSummary = (terms) => {
 // its own; its sub-projects carry the billing. Anything billed or collected on the
 // mother PO is usually a copy of a sub-project's and double-counts Collected.
 export const isMotherPO = (deal) => !!deal?.standbyPO;
+// "NO DP = NO production": a PO or subcon work order can only be issued on a
+// client deal once the client has paid something, or a Manager has waived the
+// down payment (credit-term clients). A sub-project or addendum is clear when
+// its parent deal is paid or waived; a mother PO once any sub-project is; internal
+// GMD jobs and stock POs (no deal) are always clear. Enforced in the database
+// by migrations 20261020110000 / 20261020110100 — keep in sync.
+export const dealDpClear = (deal, deals = []) => {
+  if (!deal) return true;
+  if (/^GMD Production/i.test(deal.client || "")) return true;
+  if (deal.dpWaivedAt || Number(deal.amountPaid) > 0) return true;
+  const parent = deal.parentDealId && deals.find(d => d.id === deal.parentDealId);
+  if (parent && (parent.dpWaivedAt || Number(parent.amountPaid) > 0)) return true;
+  return !!deal.standbyPO && deals.some(c => c.parentDealId === deal.id && (c.dpWaivedAt || Number(c.amountPaid) > 0));
+};
 const _familyRoot = (dealId, byId) => { const d = byId.get(dealId); return d?.parentDealId || dealId; };
 // The same money already recorded in this contract family (the mother PO / main
 // contract and everything linked under it): same amount to the centavo on the
@@ -1011,7 +1093,7 @@ export const dealOnboardingGate=(deal,opts={})=>{
   const terms=d.paymentTerms||{};
   const dp=d.downpaymentPct??terms.dp;
   const checks=[
-    {ok:!!d.ceNo,                       label:"Signed C.E. (CE No.)"},
+    {ok:!!d.signedCeOnFile||!!d.signedCeUrl, label:"Signed C.E. / client PO"},
     {ok:!!d.bir2303OnFile||!!d.bir2303Url, label:"BIR Form 2303 on file"},
     !opts.scheduleInBuilder&&{ok:!!(d.paymentTermsText||terms.netDays!=null&&terms.netDays!==""||terms.notes), label:"Payment terms"},
     {ok:!!d.vatTreatment,               label:"VAT treatment (incl./excl.)"},
@@ -1125,7 +1207,9 @@ export const emptyPR = () => ({
 
 export const canApprovePO=(role,sessionName,requestedBy,approvers)=>{
   // A Manager or a Procurement Manager is an approving authority for POs.
-  if(role==="Manager"||role==="ProcurementManager") return true;
+  // A Procurement Manager still can't approve a PO they requested themselves.
+  if(role==="Manager") return true;
+  if(role==="ProcurementManager") return !requestedBy||!sessionName||sessionName.trim().toLowerCase()!==requestedBy.trim().toLowerCase();
   if(role!=="Procurement"||!sessionName) return false;
   const list=String(approvers||"").split(",").map(s=>s.trim().toLowerCase()).filter(Boolean);
   if(list.length) return list.includes(sessionName.trim().toLowerCase());
@@ -1141,15 +1225,42 @@ export const woRetentionAmt=w=>Math.min(Number(w.retentionPct)||0,100)/100*(Numb
 //   WOs were signed at 0%). At payment time the WO's own rate is what's held —
 //   FabHub never adds retention a signed WO doesn't carry. Released when
 //   Operations verifies the work 100% complete. Downpayments are exempt.
-// prvSubconNoWo: a subcontractor payment request (PRV) at or above `limit` with
-//   no Work Order linked is warned about ("warn") or refused ("block"). Interim
-//   setting until management decides (decision D3).
-export const AP_RULES={subconRetentionPct:10,prvSubconNoWo:{limit:50000,mode:"warn"}};
+// subconNoWoLimit: a subcontractor payable (PRV or AP) of this amount or more must
+//   be linked to a Work Order, so Operations confirms the work before it's paid.
+//   Hard block, no override (decision D3, Paulo, 9 Oct 2026). The database
+//   enforces the same rule (migrations 20261009120000_subcon_payable_needs_wo.sql
+//   and 20261012120000_subcon_no_wo_cumulative.sql): keep the limit, the window,
+//   the account codes and the conditions in sync.
+// subconNoWoWindowDays: the limit is also cumulative per subcontractor, so two
+//   ₱49,000 requests in the same month can't split their way past it. All of one
+//   subcontractor's no-WO payables created in the last N days (today included)
+//   count toward the limit.
+export const AP_RULES={subconRetentionPct:10,subconNoWoLimit:50000,subconNoWoWindowDays:30};
 // 5070 Production - Subcon, 5100 Sub-Con Prof Fee, 5200 the old default that
 // earlier code stamped on subcontractor payables (5200 is "Load Allowance" in
 // the chart, so it is kept here only to recognise those older rows).
 export const SUBCON_ACCOUNT_CODES=["5070","5100","5200"];
 export const isSubconPayable=p=>!!p&&(p.category==="Subcontractor"||SUBCON_ACCOUNT_CODES.includes(String(p.accountCode||"")));
+// D3: subcontractor payable at/above the limit with no Work Order linked.
+export const subconNeedsWo=p=>isSubconPayable(p)&&!String(p.poNumber||"").trim()&&(Number(p.amount)||0)>=AP_RULES.subconNoWoLimit;
+// Vendor names are free text: match them case- and spacing-insensitively.
+export const vendorKey=v=>String(v||"").trim().replace(/\s+/g," ").toLowerCase();
+const isSubconNoWo=p=>isSubconPayable(p)&&!String(p.poNumber||"").trim();
+// D3 check for a save. Returns null when it may be saved, otherwise
+// {total, others}: this payable plus the same subcontractor's other no-WO
+// payables in the window reach the limit. An edit that keeps an existing no-WO
+// payable's vendor and doesn't raise its amount is always allowed, so older
+// rows can still be edited and paid. Mirrors the database trigger.
+export const subconNoWoBlock=(next,prev,all,todayISO=today)=>{
+  if(!isSubconNoWo(next)) return null;
+  const amt=p=>Number(p&&p.amount)||0, key=vendorKey(next.vendor);
+  if(prev&&isSubconNoWo(prev)&&amt(next)<=amt(prev)&&vendorKey(prev.vendor)===key) return null;
+  const cutoff=addDaysISO(todayISO,-(AP_RULES.subconNoWoWindowDays-1));
+  const skip=new Set([next.id,prev&&prev.id].filter(Boolean));
+  const others=(all||[]).filter(p=>!skip.has(p.id)&&isSubconNoWo(p)&&vendorKey(p.vendor)===key&&(String(p.createdAt||"")||cutoff)>=cutoff).reduce((t,p)=>t+amt(p),0);
+  const total=amt(next)+others;
+  return total>=AP_RULES.subconNoWoLimit?{total,others}:null;
+};
 // Which retention rate applies to a subcontractor payable, and why. Only what
 // the Work Order (or the bill itself) says — never a default on top of a signed WO.
 export const payableRetentionPct=(p,wos=[])=>{

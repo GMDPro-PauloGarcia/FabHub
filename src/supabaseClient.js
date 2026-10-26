@@ -618,6 +618,14 @@ const _mapLimit = async (thunks, limit) => {
   return results
 }
 
+// billing_deductions row → the shape BillingView's Deductions list uses.
+export const deductionFromSb = d => ({
+  id: d.id, amount: Number(d.amount) || 0, reason: d.reason || '',
+  approvedBy: d.recorded_by || '', approvedOn: String(d.recorded_at || '').slice(0, 10),
+  amountBefore: Number(d.amount_before) || 0, amountAfter: Number(d.amount_after) || 0,
+  reversedAt: d.reversed_at || null, reversedBy: d.reversed_by || '', reverseReason: d.reverse_reason || '',
+})
+
 export const sbLoadAll = async () => {
   if (!supabase) return null
   try {
@@ -630,7 +638,8 @@ export const sbLoadAll = async () => {
       suppliers, subcontractors,
       payables, loans, loanPayments,
       swos, boqLibrary, standaloneBoqRows, checkVouchers, blockers, dailyLogs, ceReqs,
-      commissionPayouts, tools, deliveryReceipts, payablePayments
+      commissionPayouts, tools, deliveryReceipts, payablePayments,
+      billingDeductions
     ] = await _mapLimit([
       () => sbList('deals',                    { order: 'created_at', limit: 1000 }),
       () => sbList('job_orders',               { order: 'created_at', limit: 500 }),
@@ -683,6 +692,9 @@ export const sbLoadAll = async () => {
       () => sbList('tools',              { order: 'created_at', limit: 2000 }),
       () => sbList('delivery_receipts',  { order: 'dr_date', limit: 2000 }),
       () => sbListAll('payable_payments', { order: 'pay_date' }),
+      // Written only by the record/reverse_billing_deduction RPCs (migration
+      // 20261020060000); kept forever, reversed rows included.
+      () => sbList('billing_deductions', { order: 'recorded_at', asc: true, limit: 5000 }),
     ], 6)
 
     // Build pcards object with departments embedded
@@ -725,7 +737,8 @@ export const sbLoadAll = async () => {
       ...m, dealId: m.deal_id,
       payments: payments.filter(p => p.milestone_id === m.id).map(p => ({
         ...p, milestoneId: p.milestone_id, refNo: p.ref_no, recordedBy: p.recorded_by
-      }))
+      })),
+      deductions: (billingDeductions || []).filter(d => d.milestone_id === m.id).map(deductionFromSb),
     }))
 
     // Key objects

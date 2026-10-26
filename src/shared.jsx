@@ -5,6 +5,22 @@ import React,{useState,useEffect} from "react";
 import {T} from "./theme";
 
 export const fmt   = n => "₱" + Number(n||0).toLocaleString("en-PH",{minimumFractionDigits:0});
+// Print pop-ups (quotations, invoices, POs…) have no way back to FabHub on a
+// phone. Call after document.close(): adds a "✕ Close" button (hidden when
+// printing) that closes the pop-up, or says to close the tab if the browser
+// won't let it.
+export const addPrintClose=w=>{
+  try{
+    const d=w&&w.document;if(!d||!d.body)return;
+    const st=d.createElement("style");
+    st.textContent=".fh-close{position:fixed;top:10px;right:10px;z-index:9999;background:#fff;color:#1e293b;border:1.5px solid #1e293b;border-radius:8px;padding:8px 14px;font:700 13px Arial,sans-serif;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.15)}@media print{.fh-close{display:none!important}}";
+    (d.head||d.body).appendChild(st);
+    const b=d.createElement("button");
+    b.className="fh-close";b.type="button";b.textContent="✕ Close";
+    b.setAttribute("onclick","window.close();setTimeout(function(){if(!window.closed)alert('Close this tab to go back to FabHub.')},300)");
+    d.body.appendChild(b);
+  }catch(e){}
+};
 export const today=(()=>{const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;})();
 export const uid=()=>{
   if(crypto.randomUUID) return crypto.randomUUID();
@@ -113,6 +129,21 @@ export const cashCanEdit=(role,username)=>role==="Manager"||CASH_EDIT_USERS.incl
 export const cashDayLockAt=(date)=>new Date(`${addDaysLocalISO(date,1)}T00:01:00`);
 export const cashDayLocked=(date,now=new Date())=>!!date&&now>=cashDayLockAt(date);
 
+// ── Hidden modules (Oct 2026 overhaul) ─────────────────────────────────────
+// Finance (the AP / Payments ERP and its Weekly Dues board), CE/QS Queue,
+// Cost Analysis and Warehousing are hidden while the team's new AP/AR system
+// is designed. Only navigation is affected: the code, the data and the
+// background PO → payable sync are untouched. To bring a module back, remove
+// its ids here. Cash Position (finance page, "cash" tab), Supplier Bills
+// ("bills" tab, open PO / WO payables while the AP is hidden), Billing, Purchase
+// Orders and BOQ (now a Sales Pipeline tab) stay.
+export const HIDDEN_NAV_IDS = new Set(["finance","payables","ceqs","costanalysis","inventory","deliveries","stockmove"]);
+export const HIDDEN_PAGES = new Set(["acctdash","ceqs","costanalysis","inventory","deliveries","stockmove"]);
+export const HIDDEN_FIN_TABS = new Set(["payables","payments","duesboard"]);
+export const AP_HIDDEN = HIDDEN_FIN_TABS.has("payables");
+export const WAREHOUSE_HIDDEN = HIDDEN_PAGES.has("inventory");
+export const isHiddenView=(page,finTab)=>HIDDEN_PAGES.has(page)||(page==="finance"&&HIDDEN_FIN_TABS.has(finTab));
+
 export const dropPhantomCashDays=(obj)=>{
   const out={};
   Object.entries(obj||{}).forEach(([d,p])=>{ if(!isPhantomCashDay(p,d)) out[d]=p; });
@@ -125,8 +156,8 @@ export const Inp=({value,onChange,type="text",placeholder,min,max,readOnly,rows,
   if(rows) return <textarea value={value||""} onChange={onChange} placeholder={placeholder} rows={rows} style={{...base,resize:"vertical"}}/>;
   return <input type={type} value={value||""} onChange={onChange} placeholder={placeholder} min={min} max={max} readOnly={readOnly} style={base}/>;
 };
-export const Sel=({value,onChange,children})=>(
-  <select value={value} onChange={onChange} style={{width:"100%",border:`1.5px solid ${T.line}`,borderRadius:T.radius.md,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:T.inkStrong,background:T.surface,boxSizing:"border-box",cursor:"pointer"}}>
+export const Sel=({value,onChange,children,disabled})=>(
+  <select value={value} onChange={onChange} disabled={disabled} style={{width:"100%",border:`1.5px solid ${T.line}`,borderRadius:T.radius.md,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:T.inkStrong,background:disabled?T.line:T.surface,boxSizing:"border-box",cursor:disabled?"not-allowed":"pointer"}}>
     {children}
   </select>
 );

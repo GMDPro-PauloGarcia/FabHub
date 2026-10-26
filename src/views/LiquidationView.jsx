@@ -1,5 +1,5 @@
 import React from "react";
-import {fmt,today,BANKS,KPI,Modal,uiConfirm} from "../shared";
+import {fmt,addPrintClose,today,BANKS,KPI,Modal,uiConfirm} from "../shared";
 // ─── LIQUIDATION VIEW ─────────────────────────────────────────────────────────
 function LiquidationView({evouchers,addEV,updateEV,deleteEV,addEVItem,updateEVItem,deleteEVItem,submitEV,markEVPaid,wonDeals,session,role,today,fmt,BANKS,isMobile}){
   const[collapsed,setCollapsed]=React.useState(new Set());
@@ -141,7 +141,7 @@ tr:nth-child(even) td{background:#f9f9f9;}
 </table>
 </div></body></html>`;
     const w=window.open("","_blank","width=1100,height=750");
-    if(w){w.document.write(html);w.document.close();setTimeout(()=>w.print(),500);}
+    if(w){w.document.write(html);w.document.close();addPrintClose(w);setTimeout(()=>w.print(),500);}
   };
 
   const handleCSV=(evId,text)=>{

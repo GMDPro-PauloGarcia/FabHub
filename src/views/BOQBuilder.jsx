@@ -1,6 +1,11 @@
 import React,{useState,useEffect,useLayoutEffect,useRef} from "react";
-import {today,uid,KEYS,Card,uiConfirm} from "../shared";
+import {today,uid,KEYS,Card,uiConfirm,addPrintClose} from "../shared";
 import {supabase,isSupabaseReady,sbInsert,sbUpdate,sbDelete} from "../supabaseClient";
+// Clearing a deal's BOQ is Manager-only, also enforced by migration
+// 20261006010000_deals_boq_safeguards.sql — keep in sync.
+import {canonRole} from "../core";
+import {downloadBoqXlsx,boqXlsxFileName} from "./boqExcel";
+import {useSharePdf} from "./SharePdf";
 
 // A textarea that grows to fit its content. BOQ line-item descriptions are
 // often multi-line spec lists (a title + "Specifications:" + bullets), so a
@@ -30,6 +35,10 @@ const BOQ_SECTIONS=[
 ];
 const BOQ_SEC_CLR=Object.fromEntries(BOQ_SECTIONS.map(s=>[s.id,s.color]));
 const FINISH_LEVELS=["Budget","Mid-range","High-end","Premium/Luxury"];
+// Quantities computed from dimensions carry float noise (5.2139999999999995
+// sqm). Show at most 6 decimals (enough that qty × unit cost still checks
+// against the line total); the stored value is untouched.
+const fmtQty=q=>{const n=Number(q);return Number.isFinite(n)?n.toLocaleString("en-PH",{maximumFractionDigits:6}):String(q??"");};
 
 // General Notes shown on the builder and printed on the quotation. The VAT line
 // tracks the VAT-treatment toggle: VATable (VAT 12%) prints "Inclusive of Value
@@ -131,7 +140,7 @@ const GMD_DEFAULT_LIBRARY=[
 
 // ─── CHART OF ACCOUNTS ──────────────────────────────────────────────────────
 
-function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],setBoqLibrary,initialDealId,clearBoqDeal,onBack,standaloneBoqs=[],saveStandaloneBoq,initialStandaloneId,clearBoqStandalone,onLinkToDeal,onUnlinkToStandalone,onBoqValue,onBoqData,onBoqVat,initialCoId,coRecord,saveCoBoq,readOnly=false}){
+function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],setBoqLibrary,initialDealId,clearBoqDeal,onBack,standaloneBoqs=[],saveStandaloneBoq,initialStandaloneId,clearBoqStandalone,onLinkToDeal,onDuplicateToDeal,onBoqValue,onBoqData,onBoqVat,initialCoId,coRecord,saveCoBoq,readOnly=false}){
   // Read-only mode: the BOQ can be viewed and printed/exported (e.g. Sales sending
   // a change-order BOQ to a client) but never edited. Every mutator no-ops and the
   // editing chrome is hidden, so the printed PDF always matches the saved figures.
@@ -314,6 +323,10 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   // marked-up figures used everywhere else (print, CSV, totals, VAT).
   const[markupPct,setMarkupPct]=useState("");
   const roundP=n=>Math.round((Number(n)||0)*100)/100;
+  // Quantities are kept to 2 decimals (Excel import and typed entry). The
+  // toPrecision step stops float noise rounding the wrong way (1.275 → 1.28,
+  // not 1.27).
+  const roundQty=n=>Math.round(parseFloat(((Number(n)||0)*100).toPrecision(12)))/100;
   const applyMk=(base,m)=>{const b=Number(base)||0,mk=Number(m)||0;return mk?roundP(b*(1+mk/100)):b;};
   // Ensure legacy items (saved before markup existed) carry baseCost/markup fields.
   const normItem=it=>({...it,baseCost:it.baseCost!=null?it.baseCost:(Number(it.unitCost)||0),markup:it.markup!=null?it.markup:0});
@@ -394,7 +407,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
     const skipRe=/^(sub-?\s*total|vat\b|value added|discount|prepared by|approved|accepted|checked by|noted by|bank details|payment terms|general notes?|terms|notes?:|account name|•|bdo|bpi|metrobank)/i;
     const stopRe=/grand\s*total/i;
     const secRe=/^\s*([A-Za-z]{1,2}|\d{1,3})[\.\)]\s+(.+)$/;
-    const sections=[],items=[];let curId=null,curGroup=null;
+    const sections=[],items=[];let curId=null,curGroup=null,curGroupNo="";
     for(let r=headerIdx+1;r<aoa.length;r++){
       const row=aoa[r]||[];
       const itemNo=String(cell(row,cm.itemNo)||"").trim();
@@ -411,11 +424,18 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       // Label-only row (no qty, no cost): a section, a sub-group, or a flat section.
       if(deepText&&qtyN===null&&costN===null){
         const m=deepText.match(secRe);
+        // "2.3  Supervision" under section 2 is a sub-section heading (FabHub's
+        // own Excel export numbers them this way); its items are "2.3.1", "2.3.2"…
+        const subNo=itemNo.match(/^([A-Za-z0-9]+)\.\d+$/);
+        if(subNo&&curId&&subNo[1]===curId){
+          curGroup=deepText;curGroupNo=itemNo;
+          continue;
+        }
         if(itemNo&&itemNo.length<=3){
           const id=(itemNo).replace(/[.\)]+$/,"").trim();
           const label=(m?m[2]:deepText).trim();
           if(!sections.find(s=>s.id===id)) sections.push({id,label});
-          curId=id;curGroup=null;
+          curId=id;curGroup=null;curGroupNo="";
         }else if(nested){
           curGroup=firstText||deepText;
         }else{
@@ -438,8 +458,9 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       // top-level item → clear the group so it sits directly under the section.
       let name=deepText,subsection="";
       if(deepIdx>0){ if(curGroup) subsection=curGroup; }
-      else { curGroup=null; }
-      const q=qtyN==null?1:qtyN,uc=costN==null?(totalN!=null&&q?totalN/q:0):costN;
+      else if(curGroup&&curGroupNo&&itemNo.startsWith(curGroupNo+".")) subsection=curGroup;
+      else { curGroup=null;curGroupNo=""; }
+      const q=qtyN==null?1:roundQty(qtyN),uc=costN==null?(totalN!=null&&q?totalN/q:0):costN;
       items.push({section:String(secId),subsection,description:name,unit:unitVal||"lot",qty:q,baseCost:uc,unitCost:uc,total:q*uc,remarks:String(cell(row,cm.remarks)||"").trim(),markup:0});
     }
     items.forEach(it=>{if(!sections.find(s=>s.id===it.section)) sections.push({id:it.section,label:`Section ${it.section}`});});
@@ -725,9 +746,11 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       // that read deal.boqData (BOQ list "has BOQ", print, contract breakdown)
       // update without waiting for the realtime echo / a manual refresh.
       if(selDeal&&onBoqData) onBoqData(selDeal,boqData);
-      // Pre-fill the deal's receipt type from the BOQ VAT choice (fill-when-empty;
-      // an explicit deal-side choice is preserved). Only a decided boolean syncs.
-      if(selDeal&&onBoqVat&&typeof vatEnabled==="boolean") onBoqVat(selDeal,vatEnabled);
+      // The BOQ is the VAT authority: a decided VAT choice sets the deal's receipt
+      // type (VAT 12% → OR, No VAT → AR). Only on a real edit this session, so
+      // merely opening a BOQ never rewrites a finance field — an existing mismatch
+      // is surfaced next to the VAT toggle instead.
+      if(selDeal&&onBoqVat&&typeof vatEnabled==="boolean"&&userEditedRef.current) onBoqVat(selDeal,vatEnabled);
       // Seed the deal's contract value from the BOQ (net of VAT) ONLY when the deal has
       // no value yet. A pegged, non-zero value is never silently overwritten — a mismatch
       // is surfaced via the reconcile prompt when the deal is opened instead.
@@ -755,6 +778,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   const updateItem=(id,key,val)=>{if(editLocked)return;markEdited();setItems(its=>its.map(it=>{
     if(it._id!==id) return it;
     const upd={...it,[key]:["description","unit","section","subsection","remarks"].includes(key)?val:Number(val)||0};
+    if(key==="qty") upd.qty=roundQty(upd.qty);
     // Unit cost / markup / qty all derive the effective cost and line total from
     // the direct cost (baseCost) and the per-item markup %.
     const base=upd.baseCost!=null?upd.baseCost:(Number(upd.unitCost)||0);
@@ -808,6 +832,61 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   const netTotal=roundP(grandTotal-discountVal);
   const vatAmount=netTotal*0.12;
 
+  // ── Send to a deal (Duplicate / Link) ──────────────────────────────────────
+  // One dialog for both ways a BOQ lands on a deal. "duplicate" copies this BOQ
+  // onto another deal and leaves the source untouched (rollouts: one tier BOQ,
+  // one deal per location). "link" moves a standalone BOQ onto a deal. Either
+  // way the user must pick the deal explicitly. Linking is final: a deal that
+  // already carries a BOQ can never be replaced from here — you edit that BOQ
+  // instead (deals.boq_data is a whole-column write; a silent link used to wipe
+  // the target's BOQ). Mother POs never carry a BOQ: they earn ₱0 themselves.
+  const[xfer,setXfer]=useState(null);   // null | {mode,dealId,check,location,setValue,busy}
+  const xferSeqRef=useRef(0);
+  const xferTargets=deals.filter(d=>d.id!==selDeal&&!d.standbyPO&&d.stage!=="Did Not Win"&&d.stage!=="Cancelled")
+    .sort((a,b)=>(a.client||"").localeCompare(b.client||"")||(a.ceNo||"").localeCompare(b.ceNo||""));
+  const openXfer=(mode)=>setXfer({mode,dealId:"",check:null,location:"",setValue:true,busy:false});
+  // Pick the target deal, then re-read its BOQ from the server: this device's
+  // deals state can lag, so the cached boqData alone can't prove the deal is empty.
+  const pickXferDeal=(id)=>{
+    const seq=++xferSeqRef.current;
+    const d2=deals.find(d=>d.id===id);
+    const cur=Number(d2?.value)||0;
+    setXfer(x=>({...x,dealId:id,setValue:cur===0||Math.abs(cur-netTotal)<0.005,check:id?{loading:true}:null}));
+    if(!id) return;
+    const done=(src,offline)=>{
+      if(seq!==xferSeqRef.current) return;
+      const has=hasBoqContent(src);
+      setXfer(x=>x&&({...x,check:{loading:false,offline,hasBoq:has,count:has?(src.items||[]).length:0,net:has?roundP(boqNetOf(src)):0}}));
+    };
+    if(!isSupabaseReady()||!supabase){done(d2?.boqData,true);return;}
+    const timeout=new Promise(res=>setTimeout(()=>res({error:{message:"timeout"}}),15000));
+    Promise.race([supabase.from('deals').select('boq_data').eq('id',id).maybeSingle(),timeout])
+      .then(r=>r,e=>({error:e}))
+      .then(({data,error})=>done(error?d2?.boqData:(data?.boq_data||null),!!error));
+  };
+  const confirmXfer=async()=>{
+    if(!xfer||!xfer.dealId||xfer.busy) return;
+    const target=deals.find(d=>d.id===xfer.dealId);
+    if(!target) return;
+    const now=new Date().toISOString();
+    let payload;
+    if(xfer.mode==="duplicate"){
+      // Fresh row ids so the copy never shares identity with the source rows.
+      // Quotation no./date reset — two deals must never carry one quote number.
+      payload={items:items.map(it=>({...it,_id:uid()})),sections:sections.map(s=>({...s})),
+        boqTitle:dealLabel(target),location:(xfer.location||"").trim(),quotationNo:"",boqDate:today,
+        vatEnabled,discount,markupPct,status:"Draft",lastEditedBy:session?.name||"—",lastEditedAt:now,
+        duplicatedFrom:{dealId:selDeal||null,standaloneId:standaloneId||null,title:(boqTitle||"").trim()||dealLabel(deal),by:session?.name||"",at:now}};
+    } else {
+      payload={items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount,markupPct,status:boqStatus,lastEditedBy:session?.name||"—",lastEditedAt:now};
+    }
+    setXfer(x=>({...x,busy:true}));
+    const fn=xfer.mode==="duplicate"?onDuplicateToDeal:onLinkToDeal;
+    const ok=fn?await fn(xfer.dealId,payload,{setValue:!!xfer.setValue}):false;
+    if(ok===false){setXfer(x=>x&&({...x,busy:false}));return;}
+    setXfer(null);
+  };
+
   const printBOQ=()=>{
     const esc=s=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
     const fmtP=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2});
@@ -834,7 +913,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       // instead of collapsing into one run-on paragraph; overflow-wrap breaks any
       // over-long token so nothing spills past the cell. vertical-align:top keeps
       // the number/qty/prices aligned to the first line of a tall description.
-      const itemRowHtml=(it,num)=>`<tr style="background:#fff"><td style="font-size:11px;color:#64748b;padding:6px 10px;white-space:nowrap;vertical-align:top;border-left:4px solid ${clr}">${esc(num)}</td><td style="padding:6px 10px;font-size:12px;white-space:pre-line;overflow-wrap:break-word;line-height:1.5;vertical-align:top">${esc(it.description)||"—"}</td><td style="text-align:center;padding:6px 10px;font-size:12px;vertical-align:top">${it.qty||1}</td><td style="padding:6px 10px;font-size:12px;vertical-align:top">${esc(it.unit||"lot")}</td><td style="text-align:right;padding:6px 10px;font-size:12px;vertical-align:top">${fmtP(it.unitCost)}</td><td style="text-align:right;font-weight:700;padding:6px 10px;font-size:12px;vertical-align:top">${fmtP(it.total)}</td><td style="padding:6px 10px;font-size:11px;color:#64748b;white-space:pre-line;overflow-wrap:break-word;line-height:1.5;vertical-align:top">${esc(it.remarks||"")}</td></tr>`;
+      const itemRowHtml=(it,num)=>`<tr style="background:#fff"><td style="font-size:11px;color:#64748b;padding:6px 10px;white-space:nowrap;vertical-align:top;border-left:4px solid ${clr}">${esc(num)}</td><td style="padding:6px 10px;font-size:12px;white-space:pre-line;overflow-wrap:break-word;line-height:1.5;vertical-align:top">${esc(it.description)||"—"}</td><td style="text-align:center;padding:6px 10px;font-size:12px;vertical-align:top">${fmtQty(it.qty||1)}</td><td style="padding:6px 10px;font-size:12px;vertical-align:top">${esc(it.unit||"lot")}</td><td style="text-align:right;padding:6px 10px;font-size:12px;vertical-align:top">${fmtP(it.unitCost)}</td><td style="text-align:right;font-weight:700;padding:6px 10px;font-size:12px;vertical-align:top">${fmtP(it.total)}</td><td style="padding:6px 10px;font-size:11px;color:#64748b;white-space:pre-line;overflow-wrap:break-word;line-height:1.5;vertical-align:top">${esc(it.remarks||"")}</td></tr>`;
       const {ungrouped,subs}=groupSection(si);
       ungrouped.forEach((it,idx)=>{rows+=itemRowHtml(it,`${sec.id}.${idx+1}`);});
       subs.forEach(sub=>{
@@ -925,32 +1004,88 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
 <div class="print-btn"><button onclick="window.print()">🖨️ Print / Save as PDF</button></div>
 </body></html>`;
     const w=window.open("","_blank","width=1000,height=780");
-    if(w){w.document.write(html);w.document.close();}
+    if(w){w.document.write(html);w.document.close();addPrintClose(w);}
   };
 
-  const exportCSV=()=>{
-    const rows=[["Item No.","Description","Qty","Unit","Unit Cost (₱)","Total Amount (₱)","Remarks"]];
+  // ── Share PDF ────────────────────────────────────────────────────────────
+  // iPhones ignore window.print() in the print pop-up, so the quotation is also
+  // built as a real PDF file (./boqPdf) and handed to the phone's share sheet,
+  // or downloaded where sharing files isn't supported (most desktops).
+  // Anyone who can open the BOQ can share it, but only a Manager's copy is
+  // clean: everyone else's is watermarked "DRAFT – NOT FOR SUBMISSION", since
+  // every quotation carries the President's name as approver.
+  const pdfIsDraft=canonRole(role)!=="Manager";
+  const pdf=useSharePdf(toastEmit);
+  const boqPdfModel=()=>{
+    const pdfSections=[];
     sections.forEach(sec=>{
       const si=items.filter(it=>it.section===sec.id);
       if(!si.length) return;
-      rows.push([sec.id,sec.label,"","","","",""]);
+      const row=(it,num)=>({kind:"item",num,description:it.description,qty:fmtQty(it.qty||1),unit:it.unit||"lot",unitCost:it.unitCost,total:it.total,remarks:it.remarks||""});
       const {ungrouped,subs}=groupSection(si);
-      ungrouped.forEach((it,idx)=>rows.push([`${sec.id}.${idx+1}`,it.description,it.qty,it.unit,it.unitCost,it.total,it.remarks||""]));
+      const rows=ungrouped.map((it,idx)=>row(it,`${sec.id}.${idx+1}`));
       subs.forEach(sub=>{
-        rows.push([`${sec.id}.${sub.num}`,sub.label,"","","","",""]);
-        sub.items.forEach((it,mi)=>rows.push([`${sec.id}.${sub.num}.${mi+1}`,it.description,it.qty,it.unit,it.unitCost,it.total,it.remarks||""]));
-        rows.push(["",`Sub-total ${sub.label}`,"","","","",sub.items.reduce((s,it)=>s+it.total,0)]);
+        rows.push({kind:"sub",num:`${sec.id}.${sub.num}`,label:sub.label});
+        sub.items.forEach((it,mi)=>rows.push(row(it,`${sec.id}.${sub.num}.${mi+1}`)));
+        rows.push({kind:"subtotal",label:sub.label,amount:sub.items.reduce((s,it)=>s+it.total,0)});
       });
-      rows.push(["",`Sub-total ${sec.label}`,"","","","",si.reduce((s,it)=>s+it.total,0)]);
+      pdfSections.push({id:sec.id,label:sec.label,color:sec.color,rows,total:si.reduce((s,it)=>s+it.total,0)});
     });
-    rows.push(["","GRAND TOTAL","","","","",grandTotal]);
-    if(discountVal>0){rows.push(["","DISCOUNT","","","","",-discountVal]);rows.push(["","NET TOTAL","","","","",netTotal]);}
-    if(vatEnabled){rows.push(["","VAT 12%","","","","",vatAmount]);rows.push(["","GRAND TOTAL w/ VAT","","","","",netTotal+vatAmount]);}
-    const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
-    const a=document.createElement("a");
-    a.href="data:text/csv;charset=utf-8,﻿"+encodeURIComponent(csv);
-    a.download=`BOQ_${(boqTitle||"draft").replace(/[^a-zA-Z0-9]/g,"_")}_${new Date().toISOString().slice(0,10)}.csv`;
-    a.click();
+    return{
+      draft:pdfIsDraft,
+      quotationNo:quotationNo||"",
+      dateStr:boqDate?new Date(boqDate+"T00:00:00").toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"}):"",
+      projectName:(boqTitle&&boqTitle.trim())||dealLabel(deal)||"—",
+      locationName:(location&&location.trim())||deal?.location||"—",
+      client:deal?.client||"",
+      sections:pdfSections,grandTotal,discountVal,netTotal,vatEnabled:!!vatEnabled,vatAmt:netTotal*0.12,
+      notes:boqGeneralNotes(vatEnabled),
+    };
+  };
+  const pdfFileName=()=>{
+    const ref=quotationNo||deal?.ceNo||"";
+    const name=(boqTitle&&boqTitle.trim())||deal?.client||"BOQ";
+    const base=[ref,name,"Quotation"].filter(Boolean).join(" - ").replace(/[\\/:*?"<>|]+/g," ").replace(/\s+/g," ").trim().slice(0,120);
+    return base;
+  };
+  const makePdf=()=>pdf.make(async()=>{
+    const {buildBoqPdf}=await import("./boqPdf");
+    return buildBoqPdf(boqPdfModel());
+  },pdfFileName(),{draft:pdfIsDraft,draftNote:"Only a Manager's copy is clean to send to the client."});
+
+  // Excel export (see ./boqExcel). The internal copy shows direct cost and
+  // margin, so only Managers and QS get it; the client copy is the quotation.
+  const canExportInternal=["Manager","QS"].includes(canonRole(role));
+  const[xlsxBusy,setXlsxBusy]=useState("");
+  // RFQ to suppliers/subcons. Procurement can't open the BOQ page (it would
+  // show them costs and prices), so QS/Managers export it and pass it on.
+  const canExportRfq=canExportInternal;
+  const[rfqPick,setRfqPick]=useState(null);   // null | array of chosen section ids
+  const rfqLines=secId=>items.filter(it=>it.section===secId&&Number(it.qty)>0).length;
+  const exportXlsx=async(mode,sectionIds)=>{
+    if(xlsxBusy) return;
+    if(mode==="internal"&&!canExportInternal) return;
+    if(mode==="rfq"&&!canExportRfq) return;
+    const projectName=(boqTitle&&boqTitle.trim())||dealLabel(deal)||"";
+    const ref=deal||coParentDeal;
+    const now=new Date();
+    setXlsxBusy(mode);
+    try{
+      // The RFQ's file name is seen by suppliers: GMD's reference and the
+      // chosen sections only, never the client or project title.
+      const rfqRef=ref?.ceNo||quotationNo||"draft";
+      const picked=sections.filter(sec=>sectionIds?.includes(sec.id));
+      const rfqName=picked.length===sections.filter(sec=>rfqLines(sec.id)).length?rfqRef:`${rfqRef} ${picked.map(sec=>sec.label).join(" ")}`.slice(0,80);
+      await downloadBoqXlsx({mode,sections,items,groupSection,discount:discountVal,vatEnabled,notes:boqGeneralNotes(vatEnabled),sectionIds,
+        meta:{projectName,locationName:(location&&location.trim())||ref?.location||"",client:ref?.client||"",ceNo:ref?.ceNo||"",
+          quotationNo,status:boqStatus,dateStr:boqDate?new Date(boqDate+"T00:00:00").toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"}):"",
+          todayStr:now.toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"}),
+          exportedBy:session?.name||"",exportedAt:now.toLocaleString("en-PH")}},
+        boqXlsxFileName(mode,mode==="rfq"?rfqName:projectName,today));
+      if(mode==="rfq") setRfqPick(null);
+    }catch(e){
+      toastEmit&&toastEmit("Excel export failed: "+(e?.message||e),"error");
+    }finally{setXlsxBusy("");}
   };
 
   const mob=window.innerWidth<768;
@@ -1002,14 +1137,10 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                 <span style={{fontSize:".8rem",color:"#0f172a",fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{coParentDeal?.client||"—"}{coParentDeal?.ceNo?` (${coParentDeal.ceNo})`:""}</span>
               </span>
               :standaloneId
-              ?<select value="" onChange={async e=>{const v=e.target.value;if(!v||!onLinkToDeal)return;const d2=deals.find(d=>d.id===v);if((await uiConfirm(`Link this BOQ to ${d2?.client||"this project"}${d2?.ceNo?" ("+d2.ceNo+")":""}?\n\nYour sections and items are kept — the BOQ just moves out of Standalone and attaches to the project.`))){onLinkToDeal(v,{items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount});}}} style={{fontFamily:"inherit",fontSize:".78rem",color:"#7c3aed",fontWeight:700,background:"#f5f3ff",border:"1px solid #ddd6fe",borderRadius:20,padding:"2px 10px",outline:"none",flex:1,minWidth:0,cursor:"pointer"}}>
-                <option value="">📄 Standalone BOQ — link to a project…</option>
-                {deals.filter(d=>d.stage!=="Did Not Win"&&d.stage!=="Cancelled").map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" · "+d.contact:""}{d.ceNo?" ("+d.ceNo+")":""}</option>)}
-              </select>
-              :<select value={selDeal} onChange={async e=>{const v=e.target.value;if(v==="__unlink__"){if(onUnlinkToStandalone&&(await uiConfirm("Unlink this BOQ from the project and move it to Standalone?\n\nUse this if a project was picked by mistake. Your sections and items are kept; the BOQ is detached from the project."))){onUnlinkToStandalone({items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount});}return;}setSelDeal(v);}} style={{border:"none",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",outline:"none",background:"transparent",flex:1,minWidth:0}}>
-                <option value="">— Select —</option>
-                {deals.filter(d=>d.id===selDeal||(d.stage!=="Did Not Win"&&d.stage!=="Cancelled")).map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" · "+d.contact:""}{d.ceNo?" ("+d.ceNo+")":""}</option>)}
-              </select>
+              ?<button onClick={()=>onLinkToDeal&&!editLocked&&openXfer("link")} disabled={!onLinkToDeal||editLocked} style={{fontFamily:"inherit",fontSize:".78rem",color:"#7c3aed",fontWeight:700,background:"#f5f3ff",border:"1px solid #ddd6fe",borderRadius:20,padding:"2px 10px",outline:"none",flex:1,minWidth:0,cursor:"pointer",textAlign:"left"}}>
+                📄 Standalone BOQ — link to a project…
+              </button>
+              :<span title="A linked BOQ is final — it stays on this deal." style={{fontSize:".8rem",color:"#0f172a",fontWeight:700,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>🔒 {dealLabel(deal)||"—"}</span>
             }
           </div>
           <div style={{display:"flex",gap:6,alignItems:"center"}}>
@@ -1051,8 +1182,12 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
             📚 Library{boqLibrary.length>0&&<span style={{background:"#7c3aed",color:"#fff",borderRadius:20,padding:"0 6px",fontSize:".62rem",fontWeight:800,marginLeft:4}}>{boqLibrary.length}</span>}
           </button>}
           {items.length>0&&<button onClick={printBOQ} style={{background:"#f0fdf4",border:"1.5px solid #86efac",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#166534",cursor:"pointer"}}>🖨 Preview / Print</button>}
-          {items.length>0&&<button onClick={exportCSV} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>}
-          {!ro&&!srvLoading&&(selDeal||items.length>0||sections.length>0)&&<button onClick={()=>{deleteDraft(selDeal||BOQ_SCRATCH_KEY);if(selDeal&&isSupabaseReady())sbUpdate('deals',selDeal,{boq_data:null}).catch(()=>{});setItems(BLANK_ITEMS());setSections([]);setBoqTitle("");setLocation(deal?.location||"");setQuotationNo(deal?.ceNo||"");setBoqDate(today);setVatEnabled(null);setDiscount("");setMarkupPct("");setDraftSaved(false);}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#c2410c",cursor:"pointer"}} title="Clear saved draft and reset">✕ Clear Draft</button>}
+          {items.length>0&&<button onClick={makePdf} disabled={pdf.busy} title={pdfIsDraft?"Make the quotation as a PDF to share or download. Your copy is watermarked DRAFT: only a Manager's is clean to send.":"Make the quotation as a PDF to share (Viber, Mail, Files) or download"} style={{background:"#ecfeff",border:"1.5px solid #67e8f9",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#155e75",cursor:pdf.busy?"wait":"pointer"}}>{pdf.busy?"Making PDF…":"📤 Share PDF"}</button>}
+          {onDuplicateToDeal&&!coId&&!srvLoading&&items.length>0&&<button onClick={()=>openXfer("duplicate")} title="Copy this BOQ onto another deal (e.g. the same store package at a new location). This BOQ stays as it is." style={{background:"#fdf4ff",border:"1.5px solid #f0abfc",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#a21caf",cursor:"pointer"}}>⧉ Duplicate to deal</button>}
+          {items.length>0&&<button onClick={()=>exportXlsx("client")} disabled={!!xlsxBusy} title="Download the quotation as an Excel file — selling prices only, safe to send to the client" style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#1d4ed8",cursor:xlsxBusy?"wait":"pointer"}}>{xlsxBusy==="client"?"Preparing…":"⬇ Excel"}</button>}
+          {items.length>0&&canExportInternal&&<button onClick={()=>exportXlsx("internal")} disabled={!!xlsxBusy} title="Internal Excel: direct cost, markup and margin per line. Do not send to the client." style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#b91c1c",cursor:xlsxBusy?"wait":"pointer"}}>{xlsxBusy==="internal"?"Preparing…":"⬇ Excel (internal)"}</button>}
+          {items.length>0&&canExportRfq&&<button onClick={()=>setRfqPick(sections.filter(sec=>rfqLines(sec.id)).map(sec=>sec.id))} disabled={!!xlsxBusy} title="Request for quotation to a supplier or subcon: quantities only, no prices, costs or client name" style={{background:"#f0fdfa",border:"1.5px solid #99f6e4",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#0f766e",cursor:xlsxBusy?"wait":"pointer"}}>{xlsxBusy==="rfq"?"Preparing…":"⬇ RFQ"}</button>}
+          {!ro&&!srvLoading&&(selDeal||items.length>0||sections.length>0)&&(!selDeal||canonRole(role)==="Manager")&&<button onClick={()=>{deleteDraft(selDeal||BOQ_SCRATCH_KEY);if(selDeal&&isSupabaseReady())sbUpdate('deals',selDeal,{boq_data:null}).catch(()=>{});setItems(BLANK_ITEMS());setSections([]);setBoqTitle("");setLocation(deal?.location||"");setQuotationNo(deal?.ceNo||"");setBoqDate(today);setVatEnabled(null);setDiscount("");setMarkupPct("");setDraftSaved(false);}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#c2410c",cursor:"pointer"}} title="Clear saved draft and reset">✕ Clear Draft</button>}
           {!ro&&(items.length>0||sections.length>0)&&(()=>{
             // Sync badge — reflects the REAL cloud-save state, not just the local draft.
             // Amber "device only" is the important one: it tells the user the BOQ is not
@@ -1149,6 +1284,103 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
         );
       })()}
 
+      {/* Send-to-deal modal (Duplicate / Link) */}
+      {xfer&&(()=>{
+        const dup=xfer.mode==="duplicate";
+        const target=deals.find(d=>d.id===xfer.dealId);
+        const ck=xfer.check;
+        const curVal=Number(target?.value)||0;
+        const fmtP=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+        // A source with unsaved edits would lose them when we navigate to the target.
+        const srcPending=!draftSaved;
+        const blocked=!target||!ck||ck.loading||ck.hasBoq||xfer.busy||srcPending;
+        const lbl={fontSize:".72rem",fontWeight:700,color:"#475569",marginBottom:4,display:"block"};
+        const close=()=>{if(!xfer.busy){xferSeqRef.current++;setXfer(null);}};
+        return(
+        <div onClick={close} style={{position:"fixed",inset:0,background:"#0f172acc",zIndex:2000,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"36px 16px",overflowY:"auto"}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:16,border:"1.5px solid #e2e8f0",padding:22,maxWidth:560,width:"100%",boxShadow:"0 24px 60px #0006"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+              <div style={{fontWeight:800,color:"#0f172a",fontSize:"1rem"}}>{dup?"⧉ Duplicate BOQ to a deal":"🔗 Link BOQ to a deal"}</div>
+              <button onClick={close} style={{background:"none",border:"none",fontSize:"1.1rem",color:"#94a3b8",cursor:"pointer"}}>✕</button>
+            </div>
+            <div style={{fontSize:".76rem",color:"#64748b",marginBottom:14,lineHeight:1.55}}>
+              {dup
+                ?<>Copies all <b>{items.length}</b> line items and <b>{sections.length}</b> sections — costs, markups and discount included — onto the deal you pick — the deal must not have a BOQ yet. <b>This BOQ stays as it is.</b> The copy gets the deal's title, a blank quotation no. and today's date.</>
+                :<>Moves this standalone BOQ onto the deal you pick. It leaves the Standalone list. <b>This is final</b> — after linking, the BOQ is edited on the deal.</>}
+            </div>
+
+            <label style={lbl}>Deal <span style={{color:"#dc2626"}}>*</span></label>
+            <select autoFocus value={xfer.dealId} disabled={xfer.busy} onChange={e=>pickXferDeal(e.target.value)} style={{...inpSt,marginBottom:12}}>
+              <option value="">— Pick the deal this BOQ belongs to —</option>
+              {xferTargets.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" · "+d.contact:""}{d.ceNo?" ("+d.ceNo+")":" (no CE no.)"}{d.stage?" — "+d.stage:""}</option>)}
+            </select>
+
+            {target&&ck&&(ck.loading
+              ?<div style={{fontSize:".76rem",color:"#64748b",marginBottom:12}}>⟳ Checking whether this deal already has a BOQ…</div>
+              :ck.hasBoq
+                ?<div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:8,padding:"10px 12px",marginBottom:12,fontSize:".76rem",color:"#991b1b",lineHeight:1.5}}>
+                  <b>⛔ This deal already has a BOQ</b> — {ck.count} item{ck.count===1?"":"s"}, net {fmtP(ck.net)}. A linked BOQ is final and can't be replaced. Open that deal's BOQ and edit it there, or pick another deal.
+                </div>
+                :<div style={{fontSize:".76rem",color:"#15803d",marginBottom:12}}>✓ This deal has no BOQ yet.</div>)}
+            {target&&ck&&!ck.loading&&ck.offline&&<div style={{fontSize:".72rem",color:"#b45309",marginBottom:12}}>Couldn't reach the server — the check above is based on this device's copy.</div>}
+            {target&&!target.ceNo&&<div style={{fontSize:".72rem",color:"#b45309",marginBottom:12}}>This deal has no CE number yet. Give it its own CE no. before quoting.</div>}
+
+            {dup&&<>
+              <label style={lbl}>Location of the new site</label>
+              <input value={xfer.location} disabled={xfer.busy} onChange={e=>setXfer(x=>({...x,location:e.target.value}))} placeholder={target?.location||"e.g. SM Megamall, 3F"} style={{...inpSt,marginBottom:12}}/>
+            </>}
+
+            {target&&ck&&!ck.loading&&!ck.hasBoq&&<label style={{display:"flex",gap:8,alignItems:"flex-start",fontSize:".76rem",color:"#334155",marginBottom:14,cursor:"pointer",lineHeight:1.45}}>
+              <input type="checkbox" checked={xfer.setValue} disabled={xfer.busy} onChange={e=>setXfer(x=>({...x,setValue:e.target.checked}))} style={{marginTop:2}}/>
+              <span>Set the deal value to this BOQ's net ({fmtP(netTotal)}).<br/><span style={{color:"#64748b"}}>Deal value now: {fmtP(curVal)}{curVal&&Math.abs(curVal-netTotal)>=0.005?" — leave unticked to keep it":""}</span></span>
+            </label>}
+
+            {srcPending&&<div style={{fontSize:".72rem",color:"#b45309",marginBottom:10}}>⟳ Saving your latest edits first — wait a moment.</div>}
+
+            <div style={{display:"flex",justifyContent:"flex-end",gap:8}}>
+              <button onClick={close} disabled={xfer.busy} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 16px",fontFamily:"inherit",fontSize:".8rem",fontWeight:700,color:"#475569",cursor:"pointer"}}>Cancel</button>
+              <button onClick={confirmXfer} disabled={blocked} style={{background:blocked?"#cbd5e1":"#7c3aed",border:"none",borderRadius:8,padding:"8px 16px",fontFamily:"inherit",fontSize:".8rem",fontWeight:800,color:"#fff",cursor:blocked?"not-allowed":"pointer"}}>
+                {xfer.busy?"Saving…":dup?"Duplicate to this deal":"Link to this deal"}
+              </button>
+            </div>
+          </div>
+        </div>);
+      })()}
+
+      {/* RFQ section picker */}
+      {pdf.dialog}
+      {rfqPick&&(()=>{
+        const avail=sections.filter(sec=>rfqLines(sec.id));
+        const n=avail.filter(sec=>rfqPick.includes(sec.id)).reduce((t,sec)=>t+rfqLines(sec.id),0);
+        const toggle=id=>setRfqPick(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id]);
+        const close=()=>{if(!xlsxBusy)setRfqPick(null);};
+        return(
+        <div onClick={close} style={{position:"fixed",inset:0,background:"#0f172acc",zIndex:2000,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"36px 16px",overflowY:"auto"}}>
+          <div onClick={e=>e.stopPropagation()} role="dialog" aria-label="Request for quotation" style={{background:"#fff",borderRadius:16,border:"1.5px solid #e2e8f0",padding:22,maxWidth:480,width:"100%",boxShadow:"0 24px 60px #0006"}}>
+            <div style={{fontWeight:800,color:"#0f172a",fontSize:"1rem",marginBottom:6}}>⬇ Request for quotation</div>
+            <div style={{fontSize:".76rem",color:"#64748b",marginBottom:14,lineHeight:1.55}}>
+              Pick the sections this supplier or subcon should price. The file has quantities and units with blank price cells. It leaves out the client name, our prices, costs and markup, and any line with qty 0.
+            </div>
+            <div style={{display:"grid",gap:6,marginBottom:14}}>
+              {avail.map(sec=>(
+                <label key={sec.id} style={{display:"flex",gap:8,alignItems:"center",fontSize:".8rem",color:"#334155",cursor:"pointer"}}>
+                  <input type="checkbox" checked={rfqPick.includes(sec.id)} onChange={()=>toggle(sec.id)}/>
+                  <span style={{width:10,height:10,borderRadius:3,background:sec.color||"#64748b",flexShrink:0}}/>
+                  <span style={{flex:1}}>{sec.id}. {sec.label}</span>
+                  <span style={{color:"#94a3b8",fontSize:".72rem"}}>{rfqLines(sec.id)} line{rfqLines(sec.id)===1?"":"s"}</span>
+                </label>))}
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+              <span style={{fontSize:".72rem",color:"#64748b"}}>{n} line{n===1?"":"s"} in this RFQ</span>
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={close} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 16px",fontFamily:"inherit",fontSize:".8rem",fontWeight:700,color:"#475569",cursor:"pointer"}}>Cancel</button>
+                <button onClick={()=>exportXlsx("rfq",rfqPick)} disabled={!n||!!xlsxBusy} style={{background:!n?"#cbd5e1":"#0f766e",border:"none",borderRadius:8,padding:"8px 16px",fontFamily:"inherit",fontSize:".8rem",fontWeight:800,color:"#fff",cursor:!n?"not-allowed":"pointer"}}>{xlsxBusy==="rfq"?"Preparing…":"Download RFQ"}</button>
+              </div>
+            </div>
+          </div>
+        </div>);
+      })()}
+
       {/* Import Excel / CSV modal */}
       {importOpen&&(
         <div onClick={()=>setImportOpen(false)} style={{position:"fixed",inset:0,background:"#0f172acc",zIndex:2000,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"36px 16px",overflowY:"auto"}}>
@@ -1195,7 +1427,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                           {si.map((it,i)=>(
                             <div key={i} style={{display:"grid",gridTemplateColumns:"1fr 42px 50px 96px",gap:6,padding:"4px 12px",borderBottom:"1px solid #f1f5f9",fontSize:".72rem",color:"#374151",alignItems:"center"}}>
                               <span style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}} title={it.description}>{it.description}</span>
-                              <span style={{textAlign:"right"}}>{it.qty}</span>
+                              <span style={{textAlign:"right"}}>{fmtQty(it.qty)}</span>
                               <span style={{textAlign:"center",color:"#94a3b8"}}>{it.unit}</span>
                               <span style={{textAlign:"right"}}>₱{eff(it.baseCost).toLocaleString("en-PH",{minimumFractionDigits:2})}</span>
                             </div>
@@ -1414,7 +1646,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                             </div>
                           )}
                         </div>
-                        <input type="number" value={it.qty} onChange={e=>updateItem(it._id,"qty",e.target.value)} style={{...inpSt,fontSize:".78rem",padding:"4px 4px",textAlign:"right"}}/>
+                        <input type="number" step="0.01" value={it.qty} onChange={e=>updateItem(it._id,"qty",e.target.value)} style={{...inpSt,fontSize:".78rem",padding:"4px 4px",textAlign:"right"}}/>
                         <input value={it.unit} onChange={e=>updateItem(it._id,"unit",e.target.value)} placeholder="lot" style={{...inpSt,fontSize:".72rem",padding:"4px 4px",textAlign:"center"}}/>
                         <input type="number" value={it.baseCost!=null?it.baseCost:it.unitCost} onChange={e=>updateItem(it._id,"baseCost",e.target.value)} title="Direct cost per unit (before markup)" style={{...inpSt,fontSize:".78rem",padding:"4px 6px",textAlign:"right"}}/>
                         <div style={{position:"relative",display:"flex",alignItems:"center"}}>
@@ -1516,6 +1748,11 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                     </button>
                   ))}
                   {vatEnabled==null&&<span style={{fontSize:".7rem",color:"#dc2626",fontWeight:700}}>⚠ Choose VAT treatment</span>}
+                  {!ro&&!coId&&deal&&onBoqVat&&typeof vatEnabled==="boolean"&&deal.receiptType!==(vatEnabled?"OR":"AR")&&(
+                    <span style={{fontSize:".7rem",color:"#b45309",fontWeight:700}}>
+                      ⚠ Project receipt is {deal.receiptType||"unset"} — <button type="button" onClick={()=>onBoqVat(selDeal,vatEnabled)} style={{border:"none",background:"none",padding:0,color:"#b45309",textDecoration:"underline",cursor:"pointer",fontFamily:"inherit",fontSize:"inherit",fontWeight:700}}>set to {vatEnabled?"OR":"AR"}</button>
+                    </span>
+                  )}
                 </div>
                 <div style={{textAlign:"right",fontWeight:700,color:vatEnabled?"#475569":"#cbd5e1",fontSize:".85rem"}}>{vatEnabled?`₱${vatAmount.toLocaleString("en-PH",{minimumFractionDigits:2})}`:"-"}</div>
                 <div/><div/>
