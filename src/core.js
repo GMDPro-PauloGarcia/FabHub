@@ -163,7 +163,7 @@ export const DESIGN_STATUSES = ["Briefing","On-going","First Pass","Revision","P
 
 export const PRODUCT_TYPES   = ["Custom Shelving","Display Fixtures","Signage","Countertops","Retail Cabinetry","Kiosks","Wall Panels","Millwork","Other"];
 
-export const SALES_TEAM        = ["Paulo Garcia","Paolo Gomez","April Gail De Ello","Jena De Asis","Don Wyn Celmar","Aerwin Del Rosario (CE)","Marian Prile (CE)"];
+export const SALES_TEAM        = ["Paulo Garcia","Paolo Gomez","April Gail De Ello","Jena De Asis","Don Wyn Celmar","Jessica Castro","Aerwin Del Rosario (CE)","Marian Prile (CE)"];
 
 export const COST_CONTROL_TEAM = ["Aerwin Del Rosario (Finance Manager)","Marian Prile (Procurement Manager)"];
 
