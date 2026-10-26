@@ -532,6 +532,18 @@ export const milestonePaid = (b={}) =>
   (b.payments||[]).filter(p=>!p.bounced).reduce((s,p)=>s+(Number(p.amount)||0),0);
 export const milestoneBalance = (b={}, deal) =>
   b.status==="Cancelled" ? 0 : Math.max(0, milestoneReceivable(b,deal) - milestonePaid(b));
+// The open balance split into what it is made of, in proportion to the invoice:
+// VAT-exclusive base + VAT − EWT = balance (cash basis). Non-VAT receipts carry
+// no VAT; EWT only applies to VAT receipts with withholding (see calcTax).
+export const milestoneBalanceParts = (b={}, deal) => {
+  const bal = milestoneBalance(b, deal);
+  const rt = b.receiptType || b.receipt_type || (deal && deal.receiptType) || "OR";
+  const wh = b.withholding != null ? !!b.withholding : !!(deal && deal.withholding);
+  const t = calcTax(Number(b.amount)||0, rt, wh);
+  if(!(bal>0) || !(t.netReceivable>0)) return { bal, base:bal, vat:0, ewt:0 };
+  const k = bal / t.netReceivable;
+  return { bal, base:t.base*k, vat:t.vat*k, ewt:t.ewt*k };
+};
 // Past due, split by whether the client was actually billed. A Draft hasn't been
 // sent, so it can't be overdue — it's an invoice nobody has sent yet, which is
 // Finance's to chase internally, not the client's. Keep the two apart everywhere.
