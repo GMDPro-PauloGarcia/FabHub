@@ -9,7 +9,7 @@ import {fmt,addPrintClose,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dro
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, commissionRate, commissionEarned, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -1649,6 +1649,8 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
   const[grossStr,setGrossStr]=useState(()=>initialForm?.receiptType==="OR"?netToGross(initialForm?.value):"");
   // The BOQ is the VAT authority: once a linked BOQ has decided VAT, the receipt
   // type follows it (VAT 12% → OR, No VAT → AR) and is locked here.
+  // Sales Owner is Manager-only once the deal has collections (commission follows it).
+  const ownerLocked=salesOwnerLocked(editId?deals.find(d=>d.id===editId):null,role);
   const boqLockedRt=(()=>{const src=editId?deals.find(d=>d.id===editId):null;const v=(src?.boqData||src?.boq_data||form?.boqData)?.vatEnabled;return typeof v==="boolean"?(v?"OR":"AR"):null;})();
   useEffect(()=>{if(open&&boqLockedRt&&form.receiptType!==boqLockedRt){setForm(p=>({...p,receiptType:boqLockedRt,withholding:boqLockedRt==="AR"?false:p.withholding}));}},[open,boqLockedRt,form.receiptType]);
 
@@ -1697,8 +1699,8 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
           </Sel>
           {form.ceType==="Other"&&<Inp value={form.customProductType||""} onChange={e=>f("customProductType",e.target.value)} placeholder="Describe the project type..." style={{marginTop:6}}/>}
         </Fld>
-        <Fld label="Sales Owner / AE">
-          <Sel value={form.salesOwner||""} onChange={e=>f("salesOwner",e.target.value)}>
+        <Fld label="Sales Owner / AE" hint={ownerLocked?"Locked: this deal has collections, so only a Manager can change its Sales Owner.":undefined}>
+          <Sel value={form.salesOwner||""} onChange={e=>f("salesOwner",e.target.value)} disabled={ownerLocked}>
             <option value="">— Assign AE —</option>
             {SALES_TEAM.map(m=><option key={m}>{m}</option>)}
           </Sel>
@@ -4411,6 +4413,23 @@ export default function App(){
   const[customClients,setCustomClients]= useState([]);
   const[customMembers,setCustomMembers]= useState(()=>{try{return JSON.parse(localStorage.getItem("gmdv5:customMembers")||"[]");}catch{return[];}});  // extra team members typed in (beyond the built-in roster)
   const[clientProfiles,setClientProfiles]= useState({});  // keyed by client name
+  // Saves ONE client's profile through set_client_profile (migration
+  // 20261026020000), which merges it server-side. The old whole-object upsert
+  // was rejected for Sales under RLS (error swallowed, edit lost on reload) and
+  // let a stale copy wipe other clients' edits. Same roles as the RPC.
+  const saveClientProfileRemote=async(name,profile)=>{
+    let prev;
+    setClientProfiles(cp=>{prev=cp?.[name];return{...cp,[name]:profile};});
+    if(!isSupabaseReady()){toastEmit("⚠ Offline: client profile not saved.","error",9000);return false;}
+    const{error}=await _rpcWithTimeout(supabase.rpc('set_client_profile',{p_name:name,p_profile:profile}));
+    if(error){
+      setClientProfiles(cp=>{const n={...cp};if(prev===undefined)delete n[name];else n[name]=prev;return n;});
+      toastEmit("⚠ Client profile not saved: "+error.message,"error",9000);
+      return false;
+    }
+    toastEmit(`Client profile saved: ${name}`,"success");
+    return true;
+  };
   const[budgets,     setBudgets]   = useState({});   // keyed by dealId
   const[session,  setSession] = useState(null);   // {userId, username, name, role}
   const[authView, setAuthView]= useState("login"); // login | register
@@ -14821,7 +14840,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             </div>
             <div style={{background:"#f0fdf4",borderRadius:10,padding:"14px 16px",marginBottom:12,border:"1.5px solid #6ee7b7"}}>
               <div style={{fontWeight:700,fontSize:".8rem",color:"#059669",marginBottom:8}}>Company / Client Name <span style={{color:"#ef4444"}}>*</span></div>
-              <Inp autoFocus value={quickAddClientForm.name} onChange={e=>fqac("name",e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){const n=quickAddClientForm.name.trim();if(!n)return;const allC=[...GMD_CLIENTS,...customClients];if(allC.find(c=>c.name.toLowerCase()===n.toLowerCase())){toastEmit("Client already exists.","warning");return;}const nc={name:n,id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today};GMD_CLIENTS.push(nc);const prof={contactPerson:quickAddClientForm.contactPerson,email:quickAddClientForm.email,phone:quickAddClientForm.phone,mobile:quickAddClientForm.mobile,website:quickAddClientForm.website,billingAddress:quickAddClientForm.billingAddress,city:quickAddClientForm.city,province:quickAddClientForm.province,zipCode:quickAddClientForm.zipCode,country:quickAddClientForm.country,tin:quickAddClientForm.tin,paymentTerms:quickAddClientForm.paymentTerms,notes:quickAddClientForm.notes};const next=[...customClients,nc];setCustomClients(next);try{localStorage.setItem(KEYS.customclients,JSON.stringify(next));}catch{}if(isSupabaseReady()) sbUpsert('app_settings',{key:'customclients',value:next,updated_at:new Date().toISOString()},'key').catch(()=>{});if(Object.values(prof).some(v=>v)){const np={...clientProfiles,[n]:prof};setClientProfiles(np);if(isSupabaseReady()) sbUpsert('app_settings',{key:'clientprofiles',value:np,updated_at:new Date().toISOString()},'key').catch(()=>{});}toastEmit(`Client "${n}" added to directory.`,"success");setQuickAddClientOpen(false);resetQAC();}}} placeholder="Full company or client name…"/>
+              <Inp autoFocus value={quickAddClientForm.name} onChange={e=>fqac("name",e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){const n=quickAddClientForm.name.trim();if(!n)return;const allC=[...GMD_CLIENTS,...customClients];if(allC.find(c=>c.name.toLowerCase()===n.toLowerCase())){toastEmit("Client already exists.","warning");return;}const nc={name:n,id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today};GMD_CLIENTS.push(nc);const prof={contactPerson:quickAddClientForm.contactPerson,email:quickAddClientForm.email,phone:quickAddClientForm.phone,mobile:quickAddClientForm.mobile,website:quickAddClientForm.website,billingAddress:quickAddClientForm.billingAddress,city:quickAddClientForm.city,province:quickAddClientForm.province,zipCode:quickAddClientForm.zipCode,country:quickAddClientForm.country,tin:quickAddClientForm.tin,paymentTerms:quickAddClientForm.paymentTerms,notes:quickAddClientForm.notes};const next=[...customClients,nc];setCustomClients(next);try{localStorage.setItem(KEYS.customclients,JSON.stringify(next));}catch{}if(isSupabaseReady()) sbUpsert('app_settings',{key:'customclients',value:next,updated_at:new Date().toISOString()},'key').catch(()=>{});if(Object.values(prof).some(v=>v)){saveClientProfileRemote(n,prof);}toastEmit(`Client "${n}" added to directory.`,"success");setQuickAddClientOpen(false);resetQAC();}}} placeholder="Full company or client name…"/>
             </div>
             <div style={{background:"#f8fafc",borderRadius:10,padding:"14px 16px",marginBottom:12,border:"1px solid #e2e8f0"}}>
               <div style={{fontWeight:700,fontSize:".8rem",color:"#475569",marginBottom:10}}>📇 Name & Contact</div>
@@ -14865,9 +14884,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 try{localStorage.setItem(KEYS.customclients,JSON.stringify(next));}catch{}
                 if(isSupabaseReady()) sbUpsert('app_settings',{key:'customclients',value:next,updated_at:new Date().toISOString()},'key').catch(()=>{});
                 if(Object.values(prof).some(v=>v)){
-                  const np={...clientProfiles,[n]:prof};
-                  setClientProfiles(np);
-                  if(isSupabaseReady()) sbUpsert('app_settings',{key:'clientprofiles',value:np,updated_at:new Date().toISOString()},'key').catch(()=>{});
+                  saveClientProfileRemote(n,prof);
                 }
                 toastEmit(`Client "${n}" added to directory.`,"success");
                 setQuickAddClientOpen(false);
@@ -16061,11 +16078,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       <Wrap>
         <ClientDirectory deals={deals} session={session} role={role} vvipClients={vvipClients} toggleVvip={toggleVvip} customClients={customClients} isMobile={isMobile}
           clientProfiles={clientProfiles}
-          saveClientProfile={(name,profile)=>{
-            const next={...clientProfiles,[name]:profile};
-            setClientProfiles(next);
-            if(isSupabaseReady()) sbUpsert('app_settings',{key:'clientprofiles',value:next,updated_at:new Date().toISOString()},'key').catch(()=>{});
-          }}
+          saveClientProfile={saveClientProfileRemote}
           addNewClient={(name)=>{
             if(!name.trim()) return;
             if(GMD_CLIENTS.find(c=>c.name.toLowerCase()===name.trim().toLowerCase())||customClients.find(c=>c.name.toLowerCase()===name.trim().toLowerCase())) return;
@@ -18545,11 +18558,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     <Wrap>
       <ClientDirectory deals={deals} session={session} role={role} vvipClients={vvipClients} toggleVvip={toggleVvip} customClients={customClients} isMobile={isMobile}
         clientProfiles={clientProfiles}
-        saveClientProfile={(name,profile)=>{
-          const next={...clientProfiles,[name]:profile};
-          setClientProfiles(next);
-          if(isSupabaseReady()) sbUpsert('app_settings',{key:'clientprofiles',value:next,updated_at:new Date().toISOString()},'key').catch(()=>{});
-        }}
+        saveClientProfile={saveClientProfileRemote}
         addNewClient={(name)=>{
           if(!name.trim()) return;
           if(GMD_CLIENTS.find(c=>c.name.toLowerCase()===name.trim().toLowerCase())||customClients.find(c=>c.name.toLowerCase()===name.trim().toLowerCase())) return;
@@ -20880,6 +20889,9 @@ function SalesCalendarView({deals, session, role, pcards, jos, billings}){
   );
 }
 
+// Roles that may edit a client profile — same as set_client_profile
+// (migration 20261026020000_set_client_profile_rpc.sql): keep them in sync.
+const CLIENT_PROFILE_EDITORS=["Manager","Finance","FinanceAssistant","Accounting","Sales","SalesOpsAdmin"];
 // ─── CLIENT AUTOCOMPLETE ──────────────────────────────────────────────────────
 function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customClients, clientProfiles, saveClientProfile, addNewClient, isMobile}){
   const[selClient,  setSelClient]  = useState(null);
@@ -21296,7 +21308,11 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
             </div>
 
             <div style={{display:"flex",gap:10}}>
-              <button onClick={saveProfile} style={{flex:1,background:"#1e293b",border:"none",borderRadius:9,padding:"11px",fontFamily:"inherit",fontWeight:700,fontSize:".88rem",color:"#fff",cursor:"pointer"}}>Save Profile</button>
+              {CLIENT_PROFILE_EDITORS.includes(role)?(
+                <button onClick={saveProfile} style={{flex:1,background:"#1e293b",border:"none",borderRadius:9,padding:"11px",fontFamily:"inherit",fontWeight:700,fontSize:".88rem",color:"#fff",cursor:"pointer"}}>Save Profile</button>
+              ):(
+                <div style={{flex:1,alignSelf:"center",fontSize:".78rem",color:"#94a3b8"}}>View only: Sales, Finance or a Manager can edit client profiles.</div>
+              )}
               <button onClick={()=>setProfileModal(null)} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"11px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".85rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
             </div>
           </div>
@@ -25579,7 +25595,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     setSelDeal(initialDeal);clearInitialDeal&&clearInitialDeal();
     if(initialPayMs){
       const ms=billings.find(b=>b.id===initialPayMs);
-      if(ms&&canEdit&&ms.status!=="Cancelled"){
+      if(ms&&canPayDeal(deals.find(d=>d.id===ms.dealId))&&ms.status!=="Cancelled"){
         const bal=Math.round(milestoneBalance(ms,deals.find(d=>d.id===ms.dealId))*100)/100;
         setShowPay(ms.id);setPayForm(p=>({...p,amount:bal>0?bal:""}));
       }
@@ -25621,6 +25637,9 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const fp =(k,v)=>setPayForm(p=>({...p,[k]:v}));
   const fme=(k,v)=>setEditMsForm(p=>({...p,[k]:v}));
   const canEdit=role==="Manager"||role==="Finance"||role==="FinanceAssistant"||role==="SalesOpsAdmin";
+  // Payments on a deal the user owns as Sales Owner are recorded by someone else
+  // (their commission rides on them). Mirrors migration 20261026020000.
+  const canPayDeal=d=>canEdit&&!ownsDealCommission(d,session?.name,role);
   // Client PO # — same roles as set_deal_client_po (migration
   // 20261026010000_deals_client_po_no.sql): keep them in sync.
   const canEditClientPo=["Manager","Finance","FinanceAssistant","Sales","SalesOpsAdmin"].includes(role);
@@ -27094,7 +27113,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                           <div style={{fontSize:".67rem",fontWeight:700,color:"#059669",marginBottom:4,textTransform:"uppercase",letterSpacing:".5px"}}>Payments</div>
                           {(ms.payments||[]).map(p=>(
                             <div key={p.id}>
-                              {editPay?.msId===ms.id&&editPay?.payId===p.id&&canEdit?(
+                              {editPay?.msId===ms.id&&editPay?.payId===p.id&&canPayDeal(deal)?(
                                 <div style={{background:"#fff",borderRadius:7,padding:"8px",border:"1.5px solid #93c5fd",marginBottom:4}}>
                                   <div style={{fontWeight:700,color:"#1d4ed8",marginBottom:6,fontSize:".78rem"}}>Edit Payment</div>
                                   <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:6}}>
@@ -27148,7 +27167,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                                     {p.refNo&&<span style={{color:"#64748b"}}>Ref: {p.refNo}</span>}
                                     {p.note&&<span style={{color:"#94a3b8",fontStyle:"italic"}}>{p.note}</span>}
                                   </div>
-                                  {canEdit&&(!isOffsetPayment(p)||canonRole(role)==="Manager")&&(
+                                  {canPayDeal(deal)&&(!isOffsetPayment(p)||canonRole(role)==="Manager")&&(
                                     <div style={{display:"flex",gap:4,flexShrink:0}}>
                                       {!p.bounced&&!isOffsetPayment(p)&&!isPaymentCleared(p,today)&&(
                                         <button onClick={()=>updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?{...px,valueDate:today,bounced:false}:px)},{action:"Payment Cleared",detail:`${ms.name||"Milestone"}: ₱${Number(p.amount||0).toLocaleString("en-PH")} marked cleared`})}
@@ -27211,7 +27230,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                         </div>
                       )}
                       {/* Log payment inline */}
-                      {showPay===ms.id&&canEdit&&(
+                      {showPay===ms.id&&canPayDeal(deal)&&(
                         <div style={{background:"#eff6ff",borderRadius:8,padding:"10px 12px",border:"1.5px solid #93c5fd",marginTop:8}}>
                           <div style={{fontWeight:700,color:"#1d4ed8",marginBottom:8,fontSize:".82rem"}}>Log Payment</div>
                           <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:8}}>
@@ -27290,8 +27309,11 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                     <div style={{display:"flex",flexDirection:"column",gap:5,flexShrink:0}}>
                       <button onClick={()=>printInvoice(ms)} style={{background:"#1e293b",border:"none",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#fff",cursor:"pointer"}}>🖨 Invoice</button>
                       <button onClick={()=>shareInvoicePdf(ms)} disabled={billingPdf.busy} title="Invoice as a PDF to share (Viber, Mail, Files) or download" style={{background:"#ecfeff",border:"1.5px solid #67e8f9",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#155e75",cursor:billingPdf.busy?"wait":"pointer"}}>{billingPdf.busy?"Making PDF…":"📤 Invoice PDF"}</button>
-                      {canEdit&&ms.status!=="Fully Paid"&&ms.status!=="Cancelled"&&(
+                      {canPayDeal(deal)&&ms.status!=="Fully Paid"&&ms.status!=="Cancelled"&&(
                         <button onClick={()=>{const opening=showPay!==ms.id;setShowPay(showPay===ms.id?null:ms.id);if(opening){const totalPaid=(ms.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);const bal=tx.netReceivable-totalPaid;setPayForm(p=>({...p,amount:bal>0?bal:tx.netReceivable}));}}} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#059669",cursor:"pointer"}}>+ Payment</button>
+                      )}
+                      {canEdit&&!canPayDeal(deal)&&ms.status!=="Fully Paid"&&ms.status!=="Cancelled"&&(
+                        <div title="Your commission rides on this deal's collections, so Finance or a Manager records them." style={{fontSize:".65rem",color:"#94a3b8",maxWidth:120,lineHeight:1.3}}>Your deal: Finance logs its payments</div>
                       )}
                       {canEdit&&<button onClick={()=>{setEditMs(editMs===ms.id?null:ms.id);setEditMsForm({name:ms.name,description:ms.description||"",amount:String(ms.amount||""),invoiceNo:ms.invoiceNo||"",invoiceDate:ms.invoiceDate||today,dueDate:ms.dueDate||"",plannedDate:ms.plannedDate||"",isDraft:ms.status==="Draft",receiptType:ms.receiptType??null,withholding:ms.withholding??null});setShowPay(null);}} style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#1d4ed8",cursor:"pointer"}}>✏ Edit</button>}
                       {canEdit&&<select value={ms.status} onChange={e=>updateMilestone(ms.id,{status:e.target.value})} style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 8px",fontFamily:"inherit",fontSize:".72rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>{BILLING_STATUSES.map(s=><option key={s}>{s}</option>)}</select>}

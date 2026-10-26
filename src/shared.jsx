@@ -155,8 +155,8 @@ export const Inp=({value,onChange,type="text",placeholder,min,max,readOnly,rows,
   if(rows) return <textarea value={value||""} onChange={onChange} placeholder={placeholder} rows={rows} style={{...base,resize:"vertical"}}/>;
   return <input type={type} value={value||""} onChange={onChange} placeholder={placeholder} min={min} max={max} readOnly={readOnly} style={base}/>;
 };
-export const Sel=({value,onChange,children})=>(
-  <select value={value} onChange={onChange} style={{width:"100%",border:`1.5px solid ${T.line}`,borderRadius:T.radius.md,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:T.inkStrong,background:T.surface,boxSizing:"border-box",cursor:"pointer"}}>
+export const Sel=({value,onChange,children,disabled})=>(
+  <select value={value} onChange={onChange} disabled={disabled} style={{width:"100%",border:`1.5px solid ${T.line}`,borderRadius:T.radius.md,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:T.inkStrong,background:disabled?T.line:T.surface,boxSizing:"border-box",cursor:disabled?"not-allowed":"pointer"}}>
     {children}
   </select>
 );
