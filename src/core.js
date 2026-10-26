@@ -1205,16 +1205,15 @@ export const emptyPR = () => ({
   notes:"", createdDate:"",
 });
 
-export const canApprovePO=(role,sessionName,requestedBy,approvers)=>{
-  // A Manager or a Procurement Manager is an approving authority for POs.
-  // A Procurement Manager still can't approve a PO they requested themselves.
+export const canApprovePO=(role,sessionName,requestedBy)=>{
+  // Only a Manager or a Procurement Manager may approve (issue) a PO or subcon
+  // work order, and a Procurement Manager never one they requested. Plain
+  // Procurement can't: from 21 Oct 2026 they were approving each other's POs.
+  // The database enforces the same rule (po_require_approver /
+  // swo_require_approver, migration 20261026_po_require_approver): keep in sync.
   if(role==="Manager") return true;
   if(role==="ProcurementManager") return !requestedBy||!sessionName||sessionName.trim().toLowerCase()!==requestedBy.trim().toLowerCase();
-  if(role!=="Procurement"||!sessionName) return false;
-  const list=String(approvers||"").split(",").map(s=>s.trim().toLowerCase()).filter(Boolean);
-  if(list.length) return list.includes(sessionName.trim().toLowerCase());
-  // P3: only allow approval when requestedBy is a different known person — empty requestedBy doesn't grant approval
-  return !!requestedBy&&sessionName.trim().toLowerCase()!==requestedBy.trim().toLowerCase();
+  return false;
 };
 
 export const woRetentionAmt=w=>Math.min(Number(w.retentionPct)||0,100)/100*(Number(w.contractAmount)||0);

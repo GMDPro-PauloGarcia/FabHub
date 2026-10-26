@@ -4409,8 +4409,8 @@ export default function App(){
       // The bot token lives only on the server (app_secrets, migration
       // 20261026103448); clear the copy older versions kept in this tab.
       sessionStorage.removeItem('fabhub:bottoken');
-      return{chatIds:{...{general:"",ops:"",design:"",procurement:"",warehouse:"",sales:"",management:"",financialcontrol:""},...(local.chatIds||{})},hideValueInBots:local.hideValueInBots||false,poApprovers:local.poApprovers!==undefined?local.poApprovers:"Marian Prile"};
-    }catch{return{chatIds:{general:"",ops:"",design:"",procurement:"",warehouse:"",sales:"",management:"",financialcontrol:""},hideValueInBots:false,poApprovers:""};}
+      return{chatIds:{...{general:"",ops:"",design:"",procurement:"",warehouse:"",sales:"",management:"",financialcontrol:""},...(local.chatIds||{})},hideValueInBots:local.hideValueInBots||false};
+    }catch{return{chatIds:{general:"",ops:"",design:"",procurement:"",warehouse:"",sales:"",management:"",financialcontrol:""},hideValueInBots:false};}
   });
   const[customClients,setCustomClients]= useState([]);
   const[customMembers,setCustomMembers]= useState(()=>{try{return JSON.parse(localStorage.getItem("gmdv5:customMembers")||"[]");}catch{return[];}});  // extra team members typed in (beyond the built-in roster)
@@ -7170,8 +7170,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const approvePOs=async(poNos)=>{
     const want=new Set(poNos||[]);
     const me=session?.name||"";
-    const poApprovers=botSettings?.poApprovers||"";
-    const pending=prs.filter(p=>want.has(p.poNumber)&&p.status==="Pending Approval"&&canApprovePO(role,me,p.requestedBy,poApprovers));
+    const pending=prs.filter(p=>want.has(p.poNumber)&&p.status==="Pending Approval"&&canApprovePO(role,me,p.requestedBy));
     // Down payment gate: a PO with any line on a deal that has no payment (and
     // no Manager waiver) is skipped whole. The database rejects those writes,
     // and one bad row would fail its entire 200-row batch below.
@@ -7190,7 +7189,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       for(let i=0;i<rows.length;i+=200){
         if(!(await sbUpsert("purchase_requests",rows.slice(i,i+200),"id").catch(()=>false))) ok=false;
       }
-      if(!ok) toastEmit("⚠️ Approvals saved on this device but NOT confirmed by the server — do not close this tab.","warning",9000);
+      // A refused save (e.g. the server's approver check) must not leave the
+      // POs shown as issued, raise supplier bills or announce an approval.
+      if(!ok){
+        upPrs(cur=>cur.map(p=>ids.has(p.id)?(prs.find(o=>o.id===p.id)||p):p));
+        toastEmit("Not approved: the server refused it. Only a Manager or the Procurement Manager can approve POs.","error",9000);
+        return false;
+      }
     }
     const approvedNos=[...new Set(lines.map(p=>p.poNumber))];
     approvedNos.forEach(no=>{
@@ -16072,13 +16077,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         })()}
       </Wrap>
     );
-    if(page==="procurement") return(<Wrap><ProcurementView2 onWaiveDp={waiveDp} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} poApprovers={botSettings?.poApprovers||""} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
-    if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} poApprovers={botSettings?.poApprovers||""} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 onWaiveDp={waiveDp} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="costing") return(<Wrap><CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role}/></Wrap>);
-    if(page==="materialreq") return(<Wrap><MaterialRequestView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} deleteMR={delMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
+    if(page==="materialreq") return(<Wrap><MaterialRequestView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} deleteMR={delMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView sendTelegramNotification={sendTelegramNotification} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
-    if(page==="requests") return(<Wrap><RequestsView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
+    if(page==="requests") return(<Wrap><RequestsView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="suppliers") return(<Wrap><SupplierMasterView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} session={session} role={role}/></Wrap>);
     if(page==="subcontractors") return(<Wrap><SubconMasterView subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role}/></Wrap>);
     if(page==="ceqs") return(<Wrap><CEQSView ceReqs={ceReqs} addCEReq={addCEReq} updateCEReq={updateCEReq} session={session} role={role} toastEmit={toastEmit} deals={deals}/></Wrap>);
@@ -16412,12 +16417,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       </Wrap>
     );
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
-    if(page==="procurement") return(<Wrap><ProcurementView2 onWaiveDp={waiveDp} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} poApprovers={botSettings?.poApprovers||""} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
-    if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} poApprovers={botSettings?.poApprovers||""} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 onWaiveDp={waiveDp} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap} addMR={addMR} wonDeals={wonDeals} session={session}/></Wrap>);
-    if(page==="materialreq") return(<Wrap><MaterialRequestView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} deleteMR={delMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
+    if(page==="materialreq") return(<Wrap><MaterialRequestView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} deleteMR={delMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView sendTelegramNotification={sendTelegramNotification} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
-    if(page==="requests") return(<Wrap><RequestsView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
+    if(page==="requests") return(<Wrap><RequestsView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="masters") return(<Wrap><MasterListsView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role} isMobile={isMobile}/></Wrap>);
     if(page==="expenses") return(
       <Wrap>
@@ -16909,12 +16914,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   if(role==="Operations"){
     if(page==="home") return <OpsView sendTelegramNotification={sendTelegramNotification} projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role} openPmModal={d=>setPmUpdateModal(d)} onCloseProject={(dealId,stage)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,stage}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{stage}).catch(()=>{});logActivity(dealId,"Stage Change",`Pipeline stage → ${stage}`,session?.name);["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,`📌 <b>Project Stage Updated</b>\nClient: <b>${projDeal?.client||"?"}</b>${projDeal?.ceNo?`\nCE: ${projDeal.ceNo}`:""}\nNew Stage: ${stage}\nBy: ${session?.name||"Ops"}`));}}/>;
-    if(page==="procurement") return(<Wrap><ProcurementView2 onWaiveDp={waiveDp} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} poApprovers={botSettings?.poApprovers||""} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
-    if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} poApprovers={botSettings?.poApprovers||""} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 onWaiveDp={waiveDp} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
-    if(page==="materialreq") return(<Wrap><MaterialRequestView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} deleteMR={delMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
+    if(page==="materialreq") return(<Wrap><MaterialRequestView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} deleteMR={delMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView sendTelegramNotification={sendTelegramNotification} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
-    if(page==="requests") return(<Wrap><RequestsView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
+    if(page==="requests") return(<Wrap><RequestsView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="calendar") return(<ConstructionCalendar wonDeals={wonDeals} completedDeals={completedDeals} deals={deals} pcards={pcards} jos={jos} prs={prs} billings={billings} drfs={drfs} ceReqs={ceReqs} setPage={setPage} setJumpDeal={setJumpDeal} today={today} Wrap={Wrap} checklists={checklist} session={session} addOpsEvent={data=>{const rec={...data,id:uid(),dept:"Operations",createdDate:today,createdBy:session?.name||role};upChecklist(cs=>[...cs,rec]);if(isSupabaseReady())sbInsert('checklists',toSbChecklist(rec)).catch(err=>{console.error("Calendar item sync:",err);toastEmit&&toastEmit("Calendar item saved locally only — tap 🔄 sync to push it to the server.","warning",8000);});const proj=wonDeals.find(d=>d.id===rec.projectId);const msg=`📅 <b>Calendar Item Added</b>\n<b>${rec.type||"Event"}</b>: ${rec.title||""}\nDate: ${rec.dueDate||"—"}${proj?`\nProject: ${proj.client}${proj.ceNo?" ("+proj.ceNo+")":""}`:""}\nBy: ${rec.createdBy||"—"}`;const _t=(rec.type||"").toLowerCase();if(["installation","backjob","turnover","site visit","repair"].some(t=>_t.includes(t))){sendTelegramNotification("ops",msg);sendTelegramNotification("sales",msg);}else if(_t.includes("drf")||_t.includes("design")){sendTelegramNotification("design",msg);}else if(_t.includes("billing")){sendTelegramNotification("finance",msg);}else{sendTelegramNotification("ops",msg);}}} updateOpsEvent={(id,ch)=>{upChecklist(cs=>cs.map(c=>c.id===id?{...c,...ch}:c));if(isSupabaseReady())sbUpdate('checklists',id,toSbChecklist({...checklist.find(c=>c.id===id),...ch})).catch(()=>{});}} deleteOpsEvent={delOpsEvent}/>);
   }
 
@@ -18561,7 +18566,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     <Wrap>
       <ProcurementView2 onWaiveDp={waiveDp}
         prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR}
-        wonDeals={wonDeals} deals={deals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}
+        wonDeals={wonDeals} deals={deals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}
         upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/>
     </Wrap>
   );
@@ -22186,7 +22191,7 @@ function CEQSView({ceReqs,addCEReq,updateCEReq,session,role,toastEmit,deals}){
 // ─── BOQ MODAL (opened from pipeline 📋 button) ──────────────────────────────
 
 // ─── SUBCON WORK ORDERS VIEW ───────────────────────────────────────────────────
-function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,deals,subcons,session,role,toastEmit,poApprovers,sendTelegramNotification,chartOfAccounts=[],onWaiveDp}){
+function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,deals,subcons,session,role,toastEmit,sendTelegramNotification,chartOfAccounts=[],onWaiveDp}){
   const today=new Date().toISOString().split("T")[0];
   const[mode,setMode]=useState("list");
   const[editingId,setEditingId]=useState(null);
@@ -22225,7 +22230,7 @@ function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,deal
   const ACCT_CLR={"For Accounting":"#d97706","Checked":"#2563eb","Payment Ordered":"#059669"};
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
   const canManage=role==="Manager"||isProcurementRole(role);
-  const woDirect=canApprovePO(role,session?.name||"",session?.name||"",poApprovers);
+  const woDirect=canApprovePO(role,session?.name||"",session?.name||"");
   // Down payment gate (same rule as POs): no work order is issued on a deal the
   // client hasn't paid on, unless a Manager waived the down payment.
   const WO_ISSUED=["Issued","In Progress","Completed"];
@@ -22484,7 +22489,7 @@ function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,deal
       const orig=swos.find(w=>w.id===editingId);
       const dpBlk=orig&&WO_ISSUED.includes(base.status)&&!WO_ISSUED.includes(orig.status)&&dpBlockedDeal(base.projectId);
       if(dpBlk){toastEmit&&toastEmit(dpMsg(dpBlk),"error",9000);return;}
-      if(base.status==="Issued"&&orig&&(orig.status==="Pending Approval"||orig.status==="Draft")&&!canApprovePO(role,session?.name||"",orig.requestedBy,poApprovers)){toastEmit&&toastEmit("Needs a Manager (or designated approver) to approve.","error");return;}
+      if(base.status==="Issued"&&orig&&(orig.status==="Pending Approval"||orig.status==="Draft")&&!canApprovePO(role,session?.name||"",orig.requestedBy)){toastEmit&&toastEmit("Needs a Manager or the Procurement Manager to approve.","error");return;}
       if(base.status==="Issued"&&orig&&orig.status!=="Issued") Object.assign(base,{approvedBy:session?.name||"",acctStatus:base.acctStatus||"For Accounting"});
       updateSWO(editingId,base);
       toastEmit&&toastEmit(`${form.woNumber||"Work order"} updated`,"success");
@@ -23017,13 +23022,13 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
                         <select value={w.status} onChange={e=>{const st=e.target.value;
                           const dpBlk=WO_ISSUED.includes(st)&&!WO_ISSUED.includes(w.status)&&dpBlockedDeal(w.projectId);
                           if(dpBlk){toastEmit&&toastEmit(dpMsg(dpBlk),"error",9000);return;}
-                          if(st==="Issued"&&(w.status==="Pending Approval"||w.status==="Draft")&&!canApprovePO(role,session?.name||"",w.requestedBy,poApprovers)){toastEmit&&toastEmit("Needs a Manager (or designated approver) to approve.","error");return;}
+                          if(st==="Issued"&&(w.status==="Pending Approval"||w.status==="Draft")&&!canApprovePO(role,session?.name||"",w.requestedBy)){toastEmit&&toastEmit("Needs a Manager or the Procurement Manager to approve.","error");return;}
                           updateSWO(w.id,{status:st,...(st==="Issued"&&w.status!=="Issued"?{approvedBy:session?.name||"",acctStatus:w.acctStatus||"For Accounting"}:{})});}} style={{border:"1.5px solid #e2e8f0",borderRadius:6,padding:"3px 6px",fontFamily:"inherit",fontSize:".7rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
                           {SWO_STATUSES.map(s=><option key={s}>{s}</option>)}
                         </select>
                         {w.acctStatus&&<span style={{fontSize:".62rem",background:(ACCT_CLR[w.acctStatus]||"#94a3b8")+"22",color:ACCT_CLR[w.acctStatus]||"#94a3b8",border:`1px solid ${(ACCT_CLR[w.acctStatus]||"#94a3b8")}44`,borderRadius:20,padding:"1px 8px",fontWeight:700}}>🧾 {w.acctStatus}{w.acctStatus==="Payment Ordered"&&w.paymentBank?` · ${(BANKS.find(b=>b.id===w.paymentBank)||{}).short||w.paymentBank}`:""}</span>}
                         <div style={{marginLeft:"auto",display:"flex",gap:6}}>
-                          {(w.status==="Pending Approval"||w.status==="Draft")&&canApprovePO(role,session?.name||"",w.requestedBy,poApprovers)&&(
+                          {(w.status==="Pending Approval"||w.status==="Draft")&&canApprovePO(role,session?.name||"",w.requestedBy)&&(
                             <button onClick={()=>{
                               const dpBlk=dpBlockedDeal(w.projectId);
                               if(dpBlk){toastEmit&&toastEmit(dpMsg(dpBlk),"error",9000);return;}
@@ -23034,7 +23039,7 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
                               toastEmit&&toastEmit(`${w.woNumber} approved — sent to Accounting`,"success");
                             }} style={{background:"#059669",border:"none",borderRadius:7,padding:"4px 12px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>✓ Approve & Issue</button>
                           )}
-                          {(w.status==="Pending Approval"||w.status==="Draft")&&!canApprovePO(role,session?.name||"",w.requestedBy,poApprovers)&&(
+                          {(w.status==="Pending Approval"||w.status==="Draft")&&!canApprovePO(role,session?.name||"",w.requestedBy)&&(
                             <span style={{fontSize:".68rem",color:"#b45309",fontWeight:600,alignSelf:"center"}}>⏳ Awaiting approval</span>
                           )}
                           <button aria-label={`Print work order ${w.woNumber||""}`.trim()} title="Print work order" onClick={()=>printWO(w)} style={{background:"#eff6ff",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨 Print</button>
@@ -23336,17 +23341,17 @@ function DpGate({deal,deals,role,onWaiveDp,what="POs"}){
 }
 
 // ─── PROCUREMENT VIEW 2 (Full PO → Multi-item → Delivery) ───────────────────
-function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allDeals,budgets,exps,swos,session,role,toastEmit,suppliers,addSupplier,poApprovers="",upPayables,payables,sendTelegramNotification,isSupabaseReady,sbUpsert,payableToSb,syncPoPayable,approvePOs,chartOfAccounts=[],onWaiveDp}){
+function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allDeals,budgets,exps,swos,session,role,toastEmit,suppliers,addSupplier,upPayables,payables,sendTelegramNotification,isSupabaseReady,sbUpsert,payableToSb,syncPoPayable,approvePOs,chartOfAccounts=[],onWaiveDp}){
   const activeDeals=React.useMemo(()=>(allDeals||wonDeals||[]).filter(d=>!isLostStage(d.stage)),[allDeals,wonDeals]);
   const today=new Date().toISOString().split("T")[0];
   // ── PO approval gate ────────────────────────────────────────────────────────
   // Segregation of duties: a PO may only be moved to "PO Issued" by a Manager or
-  // by a designated PO approver (botSettings.poApprovers, e.g. "Marian Prile").
+  // by the Procurement Manager (canApprovePO; the database checks it too).
   // The person who prepared/created the PO cannot self-approve it. Anyone without
   // authority who selects "PO Issued" is held at "Pending Approval" with no
   // approver stamp, so the printed PO never shows the preparer as the approver.
   // Same helper (canApprovePO) already gates Subcon Work Orders.
-  const canApproveFor=requestedBy=>canApprovePO(role,session?.name||"",requestedBy,poApprovers);
+  const canApproveFor=requestedBy=>canApprovePO(role,session?.name||"",requestedBy);
   // Down payment gate: the deal a PO line is for, when that deal still needs a
   // down payment (or a Manager's waiver) before anything can be issued on it.
   const ISSUED_ST=["PO Issued","Partially Delivered","Delivered"];
@@ -23360,7 +23365,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
     if(blocked){toastEmit&&toastEmit(dpMsg(blocked),"error",9000);return;}
     if(st==="PO Issued"&&pr.status!=="PO Issued"){
       if(!canApproveFor(pr.requestedBy)){
-        toastEmit&&toastEmit("Needs a Manager or the designated PO approver — held at Pending Approval.","error");
+        toastEmit&&toastEmit("Needs a Manager or the Procurement Manager — held at Pending Approval.","error");
         patch={status:"Pending Approval"};
       }else{
         patch={status:st,approvedBy:session?.name||"",approvedAt:today};
@@ -23560,14 +23565,14 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
     // preview; a manually-typed or edited number is kept as-is.
     let poNo=poNumber.trim();
     if(!editingPrIds&&poNumberAuto){const claimed=await nextPoNo();if(claimed)poNo=claimed;}
-    // PO issue gate on save: only a Manager or the designated PO approver may
+    // PO issue gate on save: only a Manager or the Procurement Manager may
     // create/save a PO already in "PO Issued". Everyone else (the preparer) is
     // held at "Pending Approval" so they can't self-approve their own PO.
     const canIssueNow=canApproveFor(session?.name||"");
     const dpBlocked=ISSUED_ST.includes(poStatus)&&poItems.map(i=>dpBlockedDeal(i.projectId)).find(Boolean);
     const effStatus=dpBlocked?"Pending Approval":(poStatus==="PO Issued"&&!canIssueNow)?"Pending Approval":poStatus;
     if(dpBlocked) toastEmit&&toastEmit(`Saved as Pending Approval. ${dpMsg(dpBlocked)}`,"error",9000);
-    else if(poStatus==="PO Issued"&&!canIssueNow) toastEmit&&toastEmit("Saved as Pending Approval — a Manager or the designated PO approver must issue it.","info");
+    else if(poStatus==="PO Issued"&&!canIssueNow) toastEmit&&toastEmit("Saved as Pending Approval — a Manager or the Procurement Manager must issue it.","info");
     const buildUpdate=(item)=>{
       // Resolve against all active deals, not just awarded ones — procurement
       // often buys swatches/materials for deals that haven't been won yet, and
@@ -23771,7 +23776,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
               // flip an existing PO to "PO Issued" via the edit form.
               else if(editForm.status==="PO Issued"&&orig&&orig.status!=="PO Issued"){
                 if(!canApproveFor(editForm.requestedBy||orig.requestedBy)){
-                  toastEmit&&toastEmit("Needs a Manager or the designated PO approver — held at Pending Approval.","error");
+                  toastEmit&&toastEmit("Needs a Manager or the Procurement Manager — held at Pending Approval.","error");
                   patch={...patch,status:"Pending Approval",approvedBy:"",approvedAt:""};
                 }else{
                   patch={...patch,approvedBy:session?.name||"",approvedAt:today};
@@ -24046,7 +24051,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
         <ErpStat tone="ok" label="Total Value" value={"Php "+totalValue.toLocaleString("en-PH",{minimumFractionDigits:0,maximumFractionDigits:0})} foot="materials value"/>
       </div>
       {/* Pending POs the viewer may approve, approved in bulk (hidden when none). */}
-      {approvePOs&&<POApprovals prs={prs} deals={allDeals||wonDeals} role={role} session={session} poApprovers={poApprovers} approvePOs={approvePOs}/>}
+      {approvePOs&&<POApprovals prs={prs} deals={allDeals||wonDeals} role={role} session={session} approvePOs={approvePOs}/>}
 
       <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
         <select value={filterProj} onChange={e=>setFilterProj(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
@@ -24585,7 +24590,7 @@ function CostingStudy({wonDeals,budgets,prs,exps,projs,role}){
 }
 
 // ─── MATERIAL REQUEST VIEW ────────────────────────────────────────────────────
-function MaterialRequestView({sendTelegramNotification,mreqs,addMR,updateMR,deleteMR,prs,addPR,wonDeals,session,role,toastEmit,suppliers,poApprovers}){
+function MaterialRequestView({sendTelegramNotification,mreqs,addMR,updateMR,deleteMR,prs,addPR,wonDeals,session,role,toastEmit,suppliers}){
   const[showForm,setShowForm]=useState(false);
   const[form,setForm]=useState({projectId:"",itemName:"",category:"Materials",qty:1,unit:"pcs",estUnitCost:"",urgency:"Normal",purpose:"",requestedBy:session?.name||"",notes:""});
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
@@ -29616,7 +29621,7 @@ function SubconMasterView({subcons,addSubcon,updateSubcon,deleteSubcon,session,r
   );
 }
 
-function RequestsView({sendTelegramNotification,mreqs,addMR,updateMR,prs,addPR,wonDeals,session,role,breqs,addBR,updateBR,deleteBR,toastEmit,suppliers,poApprovers}){
+function RequestsView({sendTelegramNotification,mreqs,addMR,updateMR,prs,addPR,wonDeals,session,role,breqs,addBR,updateBR,deleteBR,toastEmit,suppliers}){
   const[tab,setTab]=useState("Material Request");
   const tabStyle=(active)=>({padding:"10px 24px",border:"none",borderBottom:`3px solid ${active?"#f59e0b":"transparent"}`,background:"transparent",color:active?"#f59e0b":"#64748b",fontWeight:active?700:400,cursor:"pointer",fontFamily:"inherit",fontSize:".9rem",transition:"all .15s",whiteSpace:"nowrap"});
   return(
@@ -29626,7 +29631,7 @@ function RequestsView({sendTelegramNotification,mreqs,addMR,updateMR,prs,addPR,w
           <button key={t} onClick={()=>setTab(t)} style={tabStyle(tab===t)}>{t}</button>
         ))}
       </div>
-      {tab==="Material Request"&&<MaterialRequestView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={poApprovers}/>}
+      {tab==="Material Request"&&<MaterialRequestView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/>}
       {tab==="Budget Request"&&<BudgetRequestView sendTelegramNotification={sendTelegramNotification} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={deleteBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/>}
     </div>
   );
