@@ -1,7 +1,7 @@
 -- Sales Owner is locked once a deal has collections.
 --
 -- Commission goes to deals.sales_owner on what the client has collected.
--- Migration 20261026020000 stops a non-Manager recording payments on a deal
+-- Migration 20261026063330 stops a non-Manager recording payments on a deal
 -- they own. Without this lock that is easy to get around: reassign the deal to
 -- someone else, log the payment, then switch the Sales Owner back. The same
 -- trick works in reverse (log a payment on a colleague's deal, then make it

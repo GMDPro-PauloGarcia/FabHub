@@ -245,14 +245,14 @@ export const commissionEarned   = (deal, collectedCash)=>Math.round(collectedBas
 export const commissionProjected= (deal)=>Math.round((Number(deal&&deal.value)||0)*commissionRate(deal));
 // Nobody but a Manager records, edits or removes a collection on a deal they own
 // as Sales Owner: their commission is a share of those collections. Mirrors
-// migration 20261026020000_billing_payments_not_own_deal.sql (is_own_sales_deal_milestone);
+// migration 20261026063330_billing_payments_not_own_deal.sql (is_own_sales_deal_milestone);
 // keep them in sync.
 const normName=(v)=>String(v||"").trim().toLowerCase();
 export const ownsDealCommission=(deal, userName, role)=>
   canonRole(role)!=="Manager"&&!!normName(deal&&deal.salesOwner)&&normName(deal&&deal.salesOwner)===normName(userName);
 // Once a deal has collections only a Manager may change its Sales Owner, so the
 // commission can't be moved after the fact. Mirrors migration
-// 20261026030000_deals_sales_owner_lock.sql (which also counts bounced
+// 20261026063739_deals_sales_owner_lock.sql (which also counts bounced
 // payments; amountPaid here excludes them). Keep them in sync.
 export const salesOwnerLocked=(deal, role)=>
   !!deal&&canonRole(role)!=="Manager"&&(Number(deal.amountPaid)||0)!==0;
