@@ -15229,6 +15229,19 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 <button key={k} onClick={()=>setCashSub(k)} style={{padding:"8px 18px",border:"none",borderRadius:9,cursor:"pointer",fontFamily:"inherit",fontWeight:cashSub===k?800:600,fontSize:".82rem",background:cashSub===k?"#1f3864":"#eef2f8",color:cashSub===k?"#fff":"#475569"}}>{lbl}</button>
               ))}
             </div>
+            {/* Supplier bills moved to their own nav item; this line keeps the
+                reminder here, since marking a bill paid lowers Running Payables. */}
+            {cashSub==="daily"&&AP_HIDDEN&&(()=>{
+              const bal=p=>Math.round(((Number(String(p.amount??"").replace(/,/g,""))||0)-(Number(String(p.paidAmount??"").replace(/,/g,""))||0))*100)/100;
+              const open=payables.filter(p=>!["Paid","Cancelled"].includes(p.status)&&bal(p)>0);
+              if(!open.length) return null;
+              const total=open.reduce((s,p)=>s+bal(p),0);
+              return(
+                <button onClick={()=>setFinTab("bills")} style={{display:"block",width:"100%",textAlign:"left",marginBottom:14,padding:"10px 14px",border:"1px solid #e2e8f0",borderRadius:10,background:"#fff",cursor:"pointer",fontFamily:"inherit",fontSize:".8rem",color:"#475569"}}>
+                  📦 <b style={{color:"#0f172a"}}>{open.length} open supplier bill{open.length>1?"s":""}</b> · ₱{total.toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2})} — mark paid ones before closing the day <span style={{color:"#3b82f6",fontWeight:700}}>→ Supplier Bills</span>
+                </button>
+              );
+            })()}
             {cashSub==="daily"&&(
               <DailyCashPosition cashPositions={cashPositions} saveDayPos={saveDayPos} wonDeals={wonDeals} billings={billings} suppliers={suppliers} subcons={subcons} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps} updateMilestone={updateMilestone} upExps={upExps} toSbExpense={toSbExpense} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} vouchers={vouchers} payables={payables} loans={loans} inventory={inventory} userName={session?.name||""} role={role} username={session?.username||""} cashStale={cashStale}/>
             )}
