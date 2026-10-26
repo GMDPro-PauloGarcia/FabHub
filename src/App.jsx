@@ -17304,7 +17304,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                         stage:normalizeStage(rawStage||"01 · BizDev"),
                         value:parseVal(r["Contract Value (VAT EX)"]||r["Contract Value"]||r.value||r.Value||r.amount||0),
                         invoiced:parseVal(r.invoiced||r.Invoiced||0),
-                        amountPaid:parseVal(r.amountPaid||r["Amount Paid"]||r.paid||0),
+                        // Only a Manager may set amount paid (it drives commission on deals
+                        // without milestones); the DB zeroes it for anyone else
+                        // (migration 20261026040000). Keep them in sync.
+                        amountPaid:canonRole(role)==="Manager"?parseVal(r.amountPaid||r["Amount Paid"]||r.paid||0):0,
                         paymentStatus:String(r["Payment Status"]||r.paymentStatus||"Unpaid").trim()||"Unpaid",
                         receiptType:String(r.receiptType||r["Receipt Type"]||"OR").trim(),
                         salesOwner:String(r["Sales Owner"]||r.salesOwner||r.ae||r.AE||r.Owner||"").trim(),
