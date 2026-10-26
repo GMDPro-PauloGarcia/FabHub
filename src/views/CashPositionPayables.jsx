@@ -1,7 +1,7 @@
 import React,{useState,useMemo} from "react";
 import {today as TODAY,BANKS,Modal,Fld,Inp,Sel,uiConfirm,uiAlert} from "../shared";
 
-// ─── SUPPLIER BILLS TO PAY (Cash Position) ─────────────────────────────────
+// ─── SUPPLIER BILLS TO PAY (Finance → Supplier Bills) ──────────────────────
 // Stand-in for the hidden Accounts Payable while the new AP/AR system is built.
 // Every approved PO (and subcon Work Order) still raises a payable in the
 // background (syncPoPayable / syncWoPayable). This panel lists the open ones so

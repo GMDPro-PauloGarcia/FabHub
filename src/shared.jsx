@@ -134,7 +134,8 @@ export const cashDayLocked=(date,now=new Date())=>!!date&&now>=cashDayLockAt(dat
 // Cost Analysis and Warehousing are hidden while the team's new AP/AR system
 // is designed. Only navigation is affected: the code, the data and the
 // background PO → payable sync are untouched. To bring a module back, remove
-// its ids here. Cash Position (finance page, "cash" tab), Billing, Purchase
+// its ids here. Cash Position (finance page, "cash" tab), Supplier Bills
+// ("bills" tab, open PO / WO payables while the AP is hidden), Billing, Purchase
 // Orders and BOQ (now a Sales Pipeline tab) stay.
 export const HIDDEN_NAV_IDS = new Set(["finance","payables","ceqs","costanalysis","inventory","deliveries","stockmove"]);
 export const HIDDEN_PAGES = new Set(["acctdash","ceqs","costanalysis","inventory","deliveries","stockmove"]);
