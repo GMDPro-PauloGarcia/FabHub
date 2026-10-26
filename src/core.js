@@ -250,6 +250,12 @@ export const commissionProjected= (deal)=>Math.round((Number(deal&&deal.value)||
 const normName=(v)=>String(v||"").trim().toLowerCase();
 export const ownsDealCommission=(deal, userName, role)=>
   canonRole(role)!=="Manager"&&!!normName(deal&&deal.salesOwner)&&normName(deal&&deal.salesOwner)===normName(userName);
+// Once a deal has collections only a Manager may change its Sales Owner, so the
+// commission can't be moved after the fact. Mirrors migration
+// 20261026030000_deals_sales_owner_lock.sql (which also counts bounced
+// payments; amountPaid here excludes them). Keep them in sync.
+export const salesOwnerLocked=(deal, role)=>
+  !!deal&&canonRole(role)!=="Manager"&&(Number(deal.amountPaid)||0)!==0;
 
 // ── Commission payouts (what's actually been disbursed to the rep) ───────────
 // Earned (above) is what a rep has accrued on cash collected. A PAYOUT is money
