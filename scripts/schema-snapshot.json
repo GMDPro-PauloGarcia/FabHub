@@ -360,6 +360,7 @@
     "ce_type",
     "client",
     "client_id",
+    "client_po_no",
     "client_satisfied",
     "comms_group",
     "contact",
