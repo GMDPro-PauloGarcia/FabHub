@@ -11,7 +11,7 @@ import {milestoneBalance,isBillingOverdue,isBillingUnsentLate,dealDpClear,WON_ST
 const attnPeso=v=>"₱"+Math.round(Number(v)||0).toLocaleString("en-PH");
 const attnDays=(a,b)=>Math.floor((new Date(b+"T00:00:00")-new Date(a+"T00:00:00"))/864e5);
 
-export default function AttentionPanel({billings=[],deals=[],prs=[],payables=[],today,go,pages=["billing","procurement","cash"]}){
+export default function AttentionPanel({billings=[],deals=[],prs=[],payables=[],today,go,pages=["billing","procurement","bills"]}){
   const[showClear,setShowClear]=useState(false);
   const items=useMemo(()=>{
     const dealOf=id=>deals.find(d=>d.id===id);
@@ -33,7 +33,7 @@ export default function AttentionPanel({billings=[],deals=[],prs=[],payables=[],
     const dpHeld=new Set(pendLines.filter(p=>{const d=dealOf(p.projectId||p.dealId);return d&&!dealDpClear(d,deals);}).map(p=>p.poNumber));
     const oldest=pendLines.reduce((m,p)=>{const c=String(p.createdDate||p.createdAt||"").slice(0,10);return c&&(!m||c<m)?c:m;},"");
 
-    // Supplier bills (the payables Cash Position's panel works on)
+    // Supplier bills (Finance → Supplier Bills)
     const openAP=payables.filter(p=>!["Paid","Cancelled"].includes(p.status)&&(Number(p.amount)||0)-(Number(p.paidAmount)||0)>0.5);
     const apBal=list=>list.reduce((s,p)=>s+(Number(p.amount)||0)-(Number(p.paidAmount)||0),0);
     const approved=p=>((p.approvalStatus)||"Approved")==="Approved";
@@ -49,9 +49,9 @@ export default function AttentionPanel({billings=[],deals=[],prs=[],payables=[],
       {k:"ar-nodue",group:"Collect",n:noDue.length,amt:bal(noDue),label:"Unpaid invoices with no due date",hint:"The cash forecast can't schedule them",btn:"Set dates",to:"billing",tone:"amber"},
       {k:"ar-unbilled",group:"Collect",n:unbilled.length,amt:unbilled.reduce((s,d)=>s+(Number(d.value)||0),0),amtLabel:"contract value",label:"Awarded projects with no billing schedule",hint:"Nothing can be invoiced until milestones are set up",btn:"Set up billing",to:"billing",tone:"amber"},
       {k:"po-pending",group:"Buy",n:pendPOs.length,label:"POs waiting for approval",hint:pendPOs.length?`Oldest from ${oldest||"—"}${dpHeld.size?` · ${dpHeld.size} held for no down payment`:""}`:"",btn:"Approve",to:"procurement",tone:pendPOs.length&&oldest&&attnDays(oldest,today)>2?"red":"amber"},
-      {k:"ap-due",group:"Pay",n:apDue.length,amt:apBal(apDue),label:"Supplier bills due within 7 days",hint:apLate.length?`${apLate.length} already overdue (${attnPeso(apBal(apLate))})`:"",btn:"Pay",to:"cash",tone:apLate.length?"red":"amber"},
-      {k:"ap-pending",group:"Pay",n:apPending.length,amt:apBal(apPending),label:"Supplier bills waiting for approval",hint:"Can't be paid until a Manager or Finance approves",btn:"Approve",to:"cash",tone:"amber"},
-      {k:"ap-nodue",group:"Pay",n:apNoDue.length,amt:apBal(apNoDue),label:"Supplier bills with no due date",hint:"Running Payables can't tell what's due when",btn:"Review",to:"cash",tone:"amber"},
+      {k:"ap-due",group:"Pay",n:apDue.length,amt:apBal(apDue),label:"Supplier bills due within 7 days",hint:apLate.length?`${apLate.length} already overdue (${attnPeso(apBal(apLate))})`:"",btn:"Pay",to:"bills",tone:apLate.length?"red":"amber"},
+      {k:"ap-pending",group:"Pay",n:apPending.length,amt:apBal(apPending),label:"Supplier bills waiting for approval",hint:"Can't be paid until a Manager or Finance approves",btn:"Approve",to:"bills",tone:"amber"},
+      {k:"ap-nodue",group:"Pay",n:apNoDue.length,amt:apBal(apNoDue),label:"Supplier bills with no due date",hint:"Running Payables can't tell what's due when",btn:"Review",to:"bills",tone:"amber"},
     ];
   },[billings,deals,prs,payables,today]);
 

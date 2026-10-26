@@ -10580,8 +10580,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       />
       {/* What needs a person today, each with a button to fix it */}
       <AttentionPanel billings={billings} deals={deals} prs={prs} payables={payables} today={today}
-        pages={role==="FinanceAssistant"?["billing","cash"]:["billing","procurement","cash"]}
-        go={to=>{if(to==="cash"){setFinTab("cash");setPage("finance");}else setPage(to);}}/>
+        pages={role==="FinanceAssistant"?["billing","bills"]:["billing","procurement","bills"]}
+        go={to=>{if(to==="bills"){setFinTab("bills");setPage("finance");}else setPage(to);}}/>
 
       {/* KPI row */}
       {(()=>{
@@ -11615,8 +11615,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   if(ownerTitle === "COO") return(
     <Wrap>
       <AttentionPanel billings={billings} deals={deals} prs={prs} payables={payables} today={today}
-        pages={role==="FinanceAssistant"?["billing","cash"]:["billing","procurement","cash"]}
-        go={to=>{if(to==="cash"){setFinTab("cash");setPage("finance");}else setPage(to);}}/>
+        pages={role==="FinanceAssistant"?["billing","bills"]:["billing","procurement","bills"]}
+        go={to=>{if(to==="bills"){setFinTab("bills");setPage("finance");}else setPage(to);}}/>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
         <div>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, {session?.name?.split(" ")[0]||"there"} 👋</div>
@@ -12036,8 +12036,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   return(
     <Wrap>
       <AttentionPanel billings={billings} deals={deals} prs={prs} payables={payables} today={today}
-        pages={role==="FinanceAssistant"?["billing","cash"]:["billing","procurement","cash"]}
-        go={to=>{if(to==="cash"){setFinTab("cash");setPage("finance");}else setPage(to);}}/>
+        pages={role==="FinanceAssistant"?["billing","bills"]:["billing","procurement","bills"]}
+        go={to=>{if(to==="bills"){setFinTab("bills");setPage("finance");}else setPage(to);}}/>
       {/* ── COMMAND BAR ─────────────────────────────────────────────── */}
       <div style={{background:"#0f172a",borderRadius:14,padding:ceoMob?"11px 16px":"16px 20px",marginBottom:ceoMob?10:14,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
         <div>
