@@ -51,6 +51,7 @@ const CashPositionPayables=_lazyView(()=>import('./views/CashPositionPayables'))
 const CERequestTracker=_lazyView(()=>import('./views/CERequestTracker'));
 const POApprovals=_lazyView(()=>import('./views/POApprovals'));
 const ARDrill=_lazyView(()=>import('./views/ARDrill'));
+const AttentionPanel=_lazyView(()=>import('./views/AttentionPanel'));
 const WeeklyCashFlow=_lazyView(()=>import('./views/WeeklyCashFlow'));
 const FinanceWeeklyDues=_lazyView(()=>import('./views/FinanceWeeklyDues'));
 const InventoryView=_lazyView(()=>import('./views/Warehouse').then(m=>({default:m.InventoryView})));
@@ -10577,6 +10578,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           {label:"Cash Position", icon:"💰", bg:"#059669", action:()=>setPage("finance")},
         ]}
       />
+      {/* What needs a person today, each with a button to fix it */}
+      <AttentionPanel billings={billings} deals={deals} prs={prs} payables={payables} today={today}
+        pages={role==="FinanceAssistant"?["billing","cash"]:["billing","procurement","cash"]}
+        go={to=>{if(to==="cash"){setFinTab("cash");setPage("finance");}else setPage(to);}}/>
 
       {/* KPI row */}
       {(()=>{
@@ -11609,6 +11614,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ─── MAR MUNGCAL — COO ──────────────────────────────────────────────────────
   if(ownerTitle === "COO") return(
     <Wrap>
+      <AttentionPanel billings={billings} deals={deals} prs={prs} payables={payables} today={today}
+        pages={role==="FinanceAssistant"?["billing","cash"]:["billing","procurement","cash"]}
+        go={to=>{if(to==="cash"){setFinTab("cash");setPage("finance");}else setPage(to);}}/>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
         <div>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, {session?.name?.split(" ")[0]||"there"} 👋</div>
@@ -12027,6 +12035,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const ceoMob=window.innerWidth<768;
   return(
     <Wrap>
+      <AttentionPanel billings={billings} deals={deals} prs={prs} payables={payables} today={today}
+        pages={role==="FinanceAssistant"?["billing","cash"]:["billing","procurement","cash"]}
+        go={to=>{if(to==="cash"){setFinTab("cash");setPage("finance");}else setPage(to);}}/>
       {/* ── COMMAND BAR ─────────────────────────────────────────────── */}
       <div style={{background:"#0f172a",borderRadius:14,padding:ceoMob?"11px 16px":"16px 20px",marginBottom:ceoMob?10:14,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
         <div>
