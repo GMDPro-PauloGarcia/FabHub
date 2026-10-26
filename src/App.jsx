@@ -26052,7 +26052,9 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       const vatable=active.reduce((s,m)=>s+calcTax(m.amount,m.receiptType??rt,m.withholding??wh).base,0);
       const vat=active.reduce((s,m)=>s+calcTax(m.amount,m.receiptType??rt,m.withholding??wh).vat,0);
       const gross=vatable+vat;
-      const payments=ms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
+      // Bounced payments never reached GMD: leave them out, like the invoice
+      // and every other paid total do. Counting them understated the balance.
+      const payments=ms.reduce((s,m)=>s+(m.payments||[]).filter(p=>!p.bounced).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
       const ewt=active.reduce((s,m)=>s+calcTax(m.amount,m.receiptType??rt,m.withholding??wh).ewt,0);
       const due=Math.max(0,gross-payments-ewt);
       const balance=Math.max(0,gross-payments);
