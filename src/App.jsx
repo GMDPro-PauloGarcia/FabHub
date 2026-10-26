@@ -4415,7 +4415,7 @@ export default function App(){
   const[customMembers,setCustomMembers]= useState(()=>{try{return JSON.parse(localStorage.getItem("gmdv5:customMembers")||"[]");}catch{return[];}});  // extra team members typed in (beyond the built-in roster)
   const[clientProfiles,setClientProfiles]= useState({});  // keyed by client name
   // Saves ONE client's profile through set_client_profile (migration
-  // 20261026020000), which merges it server-side. The old whole-object upsert
+  // 20261026053903), which merges it server-side. The old whole-object upsert
   // was rejected for Sales under RLS (error swallowed, edit lost on reload) and
   // let a stale copy wipe other clients' edits. Same roles as the RPC.
   const saveClientProfileRemote=async(name,profile)=>{
@@ -20921,7 +20921,7 @@ function SalesCalendarView({deals, session, role, pcards, jos, billings}){
 }
 
 // Roles that may edit a client profile — same as set_client_profile
-// (migration 20261026020000_set_client_profile_rpc.sql): keep them in sync.
+// (migration 20261026053903_set_client_profile_rpc.sql): keep them in sync.
 const CLIENT_PROFILE_EDITORS=["Manager","Finance","FinanceAssistant","Accounting","Sales","SalesOpsAdmin"];
 // ─── CLIENT AUTOCOMPLETE ──────────────────────────────────────────────────────
 function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customClients, clientProfiles, saveClientProfile, addNewClient, isMobile}){
@@ -25669,7 +25669,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const fme=(k,v)=>setEditMsForm(p=>({...p,[k]:v}));
   const canEdit=role==="Manager"||role==="Finance"||role==="FinanceAssistant"||role==="SalesOpsAdmin";
   // Payments on a deal the user owns as Sales Owner are recorded by someone else
-  // (their commission rides on them). Mirrors migration 20261026020000.
+  // (their commission rides on them). Mirrors migration 20261026063330.
   const canPayDeal=d=>canEdit&&!ownsDealCommission(d,session?.name,role);
   // Client PO # — same roles as set_deal_client_po (migration
   // 20261026010000_deals_client_po_no.sql): keep them in sync.
