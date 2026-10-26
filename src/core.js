@@ -163,7 +163,7 @@ export const DESIGN_STATUSES = ["Briefing","On-going","First Pass","Revision","P
 
 export const PRODUCT_TYPES   = ["Custom Shelving","Display Fixtures","Signage","Countertops","Retail Cabinetry","Kiosks","Wall Panels","Millwork","Other"];
 
-export const SALES_TEAM        = ["Paulo Garcia","Paolo Gomez","April Gail De Ello","Jena De Asis","Don Wyn Celmar","Aerwin Del Rosario (CE)","Marian Prile (CE)"];
+export const SALES_TEAM        = ["Paulo Garcia","Paolo Gomez","April Gail De Ello","Jena De Asis","Don Wyn Celmar","Jessica Castro","Aerwin Del Rosario (CE)","Marian Prile (CE)"];
 
 export const COST_CONTROL_TEAM = ["Aerwin Del Rosario (Finance Manager)","Marian Prile (Procurement Manager)"];
 
@@ -243,6 +243,13 @@ export const collectedBase = (deal, collectedCash)=>{
 // Earned so far = rate × VAT-ex collected; projected = rate × VAT-ex contract value.
 export const commissionEarned   = (deal, collectedCash)=>Math.round(collectedBase(deal,collectedCash)*commissionRate(deal));
 export const commissionProjected= (deal)=>Math.round((Number(deal&&deal.value)||0)*commissionRate(deal));
+// Nobody but a Manager records, edits or removes a collection on a deal they own
+// as Sales Owner: their commission is a share of those collections. Mirrors
+// migration 20261026020000_billing_payments_not_own_deal.sql (is_own_sales_deal_milestone);
+// keep them in sync.
+const normName=(v)=>String(v||"").trim().toLowerCase();
+export const ownsDealCommission=(deal, userName, role)=>
+  canonRole(role)!=="Manager"&&!!normName(deal&&deal.salesOwner)&&normName(deal&&deal.salesOwner)===normName(userName);
 
 // ── Commission payouts (what's actually been disbursed to the rep) ───────────
 // Earned (above) is what a rep has accrued on cash collected. A PAYOUT is money
