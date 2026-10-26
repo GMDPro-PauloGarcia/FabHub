@@ -4406,10 +4406,11 @@ export default function App(){
   const[botSettings, setBotSettings]= useState(()=>{
     try{
       const local=JSON.parse(localStorage.getItem(KEYS.botsettings)||"{}");
-      // sessionStorage survives refresh within the same tab but clears on browser close — safe for token
-      const token=sessionStorage.getItem('fabhub:bottoken')||"";
-      return{token,chatIds:{...{general:"",ops:"",design:"",procurement:"",warehouse:"",sales:"",management:"",financialcontrol:""},...(local.chatIds||{})},hideValueInBots:local.hideValueInBots||false,poApprovers:local.poApprovers!==undefined?local.poApprovers:"Marian Prile"};
-    }catch{return{token:"",chatIds:{general:"",ops:"",design:"",procurement:"",warehouse:"",sales:"",management:"",financialcontrol:""},hideValueInBots:false,poApprovers:""};}
+      // The bot token lives only on the server (app_secrets, migration
+      // 20261026103448); clear the copy older versions kept in this tab.
+      sessionStorage.removeItem('fabhub:bottoken');
+      return{chatIds:{...{general:"",ops:"",design:"",procurement:"",warehouse:"",sales:"",management:"",financialcontrol:""},...(local.chatIds||{})},hideValueInBots:local.hideValueInBots||false,poApprovers:local.poApprovers!==undefined?local.poApprovers:"Marian Prile"};
+    }catch{return{chatIds:{general:"",ops:"",design:"",procurement:"",warehouse:"",sales:"",management:"",financialcontrol:""},hideValueInBots:false,poApprovers:""};}
   });
   const[customClients,setCustomClients]= useState([]);
   const[customMembers,setCustomMembers]= useState(()=>{try{return JSON.parse(localStorage.getItem("gmdv5:customMembers")||"[]");}catch{return[];}});  // extra team members typed in (beyond the built-in roster)
@@ -4518,7 +4519,7 @@ export default function App(){
         if(idb[KEYS.suppliers])   setSuppliers(idb[KEYS.suppliers]);
         if(idb[KEYS.subcons])     setSubcons(idb[KEYS.subcons]);
         if(idb[KEYS.swos])        setSwos(idb[KEYS.swos]);
-        if(idb[KEYS.botsettings]){const bs=idb[KEYS.botsettings];setBotSettings(prev=>({...bs,token:bs.token||prev.token||sessionStorage.getItem('fabhub:bottoken')||""}));}
+        if(idb[KEYS.botsettings]){const{token:_t,...bs}=idb[KEYS.botsettings];setBotSettings(bs);if(_t!==undefined) idbSetMany([[KEYS.botsettings,bs]]).catch(()=>{});}
         if(idb[KEYS.customclients]){const cc=idb[KEYS.customclients];setCustomClients(cc);cc.forEach(c=>{if(!GMD_CLIENTS.find(x=>x.name.toLowerCase()===c.name.toLowerCase())) GMD_CLIENTS.push(c);});}
         if(idb["gmdv5:clientprofiles"]) setClientProfiles(idb["gmdv5:clientprofiles"]);
         if(idb["gmdv5:standaloneBoqs"]) setStandaloneBoqs(idb["gmdv5:standaloneBoqs"]);
@@ -4657,7 +4658,7 @@ export default function App(){
             const _ceReqs=data.ceReqs?.length?data.ceReqs.map(ceReqFromSb):null;
             if(_ceReqs){setCeReqs(prev=>mlo(_ceReqs,prev));idbE.push([KEYS.ceReqs,_ceReqs]);}
             if(data.blockers?.length){const bl=data.blockers.map(b=>({id:b.id,dealId:b.deal_id,title:b.title,dept:b.dept||"Operations",detail:b.detail||"",flaggedBy:b.flagged_by||"",status:b.status||"Open",createdAt:b.created_at||"",resolvedBy:b.resolved_by||null,resolvedAt:b.resolved_at||null}));setBlockers(prev=>mlo(bl,prev));idbE.push([KEYS.blockers,bl]);localStorage.setItem(KEYS.blockers,JSON.stringify(bl));}
-            if(data.settings?.botsettings){const bs=data.settings.botsettings;setBotSettings(prev=>({...bs,token:bs.token||prev.token||sessionStorage.getItem('fabhub:bottoken')||""}));if(bs.token){sessionStorage.setItem('fabhub:bottoken',bs.token);idbE.push([KEYS.botsettings,bs]);}}
+            if(data.settings?.botsettings){const{token:_t,...bs}=data.settings.botsettings;setBotSettings(bs);idbE.push([KEYS.botsettings,bs]);}
             const _drfs=data.drfs?.length?data.drfs.map(drfFromSb):null;
             if(_drfs){setDrfs(prev=>mlo(_drfs,prev));idbE.push([KEYS.drfs,_drfs]);}
             const _inv=data.inventory?.length?data.inventory.map(invFromSb):null;
@@ -7333,20 +7334,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   // ── BOT SETTINGS CRUD ────────────────────────────────────────────────────
   const saveBotSettings=async(data)=>{
-    const n={...data};
-    // Guard: if the form's token field is blank but we already have a token, don't overwrite it
-    if(!n.token && botSettings.token) n.token=botSettings.token;
-    if(!n.token) n.token=sessionStorage.getItem('fabhub:bottoken')||"";
+    // The token never touches this device's storage or app_settings: a new one
+    // goes straight to app_secrets through set_telegram_token (Manager only).
+    const{token,...n}=data;
+    if(token&&isSupabaseReady()){
+      const{error}=await supabase.rpc('set_telegram_token',{p_token:token.trim()});
+      if(error){toastEmit("Bot token not saved: "+(error.message||error),"error");return false;}
+    }
     setBotSettings(n);
-    // Cache token in sessionStorage — survives refresh within same tab, clears on browser close
-    if(n.token) sessionStorage.setItem('fabhub:bottoken',n.token);
-    // Durably cache the full settings (incl. token) in IndexedDB so the token survives a browser
-    // restart even when the Supabase sync below fails (offline / anon auth off / RLS). The load
-    // path already restores the token from this IndexedDB cache.
     idbSetMany([[KEYS.botsettings,n]]).catch(()=>{});
-    // Store chatIds in localStorage (never the token — intentional security boundary)
-    const localSafe={chatIds:n.chatIds,hideValueInBots:n.hideValueInBots};
-    localStorage.setItem(KEYS.botsettings,JSON.stringify(localSafe));
+    localStorage.setItem(KEYS.botsettings,JSON.stringify({chatIds:n.chatIds,hideValueInBots:n.hideValueInBots}));
     if(isSupabaseReady()){
       try{
         const{data:existing}=await supabase.from('app_settings').select('key').eq('key','botsettings').maybeSingle();
@@ -7359,37 +7356,22 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         }
       }catch(e){
         toastEmit("Bot settings saved locally but failed to sync to server: "+(e?.message||e),"error");
+        return false;
       }
     }
+    return true;
   };
 
   // ── TELEGRAM NOTIFICATION UTILITY ────────────────────────────────────────
+  // Sent by the server (send_telegram RPC), which holds the bot token and
+  // picks the department's chat (falling back to management).
   const sendTelegramNotification=useCallback(async(dept,message)=>{
-    let token=botSettings.token;
-    let ids=botSettings.chatIds;
-    // If botSettings not yet hydrated (race with Supabase load), fetch live
-    if(!token && isSupabaseReady()){
-      try{
-        const {data:row}=await supabase.from('app_settings').select('value').eq('key','botsettings').single();
-        if(row?.value?.token){
-          token=row.value.token;
-          ids=row.value.chatIds;
-          setBotSettings(row.value);
-          sessionStorage.setItem('fabhub:bottoken',token);
-          localStorage.setItem(KEYS.botsettings,JSON.stringify({chatIds:row.value.chatIds,hideValueInBots:row.value.hideValueInBots}));
-        }
-      }catch{}
-    }
-    if(!token) return;
-    const chatId=ids?.[dept]||ids?.management;
-    if(!chatId) return;
+    if(!isSupabaseReady()) return;
     try{
-      await fetch(`https://api.telegram.org/bot${token}/sendMessage`,{
-        method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({chat_id:chatId,text:message,parse_mode:"HTML"})
-      });
+      const{error}=await supabase.rpc('send_telegram',{p_dept:dept,p_message:String(message||"").slice(0,4096)});
+      if(error) console.warn("Telegram notify failed:",error.message||error);
     }catch(e){console.warn("Telegram notify failed:",e);}
-  },[botSettings]);
+  },[]);
 
   const sendToAllChannels=(message)=>{
     ["general","ops","design","procurement","sales","management"].forEach(dept=>sendTelegramNotification(dept,message));
@@ -7832,7 +7814,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   // Daily bot alerts: overdue payables + low inventory
   useEffect(()=>{
-    if(!isSupabaseReady()||!botSettings?.token) return;
+    if(!isSupabaseReady()||!botSettings?.chatIds?.management) return;
     const overdueP=payables.filter(p=>p.status==="Unpaid"&&p.dueDate&&p.dueDate<today);
     if(overdueP.length>0){
       const total=overdueP.reduce((s,p)=>s+Number(p.amount||0),0);
@@ -12442,7 +12424,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   // ── BOT SETTINGS (Manager / Finance) ─────────────────────────────────────
   if(page==="botsettings"&&(role==="Manager"||role==="Finance")) return(
-    <BotSettingsView botSettings={botSettings} saveBotSettings={saveBotSettings} sendTelegramNotification={sendTelegramNotification} Wrap={Wrap}/>
+    <BotSettingsView botSettings={botSettings} saveBotSettings={saveBotSettings} role={role} Wrap={Wrap}/>
   );
 
   // ── REPORTS CENTER (Manager / Sales / Finance) ───────────────────────────
@@ -28780,16 +28762,23 @@ function ProjectCards({syncProjectCard,pcards,wonDeals,completedDeals,deals,togg
 
 
 // ─── BOT SETTINGS VIEW ────────────────────────────────────────────────────────
-function BotSettingsView({botSettings,saveBotSettings,sendTelegramNotification,Wrap}){
-  const[form,setForm]=React.useState({token:botSettings.token||"",chatIds:{...{general:"",ops:"",design:"",procurement:"",sales:"",management:""},...(botSettings.chatIds||{})},hideValueInBots:botSettings.hideValueInBots||false});
+function BotSettingsView({botSettings,saveBotSettings,role,Wrap}){
+  // The token is write-only here: it is kept in app_secrets on the server and
+  // never sent back to any browser. Only a Manager can replace it.
+  const[form,setForm]=React.useState({token:"",chatIds:{...{general:"",ops:"",design:"",procurement:"",sales:"",management:""},...(botSettings.chatIds||{})},hideValueInBots:botSettings.hideValueInBots||false});
   const[testing,setTesting]=React.useState(null);
   const[testResult,setTestResult]=React.useState({});
   const[saved,setSaved]=React.useState(false);
 
-  // Supabase loads the token asynchronously after mount — hydrate the form when it arrives
-  React.useEffect(()=>{
-    if(botSettings.token && !form.token) setForm(f=>({...f,token:botSettings.token}));
-  },[botSettings.token]);
+  // Chat IDs and privacy save only for a Manager (migration 20261026123914):
+  // whoever sets the chat IDs decides where management alerts go.
+  const canEdit=role==="Manager";
+  const[tokenStatus,setTokenStatus]=React.useState(null);
+  const loadTokenStatus=React.useCallback(()=>{
+    if(!isSupabaseReady()) return;
+    supabase.rpc('telegram_token_status').then(({data})=>setTokenStatus(data||null),()=>{});
+  },[]);
+  React.useEffect(()=>{loadTokenStatus();},[loadTokenStatus]);
 
   const CHANNELS=[
     {id:"general",         label:"🌐 General",          hint:"All-team announcements"},
@@ -28802,22 +28791,30 @@ function BotSettingsView({botSettings,saveBotSettings,sendTelegramNotification,W
     {id:"financialcontrol",label:"💰 Finance Control",   hint:"Billing due, collections"},
   ];
 
+  // Sends through the server with the saved token to the chat ID typed here,
+  // then reads Telegram's reply (send_telegram / telegram_send_result).
   const testChannel=async(chId)=>{
     setTesting(chId);
-    const token=form.token;const chatId=form.chatIds?.[chId];
-    if(!token||!chatId){setTestResult(r=>({...r,[chId]:{ok:false,msg:"Token or Chat ID missing"}}));setTesting(null);return;}
-    try{
-      const res=await fetch(`https://api.telegram.org/bot${token}/sendMessage`,{
-        method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({chat_id:chatId,text:`🤖 <b>FabHub Test</b>\nChannel: <b>${chId}</b>\nBot is live! ✅`,parse_mode:"HTML"})
-      });
-      const json=await res.json();
-      setTestResult(r=>({...r,[chId]:json.ok?{ok:true,msg:"✅ Message sent!"}:{ok:false,msg:"❌ "+json.description}}));
-    }catch(e){setTestResult(r=>({...r,[chId]:{ok:false,msg:"❌ Network error"}}));}
-    setTesting(null);
+    const chatId=String(form.chatIds?.[chId]||"").trim();
+    const done=r=>{setTestResult(x=>({...x,[chId]:r}));setTesting(null);};
+    if(!tokenStatus?.set) return done({ok:false,msg:"No bot token saved yet"});
+    if(!chatId) return done({ok:false,msg:"Chat ID missing"});
+    const{data:id,error}=await supabase.rpc('send_telegram',{p_dept:chId,p_message:`🤖 <b>FabHub Test</b>\nChannel: <b>${chId}</b>\nBot is live! ✅`,p_chat_id:chatId});
+    if(error) return done({ok:false,msg:"❌ "+(error.message||"Could not send")});
+    for(let i=0;i<8;i++){
+      await new Promise(r=>setTimeout(r,1000));
+      const{data:res}=await supabase.rpc('telegram_send_result',{p_id:id});
+      if(res?.done) return done(res.ok?{ok:true,msg:"✅ Message sent!"}:{ok:false,msg:"❌ "+(res.description||"Telegram refused it")});
+    }
+    done({ok:false,msg:"⏳ Sent, but no reply from Telegram yet: check the group"});
   };
 
-  const doSave=()=>{saveBotSettings(form);setSaved(true);setTimeout(()=>setSaved(false),2500);};
+  const doSave=async()=>{
+    const ok=await saveBotSettings(form);
+    if(!ok) return;
+    if(form.token){setForm(f=>({...f,token:""}));loadTokenStatus();}
+    setSaved(true);setTimeout(()=>setSaved(false),2500);
+  };
 
   return(
     <Wrap>
@@ -28837,9 +28834,14 @@ function BotSettingsView({botSettings,saveBotSettings,sendTelegramNotification,W
 
         <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"18px",marginBottom:16}}>
           <div style={{fontWeight:700,color:"#0f172a",marginBottom:8}}>🔑 Bot Token</div>
-          <input type="password" value={form.token||""} onChange={e=>setForm(f=>({...f,token:e.target.value}))} placeholder="7123456789:AAH9g3kXXX..."
-            style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"9px 12px",fontFamily:"inherit",fontSize:".85rem",color:"#0f172a",boxSizing:"border-box"}}/>
-          <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:4}}>Keep this private. Never share it.</div>
+          <div style={{fontSize:".78rem",color:tokenStatus?.set?"#059669":"#b45309",fontWeight:600,marginBottom:8}}>
+            {tokenStatus==null?"Checking…":tokenStatus.set?`✓ Token saved on the server${tokenStatus.updated_by?` · last set by ${tokenStatus.updated_by}`:""}${tokenStatus.updated_at?` · ${String(tokenStatus.updated_at).slice(0,10)}`:""}`:"No token saved yet"}
+          </div>
+          {role==="Manager"?<>
+            <input type="password" autoComplete="off" value={form.token||""} onChange={e=>setForm(f=>({...f,token:e.target.value}))} placeholder={tokenStatus?.set?"Paste a new token to replace it (leave blank to keep)":"7123456789:AAH9g3kXXX..."}
+              style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"9px 12px",fontFamily:"inherit",fontSize:".85rem",color:"#0f172a",boxSizing:"border-box"}}/>
+            <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:4}}>Kept on the server only: FabHub never shows it again or stores it on any device.</div>
+          </>:<div style={{fontSize:".7rem",color:"#94a3b8"}}>Only a Manager can change the bot token.</div>}
         </div>
 
         <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"18px",marginBottom:16}}>
@@ -28856,7 +28858,7 @@ function BotSettingsView({botSettings,saveBotSettings,sendTelegramNotification,W
                   {testing===ch.id?"Testing...":"Test →"}
                 </button>
               </div>
-              <input value={form.chatIds?.[ch.id]||""} onChange={e=>setForm(f=>({...f,chatIds:{...(f.chatIds||{}),[ch.id]:e.target.value}}))} placeholder="-100123456789"
+              <input value={form.chatIds?.[ch.id]||""} readOnly={!canEdit} onChange={e=>setForm(f=>({...f,chatIds:{...(f.chatIds||{}),[ch.id]:e.target.value}}))} placeholder="-100123456789"
                 style={{width:"100%",border:`1.5px solid ${testResult[ch.id]?.ok?"#6ee7b7":testResult[ch.id]?.ok===false?"#fecaca":"#e2e8f0"}`,borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a",boxSizing:"border-box"}}/>
               {testResult[ch.id]&&<div style={{fontSize:".72rem",marginTop:4,color:testResult[ch.id].ok?"#059669":"#dc2626",fontWeight:600}}>{testResult[ch.id].msg}</div>}
             </div>
@@ -28890,7 +28892,7 @@ function BotSettingsView({botSettings,saveBotSettings,sendTelegramNotification,W
         <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"16px",marginBottom:16}}>
           <div style={{fontWeight:700,color:"#0f172a",marginBottom:10}}>🔒 Privacy Settings</div>
           <label style={{display:"flex",alignItems:"center",gap:12,cursor:"pointer"}}>
-            <div onClick={()=>setForm(f=>({...f,hideValueInBots:!f.hideValueInBots}))}
+            <div onClick={()=>canEdit&&setForm(f=>({...f,hideValueInBots:!f.hideValueInBots}))}
               style={{width:42,height:24,borderRadius:12,background:form.hideValueInBots?"#1e293b":"#e2e8f0",position:"relative",transition:"background .2s",cursor:"pointer",flexShrink:0}}>
               <div style={{position:"absolute",top:3,left:form.hideValueInBots?19:3,width:18,height:18,borderRadius:9,background:"#fff",transition:"left .2s",boxShadow:"0 1px 3px rgba(0,0,0,.2)"}}/>
             </div>
@@ -28901,10 +28903,10 @@ function BotSettingsView({botSettings,saveBotSettings,sendTelegramNotification,W
           </label>
         </div>
 
-        <button onClick={doSave}
+        {canEdit?<button onClick={doSave}
           style={{background:saved?"#059669":"#1e293b",border:"none",borderRadius:10,padding:"12px 28px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".88rem",cursor:"pointer",width:"100%",transition:"background .3s"}}>
           {saved?"✅ Settings Saved!":"💾 Save Bot Settings"}
-        </button>
+        </button>:<div style={{textAlign:"center",fontSize:".78rem",color:"#64748b",padding:"10px 0"}}>View only: a Manager changes the bot token, chat IDs and privacy settings.</div>}
       </div>
     </Wrap>
   );
