@@ -4412,6 +4412,23 @@ export default function App(){
   const[customClients,setCustomClients]= useState([]);
   const[customMembers,setCustomMembers]= useState(()=>{try{return JSON.parse(localStorage.getItem("gmdv5:customMembers")||"[]");}catch{return[];}});  // extra team members typed in (beyond the built-in roster)
   const[clientProfiles,setClientProfiles]= useState({});  // keyed by client name
+  // Saves ONE client's profile through set_client_profile (migration
+  // 20261026020000), which merges it server-side. The old whole-object upsert
+  // was rejected for Sales under RLS (error swallowed, edit lost on reload) and
+  // let a stale copy wipe other clients' edits. Same roles as the RPC.
+  const saveClientProfileRemote=async(name,profile)=>{
+    let prev;
+    setClientProfiles(cp=>{prev=cp?.[name];return{...cp,[name]:profile};});
+    if(!isSupabaseReady()){toastEmit("⚠ Offline: client profile not saved.","error",9000);return false;}
+    const{error}=await _rpcWithTimeout(supabase.rpc('set_client_profile',{p_name:name,p_profile:profile}));
+    if(error){
+      setClientProfiles(cp=>{const n={...cp};if(prev===undefined)delete n[name];else n[name]=prev;return n;});
+      toastEmit("⚠ Client profile not saved: "+error.message,"error",9000);
+      return false;
+    }
+    toastEmit(`Client profile saved: ${name}`,"success");
+    return true;
+  };
   const[budgets,     setBudgets]   = useState({});   // keyed by dealId
   const[session,  setSession] = useState(null);   // {userId, username, name, role}
   const[authView, setAuthView]= useState("login"); // login | register
@@ -14822,7 +14839,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             </div>
             <div style={{background:"#f0fdf4",borderRadius:10,padding:"14px 16px",marginBottom:12,border:"1.5px solid #6ee7b7"}}>
               <div style={{fontWeight:700,fontSize:".8rem",color:"#059669",marginBottom:8}}>Company / Client Name <span style={{color:"#ef4444"}}>*</span></div>
-              <Inp autoFocus value={quickAddClientForm.name} onChange={e=>fqac("name",e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){const n=quickAddClientForm.name.trim();if(!n)return;const allC=[...GMD_CLIENTS,...customClients];if(allC.find(c=>c.name.toLowerCase()===n.toLowerCase())){toastEmit("Client already exists.","warning");return;}const nc={name:n,id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today};GMD_CLIENTS.push(nc);const prof={contactPerson:quickAddClientForm.contactPerson,email:quickAddClientForm.email,phone:quickAddClientForm.phone,mobile:quickAddClientForm.mobile,website:quickAddClientForm.website,billingAddress:quickAddClientForm.billingAddress,city:quickAddClientForm.city,province:quickAddClientForm.province,zipCode:quickAddClientForm.zipCode,country:quickAddClientForm.country,tin:quickAddClientForm.tin,paymentTerms:quickAddClientForm.paymentTerms,notes:quickAddClientForm.notes};const next=[...customClients,nc];setCustomClients(next);try{localStorage.setItem(KEYS.customclients,JSON.stringify(next));}catch{}if(isSupabaseReady()) sbUpsert('app_settings',{key:'customclients',value:next,updated_at:new Date().toISOString()},'key').catch(()=>{});if(Object.values(prof).some(v=>v)){const np={...clientProfiles,[n]:prof};setClientProfiles(np);if(isSupabaseReady()) sbUpsert('app_settings',{key:'clientprofiles',value:np,updated_at:new Date().toISOString()},'key').catch(()=>{});}toastEmit(`Client "${n}" added to directory.`,"success");setQuickAddClientOpen(false);resetQAC();}}} placeholder="Full company or client name…"/>
+              <Inp autoFocus value={quickAddClientForm.name} onChange={e=>fqac("name",e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){const n=quickAddClientForm.name.trim();if(!n)return;const allC=[...GMD_CLIENTS,...customClients];if(allC.find(c=>c.name.toLowerCase()===n.toLowerCase())){toastEmit("Client already exists.","warning");return;}const nc={name:n,id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today};GMD_CLIENTS.push(nc);const prof={contactPerson:quickAddClientForm.contactPerson,email:quickAddClientForm.email,phone:quickAddClientForm.phone,mobile:quickAddClientForm.mobile,website:quickAddClientForm.website,billingAddress:quickAddClientForm.billingAddress,city:quickAddClientForm.city,province:quickAddClientForm.province,zipCode:quickAddClientForm.zipCode,country:quickAddClientForm.country,tin:quickAddClientForm.tin,paymentTerms:quickAddClientForm.paymentTerms,notes:quickAddClientForm.notes};const next=[...customClients,nc];setCustomClients(next);try{localStorage.setItem(KEYS.customclients,JSON.stringify(next));}catch{}if(isSupabaseReady()) sbUpsert('app_settings',{key:'customclients',value:next,updated_at:new Date().toISOString()},'key').catch(()=>{});if(Object.values(prof).some(v=>v)){saveClientProfileRemote(n,prof);}toastEmit(`Client "${n}" added to directory.`,"success");setQuickAddClientOpen(false);resetQAC();}}} placeholder="Full company or client name…"/>
             </div>
             <div style={{background:"#f8fafc",borderRadius:10,padding:"14px 16px",marginBottom:12,border:"1px solid #e2e8f0"}}>
               <div style={{fontWeight:700,fontSize:".8rem",color:"#475569",marginBottom:10}}>📇 Name & Contact</div>
@@ -14866,9 +14883,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 try{localStorage.setItem(KEYS.customclients,JSON.stringify(next));}catch{}
                 if(isSupabaseReady()) sbUpsert('app_settings',{key:'customclients',value:next,updated_at:new Date().toISOString()},'key').catch(()=>{});
                 if(Object.values(prof).some(v=>v)){
-                  const np={...clientProfiles,[n]:prof};
-                  setClientProfiles(np);
-                  if(isSupabaseReady()) sbUpsert('app_settings',{key:'clientprofiles',value:np,updated_at:new Date().toISOString()},'key').catch(()=>{});
+                  saveClientProfileRemote(n,prof);
                 }
                 toastEmit(`Client "${n}" added to directory.`,"success");
                 setQuickAddClientOpen(false);
@@ -16062,11 +16077,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       <Wrap>
         <ClientDirectory deals={deals} session={session} role={role} vvipClients={vvipClients} toggleVvip={toggleVvip} customClients={customClients} isMobile={isMobile}
           clientProfiles={clientProfiles}
-          saveClientProfile={(name,profile)=>{
-            const next={...clientProfiles,[name]:profile};
-            setClientProfiles(next);
-            if(isSupabaseReady()) sbUpsert('app_settings',{key:'clientprofiles',value:next,updated_at:new Date().toISOString()},'key').catch(()=>{});
-          }}
+          saveClientProfile={saveClientProfileRemote}
           addNewClient={(name)=>{
             if(!name.trim()) return;
             if(GMD_CLIENTS.find(c=>c.name.toLowerCase()===name.trim().toLowerCase())||customClients.find(c=>c.name.toLowerCase()===name.trim().toLowerCase())) return;
@@ -18546,11 +18557,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     <Wrap>
       <ClientDirectory deals={deals} session={session} role={role} vvipClients={vvipClients} toggleVvip={toggleVvip} customClients={customClients} isMobile={isMobile}
         clientProfiles={clientProfiles}
-        saveClientProfile={(name,profile)=>{
-          const next={...clientProfiles,[name]:profile};
-          setClientProfiles(next);
-          if(isSupabaseReady()) sbUpsert('app_settings',{key:'clientprofiles',value:next,updated_at:new Date().toISOString()},'key').catch(()=>{});
-        }}
+        saveClientProfile={saveClientProfileRemote}
         addNewClient={(name)=>{
           if(!name.trim()) return;
           if(GMD_CLIENTS.find(c=>c.name.toLowerCase()===name.trim().toLowerCase())||customClients.find(c=>c.name.toLowerCase()===name.trim().toLowerCase())) return;
@@ -20881,6 +20888,9 @@ function SalesCalendarView({deals, session, role, pcards, jos, billings}){
   );
 }
 
+// Roles that may edit a client profile — same as set_client_profile
+// (migration 20261026020000_set_client_profile_rpc.sql): keep them in sync.
+const CLIENT_PROFILE_EDITORS=["Manager","Finance","FinanceAssistant","Accounting","Sales","SalesOpsAdmin"];
 // ─── CLIENT AUTOCOMPLETE ──────────────────────────────────────────────────────
 function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customClients, clientProfiles, saveClientProfile, addNewClient, isMobile}){
   const[selClient,  setSelClient]  = useState(null);
@@ -21297,7 +21307,11 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
             </div>
 
             <div style={{display:"flex",gap:10}}>
-              <button onClick={saveProfile} style={{flex:1,background:"#1e293b",border:"none",borderRadius:9,padding:"11px",fontFamily:"inherit",fontWeight:700,fontSize:".88rem",color:"#fff",cursor:"pointer"}}>Save Profile</button>
+              {CLIENT_PROFILE_EDITORS.includes(role)?(
+                <button onClick={saveProfile} style={{flex:1,background:"#1e293b",border:"none",borderRadius:9,padding:"11px",fontFamily:"inherit",fontWeight:700,fontSize:".88rem",color:"#fff",cursor:"pointer"}}>Save Profile</button>
+              ):(
+                <div style={{flex:1,alignSelf:"center",fontSize:".78rem",color:"#94a3b8"}}>View only: Sales, Finance or a Manager can edit client profiles.</div>
+              )}
               <button onClick={()=>setProfileModal(null)} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"11px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".85rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
             </div>
           </div>
