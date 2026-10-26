@@ -4,6 +4,7 @@ const WrapCtx = createContext(false);
 const BUDGET_ONLY=["Design","Operations","ProjectMover"];
 import {deductionFromSb,supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbInsertIfMissing,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbPendingIds,sbOnQueueChange,appLogin,appLogout,restoreAppToken,hasAppToken,appTokenExpired,setSessionExpiredHandler,logClientError} from './supabaseClient';
 import{idbGetMany,idbSetMany}from'./idb.js';
+import {useSharePdf} from "./views/SharePdf";
 import {fmt,addPrintClose,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable,HIDDEN_NAV_IDS,AP_HIDDEN,WAREHOUSE_HIDDEN,isHiddenView} from './shared';
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
@@ -25631,6 +25632,46 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     toastEmit&&toastEmit(data?`Client PO # saved: ${data}`:"Client PO # cleared","success");
     return true;
   };
+  // Share PDF for invoices and SOAs (SharePdf.jsx / billingPdf.js). Anyone on
+  // this page can make one; only Finance's and Managers' copies are clean,
+  // everyone else's is watermarked DRAFT (same rule as the BOQ quotation).
+  const billingPdf=useSharePdf(toastEmit);
+  const billingPdfDraft=!["Manager","Finance","FinanceAssistant","Accounting"].includes(role);
+  const shareInvoicePdf=(ms)=>{
+    const{d,tx,totalPaid,balance,cp,clientAddr}=invoiceData(ms);
+    const model={
+      draft:billingPdfDraft,
+      docTitle:d?.receiptType==="SI"?"Tax Invoice":"Invoice",
+      invoiceNo:ms.invoiceNo||"",invoiceDate:ms.invoiceDate||today,
+      dueDate:ms.dueDate||ms.invoiceDate||today,overdue:!!(ms.dueDate&&ms.dueDate<today),
+      terms:cp.paymentTerms||"Due on receipt",poNo:dealClientPo(d,deals),
+      billTo:{name:d?.client||"—",contact:cp.contactPerson||"",address:clientAddr,email:cp.email||"",tin:cp.tin||""},
+      line:{date:ms.invoiceDate||today,service:ms.name||"",tax:tx.vat>0?"12% S":"—",
+        description:[d?.contact||"",d?.location?`Location: ${d.location}`:"",ms.description||""].filter(Boolean)},
+      subtotal:Number(ms.amount)||0,vat:tx.vat,gross:tx.gross,ewt:tx.ewt,paid:totalPaid,balance,
+    };
+    billingPdf.make(async()=>{const {buildInvoicePdf}=await import("./views/billingPdf");return buildInvoicePdf(model);},
+      [ms.invoiceNo,d?.client,"Invoice"].filter(Boolean).join(" - "),
+      {draft:billingPdfDraft,draftNote:"Only Finance's or a Manager's copy is clean to send."});
+  };
+  const shareSoaPdf=(clientName)=>{
+    const sd=soaData(clientName);
+    if(!sd){toastEmit&&toastEmit("No billing data found for "+clientName,"warning");return;}
+    const model={
+      draft:billingPdfDraft,clientName,address:sd.soaAddr,dateStr:sd.dateStr,refNos:sd.invoiceNos,amtLbl:sd.amtLbl,
+      preparedBy:sd.preparedBy,
+      rows:sd.rows.map(r=>{
+        const po=dealClientPo(r.d,deals);
+        return{client:r.d.client||"",project:r.d.contact||r.d.product||r.d.ceNo||"—",
+          ref:[r.d.ceNo&&(r.d.contact||r.d.product)?r.d.ceNo:"",po?"PO# "+po:""].filter(Boolean).join(" · "),
+          vatable:r.vatable,vat:r.vat,gross:r.gross,payments:r.payments,ewt:r.ewt,due:r.due,balance:r.balance};
+      }),
+      totals:{vatable:sd.tV,vat:sd.tVat,gross:sd.tG,payments:sd.tP,ewt:sd.tE,due:sd.tD,balance:sd.tB},
+    };
+    billingPdf.make(async()=>{const {buildSoaPdf}=await import("./views/billingPdf");return buildSoaPdf(model);},
+      [clientName,"Statement of Account",today].join(" - "),
+      {draft:billingPdfDraft,draftNote:"Only Finance's or a Manager's copy is clean to send."});
+  };
   // Look up across ALL deals, not just wonDeals — addendum child-deals live in
   // their own (often non-won) stage, so a wonDeals-only lookup returned undefined
   // and every tax calc below fell back to "OR", applying 12% VAT to AR/VAT-exempt
@@ -25844,15 +25885,20 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     });
     setEditMs(null);setEditMsForm({});
   };
-  const printInvoice=(ms)=>{
+  // One milestone's invoice figures — used by the print page AND the Share PDF
+  // copy (billingPdf.js), so the two can't disagree.
+  const invoiceData=(ms)=>{
     const d=deals.find(x=>x.id===ms.dealId);
     const tx=calcTax(ms.amount,ms.receiptType??d?.receiptType??"OR",ms.withholding??d?.withholding??false);
     const totalPaid=(ms.payments||[]).filter(p=>!p.bounced).reduce((s,p)=>s+n(p.amount),0);
     const balance=Math.max(0,tx.netReceivable-totalPaid);
     const cp=(clientProfiles||{})[d?.client||""]||{};
-    const win=window.open("","_blank");
-    const issuedDate=new Date().toLocaleDateString("en-PH",{month:"2-digit",day:"2-digit",year:"numeric"});
     const clientAddr=[cp.billingAddress,cp.city,cp.province,cp.zipCode].filter(Boolean).join(", ");
+    return{d,tx,totalPaid,balance,cp,clientAddr};
+  };
+  const printInvoice=(ms)=>{
+    const{d,tx,totalPaid,balance,cp,clientAddr}=invoiceData(ms);
+    const win=window.open("","_blank");
     win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Invoice ${ms.invoiceNo}</title>
 <style>
   @page{size:A4;margin:12mm 14mm}
@@ -26038,9 +26084,9 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     win.document.close();addPrintClose(win);
   };
 
-  const printSOA=(clientName)=>{
-    const esc=(s)=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-    const f=(v)=>Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+  // One client's SOA figures — used by the print page AND the Share PDF copy
+  // (billingPdf.js), so the two can't disagree. null = nothing billed yet.
+  const soaData=(clientName)=>{
     const clientDeals=[...wonDeals,...(completedDeals||[]),...deals.filter(d=>d.parentDealId&&new Set([...wonDeals,...(completedDeals||[])].map(x=>x.id)).has(d.parentDealId))].filter((d,i,a)=>a.findIndex(x=>x.id===d.id)===i).filter(d=>clientKey(d.client)===clientKey(clientName));
     const rows=clientDeals.map(d=>{
       const ms=billings.filter(b=>b.dealId===d.id);
@@ -26057,7 +26103,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       const balance=Math.max(0,gross-payments);
       return{d,vatable,vat,gross,payments,ewt,due,balance};
     }).filter(r=>r.vatable>0||r.payments>0);
-    if(!rows.length){alert("No billing data found for "+clientName);return;}
+    if(!rows.length) return null;
     const tV=rows.reduce((s,r)=>s+r.vatable,0),tVat=rows.reduce((s,r)=>s+r.vat,0);
     const tG=rows.reduce((s,r)=>s+r.gross,0),tP=rows.reduce((s,r)=>s+r.payments,0);
     const tE=rows.reduce((s,r)=>s+r.ewt,0),tD=rows.reduce((s,r)=>s+r.due,0);
@@ -26071,6 +26117,14 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     // AR (no VAT) projects have no "vatable" amount; don't label them as such.
     const amtLbl=tVat>0?"VATABLE AMOUNT":"AMOUNT (NO VAT)";
     const invoiceNos=[...new Set(billings.filter(b=>clientDeals.some(d=>d.id===b.dealId)&&b.invoiceNo&&b.status!=="Cancelled").map(b=>b.invoiceNo))].join(", ");
+    return{clientDeals,rows,tV,tVat,tG,tP,tE,tD,tB,dateStr,preparedBy,cpSoa,soaAddr,amtLbl,invoiceNos};
+  };
+  const printSOA=(clientName)=>{
+    const esc=(s)=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    const f=(v)=>Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+    const sd=soaData(clientName);
+    if(!sd){alert("No billing data found for "+clientName);return;}
+    const{rows,tV,tVat,tG,tP,tE,tD,tB,dateStr,preparedBy,soaAddr,amtLbl,invoiceNos}=sd;
     const rowsHtml=rows.map((r,i)=>`<tr>
       <td style="text-align:center;color:#64748b">${i+1}</td>
       <td style="color:#2563eb;font-weight:600">${esc(r.d.client)}</td>
@@ -26279,6 +26333,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
 
   return(
     <div>
+      {billingPdf.dialog}
       {/* Header */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16,flexWrap:"wrap",gap:12}}>
         <div>
@@ -26528,6 +26583,10 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
               <button onClick={e=>{e.stopPropagation();printSOA(d.client);}}
                 style={{background:"#f97316",border:"none",borderRadius:7,padding:mob?"8px 14px":"5px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#fff",cursor:"pointer",fontWeight:700,flex:mob?1:undefined}}>
                 📄 SOA
+              </button>
+              <button onClick={e=>{e.stopPropagation();shareSoaPdf(d.client);}} disabled={billingPdf.busy} title="SOA as a PDF to share (Viber, Mail, Files) or download"
+                style={{background:"#ecfeff",border:"1.5px solid #67e8f9",borderRadius:7,padding:mob?"8px 14px":"5px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#155e75",cursor:billingPdf.busy?"wait":"pointer",fontWeight:700,flex:mob?1:undefined}}>
+                {billingPdf.busy?"…":"📤 SOA PDF"}
               </button>
               {hasRowMenu&&(
                 <button onClick={e=>{e.stopPropagation();const r=e.currentTarget.getBoundingClientRect();setBillRowMenu(billRowMenu?.id===d.id?null:{id:d.id,client:d.client,canDeleteSchedule,canRemoveProject,top:r.bottom+4,right:Math.max(8,window.innerWidth-r.right)});}}
@@ -27230,6 +27289,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                     {/* Action buttons */}
                     <div style={{display:"flex",flexDirection:"column",gap:5,flexShrink:0}}>
                       <button onClick={()=>printInvoice(ms)} style={{background:"#1e293b",border:"none",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#fff",cursor:"pointer"}}>🖨 Invoice</button>
+                      <button onClick={()=>shareInvoicePdf(ms)} disabled={billingPdf.busy} title="Invoice as a PDF to share (Viber, Mail, Files) or download" style={{background:"#ecfeff",border:"1.5px solid #67e8f9",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#155e75",cursor:billingPdf.busy?"wait":"pointer"}}>{billingPdf.busy?"Making PDF…":"📤 Invoice PDF"}</button>
                       {canEdit&&ms.status!=="Fully Paid"&&ms.status!=="Cancelled"&&(
                         <button onClick={()=>{const opening=showPay!==ms.id;setShowPay(showPay===ms.id?null:ms.id);if(opening){const totalPaid=(ms.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);const bal=tx.netReceivable-totalPaid;setPayForm(p=>({...p,amount:bal>0?bal:tx.netReceivable}));}}} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#059669",cursor:"pointer"}}>+ Payment</button>
                       )}
