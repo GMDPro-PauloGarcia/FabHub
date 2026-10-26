@@ -239,4 +239,4 @@ revoke execute on function public.audit_billing_change() from public, anon, auth
 --   drop function if exists public.billing_net_receivable(numeric, text, boolean);
 --   drop table if exists public.billing_deductions;   -- only if it holds no rows worth keeping
 --   audit_billing_change(): restore the previous body (actor from the 'email' claim) from
---   pg_get_functiondef history / migration 20260917000000_billing_change_audit.sql.
+--   pg_get_functiondef history / migration 20260917044655_billing_change_audit.sql.
