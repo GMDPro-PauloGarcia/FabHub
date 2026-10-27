@@ -576,7 +576,10 @@ export const sbLoadAll = async () => {
       () => sbList('billing_payments',         { order: 'created_at', limit: 5000 }),
       () => sbList('expenses',                 { order: 'date',       limit: 1000 }),
       () => sbList('inflows',                  { order: 'date',       limit: 1000 }),
-      () => sbList('purchase_requests',        { order: 'created_at', limit: 500 }),
+      // Every PO line, paged: 2,400+ exist and 600+ are added a month. A 500 cap
+      // hid older lines and made each device re-push its cached copies of them
+      // as "local-only" (the auto-sync after load), which can overwrite newer rows.
+      () => sbListAll('purchase_requests',     { order: 'created_at' }),
       () => sbList('material_requests',        { order: 'created_at', limit: 500 }),
       () => sbList('budget_requests',          { order: 'created_at', limit: 500 }),
       () => sbList('addenda',                  { order: 'created_at', limit: 500 }),
@@ -602,7 +605,7 @@ export const sbLoadAll = async () => {
       () => sbListAll('payables',        { order: 'created_at' }),
       () => sbList('loans',           { order: 'created_at', limit: 200 }),
       () => sbList('loan_payments',   { order: 'date',        limit: 1000 }),
-      () => sbList('subcon_work_orders', { order: 'created_at', limit: 500 }),
+      () => sbListAll('subcon_work_orders', { order: 'created_at' }),
       () => sbList('boq_library',        { order: 'name', asc: true, limit: 2000 }),
       () => sbList('standalone_boqs',    { order: 'updated_at', limit: 2000 }),
       () => sbListAll('check_vouchers',     { order: 'date' }),
