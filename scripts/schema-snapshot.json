@@ -376,6 +376,7 @@
     "follow_up",
     "id",
     "invoiced",
+    "is_cost_center",
     "lead_origin",
     "lead_origin_approved_at",
     "lead_origin_approved_by",

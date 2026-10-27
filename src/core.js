@@ -376,7 +376,7 @@ export const DRF_CLR   = {New:"#94a3b8",Acknowledged:"#3b82f6","In Progress":"#f
 
 export const emptyDRF  = ()=>({dealId:"",client:"",location:"",designer:"",designDeadline:"",projectTitle:"",type:DRF_TYPES[0],category:"",size:"",platform:"",finishes:"",maxHeight:"",brandGuideLink:"",budget:"",description:"",accessories:[],refLinks:["","",""],notes:"",approvedLink:"",status:"New",createdBy:""});
 
-export const ROLE_CLR  = { Manager:"#f59e0b",Sales:"#10b981",Finance:"#3b82f6",Accounting:"#6366f1",Procurement:"#06b6d4",ProcurementManager:"#0891b2",QS:"#8b5cf6",Operations:"#f97316",Design:"#ec4899",ProjectMover:"#0ea5e9",Warehouse:"#64748b",SalesOpsAdmin:"#14b8a6",FinanceAssistant:"#1d4ed8",Audit:"#dc2626",HRAdmin:"#7c3aed" };
+export const ROLE_CLR  = { Manager:"#f59e0b",Sales:"#10b981",Finance:"#3b82f6",Accounting:"#6366f1",Procurement:"#06b6d4",ProcurementManager:"#0891b2",QS:"#8b5cf6",Operations:"#f97316",Design:"#ec4899",ProjectMover:"#0ea5e9",Coordinator:"#0284c7",Warehouse:"#64748b",SalesOpsAdmin:"#14b8a6",FinanceAssistant:"#1d4ed8",Audit:"#dc2626",HRAdmin:"#7c3aed" };
 
 // Client mirror of the mint-session ROLE_MAP: app-level role codes that resolve
 // to a canonical RLS role for permission checks. ProcurementManager is a UI/
@@ -1266,16 +1266,15 @@ export const emptyPR = () => ({
   notes:"", createdDate:"",
 });
 
-export const canApprovePO=(role,sessionName,requestedBy,approvers)=>{
-  // A Manager or a Procurement Manager is an approving authority for POs.
-  // A Procurement Manager still can't approve a PO they requested themselves.
+export const canApprovePO=(role,sessionName,requestedBy)=>{
+  // Only a Manager or a Procurement Manager may approve (issue) a PO or subcon
+  // work order, and a Procurement Manager never one they requested. Plain
+  // Procurement can't: from 21 Oct 2026 they were approving each other's POs.
+  // The database enforces the same rule (po_require_approver /
+  // swo_require_approver, migration 20261026_po_require_approver): keep in sync.
   if(role==="Manager") return true;
   if(role==="ProcurementManager") return !requestedBy||!sessionName||sessionName.trim().toLowerCase()!==requestedBy.trim().toLowerCase();
-  if(role!=="Procurement"||!sessionName) return false;
-  const list=String(approvers||"").split(",").map(s=>s.trim().toLowerCase()).filter(Boolean);
-  if(list.length) return list.includes(sessionName.trim().toLowerCase());
-  // P3: only allow approval when requestedBy is a different known person — empty requestedBy doesn't grant approval
-  return !!requestedBy&&sessionName.trim().toLowerCase()!==requestedBy.trim().toLowerCase();
+  return false;
 };
 
 export const woRetentionAmt=w=>Math.min(Number(w.retentionPct)||0,100)/100*(Number(w.contractAmount)||0);

@@ -51,6 +51,8 @@ const DailyCashPosition=_lazyView(()=>import('./views/DailyCashPosition'));
 const CashPositionPayables=_lazyView(()=>import('./views/CashPositionPayables'));
 const CERequestTracker=_lazyView(()=>import('./views/CERequestTracker'));
 const POApprovals=_lazyView(()=>import('./views/POApprovals'));
+const PrfView=_lazyView(()=>import('./views/PrfView'));
+const SubconCertView=_lazyView(()=>import('./views/SubconCertView'));
 const ARDrill=_lazyView(()=>import('./views/ARDrill'));
 const AttentionPanel=_lazyView(()=>import('./views/AttentionPanel'));
 const WeeklyCashFlow=_lazyView(()=>import('./views/WeeklyCashFlow'));
@@ -215,6 +217,7 @@ const claimEvNo=(evNo,existingEvNos)=>claimYearScopedNo("EV",3,evNo,existingEvNo
 // Legacy btoa hashes (pre-migration) are detected by the absence of the "sha256:" prefix
 // and auto-upgraded to SHA-256 on first successful login.
 const legacyHashPw = pw => btoa(pw + ":gmd-salt-2026").split("").reverse().join("");
+const TG_CHANNEL_ALIAS={finance:"financialcontrol",operations:"ops"};
 const sha256Hash = async (pw, username="") => {
   const raw = pw + username.toLowerCase() + ":gmd-fabhub-2026";
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
@@ -4445,8 +4448,8 @@ export default function App(){
       // The bot token lives only on the server (app_secrets, migration
       // 20261026103448); clear the copy older versions kept in this tab.
       sessionStorage.removeItem('fabhub:bottoken');
-      return{chatIds:{...{general:"",ops:"",design:"",procurement:"",warehouse:"",sales:"",management:"",financialcontrol:""},...(local.chatIds||{})},hideValueInBots:local.hideValueInBots||false,poApprovers:local.poApprovers!==undefined?local.poApprovers:"Marian Prile"};
-    }catch{return{chatIds:{general:"",ops:"",design:"",procurement:"",warehouse:"",sales:"",management:"",financialcontrol:""},hideValueInBots:false,poApprovers:""};}
+      return{chatIds:{...{general:"",ops:"",design:"",procurement:"",warehouse:"",sales:"",management:"",financialcontrol:""},...(local.chatIds||{})},hideValueInBots:local.hideValueInBots||false};
+    }catch{return{chatIds:{general:"",ops:"",design:"",procurement:"",warehouse:"",sales:"",management:"",financialcontrol:""},hideValueInBots:false};}
   });
   const[customClients,setCustomClients]= useState([]);
   const[customMembers,setCustomMembers]= useState(()=>{try{return JSON.parse(localStorage.getItem("gmdv5:customMembers")||"[]");}catch{return[];}});  // extra team members typed in (beyond the built-in roster)
@@ -4609,7 +4612,7 @@ export default function App(){
           console.info("[FabHub] sbLoadAll result — deals:",data?.deals?.length||0,"jos:",data?.jos?.length||0,"users:",data?.users?.length||0);
           if(data){
             const idbE=[];
-            const _deals=data.deals?.length?data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,standbyPO:d.standby_po||false,dpWaivedBy:d.dp_waived_by||"",dpWaivedAt:d.dp_waived_at||null,dpWaivedReason:d.dp_waived_reason||"",poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,signedCeUrl:d.signed_ce_url||"",signedCeOnFile:d.signed_ce_on_file||false,clientPoNo:d.client_po_no||"",vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})):null;
+            const _deals=data.deals?.length?data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,standbyPO:d.standby_po||false,dpWaivedBy:d.dp_waived_by||"",dpWaivedAt:d.dp_waived_at||null,dpWaivedReason:d.dp_waived_reason||"",poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,signedCeUrl:d.signed_ce_url||"",signedCeOnFile:d.signed_ce_on_file||false,clientPoNo:d.client_po_no||"",isCostCenter:!!d.is_cost_center,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})):null;
             if(_deals){
               // Reconcile legacy non-UUID "ghost" deals against the server.
               // Before the deals.id → UUID migration, deals were keyed by local
@@ -4952,7 +4955,7 @@ export default function App(){
         // once/30s) — far more often than a manual page refresh — so a blind
         // overwrite here was the single biggest way to lose a just-added record
         // that hadn't synced yet (e.g. still in flight when the user tabbed away).
-        if(data?.deals?.length) setDeals(prev=>mlo(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,standbyPO:d.standby_po||false,dpWaivedBy:d.dp_waived_by||"",dpWaivedAt:d.dp_waived_at||null,dpWaivedReason:d.dp_waived_reason||"",poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,signedCeUrl:d.signed_ce_url||"",signedCeOnFile:d.signed_ce_on_file||false,clientPoNo:d.client_po_no||"",vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})),prev));
+        if(data?.deals?.length) setDeals(prev=>mlo(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,standbyPO:d.standby_po||false,dpWaivedBy:d.dp_waived_by||"",dpWaivedAt:d.dp_waived_at||null,dpWaivedReason:d.dp_waived_reason||"",poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,signedCeUrl:d.signed_ce_url||"",signedCeOnFile:d.signed_ce_on_file||false,clientPoNo:d.client_po_no||"",isCostCenter:!!d.is_cost_center,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})),prev));
         if(data?.jos?.length){const js=data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no}));setJos(prev=>mlo(js,dropStaleJos(js,prev)));}
         if(Object.keys(data?.pcards||{}).length) setPcards(prev=>mergeLocalOnlyObj(data.pcards,prev));
         // Map the same camelCase fields the initial load does. Omitting dueDate
@@ -4986,7 +4989,7 @@ export default function App(){
     // clicks it is right after a save looked stuck, which is also the exact
     // moment a blind overwrite would erase the very record they're trying to
     // recover.
-    if(data.deals?.length){const ds=data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,standbyPO:d.standby_po||false,dpWaivedBy:d.dp_waived_by||"",dpWaivedAt:d.dp_waived_at||null,dpWaivedReason:d.dp_waived_reason||"",poBudget:d.standby_po?(Number(d.po_budget)||0):"",leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,boqData:d.boq_data||null,bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,signedCeUrl:d.signed_ce_url||"",signedCeOnFile:d.signed_ce_on_file||false,clientPoNo:d.client_po_no||"",vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null}));setDeals(prev=>mlo(ds,prev));idbE.push([KEYS.deals,ds]);}
+    if(data.deals?.length){const ds=data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,standbyPO:d.standby_po||false,dpWaivedBy:d.dp_waived_by||"",dpWaivedAt:d.dp_waived_at||null,dpWaivedReason:d.dp_waived_reason||"",poBudget:d.standby_po?(Number(d.po_budget)||0):"",leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,boqData:d.boq_data||null,bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,signedCeUrl:d.signed_ce_url||"",signedCeOnFile:d.signed_ce_on_file||false,clientPoNo:d.client_po_no||"",isCostCenter:!!d.is_cost_center,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null}));setDeals(prev=>mlo(ds,prev));idbE.push([KEYS.deals,ds]);}
     if(data.jos?.length){const js=data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned}));setJos(prev=>mlo(js,dropStaleJos(js,prev)));idbE.push([KEYS.jos,js]);}
     if(Object.keys(data.pcards||{}).length){setPcards(data.pcards);idbE.push([KEYS.pcards,data.pcards]);}
     if(data.billings?.length){const bs=data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by,retentionHeld:m.retention_held!=null?Number(m.retention_held):undefined,isRetentionRelease:m.is_retention_release||undefined,plannedDate:m.planned_bill_date||undefined,msType:m.ms_type||undefined,payments:(m.payments||[]).map(p=>({...p,milestoneId:p.milestone_id??p.milestoneId,refNo:p.ref_no??p.refNo,recordedBy:p.recorded_by??p.recordedBy,valueDate:p.value_date??p.valueDate,method:p.payment_method??p.method,bounced:!!(p.bounced??false)}))}));setBillings(prev=>mlo(bs,prev));idbE.push([KEYS.billings,bs]);}
@@ -6214,7 +6217,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           standbyPO:rec.standby_po||false,dpWaivedBy:rec.dp_waived_by||"",dpWaivedAt:rec.dp_waived_at||null,dpWaivedReason:rec.dp_waived_reason||"",poBudget:rec.standby_po?(Number(rec.po_budget)||0):"",
           billingGenerated:rec.billing_generated||false,
           bir2303Url:rec.bir_2303_url||"",bir2303OnFile:rec.bir_2303_on_file||false,
-          signedCeUrl:rec.signed_ce_url||"",signedCeOnFile:rec.signed_ce_on_file||false,clientPoNo:rec.client_po_no||"",
+          signedCeUrl:rec.signed_ce_url||"",signedCeOnFile:rec.signed_ce_on_file||false,clientPoNo:rec.client_po_no||"",isCostCenter:!!rec.is_cost_center,
           vatTreatment:rec.vat_treatment||"",downpaymentPct:rec.downpayment_pct??null,
           paymentTermsText:rec.payment_terms_text||"",clientSatisfied:rec.client_satisfied||false,
           satisfactionNote:rec.satisfaction_note||"",
@@ -7208,8 +7211,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const approvePOs=async(poNos)=>{
     const want=new Set(poNos||[]);
     const me=session?.name||"";
-    const poApprovers=botSettings?.poApprovers||"";
-    const pending=prs.filter(p=>want.has(p.poNumber)&&p.status==="Pending Approval"&&canApprovePO(role,me,p.requestedBy,poApprovers));
+    const pending=prs.filter(p=>want.has(p.poNumber)&&p.status==="Pending Approval"&&canApprovePO(role,me,p.requestedBy));
     // Down payment gate: a PO with any line on a deal that has no payment (and
     // no Manager waiver) is skipped whole. The database rejects those writes,
     // and one bad row would fail its entire 200-row batch below.
@@ -7228,7 +7230,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       for(let i=0;i<rows.length;i+=200){
         if(!(await sbUpsert("purchase_requests",rows.slice(i,i+200),"id").catch(()=>false))) ok=false;
       }
-      if(!ok) toastEmit("⚠️ Approvals saved on this device but NOT confirmed by the server — do not close this tab.","warning",9000);
+      // A refused save (e.g. the server's approver check) must not leave the
+      // POs shown as issued, raise supplier bills or announce an approval.
+      if(!ok){
+        upPrs(cur=>cur.map(p=>ids.has(p.id)?(prs.find(o=>o.id===p.id)||p):p));
+        toastEmit("Not approved: the server refused it. Only a Manager or the Procurement Manager can approve POs.","error",9000);
+        return false;
+      }
     }
     const approvedNos=[...new Set(lines.map(p=>p.poNumber))];
     approvedNos.forEach(no=>{
@@ -7343,6 +7351,26 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     toastEmit(reason===null?"Waiver removed — POs need a down payment again":"Down payment waived — POs can be issued","success");
     return true;
   };
+  // Manager adds an internal cost center (create_cost_center RPC, migration
+  // 20261026090000): a GMD-internal deal flagged is_cost_center that POs,
+  // payables, expenses and vouchers can be booked to.
+  const createCostCenter=async(name)=>{
+    if(canonRole(role)!=="Manager"){toastEmit("Only a Manager can add a cost center.","error");return false;}
+    const n=(name||"").trim();
+    if(!n){toastEmit("Give the cost center a name.","error");return false;}
+    if(!isSupabaseReady()){toastEmit("No server connection. Try again when you're back online.","error");return false;}
+    const{data:id,error}=await _rpcWithTimeout(supabase.rpc('create_cost_center',{p_name:n}));
+    if(error){toastEmit("Cost center not added: "+error.message,"error",9000);return false;}
+    const{data:row}=await supabase.from('deals').select('id,ce_no,client,contact,product,stage,added_by,created_at').eq('id',id).maybeSingle();
+    upDeals(ds=>ds.some(x=>x.id===id)?ds.map(x=>x.id===id?{...x,isCostCenter:true}:x):[...ds,{
+      id,client:row?.client||"GMD Productions Inc.",contact:row?.contact||n,product:row?.product||"Internal cost center",
+      stage:row?.stage||"06 · Kickoff",ceNo:row?.ce_no||"",value:0,amountPaid:0,isCostCenter:true,
+      addedBy:row?.added_by||session?.name||"",addedAt:row?.created_at||new Date().toISOString(),
+    }]);
+    logActivity(id,"Cost center added",`Internal cost center: ${n}`);
+    toastEmit(`Cost center added: ${n}`,"success");
+    return true;
+  };
   const upProjs    =useCallback(fn=>setProjs(p=>{const n=fn(p);persist(KEYS.projects,n);return n;}),[persist]);
   const upExps     =useCallback(fn=>setExps(p=>{const n=fn(p);persist(KEYS.expenses,n);return n;}),[persist]);
   const upVouchers =useCallback(fn=>setVouchers(p=>{const n=fn(p);persist(KEYS.vouchers,n);return n;}),[persist]);
@@ -7403,10 +7431,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ── TELEGRAM NOTIFICATION UTILITY ────────────────────────────────────────
   // Sent by the server (send_telegram RPC), which holds the bot token and
   // picks the department's chat (falling back to management).
+  // "finance" and "operations" are not chats in Bot Settings, so those messages
+  // (Final Billing Ready, billing set-up, budget requests…) silently fell back to
+  // management. Final billing and payment releases belong to the Cost Control
+  // chat (financialcontrol, decided 2026-10-27); budget requests to Operations.
   const sendTelegramNotification=useCallback(async(dept,message)=>{
     if(!isSupabaseReady()) return;
+    const chat=TG_CHANNEL_ALIAS[dept]||dept;
     try{
-      const{error}=await supabase.rpc('send_telegram',{p_dept:dept,p_message:String(message||"").slice(0,4096)});
+      const{error}=await supabase.rpc('send_telegram',{p_dept:chat,p_message:String(message||"").slice(0,4096)});
       if(error) console.warn("Telegram notify failed:",error.message||error);
     }catch(e){console.warn("Telegram notify failed:",e);}
   },[]);
@@ -7509,8 +7542,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       : {id:uid(),type:"General Progress",note:String(entryOrText||""),text:String(entryOrText||""),by:by||session?.name||"Team",date:today,time:new Date().toLocaleTimeString("en-PH",{hour:"2-digit",minute:"2-digit"})};
     if(!(entry.note||entry.text||"").trim()) return;
     // No Telegram here: logActivity("PM Update") already pings ops, and this
-    // used to send a second copy of every update.
-    upProj(projId,p=>({...p,pmUpdates:[entry,...(p.pmUpdates||[])]}));
+    // used to send a second copy of every update. Coordinators can't write
+    // projects under RLS; their update lives in activity_log (logActivity),
+    // which is what the project feed reads.
+    if(roleCanDo("update","projects")) upProj(projId,p=>({...p,pmUpdates:[entry,...(p.pmUpdates||[])]}));
   };
   // The one place a project's stage changes (Projects stage chips and the Log
   // Update modal). Saves through set_deal_stage — PMs can't update deals under
@@ -7773,8 +7808,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     return {ok:true};
   };
   // ── Derived ───────────────────────────────────────────────────────────────
-  const wonDeals    =useMemo(()=>deals.filter(d=>WON_STAGES.includes(d.stage)),[deals]);
-  const completedDeals=useMemo(()=>deals.filter(d=>d.stage==="14 · Completed"),[deals]);
+  // Internal cost centers (deals.is_cost_center: GMD OPEX, Tools, HR…) are
+  // buckets for GMD's own spending, not projects. They stay out of wonDeals so
+  // no project view, KPI, billing list or commission counts them, and are
+  // offered in the purchase / expense / payable / voucher pickers through
+  // costCenterDeals instead. Migration 20261026090000_deals_cost_centers.sql.
+  const wonDeals    =useMemo(()=>deals.filter(d=>WON_STAGES.includes(d.stage)&&!d.isCostCenter),[deals]);
+  const completedDeals=useMemo(()=>deals.filter(d=>d.stage==="14 · Completed"&&!d.isCostCenter),[deals]);
+  const costCenterDeals=useMemo(()=>deals.filter(d=>d.isCostCenter&&!isLostStage(d.stage)).sort((a,b)=>(a.contact||"").localeCompare(b.contact||"")),[deals]);
   const closedDeals=useMemo(()=>deals.filter(d=>d.stage==="12 · Close-Out"),[deals]);
   // Auto-create project entries for any won deal that doesn't have one yet
   // Depends on both wonDeals.length AND projs key count so it re-runs after Supabase loads projs
@@ -7807,6 +7848,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // eslint-disable-next-line
   },[billings.length]);
   const projList  =useMemo(()=>wonDeals.filter(d=>projs[d.id]),[wonDeals,projs]);
+  // Where money can be booked: projects plus internal cost centers.
+  const spendProjList=useMemo(()=>[...projList,...costCenterDeals],[projList,costCenterDeals]);
+  const spendWonDeals=useMemo(()=>[...wonDeals,...costCenterDeals],[wonDeals,costCenterDeals]);
   const isPauloGate = stage => PAULO_GATE.includes(stage);
   const clientName=useCallback(id=>deals.find(d=>d.id===id)?.client||`Project #${id}`,[deals]);
   // useCallback so this stays referentially stable across renders — otherwise
@@ -9369,21 +9413,19 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // for Subcontractor. Manual Other Payables are verified by default.
   const payIsSubcon=isSubconPayable; // category Subcontractor, or account 5070 / 5100 (or the old 5200 default)
   const payNeedsVerify=p=>p&&!!(p.poId||p.poNumber); // only PO/WO-sourced payables are gated
+  const subconCertified=p=>!!(p&&p.verified&&String(p.verifiedBy||"").trim()&&(Number(p.verificationPct)||0)>0);
   const verifyPayable=async (id)=>{
     const p=payables.find(x=>x.id===id); if(!p) return;
-    let pct=100;
-    if(payIsSubcon(p)){
-      const inp=(await uiPrompt("% of project completion verified by Operations (0–100):",String(p.verificationPct||0)));
-      if(inp==null) return;
-      pct=Math.max(0,Math.min(100,Number(inp)||0));
-      if(pct<=0){toastEmit("Enter a % greater than 0 to unlock payment.","warning");return;}
-    } else {
-      if(!(await uiConfirm(`Confirm Warehouse received the items for ${p.vendor||"this vendor"}${p.apNumber?` (${p.apNumber})`:""}? This unlocks it for payment.`))) return;
-    }
+    // Subcon work is certified by the project PM / Operations on the Subcon
+    // Billing page (certify_subcon_billing); the database ignores any other
+    // change to these fields (migration 20261027160000).
+    if(payIsSubcon(p)){toastEmit("Subcontractor work is certified by the project PM or Operations on the Subcon Billing page — no payment until they do.","info",8000);return;}
+    const pct=100;
+    if(!(await uiConfirm(`Confirm Warehouse received the items for ${p.vendor||"this vendor"}${p.apNumber?` (${p.apNumber})`:""}? This unlocks it for payment.`))) return;
     const upd={...p,verified:true,verificationPct:pct,verifiedBy:session?.name||"",verifiedAt:today};
     upPayables(ps=>ps.map(x=>x.id===id?upd:x));
     if(isSupabaseReady()&&isUUID(id)) sbUpsert("payables",payableToSb(upd),"id").catch(()=>{});
-    toastEmit(payIsSubcon(p)?`Verified ${pct}% (Operations) — now payable.`:"Warehouse receipt verified — now payable.","success");
+    toastEmit("Warehouse receipt verified — now payable.","success");
   };
   // ── Expense/payable approval gate ────────────────────────────────────────
   // Only a Manager or the Finance Manager (Finance role) may approve a payable
@@ -9407,6 +9449,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(role!=="Manager"&&nm(p.createdBy)===nm(session?.name)&&nm(p.createdBy)!==""){
       toastEmit("You entered this payable — another Manager or Finance approver must review it.","error",7000);return;
     }
+    if(payIsSubcon(p)&&!subconCertified(p)){toastEmit(`${p.vendor||"This subcontractor"}${p.apNumber?` (${p.apNumber})`:""} isn't certified by the project PM or Operations yet — no approval until they certify the work done.`,"error",8000);return;}
     if(!(await uiConfirm(`Approve ${p.vendor||"this payable"}${p.apNumber?` (${p.apNumber})`:""} for ₱${Number(p.amount||0).toLocaleString("en-PH",{minimumFractionDigits:2})}? This clears it for payment.`))) return;
     const upd={...p,approvalStatus:"Approved",approvedBy:session?.name||role,approvedAt:today};
     upPayables(ps=>ps.map(x=>x.id===id?upd:x));
@@ -9443,6 +9486,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       const p=payables.find(x=>x.id===e.payableId);
       if(!p){toastEmit("That payable no longer exists — refresh and try again.","error");return false;}
       // Approval gate — enforced here for every pay surface, and again by the DB guard.
+      // Subcon: paid only up to the PM-certified % (payable_payments_subcon_gate).
+      if(payIsSubcon(p)&&e.kind!=="Retention release"){
+        if(!subconCertified(p)){toastEmit(`${p.vendor||"This subcontractor"}${p.apNumber?` (${p.apNumber})`:""} isn't certified by the project PM or Operations — no payment.`,"error",8000);return false;}
+        const wo=(swos||[]).find(w=>w.woNumber&&w.woNumber===p.poNumber);
+        const base=Number(wo?.contractAmount)>0?Number(wo.contractAmount):Number(p.amount)||0;
+        const cap=Math.round((Number(p.verificationPct)||0)/100*base*100)/100;
+        const claimed=paysOf(p.id).filter(x=>x.status!=="Cancelled"&&x.kind!=="Retention release").reduce((s,x)=>s+r2(x.amount)+r2(x.retentionAmount),0)+r2(e.amount)+r2(e.retentionAmount);
+        if(claimed>cap+1){toastEmit(`No payment: that brings ${p.apNumber||p.vendor||"this bill"} to ₱${claimed.toLocaleString("en-PH")} but the PM certified only ${Number(p.verificationPct)||0}% (₱${cap.toLocaleString("en-PH")}). Ask the PM to certify more work first.`,"error",10000);return false;}
+      }
+      if(payIsSubcon(p)&&e.kind==="Retention release"&&(Number(p.verificationPct)||0)<100){toastEmit("Retention is released only when the PM certifies 100%.","error",8000);return false;}
       if(!payApproved(p)){toastEmit(`${p.vendor||"This payable"}${p.apNumber?` (${p.apNumber})`:""} isn't approved yet — a Manager or Finance Manager must approve it before payment.`,"error",7000);return false;}
     }
     if(!common.date){toastEmit("Enter the payment date.","error");return false;}
@@ -9690,10 +9743,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"}]},
       {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},...((session?.username==="paulo"||session?.username==="mar")?[{id:"projectmargins",l:"Project Margins"}]:[]),{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills"}]:[]),{id:"cashflow",l:"Cash Flow"},{id:"finance-reports",l:"Reports"}]},
       {group:"Accounting",  items:[{id:"coa",l:"Chart of Accounts"}]},
-      {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
+      {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"},{id:"subconcert",l:"Subcon Billing"}]},
       {group:"Design",      items:[{id:"designboard",l:"Design Board"},{id:"drf",l:"Design Requests"}]},
-      {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
-      {group:"Warehousing", items:[{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"}]},
+      {group:"Procurement", items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
       {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"audit",l:"Audit"},{id:"syshealth",l:"System Health"},{id:"botsettings",l:"Bot Settings"},{id:"tvboard",l:"Office TV Board"},{id:"activity",l:"Team Activity"}]},
     ],
     Sales:[
@@ -9708,11 +9760,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"boq",l:"BOQ"},{id:"clients",l:"Clients"}]},
       {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills"}]:[]),{id:"cashflow",l:"Cash Flow"},{id:"finance-reports",l:"Reports"}]},
       {group:"Accounting",  items:[{id:"coa",l:"Chart of Accounts"}]},
-      {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
+      {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"},{id:"subconcert",l:"Subcon Billing"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
-      {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
+      {group:"Procurement", items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
       {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"}]},
-      {group:"Warehousing", items:[{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"}]},
       {group:"Admin",       items:[{id:"audit",l:"Audit"},{id:"botsettings",l:"Bot Settings"},{id:"activity",l:"Team Activity"}]},
     ],
     Audit:[
@@ -9732,13 +9783,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     Procurement:[
       {group:"Overview",   items:[{id:"home",l:"Overview"}]},
-      {group:"Orders",     items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
+      {group:"Orders",     items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
       {group:"Projects",   items:[{id:"projects",l:"Projects"},{id:"clients",l:"Clients"}]},
     ],
     QS:[
       {group:"Overview", items:[{id:"home",l:"Dashboard"}]},
       {group:"Sales",    items:[{id:"pipeline",l:"Sales Pipeline"},{id:"boq",l:"BOQ"}]},
-      {group:"CE / QS",  items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"}]},
+      {group:"CE / QS",  items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"materialreq",l:"Purchase Requests (PRF)"}]},
       {group:"Operations", items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
     ],
     Operations:[
@@ -9746,7 +9797,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Sales",     items:[{id:"pipeline",l:"Sales Pipeline"}]},
       {group:"On-Site",   items:[{id:"projects",l:"Project Cards"}]},
       {group:"Design",    items:[{id:"drf",l:"Design Requests"}]},
-      {group:"Requests",  items:[{id:"costanalysis",l:"Cost Analysis"}]},
+      {group:"Requests",  items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"subconcert",l:"Subcon Billing"},{id:"costanalysis",l:"Cost Analysis"}]},
     ],
     Design:[
       {group:"Overview",    items:[{id:"home",l:"Projects"},{id:"designboard",l:"Design Board"},{id:"myfolder",l:"My Projects"}]},
@@ -9760,11 +9811,18 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       // Scope changes are Sales-owned (a linked deal). A PM who spots one reports
       // it via PM Updates; Sales picks it up and logs the linked addendum.
       {group:"Updates",  items:[{id:"pmupdates",l:"PM Updates"}]},
-      {group:"Work",     items:[{id:"projects",l:"Project Cards"}]},
+      {group:"Work",     items:[{id:"projects",l:"Project Cards"},{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"subconcert",l:"Subcon Billing"}]},
+    ],
+    // Coordinators post updates and request materials on the projects they are
+    // assigned to (project_cards.coordinator) — nothing else. The database scopes
+    // what they can read and write (migration 20261027150000_coordinator_role.sql).
+    Coordinator:[
+      {group:"Overview", items:[{id:"home",l:"My Projects"}]},
+      {group:"Work",     items:[{id:"projects",l:"Project Cards"},{id:"materialreq",l:"Purchase Requests (PRF)"}]},
     ],
     Warehouse:[
       {group:"Overview", items:[{id:"home",l:"Dashboard"}]},
-      {group:"Stock",    items:[{id:"deliveries",l:"Deliveries"},{id:"inventory",l:"Inventory"},{id:"stockmove",l:"Stock Movements"}]},
+      {group:"Stock",    items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"deliveries",l:"Deliveries"},{id:"inventory",l:"Inventory"},{id:"stockmove",l:"Stock Movements"}]},
     ],
     SalesOpsAdmin:[
       {group:"Overview",   items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
@@ -9783,7 +9841,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // difference is authority (they approve POs), not navigation.
     ProcurementManager:[
       {group:"Overview",   items:[{id:"home",l:"Overview"}]},
-      {group:"Orders",     items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
+      {group:"Orders",     items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
       {group:"Projects",   items:[{id:"projects",l:"Projects"},{id:"clients",l:"Clients"}]},
     ],
   };
@@ -9797,7 +9855,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
       masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆", audit:"🔎", syshealth:"🩺", tvboard:"📺",
       deliveries:"🚚",stockmove:"🔄",addenda:"⚠️",   pmupdates:"📝",  pmfeed:"📋",  suppliers:"🏭",
-      subcontractors:"👷",materialreq:"🔧",budgetreq:"💳",collections:"💵",
+      subcontractors:"👷",materialreq:"🔧",subconcert:"🔨",budgetreq:"💳",collections:"💵",
       checklist:"✅",joborders:"📄", ops:"⚙️",        datamanagement:"⚙️", myfolder:"📁",
     };
     const groups=visibleNav(role);
@@ -9949,14 +10007,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
       masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆", audit:"🔎", syshealth:"🩺", tvboard:"📺",
       deliveries:"🚚",stockmove:"🔄",addenda:"⚠️",   pmupdates:"📝",  pmfeed:"📋",  suppliers:"🏭",
-      subcontractors:"👷",materialreq:"🔧",budgetreq:"💳",collections:"💵",
+      subcontractors:"👷",materialreq:"🔧",subconcert:"🔨",budgetreq:"💳",collections:"💵",
       checklist:"✅",joborders:"📄", ops:"⚙️",        datamanagement:"⚙️", myfolder:"📁",
     };
     const NAV_LABELS={
       home:"Home",pipeline:"Pipeline",projects:"Projects",finance:"Finance",executive:"Executive",
       billing:"Billing",checklist:"Checklist",joborders:"JOs",
       costanalysis:"Costs",accounting:"Daily Payables",procurement:"Orders",
-      clients:"Clients",materialreq:"Materials",budgetreq:"Budget",
+      clients:"Clients",materialreq:"PRF",budgetreq:"Budget",
       swatchboard:"Swatches",drf:"Design",deliveries:"Delivery",
       stockmove:"Stock",reports:"Reports",suppliers:"Suppliers",
       subcontractors:"Subcon",calendar:"Calendar",inventory:"Inventory",
@@ -10269,7 +10327,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       )}
       {/* Global Modals */}
       <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal} deals={deals} addenda={addenda} role={role}/>
-      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={projList} clientName={clientName} chartOfAccounts={chartOfAccounts} suppliers={suppliers} exps={exps} poRefOptions={[...new Set([...prs.map(p=>p.poNumber),...swos.map(w=>w.woNumber)].filter(Boolean))]}/>
+      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={spendProjList} clientName={clientName} chartOfAccounts={chartOfAccounts} suppliers={suppliers} exps={exps} poRefOptions={[...new Set([...prs.map(p=>p.poNumber),...swos.map(w=>w.woNumber)].filter(Boolean))]}/>
       <Modal open={confirmDel!==null} onClose={()=>{setConfirmDel(null);setDelAck(false);}} title="Delete this deal?">
         {(()=>{
           const d=deals.find(x=>x.id===confirmDel);
@@ -10477,7 +10535,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {(()=>{
         const me=session?.name;
         const myDeals=deals.filter(d=>d.salesOwner===me);
-        const myWon=myDeals.filter(d=>WON_STAGES.includes(d.stage));
+        const myWon=myDeals.filter(d=>!d.isCostCenter&&WON_STAGES.includes(d.stage));
         const myPipe=myDeals.filter(d=>isActivePipeline(d.stage));
         const myUnpriced=myPipe.filter(d=>!d.standbyPO&&(!Number(d.value)||Number(d.value)===0));
         const pendingAddenda=addenda.filter(a=>!a.salesNotified&&a.status!=="Rejected"&&myWon.some(d=>d.id===a.dealId));
@@ -10495,7 +10553,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           return dt.getFullYear()===nowD.getFullYear()&&(homePeriod==="year"||dt.getMonth()===nowD.getMonth());
         };
         const cohort=myDeals.filter(d=>!d.parentDealId&&inWin(d));
-        const cWon=cohort.filter(d=>WON_STAGES.includes(d.stage));
+        const cWon=cohort.filter(d=>!d.isCostCenter&&WON_STAGES.includes(d.stage));
         const cLost=cohort.filter(d=>d.stage==="Did Not Win");
         const cOpen=cohort.filter(d=>isActivePipeline(d.stage));
         const decided=cWon.length+cLost.length;
@@ -11190,7 +11248,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         buttons={[
           {label:"Log Update",      icon:"📝", bg:"#f97316", action:()=>setPmUpdateModal&&setPmUpdateModal({dealId:null,dealName:"General"})},
           {label:"Report Blocker",  icon:"🚨", bg:"#dc2626", action:()=>setPmUpdateModal&&setPmUpdateModal({dealId:null,dealName:"General",initialType:"Blocker"})},
-          {label:"Material Request",icon:"📦", bg:"#f59e0b", action:()=>setPage("materialreq")},
+          {label:"PRF",icon:"📦", bg:"#f59e0b", action:()=>setPage("materialreq")},
           {label:"My Projects",     icon:"📋", bg:"#1e293b", action:()=>setPage("projects")},
         ]}
       />
@@ -11582,16 +11640,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   );
 
   // ── PROJECT MOVER HOME ───────────────────────────────────────────────────
-  if(role==="ProjectMover") return(
+  if(role==="ProjectMover"||role==="Coordinator") return(
     <Wrap>
       <DeptHeader
         name={session?.name?.split(" ")[0]||"Team"}
-        subtitle={`Project Mover · ${todayL}`}
+        subtitle={`${role==="Coordinator"?"Project Coordinator":"Project Mover"} · ${todayL}`}
         buttons={[
           {label:"Log Update",   icon:"📝", bg:"#f97316", action:()=>setPmUpdateModal&&setPmUpdateModal({dealId:null,dealName:"General"})},
           {label:"My Projects",  icon:"📋", bg:"#1e293b", action:()=>setPage("projects")},
           {label:"Calendar",     icon:"📅", bg:"#0ea5e9", action:()=>setPage("calendar")},
-          {label:"Material Req", icon:"📦", bg:"#f59e0b", action:()=>setPage("materialreq")},
+          {label:"PRF",          icon:"📦", bg:"#f59e0b", action:()=>setPage("materialreq")},
         ]}
       />
 
@@ -12279,7 +12337,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const D=now.getDate();
         const cyr=now.getFullYear(),cmo=now.getMonth();
         const pm=new Date(cyr,cmo-1,1),pyr=pm.getFullYear(),pmo=pm.getMonth();
-        const salesRec=deals.filter(d=>WON_STAGES.includes(d.stage)).map(d=>({dt:awardedMonth(d),v:Number(d.value||0)}));
+        const salesRec=deals.filter(d=>!d.isCostCenter&&WON_STAGES.includes(d.stage)).map(d=>({dt:awardedMonth(d),v:Number(d.value||0)}));
         const expRec=exps.map(e=>{const ds=e.date||(e.year!=null&&e.month!=null?`${e.year}-${String(e.month+1).padStart(2,"0")}-01`:null);return{dt:ds?new Date(ds):null,v:Number(e.amount||0)};});
         const collRec=[];billings.forEach(b=>(b.payments||[]).forEach(p=>{if(p.date&&isCashPayment(p))collRec.push({dt:new Date(p.date),v:Number(p.amount||0)});}));
         const pace=(rec,yr,mo,maxDay,count)=>rec.filter(x=>x.dt&&x.dt.getFullYear()===yr&&x.dt.getMonth()===mo&&x.dt.getDate()<=maxDay).reduce((s,x)=>s+(count?1:x.v),0);
@@ -12327,7 +12385,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         // Build the row list for the clicked widget
         let rows=[];
         if(key==="sales"||key==="awarded"){
-          rows=deals.filter(d=>WON_STAGES.includes(d.stage)&&inThisMonth(awardedMonth(d)))
+          rows=deals.filter(d=>!d.isCostCenter&&WON_STAGES.includes(d.stage)&&inThisMonth(awardedMonth(d)))
             .map(d=>({name:d.contact||d.client||"Untitled deal",sub:d.ceNo||"No CE",amt:Number(d.value||0),dt:awardedMonth(d),id:d.id}))
             .sort((a,b)=>b.dt-a.dt);
         }else if(key==="expenses"){
@@ -12515,6 +12573,21 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     </Wrap>
   );
   }
+  // ── PRF (Purchase Request Form) — one route for every role in the chain.
+  // The page id stays "materialreq" so the existing dashboard buttons land here.
+  if(page==="materialreq") return(
+    <Wrap>
+      <PrfView session={session} role={role} deals={deals} pcards={pcards} prs={prs}
+        sendTelegramNotification={sendTelegramNotification} isMobile={isMobile}
+        initialDeal={jumpDeal} clearJump={()=>setJumpDeal(null)}/>
+    </Wrap>
+  );
+  // ── SUBCON BILLING — PM / Operations certify work done (no cert, no payment).
+  if(page==="subconcert") return(
+    <Wrap>
+      <SubconCertView session={session} deals={deals} sendTelegramNotification={sendTelegramNotification} isMobile={isMobile}/>
+    </Wrap>
+  );
   // ── CALENDAR ────────────────────────────────────────────────────────────────
   if(page==="calendar") return(
     <ConstructionCalendar
@@ -12602,7 +12675,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // Won deals with no award date drop out of every awarded-value/count report (they can't
     // be bucketed to a month). Surface them here so the award date gets set and the numbers
     // reconcile, instead of the deal silently vanishing from the awarded totals.
-    const noAward=deals.filter(d=>WON_STAGES.includes(d.stage)&&!d.parentDealId&&!awardOnly(d));
+    const noAward=deals.filter(d=>!d.isCostCenter&&WON_STAGES.includes(d.stage)&&!d.parentDealId&&!awardOnly(d));
     if(noAward.length)dataFlags.push({n:dataFlags.length+1,issue:"Won project — no award date (excluded from awarded reports)",detail:noAward.map(d=>d.client+(d.ceNo?` (${d.ceNo})`:"")).join(", "),stake:fmt(noAward.reduce((s,d)=>s+Number(d.value||0),0))});
     const ceCounts={};deals.filter(d=>d.ceNo).forEach(d=>{ceCounts[d.ceNo]=(ceCounts[d.ceNo]||0)+1;});
     const dupCE=Object.entries(ceCounts).filter(([,c])=>c>1);
@@ -12614,13 +12687,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const noVal=openPipeline.filter(d=>!Number(d.value)&&!d.standbyPO);
     if(noVal.length)dataFlags.push({n:dataFlags.length+1,issue:"Pipeline deals with no value",detail:`${noVal.length} deal(s) have ₱0 value — pipeline understated`,stake:"unknown"});
     const yearDeals=deals.filter(d=>{const dt=acqDate(d);return dt&&new Date(dt).getFullYear()===CY;});
-    const yearWon=yearDeals.filter(d=>WON_STAGES.includes(d.stage));
+    const yearWon=yearDeals.filter(d=>!d.isCostCenter&&WON_STAGES.includes(d.stage));
     // Approved change orders awarded this year, for the yearly period / AE rollups.
     // Counted at their raw signed value (deductive subtracts) to match the deal
     // value sums, and attributed to the period of their awardedDate.
     const yearCO=addenda.filter(a=>CO_APPROVED(a)&&a.awardedDate&&new Date(a.awardedDate).getFullYear()===CY);
     const coRawSigned=a=>(a.kind==="Deductive"?-1:1)*Math.abs(Number(a.value||0));
-    const salesPeriods=Array.from({length:n},(_,i)=>{const pd=yearDeals.filter(d=>getDealPeriod(d)===i);const pw=pd.filter(d=>WON_STAGES.includes(d.stage));const pco=yearCO.filter(a=>coInPeriod(a,i));return{label:getPLabel(i),acquired:pd.length,won:pw.length,winRate:pd.length>0?Math.round(pw.length/pd.length*100):0,pipelineValue:pd.reduce((s,d)=>s+Number(d.value||0),0),wonValue:pw.reduce((s,d)=>s+dealBase(d),0)+pco.reduce((s,a)=>s+coRawSigned(a),0)};});
+    const salesPeriods=Array.from({length:n},(_,i)=>{const pd=yearDeals.filter(d=>getDealPeriod(d)===i);const pw=pd.filter(d=>!d.isCostCenter&&WON_STAGES.includes(d.stage));const pco=yearCO.filter(a=>coInPeriod(a,i));return{label:getPLabel(i),acquired:pd.length,won:pw.length,winRate:pd.length>0?Math.round(pw.length/pd.length*100):0,pipelineValue:pd.reduce((s,d)=>s+Number(d.value||0),0),wonValue:pw.reduce((s,d)=>s+dealBase(d),0)+pco.reduce((s,a)=>s+coRawSigned(a),0)};});
     const ownerMap={};yearDeals.forEach(d=>{const o=d.salesOwner||"Unassigned";if(!ownerMap[o])ownerMap[o]={owner:o,acquired:0,won:0,value:0};ownerMap[o].acquired++;if(WON_STAGES.includes(d.stage)){ownerMap[o].won++;ownerMap[o].value+=dealBase(d);}});
     yearCO.forEach(a=>{const o=a.salesOwner||"Unassigned";if(!ownerMap[o])ownerMap[o]={owner:o,acquired:0,won:0,value:0};ownerMap[o].value+=coRawSigned(a);});
     const ownerRows=Object.values(ownerMap).sort((a,b)=>b.value-a.value);
@@ -15063,7 +15136,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           const pipelineVal=deals.filter(d=>ACTIVE_STAGES.includes(d.stage)).reduce((s,d)=>s+Number(d.value||0),0);
           const y12ago=new Date();y12ago.setFullYear(y12ago.getFullYear()-1);
           const recentDeals=deals.filter(d=>{const dt=new Date(d.createdAt||"2020-01-01");return dt>=y12ago;});
-          const winRate=recentDeals.length>0?Math.round(recentDeals.filter(d=>WON_STAGES.includes(d.stage)||d.stage==="14 · Completed").length/recentDeals.length*100):0;
+          const winRate=recentDeals.length>0?Math.round(recentDeals.filter(d=>!d.isCostCenter&&(WON_STAGES.includes(d.stage)||d.stage==="14 · Completed")).length/recentDeals.length*100):0;
           const avgDeal=wonDeals.length>0?Math.round(wonDeals.reduce((s,d)=>s+Number(d.value||0),0)/wonDeals.length):0;
           const months6=Array.from({length:6},(_,i)=>{const d=new Date(now.getFullYear(),now.getMonth()-5+i,1);return{y:d.getFullYear(),m:d.getMonth(),label:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()]};});
           const monthlyRev=months6.map(({y,m})=>billings.filter(b=>b.status!=="Cancelled").reduce((s,b)=>{const ds=b.invoiceDate||b.dueDate;if(!ds)return s;const d=new Date(ds);return(!isNaN(d)&&d.getFullYear()===y&&d.getMonth()===m)?s+Number(b.amount||0):s;},0));
@@ -15710,7 +15783,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     {payForm.poNumber&&<div style={{fontSize:".72rem",color:"#64748b",marginTop:3}}>Payment waits for Operations to verify % complete. Retention is held at payment.</div>}
                   </Fld>
                 )}
-                <Fld label="Link to Project"><Sel value={payForm.projectId||"none"} onChange={e=>setPayForm(p=>({...p,projectId:e.target.value==="none"?null:e.target.value}))}><option value="none">— No project</option>{wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" — "+d.contact:""}</option>)}</Sel></Fld>
+                <Fld label="Link to Project"><Sel value={payForm.projectId||"none"} onChange={e=>setPayForm(p=>({...p,projectId:e.target.value==="none"?null:e.target.value}))}><option value="none">— No project</option>{wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" — "+d.contact:""}</option>)}{costCenterDeals.length>0&&<optgroup label="Cost centers">{costCenterDeals.map(d=><option key={d.id} value={d.id}>🏷 {d.contact||d.client}</option>)}</optgroup>}</Sel></Fld>
                 {/* BIR: VAT + EWT capture (restored from the legacy expense flow) */}
                 {(()=>{
                   const amt=Number(payForm.amount)||0;
@@ -16179,13 +16252,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         })()}
       </Wrap>
     );
-    if(page==="procurement") return(<Wrap><ProcurementView2 onWaiveDp={waiveDp} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} poApprovers={botSettings?.poApprovers||""} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
-    if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} poApprovers={botSettings?.poApprovers||""} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="costing") return(<Wrap><CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role}/></Wrap>);
-    if(page==="materialreq") return(<Wrap><MaterialRequestView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} deleteMR={delMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView sendTelegramNotification={sendTelegramNotification} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
-    if(page==="requests") return(<Wrap><RequestsView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
+    if(page==="requests") return(<Wrap><RequestsView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="suppliers") return(<Wrap><SupplierMasterView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} session={session} role={role}/></Wrap>);
     if(page==="subcontractors") return(<Wrap><SubconMasterView subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role}/></Wrap>);
     if(page==="ceqs") return(<Wrap><CEQSView ceReqs={ceReqs} addCEReq={addCEReq} updateCEReq={updateCEReq} session={session} role={role} toastEmit={toastEmit} deals={deals}/></Wrap>);
@@ -16209,7 +16281,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         />
       </Wrap>
     );
-    const ROLES=['Manager', 'Sales', 'Finance', 'Procurement', 'ProcurementManager', 'QS', 'Operations', 'Design', 'ProjectMover', 'Warehouse', 'SalesOpsAdmin', 'FinanceAssistant'];
+    const ROLES=['Manager', 'Sales', 'Finance', 'Procurement', 'ProcurementManager', 'QS', 'Operations', 'Design', 'ProjectMover', 'Coordinator', 'Warehouse', 'SalesOpsAdmin', 'FinanceAssistant'];
     if(page==="accounts"&&role==="Manager") return(
       <Wrap>
         <AccountsManager users={users} session={session} onApprove={approveUser} onReject={rejectUser} onDeactivate={deactivateUser} onDelete={deleteUser} onResetPw={resetPw} onCreateUser={createUser} ROLES={ROLES}/>
@@ -16368,7 +16440,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #fed7aa",padding:"14px 18px",marginBottom:16}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8}}>
                   <div style={{fontWeight:700,color:"#c2410c",fontSize:".9rem"}}>📦 {needsPR.length} item{needsPR.length!==1?"s":""} need restocking — no active PO</div>
-                  <button onClick={()=>setPage("materialreq")} style={{background:"#f97316",border:"none",borderRadius:8,padding:"7px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:"#fff",cursor:"pointer"}}>+ Raise Material Request</button>
+                  <button onClick={()=>setPage("procurement")} style={{background:"#f97316",border:"none",borderRadius:8,padding:"7px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:"#fff",cursor:"pointer"}}>+ Raise stock PO</button>
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(3,1fr)",gap:8}}>
                   {needsPR.slice(0,9).map(i=>(
@@ -16519,12 +16591,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       </Wrap>
     );
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
-    if(page==="procurement") return(<Wrap><ProcurementView2 onWaiveDp={waiveDp} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} poApprovers={botSettings?.poApprovers||""} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
-    if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} poApprovers={botSettings?.poApprovers||""} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap} addMR={addMR} wonDeals={wonDeals} session={session}/></Wrap>);
-    if(page==="materialreq") return(<Wrap><MaterialRequestView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} deleteMR={delMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView sendTelegramNotification={sendTelegramNotification} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
-    if(page==="requests") return(<Wrap><RequestsView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
+    if(page==="requests") return(<Wrap><RequestsView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="masters") return(<Wrap><MasterListsView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role} isMobile={isMobile}/></Wrap>);
     if(page==="expenses") return(
       <Wrap>
@@ -17016,12 +17087,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   if(role==="Operations"){
     if(page==="home") return <OpsView sendTelegramNotification={sendTelegramNotification} projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role} openPmModal={d=>setPmUpdateModal(d)} onCloseProject={(dealId,stage)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,stage}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{stage}).catch(()=>{});logActivity(dealId,"Stage Change",`Pipeline stage → ${stage}`,session?.name);["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,`📌 <b>Project Stage Updated</b>\nClient: <b>${projDeal?.client||"?"}</b>${projDeal?.ceNo?`\nCE: ${projDeal.ceNo}`:""}\nNew Stage: ${stage}\nBy: ${session?.name||"Ops"}`));}}/>;
-    if(page==="procurement") return(<Wrap><ProcurementView2 onWaiveDp={waiveDp} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} poApprovers={botSettings?.poApprovers||""} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
-    if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} poApprovers={botSettings?.poApprovers||""} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
-    if(page==="materialreq") return(<Wrap><MaterialRequestView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} deleteMR={delMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView sendTelegramNotification={sendTelegramNotification} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
-    if(page==="requests") return(<Wrap><RequestsView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
+    if(page==="requests") return(<Wrap><RequestsView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="calendar") return(<ConstructionCalendar wonDeals={wonDeals} completedDeals={completedDeals} deals={deals} pcards={pcards} jos={jos} prs={prs} billings={billings} drfs={drfs} ceReqs={ceReqs} setPage={setPage} setJumpDeal={setJumpDeal} today={today} Wrap={Wrap} checklists={checklist} session={session} addOpsEvent={data=>{const rec={...data,id:uid(),dept:"Operations",createdDate:today,createdBy:session?.name||role};upChecklist(cs=>[...cs,rec]);if(isSupabaseReady())sbInsert('checklists',toSbChecklist(rec)).catch(err=>{console.error("Calendar item sync:",err);toastEmit&&toastEmit("Calendar item saved locally only — tap 🔄 sync to push it to the server.","warning",8000);});const proj=wonDeals.find(d=>d.id===rec.projectId);const msg=`📅 <b>Calendar Item Added</b>\n<b>${rec.type||"Event"}</b>: ${rec.title||""}\nDate: ${rec.dueDate||"—"}${proj?`\nProject: ${proj.client}${proj.ceNo?" ("+proj.ceNo+")":""}`:""}\nBy: ${rec.createdBy||"—"}`;const _t=(rec.type||"").toLowerCase();if(["installation","backjob","turnover","site visit","repair"].some(t=>_t.includes(t))){sendTelegramNotification("ops",msg);sendTelegramNotification("sales",msg);}else if(_t.includes("drf")||_t.includes("design")){sendTelegramNotification("design",msg);}else if(_t.includes("billing")){sendTelegramNotification("finance",msg);}else{sendTelegramNotification("ops",msg);}}} updateOpsEvent={(id,ch)=>{upChecklist(cs=>cs.map(c=>c.id===id?{...c,...ch}:c));if(isSupabaseReady())sbUpdate('checklists',id,toSbChecklist({...checklist.find(c=>c.id===id),...ch})).catch(()=>{});}} deleteOpsEvent={delOpsEvent}/>);
   }
 
@@ -18176,6 +18246,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               <select value={cvForm.projectId||""} onChange={e=>setCvForm(f=>({...f,projectId:e.target.value||null}))} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",background:"#fff",boxSizing:"border-box"}}>
                 <option value="">— Company-wide / No project —</option>
                 {wonDeals.map(d=><option key={d.id} value={d.id}>{projDisplayName(d)}</option>)}
+                {costCenterDeals.length>0&&<optgroup label="Cost centers">{costCenterDeals.map(d=><option key={d.id} value={d.id}>🏷 {d.contact||d.client}</option>)}</optgroup>}
               </select>
             </div>
             <div style={{marginBottom:16}}>
@@ -18484,7 +18555,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           </div>
         );
       })()}
-      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={wonDeals} clientName={clientName} chartOfAccounts={chartOfAccounts} suppliers={suppliers} exps={exps}/>
+      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={spendWonDeals} clientName={clientName} chartOfAccounts={chartOfAccounts} suppliers={suppliers} exps={exps}/>
     </Wrap>
   );
 
@@ -18499,15 +18570,6 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     </Wrap>
   );
 
-  // ── MATERIAL REQUESTS ────────────────────────────────────────────────────────
-  if(page==="materialreq") return(
-    <Wrap>
-      <MaterialRequestView
-        mreqs={mreqs} addMR={addMR} updateMR={updateMR} deleteMR={delMR}
-        prs={prs} addPR={addPR}
-        wonDeals={wonDeals} session={session} role={role}/>
-    </Wrap>
-  );
 
   // ── BUDGET REQUESTS ───────────────────────────────────────────────────────
   if(page==="budgetreq") return(
@@ -18666,9 +18728,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   if((["Cost Control","Finance","Manager","Operations"].includes(role))&&page==="procurement") return(
     <Wrap>
-      <ProcurementView2 onWaiveDp={waiveDp}
+      <ProcurementView2 costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp}
         prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR}
-        wonDeals={wonDeals} deals={deals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}
+        wonDeals={wonDeals} deals={deals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}
         upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/>
     </Wrap>
   );
@@ -21227,7 +21289,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
                 </div>
               </div>
               <div>{(()=>{
-                const wonC=clientDeals.filter(d=>WON_STAGES.includes(d.stage));
+                const wonC=clientDeals.filter(d=>!d.isCostCenter&&WON_STAGES.includes(d.stage));
                 const wonVal=wonC.reduce((s,d)=>s+Number(d.value||0),0);
                 return wonC.length>0?(
                   <div>
@@ -22293,7 +22355,7 @@ function CEQSView({ceReqs,addCEReq,updateCEReq,session,role,toastEmit,deals}){
 // ─── BOQ MODAL (opened from pipeline 📋 button) ──────────────────────────────
 
 // ─── SUBCON WORK ORDERS VIEW ───────────────────────────────────────────────────
-function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,deals,subcons,session,role,toastEmit,poApprovers,sendTelegramNotification,chartOfAccounts=[],onWaiveDp}){
+function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,deals,subcons,session,role,toastEmit,sendTelegramNotification,chartOfAccounts=[],onWaiveDp}){
   const today=new Date().toISOString().split("T")[0];
   const[mode,setMode]=useState("list");
   const[editingId,setEditingId]=useState(null);
@@ -22332,7 +22394,7 @@ function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,deal
   const ACCT_CLR={"For Accounting":"#d97706","Checked":"#2563eb","Payment Ordered":"#059669"};
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
   const canManage=role==="Manager"||isProcurementRole(role);
-  const woDirect=canApprovePO(role,session?.name||"",session?.name||"",poApprovers);
+  const woDirect=canApprovePO(role,session?.name||"",session?.name||"");
   // Down payment gate (same rule as POs): no work order is issued on a deal the
   // client hasn't paid on, unless a Manager waived the down payment.
   const WO_ISSUED=["Issued","In Progress","Completed"];
@@ -22591,7 +22653,7 @@ function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,deal
       const orig=swos.find(w=>w.id===editingId);
       const dpBlk=orig&&WO_ISSUED.includes(base.status)&&!WO_ISSUED.includes(orig.status)&&dpBlockedDeal(base.projectId);
       if(dpBlk){toastEmit&&toastEmit(dpMsg(dpBlk),"error",9000);return;}
-      if(base.status==="Issued"&&orig&&(orig.status==="Pending Approval"||orig.status==="Draft")&&!canApprovePO(role,session?.name||"",orig.requestedBy,poApprovers)){toastEmit&&toastEmit("Needs a Manager (or designated approver) to approve.","error");return;}
+      if(base.status==="Issued"&&orig&&(orig.status==="Pending Approval"||orig.status==="Draft")&&!canApprovePO(role,session?.name||"",orig.requestedBy)){toastEmit&&toastEmit("Needs a Manager or the Procurement Manager to approve.","error");return;}
       if(base.status==="Issued"&&orig&&orig.status!=="Issued") Object.assign(base,{approvedBy:session?.name||"",acctStatus:base.acctStatus||"For Accounting"});
       updateSWO(editingId,base);
       toastEmit&&toastEmit(`${form.woNumber||"Work order"} updated`,"success");
@@ -23124,13 +23186,13 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
                         <select value={w.status} onChange={e=>{const st=e.target.value;
                           const dpBlk=WO_ISSUED.includes(st)&&!WO_ISSUED.includes(w.status)&&dpBlockedDeal(w.projectId);
                           if(dpBlk){toastEmit&&toastEmit(dpMsg(dpBlk),"error",9000);return;}
-                          if(st==="Issued"&&(w.status==="Pending Approval"||w.status==="Draft")&&!canApprovePO(role,session?.name||"",w.requestedBy,poApprovers)){toastEmit&&toastEmit("Needs a Manager (or designated approver) to approve.","error");return;}
+                          if(st==="Issued"&&(w.status==="Pending Approval"||w.status==="Draft")&&!canApprovePO(role,session?.name||"",w.requestedBy)){toastEmit&&toastEmit("Needs a Manager or the Procurement Manager to approve.","error");return;}
                           updateSWO(w.id,{status:st,...(st==="Issued"&&w.status!=="Issued"?{approvedBy:session?.name||"",acctStatus:w.acctStatus||"For Accounting"}:{})});}} style={{border:"1.5px solid #e2e8f0",borderRadius:6,padding:"3px 6px",fontFamily:"inherit",fontSize:".7rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
                           {SWO_STATUSES.map(s=><option key={s}>{s}</option>)}
                         </select>
                         {w.acctStatus&&<span style={{fontSize:".62rem",background:(ACCT_CLR[w.acctStatus]||"#94a3b8")+"22",color:ACCT_CLR[w.acctStatus]||"#94a3b8",border:`1px solid ${(ACCT_CLR[w.acctStatus]||"#94a3b8")}44`,borderRadius:20,padding:"1px 8px",fontWeight:700}}>🧾 {w.acctStatus}{w.acctStatus==="Payment Ordered"&&w.paymentBank?` · ${(BANKS.find(b=>b.id===w.paymentBank)||{}).short||w.paymentBank}`:""}</span>}
                         <div style={{marginLeft:"auto",display:"flex",gap:6}}>
-                          {(w.status==="Pending Approval"||w.status==="Draft")&&canApprovePO(role,session?.name||"",w.requestedBy,poApprovers)&&(
+                          {(w.status==="Pending Approval"||w.status==="Draft")&&canApprovePO(role,session?.name||"",w.requestedBy)&&(
                             <button onClick={()=>{
                               const dpBlk=dpBlockedDeal(w.projectId);
                               if(dpBlk){toastEmit&&toastEmit(dpMsg(dpBlk),"error",9000);return;}
@@ -23141,7 +23203,7 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
                               toastEmit&&toastEmit(`${w.woNumber} approved — sent to Accounting`,"success");
                             }} style={{background:"#059669",border:"none",borderRadius:7,padding:"4px 12px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>✓ Approve & Issue</button>
                           )}
-                          {(w.status==="Pending Approval"||w.status==="Draft")&&!canApprovePO(role,session?.name||"",w.requestedBy,poApprovers)&&(
+                          {(w.status==="Pending Approval"||w.status==="Draft")&&!canApprovePO(role,session?.name||"",w.requestedBy)&&(
                             <span style={{fontSize:".68rem",color:"#b45309",fontWeight:600,alignSelf:"center"}}>⏳ Awaiting approval</span>
                           )}
                           <button aria-label={`Print work order ${w.woNumber||""}`.trim()} title="Print work order" onClick={()=>printWO(w)} style={{background:"#eff6ff",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨 Print</button>
@@ -23443,17 +23505,29 @@ function DpGate({deal,deals,role,onWaiveDp,what="POs"}){
 }
 
 // ─── PROCUREMENT VIEW 2 (Full PO → Multi-item → Delivery) ───────────────────
-function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allDeals,budgets,exps,swos,session,role,toastEmit,suppliers,addSupplier,poApprovers="",upPayables,payables,sendTelegramNotification,isSupabaseReady,sbUpsert,payableToSb,syncPoPayable,approvePOs,chartOfAccounts=[],onWaiveDp}){
+function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allDeals,budgets,exps,swos,session,role,toastEmit,suppliers,addSupplier,upPayables,payables,sendTelegramNotification,isSupabaseReady,sbUpsert,payableToSb,syncPoPayable,approvePOs,chartOfAccounts=[],onWaiveDp,costCenterDeals=[],onCreateCostCenter}){
+  // Internal cost centers (HR, GMD Tools, warehouse stock…): deals flagged
+  // is_cost_center, bought against like a project but kept out of project
+  // lists. Only a Manager adds one (create_cost_center RPC).
+  const[showCostCenters,setShowCostCenters]=useState(false);
+  const[newCostCenter,setNewCostCenter]=useState("");
+  const[ccBusy,setCcBusy]=useState(false);
+  const addCostCenter=async()=>{
+    if(ccBusy||!newCostCenter.trim()||!onCreateCostCenter) return;
+    setCcBusy(true);
+    try{if(await onCreateCostCenter(newCostCenter)) setNewCostCenter("");}
+    finally{setCcBusy(false);}
+  };
   const activeDeals=React.useMemo(()=>(allDeals||wonDeals||[]).filter(d=>!isLostStage(d.stage)),[allDeals,wonDeals]);
   const today=new Date().toISOString().split("T")[0];
   // ── PO approval gate ────────────────────────────────────────────────────────
   // Segregation of duties: a PO may only be moved to "PO Issued" by a Manager or
-  // by a designated PO approver (botSettings.poApprovers, e.g. "Marian Prile").
+  // by the Procurement Manager (canApprovePO; the database checks it too).
   // The person who prepared/created the PO cannot self-approve it. Anyone without
   // authority who selects "PO Issued" is held at "Pending Approval" with no
   // approver stamp, so the printed PO never shows the preparer as the approver.
   // Same helper (canApprovePO) already gates Subcon Work Orders.
-  const canApproveFor=requestedBy=>canApprovePO(role,session?.name||"",requestedBy,poApprovers);
+  const canApproveFor=requestedBy=>canApprovePO(role,session?.name||"",requestedBy);
   // Down payment gate: the deal a PO line is for, when that deal still needs a
   // down payment (or a Manager's waiver) before anything can be issued on it.
   const ISSUED_ST=["PO Issued","Partially Delivered","Delivered"];
@@ -23467,7 +23541,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
     if(blocked){toastEmit&&toastEmit(dpMsg(blocked),"error",9000);return;}
     if(st==="PO Issued"&&pr.status!=="PO Issued"){
       if(!canApproveFor(pr.requestedBy)){
-        toastEmit&&toastEmit("Needs a Manager or the designated PO approver — held at Pending Approval.","error");
+        toastEmit&&toastEmit("Needs a Manager or the Procurement Manager — held at Pending Approval.","error");
         patch={status:"Pending Approval"};
       }else{
         patch={status:st,approvedBy:session?.name||"",approvedAt:today};
@@ -23661,14 +23735,14 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
     // preview; a manually-typed or edited number is kept as-is.
     let poNo=poNumber.trim();
     if(!editingPrIds&&poNumberAuto){const claimed=await nextPoNo();if(claimed)poNo=claimed;}
-    // PO issue gate on save: only a Manager or the designated PO approver may
+    // PO issue gate on save: only a Manager or the Procurement Manager may
     // create/save a PO already in "PO Issued". Everyone else (the preparer) is
     // held at "Pending Approval" so they can't self-approve their own PO.
     const canIssueNow=canApproveFor(session?.name||"");
     const dpBlocked=ISSUED_ST.includes(poStatus)&&poItems.map(i=>dpBlockedDeal(i.projectId)).find(Boolean);
     const effStatus=dpBlocked?"Pending Approval":(poStatus==="PO Issued"&&!canIssueNow)?"Pending Approval":poStatus;
     if(dpBlocked) toastEmit&&toastEmit(`Saved as Pending Approval. ${dpMsg(dpBlocked)}`,"error",9000);
-    else if(poStatus==="PO Issued"&&!canIssueNow) toastEmit&&toastEmit("Saved as Pending Approval — a Manager or the designated PO approver must issue it.","info");
+    else if(poStatus==="PO Issued"&&!canIssueNow) toastEmit&&toastEmit("Saved as Pending Approval — a Manager or the Procurement Manager must issue it.","info");
     const buildUpdate=(item)=>{
       // Resolve against all active deals, not just awarded ones — procurement
       // often buys swatches/materials for deals that haven't been won yet, and
@@ -23872,7 +23946,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
               // flip an existing PO to "PO Issued" via the edit form.
               else if(editForm.status==="PO Issued"&&orig&&orig.status!=="PO Issued"){
                 if(!canApproveFor(editForm.requestedBy||orig.requestedBy)){
-                  toastEmit&&toastEmit("Needs a Manager or the designated PO approver — held at Pending Approval.","error");
+                  toastEmit&&toastEmit("Needs a Manager or the Procurement Manager — held at Pending Approval.","error");
                   patch={...patch,status:"Pending Approval",approvedBy:"",approvedAt:""};
                 }else{
                   patch={...patch,approvedBy:session?.name||"",approvedAt:today};
@@ -24067,6 +24141,33 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
   // List view
   return(
     <div>
+      {showCostCenters&&(
+        <div onClick={()=>setShowCostCenters(false)} style={{position:"fixed",inset:0,background:"#0f172acc",zIndex:1500,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"36px 16px",overflowY:"auto"}}>
+          <div onClick={e=>e.stopPropagation()} role="dialog" aria-label="Cost centers" style={{background:"#fff",borderRadius:16,border:"1.5px solid #e2e8f0",padding:22,maxWidth:480,width:"100%",boxShadow:"0 24px 60px #0006"}}>
+            <div style={{fontWeight:800,color:"#0f172a",fontSize:"1rem",marginBottom:4}}>🏷 Internal cost centers</div>
+            <div style={{fontSize:".75rem",color:"#64748b",marginBottom:14}}>GMD's own spending (tools, stock, HR, operations). Pick one as the project on a PO, payable, expense or voucher. Cost centers never show up as client projects. GMD Stocks (no project) still works as before.</div>
+            {costCenterDeals.length===0
+              ?<div style={{fontSize:".8rem",color:"#94a3b8",padding:"10px 0"}}>No cost centers yet.</div>
+              :<div style={{border:"1.5px solid #e2e8f0",borderRadius:10,overflow:"hidden",marginBottom:14}}>
+                {costCenterDeals.map((d,i)=>(
+                  <div key={d.id} style={{display:"flex",justifyContent:"space-between",gap:10,padding:"9px 12px",borderTop:i?"1px solid #f1f5f9":"none",fontSize:".82rem"}}>
+                    <span style={{fontWeight:700,color:"#0f172a"}}>{d.contact||d.client}</span>
+                    <span style={{color:"#64748b",fontFamily:"monospace",fontSize:".74rem"}}>{d.ceNo||"—"}</span>
+                  </div>
+                ))}
+              </div>}
+            {canonRole(role)==="Manager"
+              ?<div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                <input value={newCostCenter} onChange={e=>setNewCostCenter(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addCostCenter();}} maxLength={80} placeholder="New cost center, e.g. HR Cost Center" style={{flex:"1 1 200px",border:"1.5px solid #cbd5e1",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem"}}/>
+                <button onClick={addCostCenter} disabled={ccBusy||!newCostCenter.trim()} style={{background:"#1e293b",color:"#fff",border:"none",borderRadius:8,padding:"8px 14px",fontFamily:"inherit",fontSize:".8rem",fontWeight:800,cursor:ccBusy||!newCostCenter.trim()?"not-allowed":"pointer",opacity:ccBusy||!newCostCenter.trim()?.6:1}}>{ccBusy?"Adding…":"+ Add"}</button>
+              </div>
+              :<div style={{fontSize:".74rem",color:"#64748b"}}>Need a new cost center? Ask a Manager to add it.</div>}
+            <div style={{textAlign:"right",marginTop:14}}>
+              <button onClick={()=>setShowCostCenters(false)} style={{background:"none",border:"none",color:"#64748b",fontFamily:"inherit",fontSize:".8rem",fontWeight:700,cursor:"pointer"}}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,flexWrap:"wrap",gap:12}}>
         <div>
           <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>📦 Purchase Orders</h2>
@@ -24078,6 +24179,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
                 <button key={t} onClick={()=>setPoListTab(t)} style={{padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,border:"none",background:poListTab===t?"#1e293b":"#fff",color:poListTab===t?"#fff":"#64748b",cursor:"pointer"}}>{l}</button>
               ))}
             </div>
+          <button onClick={()=>setShowCostCenters(true)} title="Internal cost centers you can buy against" style={{background:"#fff",color:"#0f172a",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,cursor:"pointer"}}>🏷 Cost centers</button>
           <button onClick={()=>{
             const rows=[["PO Number","Date","Supplier","Project","Item Description","Category","Qty","Unit","Est Unit Cost","Act Unit Cost","Line Total","Status","Notes"]];
             const allProjDeals=[...wonDeals,...(allDeals||[])];
@@ -24147,7 +24249,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
         <ErpStat tone="ok" label="Total Value" value={"Php "+totalValue.toLocaleString("en-PH",{minimumFractionDigits:0,maximumFractionDigits:0})} foot="materials value"/>
       </div>
       {/* Pending POs the viewer may approve, approved in bulk (hidden when none). */}
-      {approvePOs&&<POApprovals prs={prs} deals={allDeals||wonDeals} role={role} session={session} poApprovers={poApprovers} approvePOs={approvePOs}/>}
+      {approvePOs&&<POApprovals prs={prs} deals={allDeals||wonDeals} role={role} session={session} approvePOs={approvePOs}/>}
 
       <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
         <select value={filterProj} onChange={e=>setFilterProj(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
@@ -24685,362 +24787,6 @@ function CostingStudy({wonDeals,budgets,prs,exps,projs,role}){
   );
 }
 
-// ─── MATERIAL REQUEST VIEW ────────────────────────────────────────────────────
-function MaterialRequestView({sendTelegramNotification,mreqs,addMR,updateMR,deleteMR,prs,addPR,wonDeals,session,role,toastEmit,suppliers,poApprovers}){
-  const[showForm,setShowForm]=useState(false);
-  const[form,setForm]=useState({projectId:"",itemName:"",category:"Materials",qty:1,unit:"pcs",estUnitCost:"",urgency:"Normal",purpose:"",requestedBy:session?.name||"",notes:""});
-  const f=(k,v)=>setForm(p=>({...p,[k]:v}));
-  const n=v=>Number(v)||0;
-  const fmt=v=>"₱"+n(v).toLocaleString("en-PH",{minimumFractionDigits:0});
-  const STATUS_CLR={"Submitted":"#f59e0b","Reviewed":"#3b82f6","Converted to PR":"#10b981","Rejected":"#ef4444"};
-  const URGENCY_CLR={"Urgent":"#ef4444","High":"#f59e0b","Normal":"#10b981"};
-
-  const[convertingId, setConvertingId] = useState(null);
-  const[convSupplier, setConvSupplier] = useState("");
-  const[convPoNo,     setConvPoNo]     = useState("");
-
-  const nextPoNo = () => claimDocNumber("PO",(prs||[]).map(p=>p.poNumber));
-
-  const printMR = (mr) => {
-    const deal = wonDeals.find(d=>d.id===mr.projectId);
-    const projName = deal?.contact||deal?.client||"—";
-    const estTotal = Number(mr.estUnitCost||0)*Number(mr.qty||0);
-    const fmtP = v=>"₱"+Number(v).toLocaleString("en-PH",{minimumFractionDigits:2});
-    const printDate = new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"});
-    const win = window.open("","_blank","width=860,height=1000");
-    if(!win){alert("Please allow pop-ups.");return;}
-    win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-<title>Material Request — ${projName}</title>
-<style>
-  *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:Arial,Helvetica,sans-serif;font-size:11.5px;color:#1a1a1a;background:#fff;line-height:1.5;}
-  .page{max-width:760px;margin:0 auto;padding:36px 48px;}
-  .letterhead{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:14px;border-bottom:3px solid #f97316;margin-bottom:20px;}
-  .co-name{font-weight:900;font-size:13px;color:#1a1a1a;letter-spacing:.3px;}
-  .co-info{font-size:10px;color:#666;line-height:1.7;margin-top:3px;}
-  .doc-title{font-size:20px;font-weight:900;color:#f97316;letter-spacing:.5px;margin-bottom:3px;}
-  .doc-no{font-size:11px;color:#666;}
-  .section{margin-bottom:18px;}
-  .section-title{font-size:9.5px;font-weight:900;text-transform:uppercase;letter-spacing:1px;color:#f97316;border-bottom:1.5px solid #f97316;padding-bottom:3px;margin-bottom:10px;}
-  .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;}
-  .info-row{font-size:11px;display:flex;gap:6px;}
-  .info-label{font-weight:700;color:#555;min-width:100px;flex-shrink:0;}
-  .info-val{color:#1a1a1a;}
-  .items-table{width:100%;border-collapse:collapse;font-size:11px;}
-  .items-table th{background:#f97316;color:#fff;padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;}
-  .items-table td{padding:7px 10px;border-bottom:1px solid #e5e5e5;vertical-align:top;}
-  .items-table tr:nth-child(even) td{background:#fafafa;}
-  .total-row td{font-weight:700;background:#fff7ed!important;border-top:2px solid #f97316;}
-  .purpose-box{background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:10px 14px;font-size:11px;color:#1a1a1a;margin-bottom:18px;}
-  .purpose-label{font-size:10px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
-  .sig-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:32px;}
-  .sig-box{border-top:1.5px solid #1a1a1a;padding-top:8px;}
-  .sig-role{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#666;margin-bottom:4px;}
-  .sig-name{font-size:11.5px;font-weight:700;color:#1a1a1a;min-height:18px;}
-  .sig-date{font-size:10px;color:#666;margin-top:2px;min-height:14px;}
-  .sig-line{height:28px;border-bottom:1px solid #ccc;margin-bottom:4px;}
-  .urgency-badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;}
-  .urgency-Urgent{background:#fef2f2;color:#dc2626;border:1px solid #fecaca;}
-  .urgency-High{background:#fffbeb;color:#d97706;border:1px solid #fde68a;}
-  .urgency-Normal{background:#f0fdf4;color:#059669;border:1px solid #6ee7b7;}
-  .no-print{margin-top:24px;text-align:center;}
-  @media print{.no-print{display:none;}}
-</style></head><body><div class="page">
-
-  <div class="letterhead">
-    <div>
-      <div class="co-name">GMD Productions Inc.</div>
-      <div class="co-info">Interior Design &amp; Fabrication<br>Marikina City, Metro Manila<br>gmdproductionsinc@gmail.com</div>
-    </div>
-    <div style="text-align:right">
-      <div class="doc-title">MATERIAL REQUEST</div>
-      <div class="doc-no">Date: ${printDate}</div>
-      <div class="doc-no">Status: <strong>${mr.status||"Submitted"}</strong></div>
-    </div>
-  </div>
-
-  <div class="section">
-    <div class="section-title">Project Information</div>
-    <div class="info-grid">
-      <div class="info-row"><span class="info-label">Project:</span><span class="info-val">${projName}</span></div>
-      <div class="info-row"><span class="info-label">CE No.:</span><span class="info-val">${deal?.ceNo||"—"}</span></div>
-      <div class="info-row"><span class="info-label">Location:</span><span class="info-val">${deal?.location||"—"}</span></div>
-      <div class="info-row"><span class="info-label">Date Submitted:</span><span class="info-val">${mr.createdDate||"—"}</span></div>
-      <div class="info-row"><span class="info-label">Urgency:</span><span class="info-val"><span class="urgency-badge urgency-${mr.urgency||"Normal"}">${mr.urgency||"Normal"}</span></span></div>
-      <div class="info-row"><span class="info-label">Department:</span><span class="info-val">Operations</span></div>
-    </div>
-  </div>
-
-  <div class="section">
-    <div class="section-title">Items Requested</div>
-    <table class="items-table">
-      <thead><tr><th>#</th><th>Description</th><th>Category</th><th>Qty</th><th>Unit</th><th>Est. Unit Cost</th><th>Total</th></tr></thead>
-      <tbody>
-        <tr>
-          <td>1</td>
-          <td>${mr.itemName||"—"}</td>
-          <td>${mr.category||"—"}</td>
-          <td>${mr.qty||1}</td>
-          <td>${mr.unit||"pcs"}</td>
-          <td>${fmtP(mr.estUnitCost||0)}</td>
-          <td>${fmtP(estTotal)}</td>
-        </tr>
-        <tr class="total-row">
-          <td colspan="6" style="text-align:right;padding-right:10px;">Total Estimated Cost:</td>
-          <td>${fmtP(estTotal)}</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
-  ${(mr.purpose||mr.notes)?`
-  <div class="purpose-box">
-    <div class="purpose-label">Purpose / Justification</div>
-    <div>${mr.purpose||mr.notes||""}</div>
-    ${mr.notes&&mr.purpose?`<div style="margin-top:6px;color:#555;">${mr.notes}</div>`:""}
-  </div>`:""}
-
-  ${mr.status==="Converted to PR"?`
-  <div class="section">
-    <div class="section-title">Procurement Details</div>
-    <div class="info-grid">
-      <div class="info-row"><span class="info-label">Approved by:</span><span class="info-val">${mr.statusChangedAt?"Converted "+mr.statusChangedAt:session?.name||"—"}</span></div>
-    </div>
-  </div>`:""}
-
-  <div class="sig-grid">
-    <div class="sig-box">
-      <div class="sig-role">Requested By</div>
-      <div class="sig-name">${mr.requestedBy||"_______________"}</div>
-      <div class="sig-date">${mr.createdDate||"_______________"}</div>
-    </div>
-    <div class="sig-box">
-      <div class="sig-role">Checked By</div>
-      <div class="sig-line"></div>
-      <div class="sig-date">Date: _______________</div>
-    </div>
-    <div class="sig-box">
-      <div class="sig-role">Approved By</div>
-      ${mr.status==="Converted to PR"?`<div class="sig-name">${session?.name||"_______________"}</div><div class="sig-date">${mr.statusChangedAt||"_______________"}</div>`:`<div class="sig-line"></div><div class="sig-date">Date: _______________</div>`}
-    </div>
-  </div>
-
-  <div style="margin-top:40px;font-size:9.5px;color:#aaa;text-align:center;border-top:1px solid #e5e5e5;padding-top:10px;">
-    GMD Productions Inc. · Material Request · Internal Document · Generated ${printDate}
-  </div>
-
-  <div class="no-print">
-    <button onclick="window.print()" style="background:#f97316;color:#fff;border:none;border-radius:8px;padding:11px 28px;font-size:13px;font-weight:700;cursor:pointer;font-family:Arial,sans-serif;">🖨️ Print / Save as PDF</button>
-    <p style="margin-top:8px;font-size:11px;color:#999;">Select <strong>Save as PDF</strong> in the print dialog</p>
-  </div>
-
-</div></body></html>`);
-    win.document.close();addPrintClose(win); win.focus();
-  };
-
-  const submit=()=>{
-    if(!form.itemName||!form.projectId) return;
-    addMR({...form,status:"Submitted"});
-    setForm({projectId:"",itemName:"",category:"Materials",qty:1,unit:"pcs",estUnitCost:"",urgency:"Normal",purpose:"",requestedBy:session?.name||"",notes:""});
-    setShowForm(false);
-  };
-
-  const canApprove = ["Finance","Cost Control","Manager"].includes(role);
-  const pending = mreqs.filter(m=>m.status==="Submitted"||m.status==="Reviewed");
-
-  return(
-    <div>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,flexWrap:"wrap",gap:12}}>
-        <div>
-          <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>Material Requests</h2>
-          <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Operations submits · Cost Control reviews and converts to PO</div>
-        </div>
-        <button onClick={()=>setShowForm(s=>!s)} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>
-          + Request Materials
-        </button>
-      </div>
-
-      {/* KPIs */}
-      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:16}}>
-        {[
-          {l:"Total Requests",    v:mreqs.length,              c:"#0f172a"},
-          {l:"Pending Review",    v:pending.length,            c:"#f59e0b"},
-          {l:"Converted to PO",   v:mreqs.filter(m=>m.status==="Converted to PR").length, c:"#10b981"},
-          {l:"Rejected",          v:mreqs.filter(m=>m.status==="Rejected").length,        c:"#ef4444"},
-        ].map(({l,v,c})=>(
-          <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0"}}>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:c}}>{v}</div>
-            <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:5}}>{l}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Pending banner for Cost Control */}
-      {canApprove&&pending.length>0&&(
-        <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"10px 16px",marginBottom:14,fontSize:".82rem",color:"#92400e"}}>
-          ⚠️ <strong>{pending.length} material request{pending.length>1?"s":""} waiting for your review</strong> — Convert to PO or reject below.
-        </div>
-      )}
-
-      {/* Form */}
-      {showForm&&(
-        <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:20,marginBottom:18}}>
-          <div style={{fontWeight:800,color:"#0f172a",marginBottom:16}}>New Material Request</div>
-          <datalist id="po-units-dl">{PO_UNITS.map(u=><option key={u} value={u}/>)}</datalist>
-          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
-            <Fld label="Project" required>
-              <Sel value={form.projectId} onChange={e=>f("projectId",e.target.value)}>
-                <option value="">— Select Project —</option>
-                {wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?` — ${d.contact}`:""}</option>)}
-              </Sel>
-            </Fld>
-            <Fld label="Urgency">
-              <Sel value={form.urgency} onChange={e=>f("urgency",e.target.value)}>
-                {["Normal","High","Urgent"].map(u=><option key={u}>{u}</option>)}
-              </Sel>
-            </Fld>
-            <div style={{gridColumn:"1/-1"}}>
-              <Fld label="Item Name" required>
-                <Inp value={form.itemName} onChange={e=>f("itemName",e.target.value)} placeholder="e.g. 18mm Melamine Board, Paint — Boysen White, Steel Angle Bar"/>
-              </Fld>
-            </div>
-            <Fld label="Category">
-              <Sel value={form.category} onChange={e=>f("category",e.target.value)}>
-                {PR_CATS.map(c=><option key={c}>{c}</option>)}
-              </Sel>
-            </Fld>
-            <Fld label="Qty & Unit">
-              <div style={{display:"flex",gap:8}}>
-                <Inp type="number" value={form.qty} onChange={e=>f("qty",e.target.value)} min={1}/>
-                <input list="po-units-dl" value={form.unit} onChange={e=>f("unit",e.target.value)} placeholder="pcs…" style={{flex:1,border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box",outline:"none"}}/>
-              </div>
-            </Fld>
-            <Fld label="Estimated Cost (₱/unit)">
-              <Inp type="number" value={form.estUnitCost} onChange={e=>f("estUnitCost",e.target.value)} placeholder="0.00"/>
-            </Fld>
-            <Fld label="Requested By">
-              <Inp value={form.requestedBy} onChange={e=>f("requestedBy",e.target.value)} placeholder={session?.name||""}/>
-            </Fld>
-            <div style={{gridColumn:"1/-1"}}>
-              <Fld label="Purpose / Why needed">
-                <Inp rows={2} value={form.purpose} onChange={e=>f("purpose",e.target.value)} placeholder="e.g. For built-in shelving Unit 3B, needed by May 20 for installation"/>
-              </Fld>
-            </div>
-            <div style={{gridColumn:"1/-1"}}>
-              <Fld label="Notes">
-                <Inp rows={2} value={form.notes} onChange={e=>f("notes",e.target.value)} placeholder="Specifications, supplier suggestion, urgency reason…"/>
-              </Fld>
-            </div>
-          </div>
-          <div style={{display:"flex",gap:10,marginTop:14}}>
-            <button onClick={submit} disabled={!form.itemName||!form.projectId}
-              style={{background:form.itemName&&form.projectId?"#1e293b":"#e2e8f0",border:"none",borderRadius:10,padding:"10px 22px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:form.itemName&&form.projectId?"#fff":"#94a3b8",cursor:form.itemName&&form.projectId?"pointer":"not-allowed"}}>
-              Submit Request
-            </button>
-            <button onClick={()=>setShowForm(false)} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
-          </div>
-        </div>
-      )}
-
-      {/* MR List */}
-      {mreqs.length===0&&<div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8",fontSize:".84rem"}}>No material requests yet.</div>}
-      <div style={{display:"flex",flexDirection:"column",gap:8}}>
-        {mreqs.map(mr=>{
-          const deal=wonDeals.find(d=>d.id===mr.projectId);
-          const estTotal=n(mr.estUnitCost)*n(mr.qty);
-          return(
-            <div key={mr.id} style={{background:"#fff",borderRadius:12,border:`1.5px solid ${mr.urgency==="Urgent"?"#fecaca":mr.status==="Converted to PR"?"#6ee7b7":"#e2e8f0"}`,padding:"14px 18px"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
-                <div style={{flex:1}}>
-                  <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:4}}>
-                    <span style={{fontWeight:700,color:"#0f172a"}}>{mr.itemName}</span>
-                    <span style={{fontSize:".68rem",background:STATUS_CLR[mr.status]+"22",color:STATUS_CLR[mr.status],border:`1px solid ${STATUS_CLR[mr.status]}44`,borderRadius:20,padding:"1px 9px",fontWeight:700}}>{mr.status}</span>
-                    <span style={{fontSize:".68rem",background:URGENCY_CLR[mr.urgency]+"22",color:URGENCY_CLR[mr.urgency],border:`1px solid ${URGENCY_CLR[mr.urgency]}44`,borderRadius:20,padding:"1px 9px",fontWeight:600}}>{mr.urgency}</span>
-                  </div>
-                  <div style={{fontSize:".75rem",color:"#64748b",display:"flex",gap:12,flexWrap:"wrap"}}>
-                    {deal&&<span>📁 {deal.client}{deal.contact?` — ${deal.contact}`:""}</span>}
-                    <span>Qty: {mr.qty} {mr.unit}</span>
-                    {estTotal>0&&<span>Est: {fmt(estTotal)}</span>}
-                    <span>By: {mr.requestedBy||"—"}</span>
-                    <span>{mr.createdDate}</span>
-                    {mr.statusChangedAt&&mr.status!=="Submitted"&&(()=>{const d=Math.ceil((new Date()-new Date(mr.statusChangedAt))/86400000);return<span style={{color:mr.status==="Rejected"?"#ef4444":"#059669",fontWeight:600}}>{mr.status==="Rejected"?"❌":"✓"} {d===0?"Today":d+"d ago"}</span>})()}
-                  </div>
-                  {mr.purpose&&<div style={{fontSize:".75rem",color:"#475569",marginTop:5,fontStyle:"italic"}}>"{mr.purpose}"</div>}
-                </div>
-                <div style={{display:"flex",gap:7,flexShrink:0,alignItems:"flex-start"}}>
-                  <button onClick={()=>printMR(mr)} style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:7,padding:"5px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>🖨️</button>
-                  {role==="Manager"&&<button onClick={async ()=>{if((await uiConfirm("Delete this material request?")))deleteMR(mr.id);}} style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕ Delete</button>}
-                </div>
-              </div>
-              {convertingId===mr.id ? (
-                <div style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:10,padding:"12px 14px",marginTop:8,width:"100%"}}>
-                  <div style={{fontWeight:700,color:"#1e40af",fontSize:".78rem",marginBottom:8}}>Issue Purchase Order</div>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
-                    <div>
-                      <div style={{fontSize:".68rem",fontWeight:700,color:"#64748b",marginBottom:3}}>Supplier <span style={{color:"#ef4444"}}>*</span></div>
-                      <input value={convSupplier} onChange={e=>setConvSupplier(e.target.value)} placeholder="e.g. Pacific Hardware Supply"
-                        style={{width:"100%",border:"1.5px solid #93c5fd",borderRadius:7,padding:"7px 9px",fontFamily:"inherit",fontSize:".82rem",outline:"none",boxSizing:"border-box"}}/>
-                    </div>
-                    <div>
-                      <div style={{fontSize:".68rem",fontWeight:700,color:"#64748b",marginBottom:3}}>PO Number <span style={{color:"#ef4444"}}>*</span></div>
-                      <input value={convPoNo} onChange={e=>setConvPoNo(e.target.value)} placeholder="PO-0001"
-                        style={{width:"100%",border:"1.5px solid #93c5fd",borderRadius:7,padding:"7px 9px",fontFamily:"inherit",fontSize:".82rem",outline:"none",boxSizing:"border-box"}}/>
-                    </div>
-                  </div>
-                  <div style={{display:"flex",gap:8}}>
-                    <button onClick={()=>{
-                      if(!convSupplier.trim()||!convPoNo.trim()) return;
-                      const dealN=wonDeals.find(d=>d.id===mr.projectId);
-                      addPR({
-                        projectId:mr.projectId, projectName:dealN?.client||"",
-                        itemName:mr.itemName, category:mr.category,
-                        qty:mr.qty, unit:mr.unit, estUnitCost:mr.estUnitCost||0, actUnitCost:0,
-                        supplier:convSupplier.trim(), poNumber:convPoNo.trim(),
-                        poDate:new Date().toISOString().split("T")[0], status:dealDpClear(dealN,wonDeals)?"PO Issued":"Pending Approval",
-                        requestedBy:mr.requestedBy||"", approvedBy:dealDpClear(dealN,wonDeals)?session?.name||"":"",
-                        budgetCategory:"Materials", notes:`From MR: ${mr.notes||""}`,
-                        description:mr.purpose||"",
-                      });
-                      if(!dealDpClear(dealN,wonDeals)) toastEmit&&toastEmit(`Saved as Pending Approval: no down payment received on ${dealN?.ceNo||dealN?.client||"this project"} yet. A Manager must waive it before the PO can be issued.`,"error",9000);
-                      updateMR(mr.id,{status:"Converted to PR",statusChangedAt:new Date().toISOString().split("T")[0]});
-                      sendTelegramNotification("operations",`✅ <b>Material Request → PO Issued</b>\n${mr.itemName}\nProject: ${dealN?.client||"?"}${dealN?.contact?" — "+dealN.contact:""}\nSupplier: ${convSupplier.trim()}\nPO: ${convPoNo.trim()}\nBy: ${session?.name}`);
-                      setConvertingId(null); setConvSupplier(""); setConvPoNo("");
-                    }} disabled={!convSupplier.trim()||!convPoNo.trim()}
-                      style={{background:convSupplier.trim()&&convPoNo.trim()?"#1e40af":"#e2e8f0",border:"none",borderRadius:8,padding:"8px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:convSupplier.trim()&&convPoNo.trim()?"#fff":"#94a3b8",cursor:convSupplier.trim()&&convPoNo.trim()?"pointer":"not-allowed"}}>
-                      📦 Issue PO
-                    </button>
-                    <button onClick={()=>{setConvertingId(null);setConvSupplier("");setConvPoNo("");}}
-                      style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".78rem",color:"#64748b",cursor:"pointer"}}>
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                canApprove&&mr.status==="Submitted"&&(
-                  <div style={{display:"flex",gap:7,marginTop:8}}>
-                    <button onClick={async()=>{setConvertingId(mr.id);setConvPoNo(await nextPoNo());setConvSupplier("");}}
-                      style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:8,padding:"6px 13px",fontWeight:700,fontSize:".78rem",color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit"}}>
-                      ✓ Convert to PO
-                    </button>
-                    <button onClick={()=>{
-                      updateMR(mr.id,{status:"Rejected",statusChangedAt:today});
-                      const deal=wonDeals.find(d=>d.id===mr.projectId);
-                      sendTelegramNotification("operations",`❌ <b>Material Request Rejected</b>\n${mr.itemName}\nProject: ${deal?.client||"?"}${deal?.contact?" — "+deal.contact:""}\nRejected by: ${session?.name}`);
-                    }} style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:8,padding:"6px 13px",fontWeight:700,fontSize:".78rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>
-                      ✕ Reject
-                    </button>
-                  </div>
-                )
-              )}
-              {mr.status==="Converted to PR"&&convertingId!==mr.id&&<span style={{fontSize:".75rem",color:"#059669",fontWeight:700,display:"block",marginTop:4}}>✓ PO Created</span>}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 // ─── BUDGET REQUEST VIEW ──────────────────────────────────────────────────────
 function BudgetRequestView({sendTelegramNotification,breqs,addBR,updateBR,deleteBR,wonDeals,session,role,toastEmit}){
   const[showForm,setShowForm]=useState(false);
@@ -25321,7 +25067,7 @@ function BudgetRequestView({sendTelegramNotification,breqs,addBR,updateBR,delete
                     <button onClick={()=>{
                       updateBR(br.id,{status:"Released",releasedBy:session?.name,releasedDate:today,statusChangedAt:today});
                       const deal=wonDeals.find(d=>d.id===br.projectId);
-                      sendTelegramNotification("operations",`💵 <b>Budget Released</b>\n${br.purpose}\n₱${n(br.amount).toLocaleString("en-PH",{maximumFractionDigits:0})}\nProject: ${deal?.client||"?"}${deal?.contact?" — "+deal.contact:""}\nReleased by: ${session?.name}`);
+                      const relMsg=`💵 <b>Budget Released</b>\n${br.purpose}\n₱${n(br.amount).toLocaleString("en-PH",{maximumFractionDigits:0})}\nProject: ${deal?.client||"?"}${deal?.contact?" — "+deal.contact:""}\nReleased by: ${session?.name}`;sendTelegramNotification("ops",relMsg);sendTelegramNotification("financialcontrol",relMsg);
                     }} style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:".76rem",color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit"}}>
                       💵 Mark Released
                     </button>
@@ -25774,7 +25520,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     const{d,tx,totalPaid,balance,cp,clientAddr}=invoiceData(ms);
     const model={
       draft:billingPdfDraft,
-      docTitle:d?.receiptType==="SI"?"Tax Invoice":"Invoice",
+      docTitle:"Billing Statement",
       invoiceNo:ms.invoiceNo||"",invoiceDate:ms.invoiceDate||today,
       dueDate:ms.dueDate||ms.invoiceDate||today,overdue:!!(ms.dueDate&&ms.dueDate<today),
       terms:cp.paymentTerms||"Due on receipt",poNo:dealClientPo(d,deals),
@@ -25784,7 +25530,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       subtotal:Number(ms.amount)||0,vat:tx.vat,gross:tx.gross,ewt:tx.ewt,paid:totalPaid,balance,
     };
     billingPdf.make(async()=>{const {buildInvoicePdf}=await import("./views/billingPdf");return buildInvoicePdf(model);},
-      [ms.invoiceNo,d?.client,"Invoice"].filter(Boolean).join(" - "),
+      [ms.invoiceNo,d?.client,"Billing Statement"].filter(Boolean).join(" - "),
       {draft:billingPdfDraft,draftNote:"Only Finance's or a Manager's copy is clean to send."});
   };
   const shareSoaPdf=(clientName)=>{
@@ -26032,7 +25778,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const printInvoice=(ms)=>{
     const{d,tx,totalPaid,balance,cp,clientAddr}=invoiceData(ms);
     const win=window.open("","_blank");
-    win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Invoice ${ms.invoiceNo}</title>
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Billing Statement ${ms.invoiceNo}</title>
 <style>
   @page{size:A4;margin:12mm 14mm}
   *{box-sizing:border-box;margin:0;padding:0;}
@@ -26108,12 +25854,15 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
 </div>
 <div class="sub-bar">
   <span class="tagline">Retail Design &amp; Build | Construction | Modular Fit-outs | Signage | POP Displays</span>
-  <span class="tagline">INVOICE NO.: ${ms.invoiceNo||"—"}</span>
+  <span class="tagline">BILLING NO.: ${ms.invoiceNo||"—"}</span>
 </div>
 
 <div class="wrap">
   <!-- Document title -->
-  <div class="doc-title">${d?.receiptType==="SI"?"Tax Invoice":"Invoice"}</div>
+  <!-- Never "Tax Invoice": GMD issues its official BIR invoice / receipt
+       separately, so this document is a billing statement only (Paulo,
+       2026-10-26). Same title and note on the Share PDF (billingPdf.js). -->
+  <div class="doc-title">Billing Statement</div>
 
   <!-- Bill-to + Invoice meta -->
   <div class="meta-row">
@@ -26126,7 +25875,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       ${cp.tin?`<div class="bill-addr">TIN: ${cp.tin}</div>`:""}
     </div>
     <table class="meta-table">
-      <tr><td class="label">INVOICE</td><td class="val">${ms.invoiceNo||"—"}</td></tr>
+      <tr><td class="label">BILLING NO.</td><td class="val">${ms.invoiceNo||"—"}</td></tr>
       ${dealClientPo(d,deals)?`<tr><td class="label">PO #</td><td class="val">${String(dealClientPo(d,deals)).replace(/&/g,"&amp;").replace(/</g,"&lt;")}</td></tr>`:""}
       <tr><td class="label">DATE</td><td class="val">${ms.invoiceDate||today}</td></tr>
       <tr><td class="label">TERMS</td><td class="val">${cp.paymentTerms||"Due on receipt"}</td></tr>
@@ -26206,6 +25955,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   </div>
 
   <!-- Company footer -->
+  <div style="text-align:center;margin-top:18px;font-size:10px;font-weight:700;color:#475569">This is a billing statement, not an official receipt or BIR invoice. The official invoice is issued separately.</div>
   <div class="co-footer">
     GMD PRODUCTIONS INC &nbsp;·&nbsp; 32 Santan Unit H Brgy Fortune, Marikina, NCR 1802 PH &nbsp;·&nbsp; TIN 010-063-229-000<br/>
     +63 9189338436 &nbsp;·&nbsp; sales@gmd.ph &nbsp;·&nbsp; www.gmd.ph
@@ -27421,8 +27171,8 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                     </div>
                     {/* Action buttons */}
                     <div style={{display:"flex",flexDirection:"column",gap:5,flexShrink:0}}>
-                      <button onClick={()=>printInvoice(ms)} style={{background:"#1e293b",border:"none",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#fff",cursor:"pointer"}}>🖨 Invoice</button>
-                      <button onClick={()=>shareInvoicePdf(ms)} disabled={billingPdf.busy} title="Invoice as a PDF to share (Viber, Mail, Files) or download" style={{background:"#ecfeff",border:"1.5px solid #67e8f9",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#155e75",cursor:billingPdf.busy?"wait":"pointer"}}>{billingPdf.busy?"Making PDF…":"📤 Invoice PDF"}</button>
+                      <button onClick={()=>printInvoice(ms)} style={{background:"#1e293b",border:"none",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#fff",cursor:"pointer"}}>🖨 Billing Statement</button>
+                      <button onClick={()=>shareInvoicePdf(ms)} disabled={billingPdf.busy} title="Billing statement as a PDF to share (Viber, Mail, Files) or download" style={{background:"#ecfeff",border:"1.5px solid #67e8f9",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#155e75",cursor:billingPdf.busy?"wait":"pointer"}}>{billingPdf.busy?"Making PDF…":"📤 Billing PDF"}</button>
                       {canPayDeal(deal)&&ms.status!=="Fully Paid"&&ms.status!=="Cancelled"&&(
                         <button onClick={()=>{const opening=showPay!==ms.id;setShowPay(showPay===ms.id?null:ms.id);if(opening){const totalPaid=(ms.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);const bal=tx.netReceivable-totalPaid;setPayForm(p=>({...p,amount:bal>0?bal:tx.netReceivable}));}}} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#059669",cursor:"pointer"}}>+ Payment</button>
                       )}
@@ -28177,6 +27927,11 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                   <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0}}>
                     <span style={{fontSize:".72rem",fontWeight:700,color:hc,background:hc+"18",borderRadius:20,padding:"4px 12px",border:`1px solid ${hc}44`}}>{deal?.stage?.replace(/^\d+ · /,"")||"—"}</span>
                     {pct===100&&<span style={{fontSize:".68rem",fontWeight:700,color:"#059669",background:"#f0fdf4",borderRadius:20,padding:"2px 9px"}}>✅ Done</span>}
+                    {/* PRFs for this project — same roles that can read prfs (prf_can_read). */}
+                    {deal&&["Manager","ProjectMover","Operations","Coordinator","Warehouse","QS","Procurement","ProcurementManager","Finance","FinanceAssistant","Accounting","SalesOpsAdmin"].includes(role)&&(
+                      <button onClick={()=>{setJumpDeal(deal.id);setPage("materialreq");}} title="Purchase requests for this project"
+                        style={{background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:6,padding:"4px 10px",fontSize:".72rem",fontWeight:700,color:"#c2410c",cursor:"pointer",fontFamily:"inherit"}}>📦 PRFs</button>
+                    )}
                     {role==="Manager"&&setConfirmDel&&deal&&<button onClick={()=>setConfirmDel(deal.id)} title="Delete this project and all its records" style={{marginTop:2,background:"#fef2f2",border:"1px solid #fecaca",borderRadius:6,padding:"4px 10px",fontSize:".7rem",fontWeight:700,color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>🗑 Delete Project</button>}
                   </div>
                 </div>
@@ -28645,7 +28400,7 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
               {(()=>{
                 const allProjUpdates=(actLog||[]).filter(a=>a.dealId===selDeal&&a.action==="PM Update").sort((a,b)=>b.date.localeCompare(a.date)||b.time?.localeCompare(a.time||""));
                 const isPM=card&&[card.pm1,card.pm2,card.pm3].filter(Boolean).some(pm=>pm===session?.name);
-                const canPost=role==="Manager"||role==="Operations"||role==="ProjectMover"||role==="SalesOpsAdmin"||isPM;
+                const canPost=role==="Manager"||role==="Operations"||role==="ProjectMover"||role==="SalesOpsAdmin"||role==="Coordinator"||isPM;
                 return(
                 <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
                   <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -28700,11 +28455,11 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                     ✅ Checklist
                     {projCl.filter(c=>c.status!=="Done").length>0&&<span style={{background:"#f59e0b",color:"#fff",borderRadius:20,fontSize:".6rem",padding:"1px 7px",marginLeft:5}}>{projCl.filter(c=>c.status!=="Done").length}</span>}
                   </div>
-                  <div style={{display:"flex",gap:6}}>
+                  {role!=="Coordinator"&&<div style={{display:"flex",gap:6}}>
                     {projCl.length===0&&loadChecklistTemplate&&<button onClick={()=>{const d=deal;if(d)loadChecklistTemplate(d.id,d.client);}} style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:8,padding:"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#1d4ed8",cursor:"pointer",fontWeight:700}}>📋 Load Template</button>}
                     <button onClick={()=>openAddCl&&openAddCl(selDeal,"Design","Task")} style={{background:"#ede9fe",border:"none",borderRadius:8,padding:"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#7c3aed",cursor:"pointer",fontWeight:700}}>🎨 Request from Design</button>
                     <button onClick={()=>openAddCl&&openAddCl(selDeal,role==="Design"?"Design":"Operations")} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#475569",cursor:"pointer",fontWeight:700}}>+ Add Task</button>
-                  </div>
+                  </div>}
                 </div>
                 {projCl.length===0?(
                   <div style={{padding:"14px 20px",color:"#94a3b8",fontSize:".78rem",textAlign:"center"}}>No checklist tasks yet for this project.</div>
@@ -28725,7 +28480,7 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                           </div>
                         </div>
                         <div style={{display:"flex",gap:4,flexShrink:0}}>
-                          {openEditCl&&<button onClick={()=>openEditCl(c)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>}
+                          {openEditCl&&role!=="Coordinator"&&<button onClick={()=>openEditCl(c)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>}
                           {(role==="Manager"||role==="Operations"||role==="SalesOpsAdmin")&&delCl&&<button onClick={()=>delCl(c.id)} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
                         </div>
                       </div>
@@ -28847,7 +28602,7 @@ function BotSettingsView({botSettings,saveBotSettings,role,Wrap}){
     {id:"warehouse",       label:"🏭 Warehouse",         hint:"Deliveries, stock movements"},
     {id:"sales",           label:"💼 Sales",              hint:"Swatch approvals, deal updates"},
     {id:"management",      label:"👔 Management",        hint:"High-level overdue alerts only"},
-    {id:"financialcontrol",label:"💰 Finance Control",   hint:"Billing due, collections"},
+    {id:"financialcontrol",label:"💰 Cost Control",      hint:"Final billing, payment releases, billing due, collections"},
   ];
 
   // Sends through the server with the saved token to the chat ID typed here,
@@ -29675,17 +29430,16 @@ function SubconMasterView({subcons,addSubcon,updateSubcon,deleteSubcon,session,r
   );
 }
 
-function RequestsView({sendTelegramNotification,mreqs,addMR,updateMR,prs,addPR,wonDeals,session,role,breqs,addBR,updateBR,deleteBR,toastEmit,suppliers,poApprovers}){
-  const[tab,setTab]=useState("Material Request");
+function RequestsView({sendTelegramNotification,mreqs,addMR,updateMR,prs,addPR,wonDeals,session,role,breqs,addBR,updateBR,deleteBR,toastEmit,suppliers}){
+  const[tab,setTab]=useState("Budget Request");
   const tabStyle=(active)=>({padding:"10px 24px",border:"none",borderBottom:`3px solid ${active?"#f59e0b":"transparent"}`,background:"transparent",color:active?"#f59e0b":"#64748b",fontWeight:active?700:400,cursor:"pointer",fontFamily:"inherit",fontSize:".9rem",transition:"all .15s",whiteSpace:"nowrap"});
   return(
     <div>
       <div style={{display:"flex",gap:0,borderBottom:"2px solid #e2e8f0",marginBottom:24,overflowX:"auto"}}>
-        {["Material Request","Budget Request"].map(t=>(
+        {["Budget Request"].map(t=>(
           <button key={t} onClick={()=>setTab(t)} style={tabStyle(tab===t)}>{t}</button>
         ))}
       </div>
-      {tab==="Material Request"&&<MaterialRequestView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={poApprovers}/>}
       {tab==="Budget Request"&&<BudgetRequestView sendTelegramNotification={sendTelegramNotification} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={deleteBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/>}
     </div>
   );
@@ -29827,7 +29581,7 @@ function FinanceDigestPanel({billings=[],exps=[],wonDeals=[],completedDeals=[],d
   const backlog=wonDeals.reduce((s,d)=>{const billed=billings.filter(b=>b.dealId===d.id&&b.status!=="Cancelled").reduce((bs,b)=>bs+Number(b.amount||0),0);return s+Math.max(0,Number(d.value||0)-billed);},0);
   const y12ago=new Date();y12ago.setFullYear(y12ago.getFullYear()-1);
   const recentDeals=deals.filter(d=>{const dt=new Date(d.createdAt||"2020-01-01");return dt>=y12ago;});
-  const winRate=recentDeals.length>0?Math.round(recentDeals.filter(d=>WON_STAGES.includes(d.stage)||d.stage==="14 · Completed").length/recentDeals.length*100):0;
+  const winRate=recentDeals.length>0?Math.round(recentDeals.filter(d=>!d.isCostCenter&&(WON_STAGES.includes(d.stage)||d.stage==="14 · Completed")).length/recentDeals.length*100):0;
   const avgDeal=wonDeals.length>0?Math.round(wonDeals.reduce((s,d)=>s+Number(d.value||0),0)/wonDeals.length):0;
   const months6=Array.from({length:6},(_,i)=>{const d=new Date(now.getFullYear(),now.getMonth()-5+i,1);return{y:d.getFullYear(),m:d.getMonth()};});
   const monthlyRev=months6.map(({y,m})=>billings.filter(b=>b.status!=="Cancelled").reduce((s,b)=>{const ds=b.invoiceDate||b.dueDate;if(!ds)return s;const d=new Date(ds);return(!isNaN(d)&&d.getFullYear()===y&&d.getMonth()===m)?s+Number(b.amount||0):s;},0));

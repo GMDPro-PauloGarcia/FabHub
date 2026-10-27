@@ -3,8 +3,8 @@ import {uiConfirm} from "../shared";
 import {canApprovePO,dealDpClear} from "../core";
 
 // ─── PO APPROVALS (Purchase Orders page) ───────────────────────────────────
-// Since 19 Sep 2026 only a Manager, a Procurement Manager or a designated PO
-// approver may move a PO to "PO Issued" (canApprovePO). Approving meant opening
+// Only a Manager or a Procurement Manager (not on their own request) may move
+// a PO to "PO Issued" (canApprovePO; the database checks it too). Approving meant opening
 // each PO line's status dropdown, so POs piled up at "Pending Approval" and,
 // because a PO raises its supplier bill only once issued, no payables were
 // created either. This panel lists every pending PO the viewer may approve,
@@ -14,7 +14,7 @@ const num=v=>Number(String(v??"").replace(/,/g,""))||0;
 const pesoAmt=v=>"₱"+num(v).toLocaleString("en-PH",{maximumFractionDigits:0});
 const PAGE=50;
 
-export default function POApprovals({prs=[],deals=[],role,session,poApprovers="",approvePOs}){
+export default function POApprovals({prs=[],deals=[],role,session,approvePOs}){
   const mob=typeof window!=="undefined"&&window.innerWidth<860;
   const me=session?.name||"";
   const[open,setOpen]=useState(false);
@@ -31,7 +31,7 @@ export default function POApprovals({prs=[],deals=[],role,session,poApprovers=""
     const by={};
     prs.filter(p=>p.status==="Pending Approval"&&p.poNumber).forEach(p=>{(by[p.poNumber]=by[p.poNumber]||[]).push(p);});
     return Object.entries(by)
-      .filter(([,ls])=>ls.every(l=>canApprovePO(role,me,l.requestedBy,poApprovers)))
+      .filter(([,ls])=>ls.every(l=>canApprovePO(role,me,l.requestedBy)))
       .map(([no,ls])=>{
         const f=ls[0];
         const gross=ls.reduce((s,i)=>s+(num(i.actUnitCost)||num(i.estUnitCost))*num(i.qty),0);
@@ -43,7 +43,7 @@ export default function POApprovals({prs=[],deals=[],role,session,poApprovers=""
           requestedBy:f.requestedBy||"",date:f.poDate||f.createdDate||String(f.createdAt||"").slice(0,10),gross:Math.round(gross*(f.withVat?1.12:1))};
       })
       .sort((a,b)=>String(a.date).localeCompare(String(b.date)));
-  },[prs,deals,role,me,poApprovers]);
+  },[prs,deals,role,me]);
 
   if(!pos.length) return null;
   const requesters=["All",...new Set(pos.map(p=>p.requestedBy||"(blank)"))];
