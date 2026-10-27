@@ -216,6 +216,7 @@ const claimEvNo=(evNo,existingEvNos)=>claimYearScopedNo("EV",3,evNo,existingEvNo
 // Legacy btoa hashes (pre-migration) are detected by the absence of the "sha256:" prefix
 // and auto-upgraded to SHA-256 on first successful login.
 const legacyHashPw = pw => btoa(pw + ":gmd-salt-2026").split("").reverse().join("");
+const TG_CHANNEL_ALIAS={finance:"financialcontrol",operations:"ops"};
 const sha256Hash = async (pw, username="") => {
   const raw = pw + username.toLowerCase() + ":gmd-fabhub-2026";
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
@@ -7392,10 +7393,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ── TELEGRAM NOTIFICATION UTILITY ────────────────────────────────────────
   // Sent by the server (send_telegram RPC), which holds the bot token and
   // picks the department's chat (falling back to management).
+  // "finance" and "operations" are not chats in Bot Settings, so those messages
+  // (Final Billing Ready, billing set-up, budget requests…) silently fell back to
+  // management. Final billing and payment releases belong to the Cost Control
+  // chat (financialcontrol, decided 2026-10-27); budget requests to Operations.
   const sendTelegramNotification=useCallback(async(dept,message)=>{
     if(!isSupabaseReady()) return;
+    const chat=TG_CHANNEL_ALIAS[dept]||dept;
     try{
-      const{error}=await supabase.rpc('send_telegram',{p_dept:dept,p_message:String(message||"").slice(0,4096)});
+      const{error}=await supabase.rpc('send_telegram',{p_dept:chat,p_message:String(message||"").slice(0,4096)});
       if(error) console.warn("Telegram notify failed:",error.message||error);
     }catch(e){console.warn("Telegram notify failed:",e);}
   },[]);
@@ -9617,8 +9623,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Accounting",  items:[{id:"coa",l:"Chart of Accounts"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
       {group:"Design",      items:[{id:"designboard",l:"Design Board"},{id:"drf",l:"Design Requests"}]},
-      {group:"Procurement", items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
-      {group:"Warehousing", items:[{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"}]},
+      {group:"Procurement", items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
       {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"audit",l:"Audit"},{id:"syshealth",l:"System Health"},{id:"botsettings",l:"Bot Settings"},{id:"tvboard",l:"Office TV Board"},{id:"activity",l:"Team Activity"}]},
     ],
     Sales:[
@@ -9635,9 +9640,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Accounting",  items:[{id:"coa",l:"Chart of Accounts"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
-      {group:"Procurement", items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
+      {group:"Procurement", items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
       {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"}]},
-      {group:"Warehousing", items:[{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"}]},
       {group:"Admin",       items:[{id:"audit",l:"Audit"},{id:"botsettings",l:"Bot Settings"},{id:"activity",l:"Team Activity"}]},
     ],
     Audit:[
@@ -9657,7 +9661,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     Procurement:[
       {group:"Overview",   items:[{id:"home",l:"Overview"}]},
-      {group:"Orders",     items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
+      {group:"Orders",     items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
       {group:"Projects",   items:[{id:"projects",l:"Projects"},{id:"clients",l:"Clients"}]},
     ],
     QS:[
@@ -9708,7 +9712,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // difference is authority (they approve POs), not navigation.
     ProcurementManager:[
       {group:"Overview",   items:[{id:"home",l:"Overview"}]},
-      {group:"Orders",     items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
+      {group:"Orders",     items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
       {group:"Projects",   items:[{id:"projects",l:"Projects"},{id:"clients",l:"Clients"}]},
     ],
   };
@@ -24928,7 +24932,7 @@ function BudgetRequestView({sendTelegramNotification,breqs,addBR,updateBR,delete
                     <button onClick={()=>{
                       updateBR(br.id,{status:"Released",releasedBy:session?.name,releasedDate:today,statusChangedAt:today});
                       const deal=wonDeals.find(d=>d.id===br.projectId);
-                      sendTelegramNotification("operations",`💵 <b>Budget Released</b>\n${br.purpose}\n₱${n(br.amount).toLocaleString("en-PH",{maximumFractionDigits:0})}\nProject: ${deal?.client||"?"}${deal?.contact?" — "+deal.contact:""}\nReleased by: ${session?.name}`);
+                      const relMsg=`💵 <b>Budget Released</b>\n${br.purpose}\n₱${n(br.amount).toLocaleString("en-PH",{maximumFractionDigits:0})}\nProject: ${deal?.client||"?"}${deal?.contact?" — "+deal.contact:""}\nReleased by: ${session?.name}`;sendTelegramNotification("ops",relMsg);sendTelegramNotification("financialcontrol",relMsg);
                     }} style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:".76rem",color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit"}}>
                       💵 Mark Released
                     </button>
@@ -28505,7 +28509,7 @@ function BotSettingsView({botSettings,saveBotSettings,role,Wrap}){
     {id:"warehouse",       label:"🏭 Warehouse",         hint:"Deliveries, stock movements"},
     {id:"sales",           label:"💼 Sales",              hint:"Swatch approvals, deal updates"},
     {id:"management",      label:"👔 Management",        hint:"High-level overdue alerts only"},
-    {id:"financialcontrol",label:"💰 Finance Control",   hint:"Billing due, collections"},
+    {id:"financialcontrol",label:"💰 Cost Control",      hint:"Final billing, payment releases, billing due, collections"},
   ];
 
   // Sends through the server with the saved token to the chat ID typed here,
