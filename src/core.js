@@ -582,10 +582,10 @@ export const arSummary = (billings=[], dealOf=()=>undefined) => {
            openMilestones:open, collectionRate: receivable>0 ? collected/receivable : 0 };
 };
 
-// ── Costs: AP-ledger basis, VAT-exclusive ────────────────────────────────────
-// Every project/company cost = all payables (the AP ledger) + legacy expenses NOT
-// already routed to a payable or check voucher (no double count) — the basis the
-// account-code Income Statement already used. Cost is taken NET of input VAT, so
+// ── Costs: PO basis, VAT-exclusive ───────────────────────────────────────────
+// Every project/company cost = issued POs + committed Work Orders (poCostRows /
+// woCostRows below) + payables not tied to one of them + legacy expenses NOT
+// already routed to a payable or check voucher (no double count). Cost is taken NET of input VAT, so
 // margin compares VAT-ex revenue with VAT-ex cost: recorded input VAT is removed,
 // a row flagged vatable without an amount is grossed down by 1.12, and a row
 // with neither is taken as-is (no VAT to strip).
@@ -596,17 +596,64 @@ export const costNet = (x={}) => {
   if(x.vatable) return Math.round(amt/1.12*100)/100;
   return amt;
 };
-export const ledgerCosts = (exps=[], payables=[]) => [
-  ...(payables||[]).filter(p=>!["Cancelled","Void"].includes(p.status)).map(p=>({
+// ── PO / Work Order totals: the project-cost basis ──────────────────────────
+// A project's cost is what GMD has committed to: every issued PO (status in
+// PO_ISSUED_STATUSES) and every committed subcon Work Order, whether or not the
+// supplier has billed yet. A PO's amount is gross − PO-level discount (+ 12% VAT
+// when the PO is "with VAT"); the same formula the printed PO, the PO list and
+// syncPoPayable use. Cost is taken VAT-ex (net), like every other cost here.
+export const PO_ISSUED_STATUSES = ["PO Issued","Partially Delivered","Delivered"];
+export const WO_COMMITTED_STATUSES = ["Issued","Partially Delivered","Delivered","Completed","For Accounting"];
+const poLineGross = i => (_amt(i.actUnitCost)||_amt(i.estUnitCost))*_amt(i.qty);
+export const poTotals = (lines=[]) => {
+  const gross=(lines||[]).reduce((s,i)=>s+poLineGross(i),0);
+  const pdt=lines?.[0]?.poDiscType||"none", pdv=_amt(lines?.[0]?.poDiscValue);
+  const poDisc=pdt==="pct"?gross*(pdv/100):pdt==="fixed"?Math.min(pdv,gross):0;
+  const afterPo=gross-poDisc, withVat=!!lines?.[0]?.withVat;
+  return { gross, net:Math.round(afterPo*100)/100, total:Math.round((afterPo+(withVat?afterPo*0.12:0))*100)/100, withVat };
+};
+// One cost row per PO line, so a PO split across projects is costed to each.
+// A line's share of the PO's discount and VAT follows its share of the gross.
+const realProject = id => (id && id!=="__gmd_stocks__") ? id : null;
+export const poCostRows = (prs=[]) => {
+  const byPo=new Map();
+  (prs||[]).forEach(p=>{ if(p.poNumber&&p.status!=="Cancelled"){ const a=byPo.get(p.poNumber)||[]; a.push(p); byPo.set(p.poNumber,a); } });
+  const rows=[];
+  byPo.forEach((lines,poNo)=>{
+    if(!lines.some(l=>PO_ISSUED_STATUSES.includes(l.status))) return;
+    const t=poTotals(lines);
+    lines.forEach(l=>{
+      const share=t.gross>0?poLineGross(l)/t.gross:0;
+      rows.push({ projectId:realProject(l.projectId||l.dealId), date:l.poDate||l.createdAt||null,
+        gross:Math.round(t.total*share*100)/100, net:Math.round(t.net*share*100)/100, vatTracked:t.withVat, src:"po", ref:poNo });
+    });
+  });
+  return rows;
+};
+export const woCostRows = (swos=[]) => (swos||[]).filter(w=>w.woNumber&&WO_COMMITTED_STATUSES.includes(w.status)&&_amt(w.contractAmount)>0).map(w=>({
+  projectId:realProject(w.projectId||w.dealId), date:w.woDate||w.createdAt||null,
+  gross:_amt(w.contractAmount), net:_amt(w.contractAmount), vatTracked:false, src:"wo", ref:w.woNumber }));
+
+// With prs/swos given, issued POs and committed WOs are the cost, and a payable
+// counts only when it isn't one of them (manual bills, or a bill whose PO is no
+// longer issued). Without them, the legacy AP-ledger basis applies.
+export const ledgerCosts = (exps=[], payables=[], prs=null, swos=null) => {
+  const poBasis=Array.isArray(prs);
+  const commit=poBasis?[...poCostRows(prs),...woCostRows(swos||[])]:[];
+  const covered=new Set(commit.map(r=>r.ref));
+  return [
+  ...commit,
+  ...(payables||[]).filter(p=>!["Cancelled","Void"].includes(p.status)&&!(poBasis&&p.poId&&covered.has(p.poId))).map(p=>({
     projectId:p.projectId||p.project_id||null, date:p.invoiceDate||p.invoice_date||p.createdAt||p.created_at||null,
     gross:_amt(p.amount), net:costNet(p), vatTracked:!!(p.vatable||_amt(p.inputVat!=null?p.inputVat:p.input_vat)>0), src:"payable" })),
   ...(exps||[]).filter(e=>!e.payableId&&!e.cvId).map(e=>({
     projectId:e.projectId||e.dealId||null,
     date:e.date||(e.year!=null&&e.month!=null?`${e.year}-${String(Number(e.month)+1).padStart(2,"0")}-01`:null),
     gross:_amt(e.amount), net:costNet(e), vatTracked:!!(e.vatable||_amt(e.inputVat)>0), src:"expense" })),
-];
-export const costSummary = (exps=[], payables=[]) => {
-  const rows=ledgerCosts(exps,payables), byProject=new Map();
+  ];
+};
+export const costSummary = (exps=[], payables=[], prs=null, swos=null) => {
+  const rows=ledgerCosts(exps,payables,prs,swos), byProject=new Map();
   let gross=0, net=0, tracked=0;
   rows.forEach(r=>{ gross+=r.gross; net+=r.net; if(r.vatTracked) tracked++;
     if(r.projectId) byProject.set(r.projectId,(byProject.get(r.projectId)||0)+r.net); });
