@@ -108,6 +108,20 @@ export const LOST_STAGES   = ["Cancelled","Did Not Win"];
 export const isLostStage      = (stage)=>LOST_STAGES.includes(stage);
 export const isActivePipeline = (stage)=>!WON_STAGES.includes(stage)&&!isLostStage(stage);
 
+// Who may change a deal's stage. Deal editors (deals_upd) may set any stage.
+// PMs (ProjectMover / Operations) may move an awarded project only between
+// Kickoff and Close-Out; Completed (financial gate) and reopening a Completed
+// project stay with the deal editors. Mirrors set_deal_stage() (migration
+// 20261027090000_set_deal_stage_rpc.sql) — keep them in sync.
+export const STAGE_EDITOR_ROLES = ["Manager","Sales","SalesOpsAdmin","QS"];
+export const PM_STAGE_ROLES     = ["ProjectMover","Operations"];
+export const PM_SETTABLE_STAGES = WON_STAGES.filter(s=>s!=="14 · Completed");
+export const canSetDealStage=(role,from,to)=>{
+  if(STAGE_EDITOR_ROLES.includes(role)) return true;
+  if(!PM_STAGE_ROLES.includes(role)) return false;
+  return PM_SETTABLE_STAGES.includes(from||"")&&(to==null||PM_SETTABLE_STAGES.includes(to));
+};
+
 // ── Pipeline temperature (Hot / Almost Awarded / Cold) ───────────────────────
 // A MANUAL classification a salesperson sets by dragging a deal between the three
 // board columns — it is the sales team's read on how likely/close a deal is,
