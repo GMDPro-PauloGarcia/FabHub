@@ -1271,7 +1271,7 @@ export const canApprovePO=(role,sessionName,requestedBy)=>{
   // work order, and a Procurement Manager never one they requested. Plain
   // Procurement can't: from 21 Oct 2026 they were approving each other's POs.
   // The database enforces the same rule (po_require_approver /
-  // swo_require_approver, migration 20261026_po_require_approver): keep in sync.
+  // swo_require_approver, migration 20261027132908_po_require_approver): keep in sync.
   if(role==="Manager") return true;
   if(role==="ProcurementManager") return !requestedBy||!sessionName||sessionName.trim().toLowerCase()!==requestedBy.trim().toLowerCase();
   return false;
