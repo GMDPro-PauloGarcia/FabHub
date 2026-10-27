@@ -11115,7 +11115,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         buttons={[
           {label:"Log Update",      icon:"📝", bg:"#f97316", action:()=>setPmUpdateModal&&setPmUpdateModal({dealId:null,dealName:"General"})},
           {label:"Report Blocker",  icon:"🚨", bg:"#dc2626", action:()=>setPmUpdateModal&&setPmUpdateModal({dealId:null,dealName:"General",initialType:"Blocker"})},
-          ...(pageOn("materialreq")?[{label:"Material Request",icon:"📦", bg:"#f59e0b", action:()=>setPage("materialreq")}]:[]),
+          {label:"Material Request",icon:"📦", bg:"#f59e0b", action:()=>setPage("materialreq")},
           {label:"My Projects",     icon:"📋", bg:"#1e293b", action:()=>setPage("projects")},
         ]}
       />
@@ -11516,7 +11516,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           {label:"Log Update",   icon:"📝", bg:"#f97316", action:()=>setPmUpdateModal&&setPmUpdateModal({dealId:null,dealName:"General"})},
           {label:"My Projects",  icon:"📋", bg:"#1e293b", action:()=>setPage("projects")},
           {label:"Calendar",     icon:"📅", bg:"#0ea5e9", action:()=>setPage("calendar")},
-          ...(pageOn("materialreq")?[{label:"Material Req", icon:"📦", bg:"#f59e0b", action:()=>setPage("materialreq")}]:[]),
+          {label:"Material Req", icon:"📦", bg:"#f59e0b", action:()=>setPage("materialreq")},
         ]}
       />
 
