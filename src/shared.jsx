@@ -137,20 +137,24 @@ export const cashDayLocked=(date,now=new Date())=>!!date&&now>=cashDayLockAt(dat
 // its ids here. Cash Position (finance page, "cash" tab), Supplier Bills
 // ("bills" tab, open PO / WO payables while the AP is hidden), Billing, Purchase
 // Orders and BOQ (now a Sales Pipeline tab) stay.
-// Unused modules retired from every menu (Paulo, 27 Oct 2026): no records ever
-// (Daily Site Log, Swatchboard, Material/Budget Requests, Audit findings, Loans)
-// or none since July (AE Updates). Hidden, not deleted: their data and code stay,
-// and removing an id here brings the module back.
-const RETIRED_PAGES = ["dailylog","swatchboard","materialreq","budgetreq","requests","audit"];
-export const HIDDEN_NAV_IDS = new Set(["finance","payables","ceqs","costanalysis","inventory","deliveries","stockmove",...RETIRED_PAGES]);
-export const HIDDEN_PAGES = new Set(["acctdash","ceqs","costanalysis","inventory","deliveries","stockmove",...RETIRED_PAGES]);
-export const HIDDEN_FIN_TABS = new Set(["payables","payments","duesboard","loans"]);
-export const HIDDEN_PIPE_TABS = new Set(["updates"]);
-// A link, tile or quick action to a page shows only while that page is on.
-export const pageOn = id => !HIDDEN_PAGES.has(id);
+export const HIDDEN_NAV_IDS = new Set(["finance","payables","ceqs","costanalysis","inventory","deliveries","stockmove"]);
+export const HIDDEN_PAGES = new Set(["acctdash","ceqs","costanalysis","inventory","deliveries","stockmove"]);
+export const HIDDEN_FIN_TABS = new Set(["payables","payments","duesboard"]);
 export const AP_HIDDEN = HIDDEN_FIN_TABS.has("payables");
 export const WAREHOUSE_HIDDEN = HIDDEN_PAGES.has("inventory");
 export const isHiddenView=(page,finTab)=>HIDDEN_PAGES.has(page)||(page==="finance"&&HIDDEN_FIN_TABS.has(finTab));
+
+// Unused modules retired from every menu (Paulo, 27 Oct 2026): no records ever
+// (Daily Site Log, Swatchboard, the old Material/Budget Requests, Audit findings,
+// Loans) or none since July (AE Updates). Hidden, not deleted: their data and
+// code stay, and removing an id here brings the module back. "materialreq" is not
+// retired: it is the PRF page.
+const RETIRED_PAGES = ["dailylog","swatchboard","budgetreq","requests","audit"];
+RETIRED_PAGES.forEach(id=>{HIDDEN_NAV_IDS.add(id);HIDDEN_PAGES.add(id);});
+HIDDEN_FIN_TABS.add("loans");
+export const HIDDEN_PIPE_TABS = new Set(["updates"]);
+// A link, tile or quick action to a page shows only while that page is on.
+export const pageOn = id => !HIDDEN_PAGES.has(id);
 
 export const dropPhantomCashDays=(obj)=>{
   const out={};
