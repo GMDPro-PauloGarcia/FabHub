@@ -137,8 +137,10 @@ export const cashDayLocked=(date,now=new Date())=>!!date&&now>=cashDayLockAt(dat
 // its ids here. Cash Position (finance page, "cash" tab), Supplier Bills
 // ("bills" tab, open PO / WO payables while the AP is hidden), Billing, Purchase
 // Orders and BOQ (now a Sales Pipeline tab) stay.
-export const HIDDEN_NAV_IDS = new Set(["finance","payables","ceqs","costanalysis","inventory","deliveries","stockmove"]);
-export const HIDDEN_PAGES = new Set(["acctdash","ceqs","costanalysis","inventory","deliveries","stockmove"]);
+// Warehousing (inventory / deliveries / stockmove) is back on 2026-10-27, under
+// the Procurement section of the sidebar (Paulo).
+export const HIDDEN_NAV_IDS = new Set(["finance","payables","ceqs","costanalysis"]);
+export const HIDDEN_PAGES = new Set(["acctdash","ceqs","costanalysis"]);
 export const HIDDEN_FIN_TABS = new Set(["payables","payments","duesboard"]);
 export const AP_HIDDEN = HIDDEN_FIN_TABS.has("payables");
 export const WAREHOUSE_HIDDEN = HIDDEN_PAGES.has("inventory");
