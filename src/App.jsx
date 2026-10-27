@@ -51,6 +51,7 @@ const DailyCashPosition=_lazyView(()=>import('./views/DailyCashPosition'));
 const CashPositionPayables=_lazyView(()=>import('./views/CashPositionPayables'));
 const CERequestTracker=_lazyView(()=>import('./views/CERequestTracker'));
 const POApprovals=_lazyView(()=>import('./views/POApprovals'));
+const PrfView=_lazyView(()=>import('./views/PrfView'));
 const ARDrill=_lazyView(()=>import('./views/ARDrill'));
 const AttentionPanel=_lazyView(()=>import('./views/AttentionPanel'));
 const WeeklyCashFlow=_lazyView(()=>import('./views/WeeklyCashFlow'));
@@ -9616,7 +9617,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Accounting",  items:[{id:"coa",l:"Chart of Accounts"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
       {group:"Design",      items:[{id:"designboard",l:"Design Board"},{id:"drf",l:"Design Requests"}]},
-      {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
+      {group:"Procurement", items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
       {group:"Warehousing", items:[{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"}]},
       {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"audit",l:"Audit"},{id:"syshealth",l:"System Health"},{id:"botsettings",l:"Bot Settings"},{id:"tvboard",l:"Office TV Board"},{id:"activity",l:"Team Activity"}]},
     ],
@@ -9634,7 +9635,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Accounting",  items:[{id:"coa",l:"Chart of Accounts"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
-      {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
+      {group:"Procurement", items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
       {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"}]},
       {group:"Warehousing", items:[{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"}]},
       {group:"Admin",       items:[{id:"audit",l:"Audit"},{id:"botsettings",l:"Bot Settings"},{id:"activity",l:"Team Activity"}]},
@@ -9656,13 +9657,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     Procurement:[
       {group:"Overview",   items:[{id:"home",l:"Overview"}]},
-      {group:"Orders",     items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
+      {group:"Orders",     items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
       {group:"Projects",   items:[{id:"projects",l:"Projects"},{id:"clients",l:"Clients"}]},
     ],
     QS:[
       {group:"Overview", items:[{id:"home",l:"Dashboard"}]},
       {group:"Sales",    items:[{id:"pipeline",l:"Sales Pipeline"},{id:"boq",l:"BOQ"}]},
-      {group:"CE / QS",  items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"}]},
+      {group:"CE / QS",  items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"materialreq",l:"Purchase Requests (PRF)"}]},
       {group:"Operations", items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
     ],
     Operations:[
@@ -9670,7 +9671,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Sales",     items:[{id:"pipeline",l:"Sales Pipeline"}]},
       {group:"On-Site",   items:[{id:"projects",l:"Project Cards"}]},
       {group:"Design",    items:[{id:"drf",l:"Design Requests"}]},
-      {group:"Requests",  items:[{id:"costanalysis",l:"Cost Analysis"}]},
+      {group:"Requests",  items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"costanalysis",l:"Cost Analysis"}]},
     ],
     Design:[
       {group:"Overview",    items:[{id:"home",l:"Projects"},{id:"designboard",l:"Design Board"},{id:"myfolder",l:"My Projects"}]},
@@ -9684,11 +9685,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       // Scope changes are Sales-owned (a linked deal). A PM who spots one reports
       // it via PM Updates; Sales picks it up and logs the linked addendum.
       {group:"Updates",  items:[{id:"pmupdates",l:"PM Updates"}]},
-      {group:"Work",     items:[{id:"projects",l:"Project Cards"}]},
+      {group:"Work",     items:[{id:"projects",l:"Project Cards"},{id:"materialreq",l:"Purchase Requests (PRF)"}]},
     ],
     Warehouse:[
       {group:"Overview", items:[{id:"home",l:"Dashboard"}]},
-      {group:"Stock",    items:[{id:"deliveries",l:"Deliveries"},{id:"inventory",l:"Inventory"},{id:"stockmove",l:"Stock Movements"}]},
+      {group:"Stock",    items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"deliveries",l:"Deliveries"},{id:"inventory",l:"Inventory"},{id:"stockmove",l:"Stock Movements"}]},
     ],
     SalesOpsAdmin:[
       {group:"Overview",   items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
@@ -9707,7 +9708,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // difference is authority (they approve POs), not navigation.
     ProcurementManager:[
       {group:"Overview",   items:[{id:"home",l:"Overview"}]},
-      {group:"Orders",     items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
+      {group:"Orders",     items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
       {group:"Projects",   items:[{id:"projects",l:"Projects"},{id:"clients",l:"Clients"}]},
     ],
   };
@@ -9880,7 +9881,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       home:"Home",pipeline:"Pipeline",projects:"Projects",finance:"Finance",executive:"Executive",
       billing:"Billing",checklist:"Checklist",joborders:"JOs",
       costanalysis:"Costs",accounting:"Daily Payables",procurement:"Orders",
-      clients:"Clients",materialreq:"Materials",budgetreq:"Budget",
+      clients:"Clients",materialreq:"PRF",budgetreq:"Budget",
       swatchboard:"Swatches",drf:"Design",deliveries:"Delivery",
       stockmove:"Stock",reports:"Reports",suppliers:"Suppliers",
       subcontractors:"Subcon",calendar:"Calendar",inventory:"Inventory",
@@ -11114,7 +11115,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         buttons={[
           {label:"Log Update",      icon:"📝", bg:"#f97316", action:()=>setPmUpdateModal&&setPmUpdateModal({dealId:null,dealName:"General"})},
           {label:"Report Blocker",  icon:"🚨", bg:"#dc2626", action:()=>setPmUpdateModal&&setPmUpdateModal({dealId:null,dealName:"General",initialType:"Blocker"})},
-          {label:"Material Request",icon:"📦", bg:"#f59e0b", action:()=>setPage("materialreq")},
+          {label:"PRF",icon:"📦", bg:"#f59e0b", action:()=>setPage("materialreq")},
           {label:"My Projects",     icon:"📋", bg:"#1e293b", action:()=>setPage("projects")},
         ]}
       />
@@ -11515,7 +11516,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           {label:"Log Update",   icon:"📝", bg:"#f97316", action:()=>setPmUpdateModal&&setPmUpdateModal({dealId:null,dealName:"General"})},
           {label:"My Projects",  icon:"📋", bg:"#1e293b", action:()=>setPage("projects")},
           {label:"Calendar",     icon:"📅", bg:"#0ea5e9", action:()=>setPage("calendar")},
-          {label:"Material Req", icon:"📦", bg:"#f59e0b", action:()=>setPage("materialreq")},
+          {label:"PRF",          icon:"📦", bg:"#f59e0b", action:()=>setPage("materialreq")},
         ]}
       />
 
@@ -12439,6 +12440,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     </Wrap>
   );
   }
+  // ── PRF (Purchase Request Form) — one route for every role in the chain.
+  // The page id stays "materialreq" so the existing dashboard buttons land here.
+  if(page==="materialreq") return(
+    <Wrap>
+      <PrfView session={session} role={role} deals={deals} pcards={pcards} prs={prs}
+        sendTelegramNotification={sendTelegramNotification} isMobile={isMobile}
+        initialDeal={jumpDeal} clearJump={()=>setJumpDeal(null)}/>
+    </Wrap>
+  );
   // ── CALENDAR ────────────────────────────────────────────────────────────────
   if(page==="calendar") return(
     <ConstructionCalendar
@@ -16107,7 +16117,6 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="costing") return(<Wrap><CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role}/></Wrap>);
-    if(page==="materialreq") return(<Wrap><MaterialRequestView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} deleteMR={delMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView sendTelegramNotification={sendTelegramNotification} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="requests") return(<Wrap><RequestsView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="suppliers") return(<Wrap><SupplierMasterView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} session={session} role={role}/></Wrap>);
@@ -16292,7 +16301,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #fed7aa",padding:"14px 18px",marginBottom:16}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8}}>
                   <div style={{fontWeight:700,color:"#c2410c",fontSize:".9rem"}}>📦 {needsPR.length} item{needsPR.length!==1?"s":""} need restocking — no active PO</div>
-                  <button onClick={()=>setPage("materialreq")} style={{background:"#f97316",border:"none",borderRadius:8,padding:"7px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:"#fff",cursor:"pointer"}}>+ Raise Material Request</button>
+                  <button onClick={()=>setPage("procurement")} style={{background:"#f97316",border:"none",borderRadius:8,padding:"7px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:"#fff",cursor:"pointer"}}>+ Raise stock PO</button>
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(3,1fr)",gap:8}}>
                   {needsPR.slice(0,9).map(i=>(
@@ -16446,7 +16455,6 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(page==="procurement") return(<Wrap><ProcurementView2 costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap} addMR={addMR} wonDeals={wonDeals} session={session}/></Wrap>);
-    if(page==="materialreq") return(<Wrap><MaterialRequestView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} deleteMR={delMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView sendTelegramNotification={sendTelegramNotification} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="requests") return(<Wrap><RequestsView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="masters") return(<Wrap><MasterListsView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role} isMobile={isMobile}/></Wrap>);
@@ -16943,7 +16951,6 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(page==="procurement") return(<Wrap><ProcurementView2 costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
-    if(page==="materialreq") return(<Wrap><MaterialRequestView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} deleteMR={delMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView sendTelegramNotification={sendTelegramNotification} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="requests") return(<Wrap><RequestsView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="calendar") return(<ConstructionCalendar wonDeals={wonDeals} completedDeals={completedDeals} deals={deals} pcards={pcards} jos={jos} prs={prs} billings={billings} drfs={drfs} ceReqs={ceReqs} setPage={setPage} setJumpDeal={setJumpDeal} today={today} Wrap={Wrap} checklists={checklist} session={session} addOpsEvent={data=>{const rec={...data,id:uid(),dept:"Operations",createdDate:today,createdBy:session?.name||role};upChecklist(cs=>[...cs,rec]);if(isSupabaseReady())sbInsert('checklists',toSbChecklist(rec)).catch(err=>{console.error("Calendar item sync:",err);toastEmit&&toastEmit("Calendar item saved locally only — tap 🔄 sync to push it to the server.","warning",8000);});const proj=wonDeals.find(d=>d.id===rec.projectId);const msg=`📅 <b>Calendar Item Added</b>\n<b>${rec.type||"Event"}</b>: ${rec.title||""}\nDate: ${rec.dueDate||"—"}${proj?`\nProject: ${proj.client}${proj.ceNo?" ("+proj.ceNo+")":""}`:""}\nBy: ${rec.createdBy||"—"}`;const _t=(rec.type||"").toLowerCase();if(["installation","backjob","turnover","site visit","repair"].some(t=>_t.includes(t))){sendTelegramNotification("ops",msg);sendTelegramNotification("sales",msg);}else if(_t.includes("drf")||_t.includes("design")){sendTelegramNotification("design",msg);}else if(_t.includes("billing")){sendTelegramNotification("finance",msg);}else{sendTelegramNotification("ops",msg);}}} updateOpsEvent={(id,ch)=>{upChecklist(cs=>cs.map(c=>c.id===id?{...c,...ch}:c));if(isSupabaseReady())sbUpdate('checklists',id,toSbChecklist({...checklist.find(c=>c.id===id),...ch})).catch(()=>{});}} deleteOpsEvent={delOpsEvent}/>);
@@ -18424,15 +18431,6 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     </Wrap>
   );
 
-  // ── MATERIAL REQUESTS ────────────────────────────────────────────────────────
-  if(page==="materialreq") return(
-    <Wrap>
-      <MaterialRequestView
-        mreqs={mreqs} addMR={addMR} updateMR={updateMR} deleteMR={delMR}
-        prs={prs} addPR={addPR}
-        wonDeals={wonDeals} session={session} role={role}/>
-    </Wrap>
-  );
 
   // ── BUDGET REQUESTS ───────────────────────────────────────────────────────
   if(page==="budgetreq") return(
@@ -24650,362 +24648,6 @@ function CostingStudy({wonDeals,budgets,prs,exps,projs,role}){
   );
 }
 
-// ─── MATERIAL REQUEST VIEW ────────────────────────────────────────────────────
-function MaterialRequestView({sendTelegramNotification,mreqs,addMR,updateMR,deleteMR,prs,addPR,wonDeals,session,role,toastEmit,suppliers}){
-  const[showForm,setShowForm]=useState(false);
-  const[form,setForm]=useState({projectId:"",itemName:"",category:"Materials",qty:1,unit:"pcs",estUnitCost:"",urgency:"Normal",purpose:"",requestedBy:session?.name||"",notes:""});
-  const f=(k,v)=>setForm(p=>({...p,[k]:v}));
-  const n=v=>Number(v)||0;
-  const fmt=v=>"₱"+n(v).toLocaleString("en-PH",{minimumFractionDigits:0});
-  const STATUS_CLR={"Submitted":"#f59e0b","Reviewed":"#3b82f6","Converted to PR":"#10b981","Rejected":"#ef4444"};
-  const URGENCY_CLR={"Urgent":"#ef4444","High":"#f59e0b","Normal":"#10b981"};
-
-  const[convertingId, setConvertingId] = useState(null);
-  const[convSupplier, setConvSupplier] = useState("");
-  const[convPoNo,     setConvPoNo]     = useState("");
-
-  const nextPoNo = () => claimDocNumber("PO",(prs||[]).map(p=>p.poNumber));
-
-  const printMR = (mr) => {
-    const deal = wonDeals.find(d=>d.id===mr.projectId);
-    const projName = deal?.contact||deal?.client||"—";
-    const estTotal = Number(mr.estUnitCost||0)*Number(mr.qty||0);
-    const fmtP = v=>"₱"+Number(v).toLocaleString("en-PH",{minimumFractionDigits:2});
-    const printDate = new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"});
-    const win = window.open("","_blank","width=860,height=1000");
-    if(!win){alert("Please allow pop-ups.");return;}
-    win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-<title>Material Request — ${projName}</title>
-<style>
-  *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:Arial,Helvetica,sans-serif;font-size:11.5px;color:#1a1a1a;background:#fff;line-height:1.5;}
-  .page{max-width:760px;margin:0 auto;padding:36px 48px;}
-  .letterhead{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:14px;border-bottom:3px solid #f97316;margin-bottom:20px;}
-  .co-name{font-weight:900;font-size:13px;color:#1a1a1a;letter-spacing:.3px;}
-  .co-info{font-size:10px;color:#666;line-height:1.7;margin-top:3px;}
-  .doc-title{font-size:20px;font-weight:900;color:#f97316;letter-spacing:.5px;margin-bottom:3px;}
-  .doc-no{font-size:11px;color:#666;}
-  .section{margin-bottom:18px;}
-  .section-title{font-size:9.5px;font-weight:900;text-transform:uppercase;letter-spacing:1px;color:#f97316;border-bottom:1.5px solid #f97316;padding-bottom:3px;margin-bottom:10px;}
-  .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;}
-  .info-row{font-size:11px;display:flex;gap:6px;}
-  .info-label{font-weight:700;color:#555;min-width:100px;flex-shrink:0;}
-  .info-val{color:#1a1a1a;}
-  .items-table{width:100%;border-collapse:collapse;font-size:11px;}
-  .items-table th{background:#f97316;color:#fff;padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;}
-  .items-table td{padding:7px 10px;border-bottom:1px solid #e5e5e5;vertical-align:top;}
-  .items-table tr:nth-child(even) td{background:#fafafa;}
-  .total-row td{font-weight:700;background:#fff7ed!important;border-top:2px solid #f97316;}
-  .purpose-box{background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:10px 14px;font-size:11px;color:#1a1a1a;margin-bottom:18px;}
-  .purpose-label{font-size:10px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
-  .sig-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:32px;}
-  .sig-box{border-top:1.5px solid #1a1a1a;padding-top:8px;}
-  .sig-role{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#666;margin-bottom:4px;}
-  .sig-name{font-size:11.5px;font-weight:700;color:#1a1a1a;min-height:18px;}
-  .sig-date{font-size:10px;color:#666;margin-top:2px;min-height:14px;}
-  .sig-line{height:28px;border-bottom:1px solid #ccc;margin-bottom:4px;}
-  .urgency-badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;}
-  .urgency-Urgent{background:#fef2f2;color:#dc2626;border:1px solid #fecaca;}
-  .urgency-High{background:#fffbeb;color:#d97706;border:1px solid #fde68a;}
-  .urgency-Normal{background:#f0fdf4;color:#059669;border:1px solid #6ee7b7;}
-  .no-print{margin-top:24px;text-align:center;}
-  @media print{.no-print{display:none;}}
-</style></head><body><div class="page">
-
-  <div class="letterhead">
-    <div>
-      <div class="co-name">GMD Productions Inc.</div>
-      <div class="co-info">Interior Design &amp; Fabrication<br>Marikina City, Metro Manila<br>gmdproductionsinc@gmail.com</div>
-    </div>
-    <div style="text-align:right">
-      <div class="doc-title">MATERIAL REQUEST</div>
-      <div class="doc-no">Date: ${printDate}</div>
-      <div class="doc-no">Status: <strong>${mr.status||"Submitted"}</strong></div>
-    </div>
-  </div>
-
-  <div class="section">
-    <div class="section-title">Project Information</div>
-    <div class="info-grid">
-      <div class="info-row"><span class="info-label">Project:</span><span class="info-val">${projName}</span></div>
-      <div class="info-row"><span class="info-label">CE No.:</span><span class="info-val">${deal?.ceNo||"—"}</span></div>
-      <div class="info-row"><span class="info-label">Location:</span><span class="info-val">${deal?.location||"—"}</span></div>
-      <div class="info-row"><span class="info-label">Date Submitted:</span><span class="info-val">${mr.createdDate||"—"}</span></div>
-      <div class="info-row"><span class="info-label">Urgency:</span><span class="info-val"><span class="urgency-badge urgency-${mr.urgency||"Normal"}">${mr.urgency||"Normal"}</span></span></div>
-      <div class="info-row"><span class="info-label">Department:</span><span class="info-val">Operations</span></div>
-    </div>
-  </div>
-
-  <div class="section">
-    <div class="section-title">Items Requested</div>
-    <table class="items-table">
-      <thead><tr><th>#</th><th>Description</th><th>Category</th><th>Qty</th><th>Unit</th><th>Est. Unit Cost</th><th>Total</th></tr></thead>
-      <tbody>
-        <tr>
-          <td>1</td>
-          <td>${mr.itemName||"—"}</td>
-          <td>${mr.category||"—"}</td>
-          <td>${mr.qty||1}</td>
-          <td>${mr.unit||"pcs"}</td>
-          <td>${fmtP(mr.estUnitCost||0)}</td>
-          <td>${fmtP(estTotal)}</td>
-        </tr>
-        <tr class="total-row">
-          <td colspan="6" style="text-align:right;padding-right:10px;">Total Estimated Cost:</td>
-          <td>${fmtP(estTotal)}</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
-  ${(mr.purpose||mr.notes)?`
-  <div class="purpose-box">
-    <div class="purpose-label">Purpose / Justification</div>
-    <div>${mr.purpose||mr.notes||""}</div>
-    ${mr.notes&&mr.purpose?`<div style="margin-top:6px;color:#555;">${mr.notes}</div>`:""}
-  </div>`:""}
-
-  ${mr.status==="Converted to PR"?`
-  <div class="section">
-    <div class="section-title">Procurement Details</div>
-    <div class="info-grid">
-      <div class="info-row"><span class="info-label">Approved by:</span><span class="info-val">${mr.statusChangedAt?"Converted "+mr.statusChangedAt:session?.name||"—"}</span></div>
-    </div>
-  </div>`:""}
-
-  <div class="sig-grid">
-    <div class="sig-box">
-      <div class="sig-role">Requested By</div>
-      <div class="sig-name">${mr.requestedBy||"_______________"}</div>
-      <div class="sig-date">${mr.createdDate||"_______________"}</div>
-    </div>
-    <div class="sig-box">
-      <div class="sig-role">Checked By</div>
-      <div class="sig-line"></div>
-      <div class="sig-date">Date: _______________</div>
-    </div>
-    <div class="sig-box">
-      <div class="sig-role">Approved By</div>
-      ${mr.status==="Converted to PR"?`<div class="sig-name">${session?.name||"_______________"}</div><div class="sig-date">${mr.statusChangedAt||"_______________"}</div>`:`<div class="sig-line"></div><div class="sig-date">Date: _______________</div>`}
-    </div>
-  </div>
-
-  <div style="margin-top:40px;font-size:9.5px;color:#aaa;text-align:center;border-top:1px solid #e5e5e5;padding-top:10px;">
-    GMD Productions Inc. · Material Request · Internal Document · Generated ${printDate}
-  </div>
-
-  <div class="no-print">
-    <button onclick="window.print()" style="background:#f97316;color:#fff;border:none;border-radius:8px;padding:11px 28px;font-size:13px;font-weight:700;cursor:pointer;font-family:Arial,sans-serif;">🖨️ Print / Save as PDF</button>
-    <p style="margin-top:8px;font-size:11px;color:#999;">Select <strong>Save as PDF</strong> in the print dialog</p>
-  </div>
-
-</div></body></html>`);
-    win.document.close();addPrintClose(win); win.focus();
-  };
-
-  const submit=()=>{
-    if(!form.itemName||!form.projectId) return;
-    addMR({...form,status:"Submitted"});
-    setForm({projectId:"",itemName:"",category:"Materials",qty:1,unit:"pcs",estUnitCost:"",urgency:"Normal",purpose:"",requestedBy:session?.name||"",notes:""});
-    setShowForm(false);
-  };
-
-  const canApprove = ["Finance","Cost Control","Manager"].includes(role);
-  const pending = mreqs.filter(m=>m.status==="Submitted"||m.status==="Reviewed");
-
-  return(
-    <div>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,flexWrap:"wrap",gap:12}}>
-        <div>
-          <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>Material Requests</h2>
-          <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Operations submits · Cost Control reviews and converts to PO</div>
-        </div>
-        <button onClick={()=>setShowForm(s=>!s)} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>
-          + Request Materials
-        </button>
-      </div>
-
-      {/* KPIs */}
-      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:16}}>
-        {[
-          {l:"Total Requests",    v:mreqs.length,              c:"#0f172a"},
-          {l:"Pending Review",    v:pending.length,            c:"#f59e0b"},
-          {l:"Converted to PO",   v:mreqs.filter(m=>m.status==="Converted to PR").length, c:"#10b981"},
-          {l:"Rejected",          v:mreqs.filter(m=>m.status==="Rejected").length,        c:"#ef4444"},
-        ].map(({l,v,c})=>(
-          <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0"}}>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:c}}>{v}</div>
-            <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:5}}>{l}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Pending banner for Cost Control */}
-      {canApprove&&pending.length>0&&(
-        <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"10px 16px",marginBottom:14,fontSize:".82rem",color:"#92400e"}}>
-          ⚠️ <strong>{pending.length} material request{pending.length>1?"s":""} waiting for your review</strong> — Convert to PO or reject below.
-        </div>
-      )}
-
-      {/* Form */}
-      {showForm&&(
-        <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:20,marginBottom:18}}>
-          <div style={{fontWeight:800,color:"#0f172a",marginBottom:16}}>New Material Request</div>
-          <datalist id="po-units-dl">{PO_UNITS.map(u=><option key={u} value={u}/>)}</datalist>
-          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
-            <Fld label="Project" required>
-              <Sel value={form.projectId} onChange={e=>f("projectId",e.target.value)}>
-                <option value="">— Select Project —</option>
-                {wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?` — ${d.contact}`:""}</option>)}
-              </Sel>
-            </Fld>
-            <Fld label="Urgency">
-              <Sel value={form.urgency} onChange={e=>f("urgency",e.target.value)}>
-                {["Normal","High","Urgent"].map(u=><option key={u}>{u}</option>)}
-              </Sel>
-            </Fld>
-            <div style={{gridColumn:"1/-1"}}>
-              <Fld label="Item Name" required>
-                <Inp value={form.itemName} onChange={e=>f("itemName",e.target.value)} placeholder="e.g. 18mm Melamine Board, Paint — Boysen White, Steel Angle Bar"/>
-              </Fld>
-            </div>
-            <Fld label="Category">
-              <Sel value={form.category} onChange={e=>f("category",e.target.value)}>
-                {PR_CATS.map(c=><option key={c}>{c}</option>)}
-              </Sel>
-            </Fld>
-            <Fld label="Qty & Unit">
-              <div style={{display:"flex",gap:8}}>
-                <Inp type="number" value={form.qty} onChange={e=>f("qty",e.target.value)} min={1}/>
-                <input list="po-units-dl" value={form.unit} onChange={e=>f("unit",e.target.value)} placeholder="pcs…" style={{flex:1,border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box",outline:"none"}}/>
-              </div>
-            </Fld>
-            <Fld label="Estimated Cost (₱/unit)">
-              <Inp type="number" value={form.estUnitCost} onChange={e=>f("estUnitCost",e.target.value)} placeholder="0.00"/>
-            </Fld>
-            <Fld label="Requested By">
-              <Inp value={form.requestedBy} onChange={e=>f("requestedBy",e.target.value)} placeholder={session?.name||""}/>
-            </Fld>
-            <div style={{gridColumn:"1/-1"}}>
-              <Fld label="Purpose / Why needed">
-                <Inp rows={2} value={form.purpose} onChange={e=>f("purpose",e.target.value)} placeholder="e.g. For built-in shelving Unit 3B, needed by May 20 for installation"/>
-              </Fld>
-            </div>
-            <div style={{gridColumn:"1/-1"}}>
-              <Fld label="Notes">
-                <Inp rows={2} value={form.notes} onChange={e=>f("notes",e.target.value)} placeholder="Specifications, supplier suggestion, urgency reason…"/>
-              </Fld>
-            </div>
-          </div>
-          <div style={{display:"flex",gap:10,marginTop:14}}>
-            <button onClick={submit} disabled={!form.itemName||!form.projectId}
-              style={{background:form.itemName&&form.projectId?"#1e293b":"#e2e8f0",border:"none",borderRadius:10,padding:"10px 22px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:form.itemName&&form.projectId?"#fff":"#94a3b8",cursor:form.itemName&&form.projectId?"pointer":"not-allowed"}}>
-              Submit Request
-            </button>
-            <button onClick={()=>setShowForm(false)} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
-          </div>
-        </div>
-      )}
-
-      {/* MR List */}
-      {mreqs.length===0&&<div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8",fontSize:".84rem"}}>No material requests yet.</div>}
-      <div style={{display:"flex",flexDirection:"column",gap:8}}>
-        {mreqs.map(mr=>{
-          const deal=wonDeals.find(d=>d.id===mr.projectId);
-          const estTotal=n(mr.estUnitCost)*n(mr.qty);
-          return(
-            <div key={mr.id} style={{background:"#fff",borderRadius:12,border:`1.5px solid ${mr.urgency==="Urgent"?"#fecaca":mr.status==="Converted to PR"?"#6ee7b7":"#e2e8f0"}`,padding:"14px 18px"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
-                <div style={{flex:1}}>
-                  <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:4}}>
-                    <span style={{fontWeight:700,color:"#0f172a"}}>{mr.itemName}</span>
-                    <span style={{fontSize:".68rem",background:STATUS_CLR[mr.status]+"22",color:STATUS_CLR[mr.status],border:`1px solid ${STATUS_CLR[mr.status]}44`,borderRadius:20,padding:"1px 9px",fontWeight:700}}>{mr.status}</span>
-                    <span style={{fontSize:".68rem",background:URGENCY_CLR[mr.urgency]+"22",color:URGENCY_CLR[mr.urgency],border:`1px solid ${URGENCY_CLR[mr.urgency]}44`,borderRadius:20,padding:"1px 9px",fontWeight:600}}>{mr.urgency}</span>
-                  </div>
-                  <div style={{fontSize:".75rem",color:"#64748b",display:"flex",gap:12,flexWrap:"wrap"}}>
-                    {deal&&<span>📁 {deal.client}{deal.contact?` — ${deal.contact}`:""}</span>}
-                    <span>Qty: {mr.qty} {mr.unit}</span>
-                    {estTotal>0&&<span>Est: {fmt(estTotal)}</span>}
-                    <span>By: {mr.requestedBy||"—"}</span>
-                    <span>{mr.createdDate}</span>
-                    {mr.statusChangedAt&&mr.status!=="Submitted"&&(()=>{const d=Math.ceil((new Date()-new Date(mr.statusChangedAt))/86400000);return<span style={{color:mr.status==="Rejected"?"#ef4444":"#059669",fontWeight:600}}>{mr.status==="Rejected"?"❌":"✓"} {d===0?"Today":d+"d ago"}</span>})()}
-                  </div>
-                  {mr.purpose&&<div style={{fontSize:".75rem",color:"#475569",marginTop:5,fontStyle:"italic"}}>"{mr.purpose}"</div>}
-                </div>
-                <div style={{display:"flex",gap:7,flexShrink:0,alignItems:"flex-start"}}>
-                  <button onClick={()=>printMR(mr)} style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:7,padding:"5px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>🖨️</button>
-                  {role==="Manager"&&<button onClick={async ()=>{if((await uiConfirm("Delete this material request?")))deleteMR(mr.id);}} style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕ Delete</button>}
-                </div>
-              </div>
-              {convertingId===mr.id ? (
-                <div style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:10,padding:"12px 14px",marginTop:8,width:"100%"}}>
-                  <div style={{fontWeight:700,color:"#1e40af",fontSize:".78rem",marginBottom:8}}>Issue Purchase Order</div>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
-                    <div>
-                      <div style={{fontSize:".68rem",fontWeight:700,color:"#64748b",marginBottom:3}}>Supplier <span style={{color:"#ef4444"}}>*</span></div>
-                      <input value={convSupplier} onChange={e=>setConvSupplier(e.target.value)} placeholder="e.g. Pacific Hardware Supply"
-                        style={{width:"100%",border:"1.5px solid #93c5fd",borderRadius:7,padding:"7px 9px",fontFamily:"inherit",fontSize:".82rem",outline:"none",boxSizing:"border-box"}}/>
-                    </div>
-                    <div>
-                      <div style={{fontSize:".68rem",fontWeight:700,color:"#64748b",marginBottom:3}}>PO Number <span style={{color:"#ef4444"}}>*</span></div>
-                      <input value={convPoNo} onChange={e=>setConvPoNo(e.target.value)} placeholder="PO-0001"
-                        style={{width:"100%",border:"1.5px solid #93c5fd",borderRadius:7,padding:"7px 9px",fontFamily:"inherit",fontSize:".82rem",outline:"none",boxSizing:"border-box"}}/>
-                    </div>
-                  </div>
-                  <div style={{display:"flex",gap:8}}>
-                    <button onClick={()=>{
-                      if(!convSupplier.trim()||!convPoNo.trim()) return;
-                      const dealN=wonDeals.find(d=>d.id===mr.projectId);
-                      addPR({
-                        projectId:mr.projectId, projectName:dealN?.client||"",
-                        itemName:mr.itemName, category:mr.category,
-                        qty:mr.qty, unit:mr.unit, estUnitCost:mr.estUnitCost||0, actUnitCost:0,
-                        supplier:convSupplier.trim(), poNumber:convPoNo.trim(),
-                        poDate:new Date().toISOString().split("T")[0], status:dealDpClear(dealN,wonDeals)?"PO Issued":"Pending Approval",
-                        requestedBy:mr.requestedBy||"", approvedBy:dealDpClear(dealN,wonDeals)?session?.name||"":"",
-                        budgetCategory:"Materials", notes:`From MR: ${mr.notes||""}`,
-                        description:mr.purpose||"",
-                      });
-                      if(!dealDpClear(dealN,wonDeals)) toastEmit&&toastEmit(`Saved as Pending Approval: no down payment received on ${dealN?.ceNo||dealN?.client||"this project"} yet. A Manager must waive it before the PO can be issued.`,"error",9000);
-                      updateMR(mr.id,{status:"Converted to PR",statusChangedAt:new Date().toISOString().split("T")[0]});
-                      sendTelegramNotification("operations",`✅ <b>Material Request → PO Issued</b>\n${mr.itemName}\nProject: ${dealN?.client||"?"}${dealN?.contact?" — "+dealN.contact:""}\nSupplier: ${convSupplier.trim()}\nPO: ${convPoNo.trim()}\nBy: ${session?.name}`);
-                      setConvertingId(null); setConvSupplier(""); setConvPoNo("");
-                    }} disabled={!convSupplier.trim()||!convPoNo.trim()}
-                      style={{background:convSupplier.trim()&&convPoNo.trim()?"#1e40af":"#e2e8f0",border:"none",borderRadius:8,padding:"8px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:convSupplier.trim()&&convPoNo.trim()?"#fff":"#94a3b8",cursor:convSupplier.trim()&&convPoNo.trim()?"pointer":"not-allowed"}}>
-                      📦 Issue PO
-                    </button>
-                    <button onClick={()=>{setConvertingId(null);setConvSupplier("");setConvPoNo("");}}
-                      style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".78rem",color:"#64748b",cursor:"pointer"}}>
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                canApprove&&mr.status==="Submitted"&&(
-                  <div style={{display:"flex",gap:7,marginTop:8}}>
-                    <button onClick={async()=>{setConvertingId(mr.id);setConvPoNo(await nextPoNo());setConvSupplier("");}}
-                      style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:8,padding:"6px 13px",fontWeight:700,fontSize:".78rem",color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit"}}>
-                      ✓ Convert to PO
-                    </button>
-                    <button onClick={()=>{
-                      updateMR(mr.id,{status:"Rejected",statusChangedAt:today});
-                      const deal=wonDeals.find(d=>d.id===mr.projectId);
-                      sendTelegramNotification("operations",`❌ <b>Material Request Rejected</b>\n${mr.itemName}\nProject: ${deal?.client||"?"}${deal?.contact?" — "+deal.contact:""}\nRejected by: ${session?.name}`);
-                    }} style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:8,padding:"6px 13px",fontWeight:700,fontSize:".78rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>
-                      ✕ Reject
-                    </button>
-                  </div>
-                )
-              )}
-              {mr.status==="Converted to PR"&&convertingId!==mr.id&&<span style={{fontSize:".75rem",color:"#059669",fontWeight:700,display:"block",marginTop:4}}>✓ PO Created</span>}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 // ─── BUDGET REQUEST VIEW ──────────────────────────────────────────────────────
 function BudgetRequestView({sendTelegramNotification,breqs,addBR,updateBR,deleteBR,wonDeals,session,role,toastEmit}){
   const[showForm,setShowForm]=useState(false);
@@ -28146,6 +27788,11 @@ function ProjectCards({syncProjectCard,pcards,wonDeals,completedDeals,deals,togg
                   <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0}}>
                     <span style={{fontSize:".72rem",fontWeight:700,color:hc,background:hc+"18",borderRadius:20,padding:"4px 12px",border:`1px solid ${hc}44`}}>{deal?.stage?.replace(/^\d+ · /,"")||"—"}</span>
                     {pct===100&&<span style={{fontSize:".68rem",fontWeight:700,color:"#059669",background:"#f0fdf4",borderRadius:20,padding:"2px 9px"}}>✅ Done</span>}
+                    {/* PRFs for this project — same roles that can read prfs (prf_can_read). */}
+                    {deal&&["Manager","ProjectMover","Operations","Warehouse","QS","Procurement","ProcurementManager","Finance","FinanceAssistant","Accounting","SalesOpsAdmin"].includes(role)&&(
+                      <button onClick={()=>{setJumpDeal(deal.id);setPage("materialreq");}} title="Purchase requests for this project"
+                        style={{background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:6,padding:"4px 10px",fontSize:".72rem",fontWeight:700,color:"#c2410c",cursor:"pointer",fontFamily:"inherit"}}>📦 PRFs</button>
+                    )}
                     {role==="Manager"&&setConfirmDel&&deal&&<button onClick={()=>setConfirmDel(deal.id)} title="Delete this project and all its records" style={{marginTop:2,background:"#fef2f2",border:"1px solid #fecaca",borderRadius:6,padding:"4px 10px",fontSize:".7rem",fontWeight:700,color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>🗑 Delete Project</button>}
                   </div>
                 </div>
@@ -29687,16 +29334,15 @@ function SubconMasterView({subcons,addSubcon,updateSubcon,deleteSubcon,session,r
 }
 
 function RequestsView({sendTelegramNotification,mreqs,addMR,updateMR,prs,addPR,wonDeals,session,role,breqs,addBR,updateBR,deleteBR,toastEmit,suppliers}){
-  const[tab,setTab]=useState("Material Request");
+  const[tab,setTab]=useState("Budget Request");
   const tabStyle=(active)=>({padding:"10px 24px",border:"none",borderBottom:`3px solid ${active?"#f59e0b":"transparent"}`,background:"transparent",color:active?"#f59e0b":"#64748b",fontWeight:active?700:400,cursor:"pointer",fontFamily:"inherit",fontSize:".9rem",transition:"all .15s",whiteSpace:"nowrap"});
   return(
     <div>
       <div style={{display:"flex",gap:0,borderBottom:"2px solid #e2e8f0",marginBottom:24,overflowX:"auto"}}>
-        {["Material Request","Budget Request"].map(t=>(
+        {["Budget Request"].map(t=>(
           <button key={t} onClick={()=>setTab(t)} style={tabStyle(tab===t)}>{t}</button>
         ))}
       </div>
-      {tab==="Material Request"&&<MaterialRequestView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/>}
       {tab==="Budget Request"&&<BudgetRequestView sendTelegramNotification={sendTelegramNotification} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={deleteBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/>}
     </div>
   );
