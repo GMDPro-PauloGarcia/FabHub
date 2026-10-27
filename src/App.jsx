@@ -9,7 +9,7 @@ import {fmt,addPrintClose,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dro
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -2668,7 +2668,18 @@ function MyAccountPage({session,users,setUsers,upUsers:upUsersExt,setSession:set
 }
 
 
-function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logActivityProp,addPmUpdate,updateProjectTurnover,sendTelegramNotification}){
+// Stage / % Complete here are the project's real status: a changed stage goes
+// through changeDealStage (set_deal_stage) and % Complete sets the project
+// card's progress. They used to be stored only as text inside the update, so
+// a PM could report "Installation" while the project still read Fabrication.
+function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logActivityProp,addPmUpdate,updateProjectTurnover,sendTelegramNotification,deals=[],role,changeDealStage,setProjectProgress}){
+  const deal=pmUpdateModal?.dealId?deals.find(d=>d.id===pmUpdateModal.dealId):null;
+  const curStage=deal?.stage||"";
+  // Awarded projects only: a pre-award deal enters Kickoff through the Award
+  // flow (JO, award date), never from here.
+  const canStage=!!(deal&&changeDealStage&&WON_STAGES.includes(curStage)&&canSetDealStage(role,curStage));
+  const canPct=!!(deal&&setProjectProgress&&["Manager","ProjectMover","Operations","SalesOpsAdmin"].includes(role));
+  const[saving,setSaving]=useState(false);
   const[updateType,setUpdateType]=useState(pmUpdateModal?.initialType||"General Progress");
   const[note,setNote]=useState("");
   const[nextSteps,setNextSteps]=useState("");
@@ -2679,7 +2690,7 @@ function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logAc
   const[decisionMaker,setDecisionMaker]=useState("");
   const[actionPlan,setActionPlan]=useState("");
   React.useEffect(()=>{
-    if(pmUpdateModal){setUpdateType("General Progress");setNote("");setNextSteps("");setStage("");setPct("");setRevisedDate("");setBlockerDesc("");setDecisionMaker("");setActionPlan("");}
+    if(pmUpdateModal){setUpdateType(pmUpdateModal.initialType||"General Progress");setNote("");setNextSteps("");setStage(curStage);setPct("");setSaving(false);setRevisedDate("");setBlockerDesc("");setDecisionMaker("");setActionPlan("");}
   },[pmUpdateModal?.dealId]);
   if(!pmUpdateModal) return null;
   const typeColor=PM_TYPE_COLOR[updateType]||"#0ea5e9";
@@ -2698,19 +2709,26 @@ function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logAc
             ))}
           </div>
         </div>
+        {deal&&(
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
           <div>
-            <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Current Stage</label>
-            <select value={stage} onChange={e=>setStage(e.target.value)} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem"}}>
-              <option value="">Select stage...</option>
-              {["Design Ongoing","Fabrication Started","Fabrication Ongoing","Fabrication Complete","Mobilization","Installation Started","Installation Ongoing","Installation Complete","Punchlist","Project Closed"].map(s=><option key={s}>{s}</option>)}
-            </select>
+            <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Project Stage</label>
+            {canStage?(
+              <select value={stage} onChange={e=>setStage(e.target.value)} style={{width:"100%",border:`1.5px solid ${stage!==curStage?"#f97316":"#e2e8f0"}`,borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem"}}>
+                {!PM_SETTABLE_STAGES.includes(curStage)&&<option value={curStage}>{curStage||"—"}</option>}
+                {PM_SETTABLE_STAGES.map(s=><option key={s} value={s}>{s.replace(/^\d+ · /,"")}{s===curStage?" (current)":""}</option>)}
+              </select>
+            ):(
+              <div style={{padding:"8px 12px",borderRadius:8,background:"#f8fafc",fontSize:".85rem",color:"#475569"}}>{curStage.replace(/^\d+ · /,"")||"—"}</div>
+            )}
+            {canStage&&stage!==curStage&&<div style={{fontSize:".72rem",color:"#f97316",marginTop:3,fontWeight:600}}>⚠ Moves the project to {stage.replace(/^\d+ · /,"")}.</div>}
           </div>
-          <div>
-            <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>% Complete</label>
-            <input type="number" min="0" max="100" value={pct} onChange={e=>setPct(e.target.value)} placeholder="e.g. 45" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem"}}/>
-          </div>
+          {canPct&&<div>
+            <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>% Complete <span style={{fontWeight:400,color:"#94a3b8"}}>(optional)</span></label>
+            <input type="number" min="0" max="100" value={pct} onChange={e=>setPct(e.target.value)} placeholder="e.g. 45" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box"}}/>
+          </div>}
         </div>
+        )}
         <div>
           <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>What happened? <span style={{color:"#ef4444"}}>*</span></label>
           <textarea value={note} onChange={e=>setNote(e.target.value)} rows={3} placeholder="Deliveries, installations, issues, decisions, site status..." style={{width:"100%",border:`1.5px solid ${typeColor}`,borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem",resize:"vertical",boxSizing:"border-box"}}/>
@@ -2743,13 +2761,30 @@ function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logAc
         </div>
         <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
           <button onClick={()=>setPmUpdateModal(null)} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"9px 18px",fontFamily:"inherit",fontSize:".85rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>Cancel</button>
-          <button onClick={()=>{
+          <button disabled={saving} onClick={async()=>{
+            if(saving) return;
             if(!note.trim()){toastEmit("Please enter what happened.","warning");return;}
             if(isBlocker&&!blockerDesc.trim()){toastEmit("Please describe the blocker.","warning");return;}
-            const entry={id:uid(),type:updateType,date:today,time:new Date().toLocaleTimeString("en-PH",{hour:"2-digit",minute:"2-digit"}),by:session?.name||"Team",stage,pct,note:note.trim(),nextSteps:nextSteps.trim(),revisedDate,...(isBlocker?{blockerDesc:blockerDesc.trim(),decisionMaker:decisionMaker.trim(),actionPlan:actionPlan.trim(),blockerStatus:"Open"}:{})};
-            logActivityProp&&logActivityProp(pmUpdateModal.dealId,"PM Update",`[${updateType}] ${note.trim()}`);
-            addPmUpdate&&addPmUpdate(pmUpdateModal.dealId,entry);
-            if(revisedDate&&updateProjectTurnover) updateProjectTurnover(pmUpdateModal.dealId,revisedDate);
+            const pctNum=String(pct).trim()===""?null:Math.round(Number(pct));
+            if(pctNum!=null&&(!Number.isFinite(pctNum)||pctNum<0||pctNum>100)){toastEmit("% Complete must be between 0 and 100.","warning");return;}
+            const dealId=pmUpdateModal.dealId;
+            const stageChanged=canStage&&!!stage&&stage!==curStage;
+            // Stage first: if the server refuses it (or a gate is cancelled),
+            // nothing is logged and the modal stays open to adjust.
+            if(stageChanged){
+              setSaving(true);
+              const ok=await changeDealStage(dealId,stage,{note:`[${updateType}] ${note.trim()}`});
+              setSaving(false);
+              if(!ok) return;
+            }
+            if(pctNum!=null&&canPct) setProjectProgress(dealId,pctNum);
+            const entry={id:uid(),type:updateType,date:today,time:new Date().toLocaleTimeString("en-PH",{hour:"2-digit",minute:"2-digit"}),by:session?.name||"Team",stage:deal?(stage||curStage):"",pct:pctNum!=null?String(pctNum):"",note:note.trim(),nextSteps:nextSteps.trim(),revisedDate,...(isBlocker?{blockerDesc:blockerDesc.trim(),decisionMaker:decisionMaker.trim(),actionPlan:actionPlan.trim(),blockerStatus:"Open"}:{})};
+            // One Telegram per update: skip the generic ops ping when a more
+            // specific message (stage change, blocker, materials) goes to ops.
+            const silent=stageChanged||isBlocker||updateType==="Materials Needed";
+            logActivityProp&&logActivityProp(dealId,"PM Update",`[${updateType}] ${note.trim()}`,undefined,{silent});
+            addPmUpdate&&addPmUpdate(dealId,entry);
+            if(revisedDate&&updateProjectTurnover) updateProjectTurnover(dealId,revisedDate);
             if(isBlocker&&sendTelegramNotification){
               const msg=`🚨 <b>BLOCKER — ${pmUpdateModal.dealName}</b>\n${blockerDesc||note}\nDecision needed from: <b>${decisionMaker||"TBD"}</b>\nAction plan: ${actionPlan||"—"}\nLogged by: ${session?.name||"Team"}`;
               sendTelegramNotification("ops",msg);
@@ -2758,8 +2793,8 @@ function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logAc
             if(updateType==="Design Request"&&sendTelegramNotification) sendTelegramNotification("design",`🎨 <b>Design Request — ${pmUpdateModal.dealName}</b>\n${note}\nBy: ${session?.name||"Team"}`);
             if(updateType==="Materials Needed"&&sendTelegramNotification) sendTelegramNotification("ops",`📦 <b>Materials Needed — ${pmUpdateModal.dealName}</b>\n${note}\nBy: ${session?.name||"Team"}`);
             setPmUpdateModal(null);
-            toastEmit("Update logged!");
-          }} style={{background:typeColor,border:"none",borderRadius:8,padding:"9px 18px",fontFamily:"inherit",fontSize:".85rem",color:"#fff",cursor:"pointer",fontWeight:700}}>
+            toastEmit(stageChanged?`Update logged — stage → ${stage.replace(/^\d+ · /,"")}`:"Update logged!");
+          }} style={{opacity:saving?.6:1,background:typeColor,border:"none",borderRadius:8,padding:"9px 18px",fontFamily:"inherit",fontSize:".85rem",color:"#fff",cursor:"pointer",fontWeight:700}}>
             ✅ Submit Update
           </button>
         </div>
@@ -5446,11 +5481,13 @@ export default function App(){
   const submitEV=(id)=>upEvouchers(es=>es.map(e=>e.id===id?{...e,status:"For Payment",submittedAt:new Date().toISOString()}:e));
   const markEVPaid=(id,bank,ref)=>upEvouchers(es=>es.map(e=>e.id===id?{...e,status:"Paid",paidBank:bank,paidRef:ref,paidAt:new Date().toISOString(),paidBy:session?.name||"Finance"}:e));
   // Activity log helper — called whenever something meaningful happens
-  const logActivity=(dealId,action,detail,by)=>{
+  // opts.silent: the caller already sent a more specific Telegram for this
+  // PM Update (blocker, materials, stage change), so skip the generic ops ping.
+  const logActivity=(dealId,action,detail,by,opts)=>{
     const entry={id:uid(),dealId,action,detail,by:by||session?.name||"System",date:today,time:new Date().toLocaleTimeString("en-PH",{hour:"2-digit",minute:"2-digit"})};
     setActLog(prev=>{const next=[entry,...prev].slice(0,500);return next;});
     if(isSupabaseReady()) sbInsert('activity_log',toSbActivity(entry)).catch(()=>{});
-    if(action==="PM Update"){
+    if(action==="PM Update"&&!opts?.silent){
       const deal=deals.find(d=>d.id===dealId);
       sendTelegramNotification("ops",`📝 <b>PM Update</b>\n${deal?.client||dealId}\nBy: ${entry.by} · ${today}\n${detail||""}`);
     }
@@ -7504,14 +7541,87 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       ? entryOrText
       : {id:uid(),type:"General Progress",note:String(entryOrText||""),text:String(entryOrText||""),by:by||session?.name||"Team",date:today,time:new Date().toLocaleTimeString("en-PH",{hour:"2-digit",minute:"2-digit"})};
     if(!(entry.note||entry.text||"").trim()) return;
-    // Coordinators can't write projects under RLS; their update lives in
-    // activity_log (logActivity), which is what the project feed reads.
+    // No Telegram here: logActivity("PM Update") already pings ops, and this
+    // used to send a second copy of every update. Coordinators can't write
+    // projects under RLS; their update lives in activity_log (logActivity),
+    // which is what the project feed reads.
     if(roleCanDo("update","projects")) upProj(projId,p=>({...p,pmUpdates:[entry,...(p.pmUpdates||[])]}));
-    const deal=deals.find(d=>d.id===projId);
-    if(entry.type!=="Blocker"&&entry.type!=="Materials Needed"&&entry.type!=="Design Request"){
-      sendTelegramNotification("ops",`📝 <b>PM Update — ${deal?.client||projId}</b>\nBy: ${entry.by} · ${today}\n${entry.note||entry.text||""}`);
-    }
   };
+  // The one place a project's stage changes (Projects stage chips and the Log
+  // Update modal). Saves through set_deal_stage — PMs can't update deals under
+  // RLS, so a plain sbUpdate from them changed 0 rows yet still announced the
+  // change on Telegram. The server answers first; only then the screen, the
+  // activity log and Telegram follow. Returns true when the stage changed.
+  // opts.note: the PM's update text, added to the stage message so ops gets one
+  // message instead of two.
+  const changeDealStage=async(dealId,st,opts={})=>{
+    const deal=deals.find(d=>d.id===dealId);
+    if(!deal||!st||deal.stage===st) return false;
+    if(!canSetDealStage(role,deal.stage,st)){
+      toastEmit(st==="14 · Completed"?"Only a Manager or Sales can mark a project Completed.":"You can't change this project's stage.","error",7000);
+      return false;
+    }
+    const curIdx=WON_STAGES.indexOf(deal.stage||"");
+    const newIdx=WON_STAGES.indexOf(st);
+    // M8: warn if active CE/QS requests exist for this deal
+    const activeCE=(ceReqs||[]).filter(r=>r.dealId===dealId&&!["Done","Cancelled"].includes(r.status));
+    if(activeCE.length>0&&newIdx>curIdx){
+      if(!(await uiConfirm(`⚠️ This project has ${activeCE.length} active CE/QS request${activeCE.length!==1?"s":""} not yet completed.\n\nAdvance stage anyway?`))) return false;
+    }
+    // M1: warn if jumping more than 1 stage ahead (only when current stage is recognized)
+    if(curIdx!==-1&&newIdx>curIdx+1){
+      if(!(await uiConfirm(`⚠️ You're skipping ${newIdx-curIdx-1} stage${newIdx-curIdx-1!==1?"s":""} (${deal.stage||"?"} → ${st}).\n\nContinue?`))) return false;
+    }
+    // FINANCIAL GATE — a project cannot be marked Completed without a contract value
+    // and billing on record; if collections are short, require an explicit confirm.
+    // Standby PO umbrellas carry no contract value or billing of
+    // their own (their jobs do), so skip the financial gate for them.
+    if(st==="14 · Completed"&&!deal.standbyPO){
+      const miss=[];
+      if(!Number(deal.value)) miss.push("Contract Value");
+      if(!Number(deal.invoiced)) miss.push("Billing (invoiced amount)");
+      if(miss.length){ toastEmit(`Can't mark Completed — ${miss.join(" & ")} must be recorded in Finance first.`,"error",9000); return false; }
+      const outstanding=Math.round((Number(deal.invoiced||0)-Number(deal.amountPaid||0))*100)/100;
+      if(outstanding>0.5 && !(await uiConfirm(`⚠️ This project still has ₱${outstanding.toLocaleString("en-PH",{minimumFractionDigits:2})} outstanding (collected is below billed).\n\nMark Completed anyway? Do this only if the balance is retention or a written-off amount.`))) return false;
+    }
+    if(isSupabaseReady()){
+      const{error}=await supabase.rpc('set_deal_stage',{p_deal_id:dealId,p_stage:st});
+      if(error){ console.error('set_deal_stage:',error.message); toastEmit("⚠ Stage not changed: "+error.message,"error",9000); return false; }
+    }
+    // Approved addendums follow their parent's stage (the RPC cascades them
+    // server-side too); pending children stay parked.
+    const kids=deals.filter(d=>d.parentDealId===dealId&&d.addendumStatus==="Approved"&&!isLostStage(d.stage)).map(d=>d.id);
+    upDeals(ds=>ds.map(d=>(d.id===dealId||kids.includes(d.id))?{...d,stage:st}:d));
+    logActivity(dealId,"Stage Change",`Stage → ${st}`,session?.name);
+    // Auto-stamp the award date the first time a deal enters a WON stage so the
+    // awarded / sales-value reports never silently miss it. Only stamps when the
+    // project card has no award date yet — an existing (possibly hand-corrected)
+    // date is never overwritten, and non-won stages don't touch it.
+    if(WON_STAGES.includes(st)&&!pcards[dealId]?.awardDate){
+      const awDate=today;
+      upPcards(ps=>({...ps,[dealId]:{...(ps[dealId]||emptyProjectCard(dealId,deal)),awardDate:awDate}}));
+      if(isSupabaseReady()) syncProjectCard(dealId,{award_date:awDate});
+      logActivity(dealId,"Award date set",`${deal.contact||deal.client} — award date auto-set to ${awDate} on entering ${st}`,session?.name);
+    }
+    const note=(opts.note||"").trim();
+    const msg=`📌 <b>Project Stage Updated</b>\nClient: <b>${deal.client}</b>${deal.ceNo?`\nCE: ${deal.ceNo}`:""}${deal.contact?`\nProject: ${deal.contact}`:""}\nStage: ${st}\nBy: ${session?.name}${note?`\n\n${note}`:""}`;
+    ["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,msg));
+    if(st==="12 · Close-Out"){
+      const finMsg=`💰 <b>Final Billing Ready</b>\nProject: <b>${deal.contact||deal.client}</b>${deal.ceNo?`\nCE: ${deal.ceNo}`:""}\nClient: ${deal.client}\nContract Value: ₱${Number(deal.value||0).toLocaleString("en-PH")}\n\nThis project has moved to Close-Out. Please issue the final invoice.\n\n— ${session?.name}`;
+      ["sales","finance"].forEach(ch=>sendTelegramNotification(ch,finMsg));
+    }
+    return true;
+  };
+  // PM-reported % complete → the project card's manual progress (the same
+  // override the Projects page sets). Only for a project that has a card.
+  const setProjectProgress=(dealId,val)=>{
+    if(!pcards[dealId]) return false;
+    upPcards(ps=>({...ps,[dealId]:{...ps[dealId],manualProgress:val}}));
+    if(isSupabaseReady()) syncProjectCard(dealId,{manual_progress:val});
+    return true;
+  };
+  // Everything the Log Update modal needs to move the real project status.
+  const pmModalExtra={deals,role,changeDealStage,setProjectProgress,sendTelegramNotification};
   const addAddendum=(dealId,title,desc,requestedBy)=>{
     const entry={id:uid(),dealId,title,desc,requestedBy,date:today,status:"Pending",notifiedSales:false,notifiedOps:false};
     upDeals(ds=>ds.map(d=>d.id===dealId?{...d,addenda:[entry,...(d.addenda||[])]}:d));
@@ -11663,7 +11773,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       })()}
 
       {/* PM Update Modal (also accessible from home) */}
-      {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate} updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())syncProjectCard(dealId,{target_end_date:date});}}/>}
+      {pmUpdateModal&&<PmUpdateModal {...pmModalExtra} pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate} updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())syncProjectCard(dealId,{target_end_date:date});}}/>}
     </Wrap>
   );
 
@@ -17158,7 +17268,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
       {/* PM Update Modal */}
       {/* PM Update Modal */}
-      {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate} updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())syncProjectCard(dealId,{target_end_date:date});}}/>}
+      {pmUpdateModal&&<PmUpdateModal {...pmModalExtra} pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate} updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())syncProjectCard(dealId,{target_end_date:date});}}/>}
     </Wrap>
   );
 
@@ -17172,7 +17282,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   if(page==="projects") return(
     <Wrap>
-      <ProjectCards syncProjectCard={syncProjectCard}
+      <ProjectCards changeDealStage={changeDealStage} setProjectProgress={setProjectProgress} syncProjectCard={syncProjectCard}
         pcards={pcards} wonDeals={wonDeals} completedDeals={completedDeals} deals={deals}
         toggleDeptTask={toggleDeptTask} markDeptDone={markDeptDone}
         setProjectTAT={setProjectTAT} jos={jos}
@@ -27162,7 +27272,7 @@ function TATSetter({deal,card,onSet,refTable,ceType}){
 }
 
 // ─── INVENTORY VIEW ───────────────────────────────────────────────────────────
-function ProjectCards({syncProjectCard,pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,prs=[],exps=[],isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,upDeals,ceReqs,toastEmit,sendTelegramNotification,initialDeal,clearJump,initialFilter,clearJumpFilter,loadChecklistTemplate,swos=[],addPmUpdate,setConfirmDel,customMembers=[],setCustomMembers=()=>{},setPage=()=>{},setJumpDeal=()=>{}}){
+function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,prs=[],exps=[],isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,upDeals,ceReqs,toastEmit,sendTelegramNotification,initialDeal,clearJump,initialFilter,clearJumpFilter,loadChecklistTemplate,swos=[],addPmUpdate,setConfirmDel,customMembers=[],setCustomMembers=()=>{},setPage=()=>{},setJumpDeal=()=>{}}){
   const todayStr=new Date().toISOString().split("T")[0];
   const[selDealRaw,setSelDeal]=useState(initialDeal||null);
   // A selection whose deal isn't loaded/won (deleted, moved to a lost stage, or a
@@ -27882,53 +27992,9 @@ function ProjectCards({syncProjectCard,pcards,wonDeals,completedDeals,deals,togg
                   </div>
                 </div>
                 {/* Stage selector */}
-                {(role==="Manager"||role==="Sales"||role==="Operations"||role==="ProjectMover"||role==="SalesOpsAdmin")&&deal&&upDeals&&(()=>{
+                {["Manager","Sales","Operations","ProjectMover","SalesOpsAdmin"].includes(role)&&deal&&changeDealStage&&canSetDealStage(role,deal.stage)&&(()=>{
                   const changeStage=async st=>{
-                    const curIdx=WON_STAGES.indexOf(deal.stage||"");
-                    const newIdx=WON_STAGES.indexOf(st);
-                    // M8: warn if active CE/QS requests exist for this deal
-                    const activeCE=(ceReqs||[]).filter(r=>r.dealId===selDeal&&!["Done","Cancelled"].includes(r.status));
-                    if(activeCE.length>0&&newIdx>curIdx){
-                      if(!(await uiConfirm(`⚠️ This project has ${activeCE.length} active CE/QS request${activeCE.length!==1?"s":""} not yet completed.\n\nAdvance stage anyway?`))) return;
-                    }
-                    // M1: warn if jumping more than 1 stage ahead (only when current stage is recognized)
-                    if(curIdx!==-1&&newIdx>curIdx+1){
-                      if(!(await uiConfirm(`⚠️ You're skipping ${newIdx-curIdx-1} stage${newIdx-curIdx-1!==1?"s":""} (${deal.stage||"?"} → ${st}).\n\nContinue?`))) return;
-                    }
-                    // FINANCIAL GATE — a project cannot be marked Completed without a contract value
-                    // and billing on record; if collections are short, require an explicit confirm.
-                    // Standby PO umbrellas carry no contract value or billing of
-                    // their own (their jobs do), so skip the financial gate for them.
-                    if(st==="14 · Completed"&&!deal.standbyPO){
-                      const miss=[];
-                      if(!Number(deal.value)) miss.push("Contract Value");
-                      if(!Number(deal.invoiced)) miss.push("Billing (invoiced amount)");
-                      if(miss.length){ toastEmit(`Can't mark Completed — ${miss.join(" & ")} must be recorded in Finance first.`,"error",9000); return; }
-                      const outstanding=Math.round((Number(deal.invoiced||0)-Number(deal.amountPaid||0))*100)/100;
-                      if(outstanding>0.5 && !(await uiConfirm(`⚠️ This project still has ₱${outstanding.toLocaleString("en-PH",{minimumFractionDigits:2})} outstanding (collected is below billed).\n\nMark Completed anyway? Do this only if the balance is retention or a written-off amount.`))) return;
-                    }
-                    // Approved addendums follow their parent's stage — cascade
-                    // the new stage to them too (pending children stay parked).
-                    const _approvedKids=deals.filter(d=>d.parentDealId===selDeal&&d.addendumStatus==="Approved"&&!isLostStage(d.stage)).map(d=>d.id);
-                    upDeals(ds=>ds.map(d=>(d.id===selDeal||_approvedKids.includes(d.id))?{...d,stage:st}:d));
-                    if(isSupabaseReady()){ sbUpdate('deals',selDeal,{stage:st}).catch(()=>{}); _approvedKids.forEach(cid=>sbUpdate('deals',cid,{stage:st}).catch(()=>{})); }
-                    logActivity(selDeal,"Stage Change",`Stage → ${st}`,session?.name);
-                    // Auto-stamp the award date the first time a deal enters a WON stage so the
-                    // awarded / sales-value reports never silently miss it. Only stamps when the
-                    // project card has no award date yet — an existing (possibly hand-corrected)
-                    // date is never overwritten, and non-won stages don't touch it.
-                    if(WON_STAGES.includes(st)&&!pcards[selDeal]?.awardDate){
-                      const awDate=today;
-                      upPcards(ps=>({...ps,[selDeal]:{...(ps[selDeal]||emptyProjectCard(selDeal,deal)),awardDate:awDate}}));
-                      if(isSupabaseReady()) syncProjectCard(selDeal,{award_date:awDate});
-                      logActivity(selDeal,"Award date set",`${deal.contact||deal.client} — award date auto-set to ${awDate} on entering ${st}`,session?.name);
-                    }
-                    const msg=`📌 <b>Project Stage Updated</b>\nClient: <b>${deal.client}</b>${deal.ceNo?`\nCE: ${deal.ceNo}`:""}${deal.contact?`\nProject: ${deal.contact}`:""}\nStage: ${st}\nBy: ${session?.name}`;
-                    ["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,msg));
-                    if(st==="12 · Close-Out"){
-                      const finMsg=`💰 <b>Final Billing Ready</b>\nProject: <b>${deal.contact||deal.client}</b>${deal.ceNo?`\nCE: ${deal.ceNo}`:""}\nClient: ${deal.client}\nContract Value: ₱${Number(deal.value||0).toLocaleString("en-PH")}\n\nThis project has moved to Close-Out. Please issue the final invoice.\n\n— ${session?.name}`;
-                      ["sales","finance"].forEach(ch=>sendTelegramNotification(ch,finMsg));
-                    }
+                    if(!(await changeDealStage(selDeal,st))) return;
                     if(st==="14 · Completed"){
                       setPcFilter("completed");
                       setSelDeal(null);
@@ -27966,10 +28032,12 @@ function ProjectCards({syncProjectCard,pcards,wonDeals,completedDeals,deals,togg
                             style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".62rem",fontWeight:700,letterSpacing:".04em",padding:"5px 14px",borderRadius:20,cursor:"pointer",background:"transparent",color:"#059669",border:"1.5px solid #059669"}}>
                             🔒 Move to Close-Out
                           </button>
+                          {canSetDealStage(role,deal.stage,"14 · Completed")&&(
                           <button onClick={async ()=>{if((await uiConfirm(`Mark "${deal.contact||deal.client}" as Completed?\n\nUse this only when all work is done and the project is fully closed.`))) changeStage("14 · Completed");}}
                             style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".62rem",fontWeight:700,letterSpacing:".04em",padding:"5px 14px",borderRadius:20,cursor:"pointer",background:"#059669",color:"#fff",border:"1.5px solid #059669"}}>
                             ✅ Mark as Completed
                           </button>
+                          )}
                         </div>
                       )}
                       {/* If already done, show badge + reopen option */}
@@ -28501,7 +28569,7 @@ function ProjectCards({syncProjectCard,pcards,wonDeals,completedDeals,deals,togg
         })()
       )}
     </div>
-    {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate} updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())syncProjectCard(dealId,{target_end_date:date});}}/>}
+    {pmUpdateModal&&<PmUpdateModal deals={deals} role={role} changeDealStage={changeDealStage} setProjectProgress={setProjectProgress} sendTelegramNotification={sendTelegramNotification} pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate} updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())syncProjectCard(dealId,{target_end_date:date});}}/>}
     </>
   );
 }
