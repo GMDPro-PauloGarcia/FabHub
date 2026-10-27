@@ -52,6 +52,7 @@ const CashPositionPayables=_lazyView(()=>import('./views/CashPositionPayables'))
 const CERequestTracker=_lazyView(()=>import('./views/CERequestTracker'));
 const POApprovals=_lazyView(()=>import('./views/POApprovals'));
 const PrfView=_lazyView(()=>import('./views/PrfView'));
+const SubconCertView=_lazyView(()=>import('./views/SubconCertView'));
 const ARDrill=_lazyView(()=>import('./views/ARDrill'));
 const AttentionPanel=_lazyView(()=>import('./views/AttentionPanel'));
 const WeeklyCashFlow=_lazyView(()=>import('./views/WeeklyCashFlow'));
@@ -7503,7 +7504,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       ? entryOrText
       : {id:uid(),type:"General Progress",note:String(entryOrText||""),text:String(entryOrText||""),by:by||session?.name||"Team",date:today,time:new Date().toLocaleTimeString("en-PH",{hour:"2-digit",minute:"2-digit"})};
     if(!(entry.note||entry.text||"").trim()) return;
-    upProj(projId,p=>({...p,pmUpdates:[entry,...(p.pmUpdates||[])]}));
+    // Coordinators can't write projects under RLS; their update lives in
+    // activity_log (logActivity), which is what the project feed reads.
+    if(roleCanDo("update","projects")) upProj(projId,p=>({...p,pmUpdates:[entry,...(p.pmUpdates||[])]}));
     const deal=deals.find(d=>d.id===projId);
     if(entry.type!=="Blocker"&&entry.type!=="Materials Needed"&&entry.type!=="Design Request"){
       sendTelegramNotification("ops",`📝 <b>PM Update — ${deal?.client||projId}</b>\nBy: ${entry.by} · ${today}\n${entry.note||entry.text||""}`);
@@ -9300,21 +9303,19 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // for Subcontractor. Manual Other Payables are verified by default.
   const payIsSubcon=isSubconPayable; // category Subcontractor, or account 5070 / 5100 (or the old 5200 default)
   const payNeedsVerify=p=>p&&!!(p.poId||p.poNumber); // only PO/WO-sourced payables are gated
+  const subconCertified=p=>!!(p&&p.verified&&String(p.verifiedBy||"").trim()&&(Number(p.verificationPct)||0)>0);
   const verifyPayable=async (id)=>{
     const p=payables.find(x=>x.id===id); if(!p) return;
-    let pct=100;
-    if(payIsSubcon(p)){
-      const inp=(await uiPrompt("% of project completion verified by Operations (0–100):",String(p.verificationPct||0)));
-      if(inp==null) return;
-      pct=Math.max(0,Math.min(100,Number(inp)||0));
-      if(pct<=0){toastEmit("Enter a % greater than 0 to unlock payment.","warning");return;}
-    } else {
-      if(!(await uiConfirm(`Confirm Warehouse received the items for ${p.vendor||"this vendor"}${p.apNumber?` (${p.apNumber})`:""}? This unlocks it for payment.`))) return;
-    }
+    // Subcon work is certified by the project PM / Operations on the Subcon
+    // Billing page (certify_subcon_billing); the database ignores any other
+    // change to these fields (migration 20261027160000).
+    if(payIsSubcon(p)){toastEmit("Subcontractor work is certified by the project PM or Operations on the Subcon Billing page — no payment until they do.","info",8000);return;}
+    const pct=100;
+    if(!(await uiConfirm(`Confirm Warehouse received the items for ${p.vendor||"this vendor"}${p.apNumber?` (${p.apNumber})`:""}? This unlocks it for payment.`))) return;
     const upd={...p,verified:true,verificationPct:pct,verifiedBy:session?.name||"",verifiedAt:today};
     upPayables(ps=>ps.map(x=>x.id===id?upd:x));
     if(isSupabaseReady()&&isUUID(id)) sbUpsert("payables",payableToSb(upd),"id").catch(()=>{});
-    toastEmit(payIsSubcon(p)?`Verified ${pct}% (Operations) — now payable.`:"Warehouse receipt verified — now payable.","success");
+    toastEmit("Warehouse receipt verified — now payable.","success");
   };
   // ── Expense/payable approval gate ────────────────────────────────────────
   // Only a Manager or the Finance Manager (Finance role) may approve a payable
@@ -9338,6 +9339,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(role!=="Manager"&&nm(p.createdBy)===nm(session?.name)&&nm(p.createdBy)!==""){
       toastEmit("You entered this payable — another Manager or Finance approver must review it.","error",7000);return;
     }
+    if(payIsSubcon(p)&&!subconCertified(p)){toastEmit(`${p.vendor||"This subcontractor"}${p.apNumber?` (${p.apNumber})`:""} isn't certified by the project PM or Operations yet — no approval until they certify the work done.`,"error",8000);return;}
     if(!(await uiConfirm(`Approve ${p.vendor||"this payable"}${p.apNumber?` (${p.apNumber})`:""} for ₱${Number(p.amount||0).toLocaleString("en-PH",{minimumFractionDigits:2})}? This clears it for payment.`))) return;
     const upd={...p,approvalStatus:"Approved",approvedBy:session?.name||role,approvedAt:today};
     upPayables(ps=>ps.map(x=>x.id===id?upd:x));
@@ -9374,6 +9376,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       const p=payables.find(x=>x.id===e.payableId);
       if(!p){toastEmit("That payable no longer exists — refresh and try again.","error");return false;}
       // Approval gate — enforced here for every pay surface, and again by the DB guard.
+      // Subcon: paid only up to the PM-certified % (payable_payments_subcon_gate).
+      if(payIsSubcon(p)&&e.kind!=="Retention release"){
+        if(!subconCertified(p)){toastEmit(`${p.vendor||"This subcontractor"}${p.apNumber?` (${p.apNumber})`:""} isn't certified by the project PM or Operations — no payment.`,"error",8000);return false;}
+        const wo=(swos||[]).find(w=>w.woNumber&&w.woNumber===p.poNumber);
+        const base=Number(wo?.contractAmount)>0?Number(wo.contractAmount):Number(p.amount)||0;
+        const cap=Math.round((Number(p.verificationPct)||0)/100*base*100)/100;
+        const claimed=paysOf(p.id).filter(x=>x.status!=="Cancelled"&&x.kind!=="Retention release").reduce((s,x)=>s+r2(x.amount)+r2(x.retentionAmount),0)+r2(e.amount)+r2(e.retentionAmount);
+        if(claimed>cap+1){toastEmit(`No payment: that brings ${p.apNumber||p.vendor||"this bill"} to ₱${claimed.toLocaleString("en-PH")} but the PM certified only ${Number(p.verificationPct)||0}% (₱${cap.toLocaleString("en-PH")}). Ask the PM to certify more work first.`,"error",10000);return false;}
+      }
+      if(payIsSubcon(p)&&e.kind==="Retention release"&&(Number(p.verificationPct)||0)<100){toastEmit("Retention is released only when the PM certifies 100%.","error",8000);return false;}
       if(!payApproved(p)){toastEmit(`${p.vendor||"This payable"}${p.apNumber?` (${p.apNumber})`:""} isn't approved yet — a Manager or Finance Manager must approve it before payment.`,"error",7000);return false;}
     }
     if(!common.date){toastEmit("Enter the payment date.","error");return false;}
@@ -9621,7 +9633,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"}]},
       {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},...((session?.username==="paulo"||session?.username==="mar")?[{id:"projectmargins",l:"Project Margins"}]:[]),{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills"}]:[]),{id:"cashflow",l:"Cash Flow"},{id:"finance-reports",l:"Reports"}]},
       {group:"Accounting",  items:[{id:"coa",l:"Chart of Accounts"}]},
-      {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
+      {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"},{id:"subconcert",l:"Subcon Billing"}]},
       {group:"Design",      items:[{id:"designboard",l:"Design Board"},{id:"drf",l:"Design Requests"}]},
       {group:"Procurement", items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
       {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"audit",l:"Audit"},{id:"syshealth",l:"System Health"},{id:"botsettings",l:"Bot Settings"},{id:"tvboard",l:"Office TV Board"},{id:"activity",l:"Team Activity"}]},
@@ -9638,7 +9650,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"boq",l:"BOQ"},{id:"clients",l:"Clients"}]},
       {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills"}]:[]),{id:"cashflow",l:"Cash Flow"},{id:"finance-reports",l:"Reports"}]},
       {group:"Accounting",  items:[{id:"coa",l:"Chart of Accounts"}]},
-      {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
+      {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"},{id:"subconcert",l:"Subcon Billing"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
       {group:"Procurement", items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
       {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"}]},
@@ -9675,7 +9687,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Sales",     items:[{id:"pipeline",l:"Sales Pipeline"}]},
       {group:"On-Site",   items:[{id:"projects",l:"Project Cards"}]},
       {group:"Design",    items:[{id:"drf",l:"Design Requests"}]},
-      {group:"Requests",  items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"costanalysis",l:"Cost Analysis"}]},
+      {group:"Requests",  items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"subconcert",l:"Subcon Billing"},{id:"costanalysis",l:"Cost Analysis"}]},
     ],
     Design:[
       {group:"Overview",    items:[{id:"home",l:"Projects"},{id:"designboard",l:"Design Board"},{id:"myfolder",l:"My Projects"}]},
@@ -9689,6 +9701,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       // Scope changes are Sales-owned (a linked deal). A PM who spots one reports
       // it via PM Updates; Sales picks it up and logs the linked addendum.
       {group:"Updates",  items:[{id:"pmupdates",l:"PM Updates"}]},
+      {group:"Work",     items:[{id:"projects",l:"Project Cards"},{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"subconcert",l:"Subcon Billing"}]},
+    ],
+    // Coordinators post updates and request materials on the projects they are
+    // assigned to (project_cards.coordinator) — nothing else. The database scopes
+    // what they can read and write (migration 20261027150000_coordinator_role.sql).
+    Coordinator:[
+      {group:"Overview", items:[{id:"home",l:"My Projects"}]},
       {group:"Work",     items:[{id:"projects",l:"Project Cards"},{id:"materialreq",l:"Purchase Requests (PRF)"}]},
     ],
     Warehouse:[
@@ -9726,7 +9745,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
       masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆", audit:"🔎", syshealth:"🩺", tvboard:"📺",
       deliveries:"🚚",stockmove:"🔄",addenda:"⚠️",   pmupdates:"📝",  pmfeed:"📋",  suppliers:"🏭",
-      subcontractors:"👷",materialreq:"🔧",budgetreq:"💳",collections:"💵",
+      subcontractors:"👷",materialreq:"🔧",subconcert:"🔨",budgetreq:"💳",collections:"💵",
       checklist:"✅",joborders:"📄", ops:"⚙️",        datamanagement:"⚙️", myfolder:"📁",
     };
     const groups=visibleNav(role);
@@ -9878,7 +9897,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
       masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆", audit:"🔎", syshealth:"🩺", tvboard:"📺",
       deliveries:"🚚",stockmove:"🔄",addenda:"⚠️",   pmupdates:"📝",  pmfeed:"📋",  suppliers:"🏭",
-      subcontractors:"👷",materialreq:"🔧",budgetreq:"💳",collections:"💵",
+      subcontractors:"👷",materialreq:"🔧",subconcert:"🔨",budgetreq:"💳",collections:"💵",
       checklist:"✅",joborders:"📄", ops:"⚙️",        datamanagement:"⚙️", myfolder:"📁",
     };
     const NAV_LABELS={
@@ -11511,11 +11530,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   );
 
   // ── PROJECT MOVER HOME ───────────────────────────────────────────────────
-  if(role==="ProjectMover") return(
+  if(role==="ProjectMover"||role==="Coordinator") return(
     <Wrap>
       <DeptHeader
         name={session?.name?.split(" ")[0]||"Team"}
-        subtitle={`Project Mover · ${todayL}`}
+        subtitle={`${role==="Coordinator"?"Project Coordinator":"Project Mover"} · ${todayL}`}
         buttons={[
           {label:"Log Update",   icon:"📝", bg:"#f97316", action:()=>setPmUpdateModal&&setPmUpdateModal({dealId:null,dealName:"General"})},
           {label:"My Projects",  icon:"📋", bg:"#1e293b", action:()=>setPage("projects")},
@@ -12451,6 +12470,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       <PrfView session={session} role={role} deals={deals} pcards={pcards} prs={prs}
         sendTelegramNotification={sendTelegramNotification} isMobile={isMobile}
         initialDeal={jumpDeal} clearJump={()=>setJumpDeal(null)}/>
+    </Wrap>
+  );
+  // ── SUBCON BILLING — PM / Operations certify work done (no cert, no payment).
+  if(page==="subconcert") return(
+    <Wrap>
+      <SubconCertView session={session} deals={deals} sendTelegramNotification={sendTelegramNotification} isMobile={isMobile}/>
     </Wrap>
   );
   // ── CALENDAR ────────────────────────────────────────────────────────────────
@@ -16146,7 +16171,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         />
       </Wrap>
     );
-    const ROLES=['Manager', 'Sales', 'Finance', 'Procurement', 'ProcurementManager', 'QS', 'Operations', 'Design', 'ProjectMover', 'Warehouse', 'SalesOpsAdmin', 'FinanceAssistant'];
+    const ROLES=['Manager', 'Sales', 'Finance', 'Procurement', 'ProcurementManager', 'QS', 'Operations', 'Design', 'ProjectMover', 'Coordinator', 'Warehouse', 'SalesOpsAdmin', 'FinanceAssistant'];
     if(page==="accounts"&&role==="Manager") return(
       <Wrap>
         <AccountsManager users={users} session={session} onApprove={approveUser} onReject={rejectUser} onDeactivate={deactivateUser} onDelete={deleteUser} onResetPw={resetPw} onCreateUser={createUser} ROLES={ROLES}/>
@@ -27793,7 +27818,7 @@ function ProjectCards({syncProjectCard,pcards,wonDeals,completedDeals,deals,togg
                     <span style={{fontSize:".72rem",fontWeight:700,color:hc,background:hc+"18",borderRadius:20,padding:"4px 12px",border:`1px solid ${hc}44`}}>{deal?.stage?.replace(/^\d+ · /,"")||"—"}</span>
                     {pct===100&&<span style={{fontSize:".68rem",fontWeight:700,color:"#059669",background:"#f0fdf4",borderRadius:20,padding:"2px 9px"}}>✅ Done</span>}
                     {/* PRFs for this project — same roles that can read prfs (prf_can_read). */}
-                    {deal&&["Manager","ProjectMover","Operations","Warehouse","QS","Procurement","ProcurementManager","Finance","FinanceAssistant","Accounting","SalesOpsAdmin"].includes(role)&&(
+                    {deal&&["Manager","ProjectMover","Operations","Coordinator","Warehouse","QS","Procurement","ProcurementManager","Finance","FinanceAssistant","Accounting","SalesOpsAdmin"].includes(role)&&(
                       <button onClick={()=>{setJumpDeal(deal.id);setPage("materialreq");}} title="Purchase requests for this project"
                         style={{background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:6,padding:"4px 10px",fontSize:".72rem",fontWeight:700,color:"#c2410c",cursor:"pointer",fontFamily:"inherit"}}>📦 PRFs</button>
                     )}
@@ -28307,7 +28332,7 @@ function ProjectCards({syncProjectCard,pcards,wonDeals,completedDeals,deals,togg
               {(()=>{
                 const allProjUpdates=(actLog||[]).filter(a=>a.dealId===selDeal&&a.action==="PM Update").sort((a,b)=>b.date.localeCompare(a.date)||b.time?.localeCompare(a.time||""));
                 const isPM=card&&[card.pm1,card.pm2,card.pm3].filter(Boolean).some(pm=>pm===session?.name);
-                const canPost=role==="Manager"||role==="Operations"||role==="ProjectMover"||role==="SalesOpsAdmin"||isPM;
+                const canPost=role==="Manager"||role==="Operations"||role==="ProjectMover"||role==="SalesOpsAdmin"||role==="Coordinator"||isPM;
                 return(
                 <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
                   <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -28362,11 +28387,11 @@ function ProjectCards({syncProjectCard,pcards,wonDeals,completedDeals,deals,togg
                     ✅ Checklist
                     {projCl.filter(c=>c.status!=="Done").length>0&&<span style={{background:"#f59e0b",color:"#fff",borderRadius:20,fontSize:".6rem",padding:"1px 7px",marginLeft:5}}>{projCl.filter(c=>c.status!=="Done").length}</span>}
                   </div>
-                  <div style={{display:"flex",gap:6}}>
+                  {role!=="Coordinator"&&<div style={{display:"flex",gap:6}}>
                     {projCl.length===0&&loadChecklistTemplate&&<button onClick={()=>{const d=deal;if(d)loadChecklistTemplate(d.id,d.client);}} style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:8,padding:"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#1d4ed8",cursor:"pointer",fontWeight:700}}>📋 Load Template</button>}
                     <button onClick={()=>openAddCl&&openAddCl(selDeal,"Design","Task")} style={{background:"#ede9fe",border:"none",borderRadius:8,padding:"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#7c3aed",cursor:"pointer",fontWeight:700}}>🎨 Request from Design</button>
                     <button onClick={()=>openAddCl&&openAddCl(selDeal,role==="Design"?"Design":"Operations")} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#475569",cursor:"pointer",fontWeight:700}}>+ Add Task</button>
-                  </div>
+                  </div>}
                 </div>
                 {projCl.length===0?(
                   <div style={{padding:"14px 20px",color:"#94a3b8",fontSize:".78rem",textAlign:"center"}}>No checklist tasks yet for this project.</div>
@@ -28387,7 +28412,7 @@ function ProjectCards({syncProjectCard,pcards,wonDeals,completedDeals,deals,togg
                           </div>
                         </div>
                         <div style={{display:"flex",gap:4,flexShrink:0}}>
-                          {openEditCl&&<button onClick={()=>openEditCl(c)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>}
+                          {openEditCl&&role!=="Coordinator"&&<button onClick={()=>openEditCl(c)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>}
                           {(role==="Manager"||role==="Operations"||role==="SalesOpsAdmin")&&delCl&&<button onClick={()=>delCl(c.id)} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
                         </div>
                       </div>

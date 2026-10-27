@@ -16,7 +16,7 @@ import {WON_STAGES,PO_UNITS,PR_CATS,projDisplayName} from "../core";
 // prf_step_block() in that migration.
 
 const PRF_STAGES=WON_STAGES.filter(s=>s!=="14 · Completed");
-const PRF_CREATOR_ROLES=["Manager","ProjectMover","Operations"];
+const PRF_CREATOR_ROLES=["Manager","ProjectMover","Operations","Coordinator"];
 const PRF_STEP_ROLES={"For Warehouse":["Warehouse"],"For Cost Control":["QS"],"For Procurement":["Procurement","ProcurementManager","Manager"]};
 const PRF_OPEN=["Draft","For PM Approval","For Warehouse","For Cost Control","For Procurement","Rejected"];
 export const PRF_STATUS_CLR={"Draft":"#94a3b8","For PM Approval":"#8b5cf6","For Warehouse":"#0ea5e9","For Cost Control":"#f59e0b",
