@@ -5,7 +5,7 @@ const BUDGET_ONLY=["Design","Operations","ProjectMover"];
 import {deductionFromSb,supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbInsertIfMissing,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbPendingIds,sbOnQueueChange,appLogin,appLogout,restoreAppToken,hasAppToken,appTokenExpired,setSessionExpiredHandler,logClientError} from './supabaseClient';
 import{idbGetMany,idbSetMany}from'./idb.js';
 import {useSharePdf} from "./views/SharePdf";
-import {fmt,addPrintClose,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable,HIDDEN_NAV_IDS,AP_HIDDEN,WAREHOUSE_HIDDEN,isHiddenView} from './shared';
+import {fmt,addPrintClose,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable,HIDDEN_NAV_IDS,AP_HIDDEN,WAREHOUSE_HIDDEN,isHiddenView,HIDDEN_FIN_TABS,HIDDEN_PIPE_TABS,pageOn} from './shared';
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
@@ -8243,6 +8243,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // Hidden modules (see HIDDEN_PAGES in shared.jsx): any link, favorite or
   // restored last page that still points at one lands on Home instead.
   useEffect(()=>{if(isHiddenView(page,finTab))setPage("home");},[page,finTab]);
+  useEffect(()=>{if(HIDDEN_PIPE_TABS.has(pipeTab))setPipeTab("pipeline");},[pipeTab]);
   const smartImportInputRef=useRef(null);
   showExportRef.current=showExport;
 
@@ -11082,8 +11083,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             {[
               {l:"Open Purchase Orders",      v:pendingPRs.length,     c:"#06b6d4", icon:"📦", click:()=>setPage("procurement")},
               {l:"Awaiting Mgr Approval",     v:needsApproval.length,  c:needsApproval.length>0?"#ef4444":"#94a3b8", icon:"⏳", click:()=>setPage("procurement")},
-              {l:"Material Requests",         v:pendingMRs.length,     c:"#f97316", icon:"🔧", click:()=>setPage("requests")},
-              {l:"Budget Requests",           v:pendingBRs.length,     c:"#8b5cf6", icon:"💳", click:()=>setPage("requests")},
+              ...(pageOn("requests")?[{l:"Material Requests",         v:pendingMRs.length,     c:"#f97316", icon:"🔧", click:()=>setPage("requests")},
+              {l:"Budget Requests",           v:pendingBRs.length,     c:"#8b5cf6", icon:"💳", click:()=>setPage("requests")}]:[]),
               {l:"Arriving Today",            v:deliveredToday.length, c:"#059669", icon:"🚚", click:()=>setPage("procurement")},
             ].map(({l,v,c,icon,click})=>(
               <div key={l} onClick={click} style={{background:"#fff",borderRadius:12,padding:"16px",border:`1.5px solid ${c}33`,textAlign:"center",cursor:click?"pointer":"default"}}>
@@ -11460,7 +11461,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         buttons={[
           {label:"+ New DRF",    icon:"🎨", bg:"#ec4899", action:()=>setPage("drf")},
           {label:"My Requests",  icon:"📋", bg:"#1e293b", action:()=>setPage("drf")},
-          {label:"Swatchboard",  icon:"🎨", bg:"#8b5cf6", action:()=>setPage("swatchboard")},
+          ...(pageOn("swatchboard")?[{label:"Swatchboard",  icon:"🎨", bg:"#8b5cf6", action:()=>setPage("swatchboard")}]:[]),
         ]}
       />
 
@@ -12025,7 +12026,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
               <div style={{background:"#f97316",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>🔧 Pending Material Requests ({pendingMRs.length})</span>
-                <button onClick={()=>setPage("requests")} style={{background:"rgba(255,255,255,.2)",border:"none",borderRadius:6,padding:"3px 10px",color:"#fff",fontSize:".72rem",cursor:"pointer",fontFamily:"inherit"}}>View →</button>
+                {pageOn("requests")&&<button onClick={()=>setPage("requests")} style={{background:"rgba(255,255,255,.2)",border:"none",borderRadius:6,padding:"3px 10px",color:"#fff",fontSize:".72rem",cursor:"pointer",fontFamily:"inherit"}}>View →</button>}
               </div>
               {pendingMRs.length===0
                 ?<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>✅ No pending MRs</div>
@@ -13343,7 +13344,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // cutting off the last ones (CE Requests, BOQ).
   const PipeTabBar=()=>(
     <div style={{display:"flex",gap:0,borderBottom:"2px solid #e2e8f0",marginBottom:20,overflowX:"auto",maxWidth:"calc(100vw - 32px)",WebkitOverflowScrolling:"touch"}}>
-      {[["pipeline","📊 Pipeline"],["awarded","💰 Commissions"],["updates","📝 AE Updates"],...(ceInPipeline?[["ce","📐 CE Requests"]]:[]),...(boqInPipeline?[["boq","🧮 BOQ"]]:[])].map(([t,l])=>{
+      {[["pipeline","📊 Pipeline"],["awarded","💰 Commissions"],["updates","📝 AE Updates"],...(ceInPipeline?[["ce","📐 CE Requests"]]:[]),...(boqInPipeline?[["boq","🧮 BOQ"]]:[])].filter(([t])=>!HIDDEN_PIPE_TABS.has(t)).map(([t,l])=>{
         const on=t==="boq"?page==="boq":page==="pipeline"&&pipeTab===t;
         return(
         <button key={t} onClick={()=>{if(t==="boq"){setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(null);setPage("boq");}else{setPipeTab(t);setPage("pipeline");}}}
@@ -15102,7 +15103,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             P&L and Loans have no other home, so they stay as two compact pills. */}
         {role!=="Accounting"&&["overview","pl","loans"].includes(finTab)&&(
           <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginBottom:20,flexWrap:"wrap"}}>
-            {[["pl","📈 P&L"],["loans","💳 Loans"]].map(([t,l])=>{
+            {[["pl","📈 P&L"],["loans","💳 Loans"]].filter(([t])=>!HIDDEN_FIN_TABS.has(t)).map(([t,l])=>{
               const on=finTab===t;
               return(
                 <button key={t} onClick={()=>setFinTab(on?"overview":t)} style={{whiteSpace:"nowrap",padding:"6px 14px",borderRadius:20,border:`1px solid ${on?ERP.navy:ERP.line}`,background:on?ERP.navy:"#fff",color:on?"#fff":ERP.muted,cursor:"pointer",fontSize:".78rem",fontWeight:600,fontFamily:"inherit"}}>
@@ -16405,8 +16406,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           buttons={[
             {label:"+ New PO",      icon:"📦", bg:"#06b6d4", action:()=>setPage("procurement")},
             {label:"+ Work Order",  icon:"🔧", bg:"#8b5cf6", action:()=>setPage("subconwo")},
-            {label:"Requests",      icon:"📋", bg:"#f59e0b", action:()=>setPage("requests")},
-            {label:"Inventory",     icon:"🗃️", bg:"#1e293b", action:()=>setPage("inventory")},
+            ...(pageOn("requests")?[{label:"Requests",      icon:"📋", bg:"#f59e0b", action:()=>setPage("requests")}]:[]),
+            ...(pageOn("inventory")?[{label:"Inventory",     icon:"🗃️", bg:"#1e293b", action:()=>setPage("inventory")}]:[]),
             {label:"Suppliers",     icon:"🏢", bg:"#1e293b", action:()=>setPage("masters")},
           ]}
         />
@@ -16420,11 +16421,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             {/* KPI tiles */}
             <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(5,1fr)",gap:12,marginBottom:20}}>
               {[
-                {l:"Pending Material Requests",v:mreqs.filter(m=>m.status==="Submitted").length,c:"#f59e0b",action:()=>setPage("requests")},
-                {l:"Pending Budget Requests",  v:breqs.filter(b=>b.status==="Submitted").length,c:"#ef4444",action:()=>setPage("requests")},
+                ...(pageOn("requests")?[{l:"Pending Material Requests",v:mreqs.filter(m=>m.status==="Submitted").length,c:"#f59e0b",action:()=>setPage("requests")},
+                {l:"Pending Budget Requests",  v:breqs.filter(b=>b.status==="Submitted").length,c:"#ef4444",action:()=>setPage("requests")}]:[]),
                 {l:"Active POs",              v:prs.filter(p=>p.status==="PO Issued").length,   c:"#3b82f6",action:()=>setPage("procurement")},
-                {l:"Low Stock — Need PR",     v:needsPR.length,c:needsPR.length>0?"#f97316":"#94a3b8",action:()=>setPage("inventory")},
-                {l:"Inventory Value",         v:"₱"+Math.round(invVal).toLocaleString("en-PH"),c:"#059669",action:()=>setPage("inventory")},
+                ...(pageOn("inventory")?[{l:"Low Stock — Need PR",     v:needsPR.length,c:needsPR.length>0?"#f97316":"#94a3b8",action:()=>setPage("inventory")}]:[]),
+                ...(pageOn("inventory")?[{l:"Inventory Value",         v:"₱"+Math.round(invVal).toLocaleString("en-PH"),c:"#059669",action:()=>setPage("inventory")}]:[]),
               ].map(({l,v,c,action})=>(
                 <div key={l} onClick={action} style={{background:"#fff",borderRadius:12,padding:"18px",border:"1.5px solid #e2e8f0",cursor:"pointer",transition:"all .15s"}}
                   onMouseEnter={e=>{e.currentTarget.style.borderColor=c;e.currentTarget.style.boxShadow=`0 4px 16px ${c}22`;}}
@@ -16436,7 +16437,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               ))}
             </div>
             {/* Low stock → raise PR action list */}
-            {needsPR.length>0&&(
+            {pageOn("inventory")&&needsPR.length>0&&(
               <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #fed7aa",padding:"14px 18px",marginBottom:16}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8}}>
                   <div style={{fontWeight:700,color:"#c2410c",fontSize:".9rem"}}>📦 {needsPR.length} item{needsPR.length!==1?"s":""} need restocking — no active PO</div>
@@ -16476,7 +16477,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   {pendingBR.length>0&&<span>💳 {pendingBR.length} Budget Request{pendingBR.length!==1?"s":""}</span>}
                 </div>
               </div>
-              <button onClick={()=>setPage("requests")} style={{background:"#f59e0b",border:"none",borderRadius:8,padding:"7px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#fff",cursor:"pointer",whiteSpace:"nowrap"}}>Review Now →</button>
+              {pageOn("requests")&&<button onClick={()=>setPage("requests")} style={{background:"#f59e0b",border:"none",borderRadius:8,padding:"7px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#fff",cursor:"pointer",whiteSpace:"nowrap"}}>Review Now →</button>}
             </div>
           );
         })()}
@@ -17114,7 +17115,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           buttons={[
             {label:"+ New DRF",    icon:"🎨", bg:"#ec4899", action:()=>setPage("drf")},
             {label:"My Requests",  icon:"📋", bg:"#1e293b", action:()=>setPage("drf")},
-            {label:"Swatchboard",  icon:"🎨", bg:"#8b5cf6", action:()=>setPage("swatchboard")},
+            ...(pageOn("swatchboard")?[{label:"Swatchboard",  icon:"🎨", bg:"#8b5cf6", action:()=>setPage("swatchboard")}]:[]),
           ]}
         />
         <SecHead title="Design Board — most-due first"/>
