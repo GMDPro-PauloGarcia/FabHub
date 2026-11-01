@@ -9313,6 +9313,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const savePayable=async(data)=>{
     if(!data.vendor||!data.amount) return;
     if(!String(data.accountCode||"").trim()){toastEmit("Select a Chart-of-Accounts code before saving — it drives the financial statements.","error");return;}
+    // Every peso is charged to a project or a cost center (GMD OPEX / Tools / Stocks).
+    if(!data.projectId){toastEmit("Charge this bill to a project or a cost center (GMD OPEX, GMD Tools, GMD Stocks) before saving.","error");return;}
     // Payment request (PRV) for subcontractor work. The Excel log paid ₱492K of
     // subcontractor PRVs with no Work Order, so Operations never confirmed the
     // work. A PRV linked to a WO that already has its own bill would pay the same
@@ -15784,7 +15786,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     {payForm.poNumber&&<div style={{fontSize:".72rem",color:"#64748b",marginTop:3}}>Payment waits for Operations to verify % complete. Retention is held at payment.</div>}
                   </Fld>
                 )}
-                <Fld label="Link to Project"><Sel value={payForm.projectId||"none"} onChange={e=>setPayForm(p=>({...p,projectId:e.target.value==="none"?null:e.target.value}))}><option value="none">— No project</option>{wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" — "+d.contact:""}</option>)}{costCenterDeals.length>0&&<optgroup label="Cost centers">{costCenterDeals.map(d=><option key={d.id} value={d.id}>🏷 {d.contact||d.client}</option>)}</optgroup>}</Sel></Fld>
+                <Fld label="Charge to (project or cost center)"><Sel value={payForm.projectId||"none"} onChange={e=>setPayForm(p=>({...p,projectId:e.target.value==="none"?null:e.target.value}))}><option value="none">— Select a project or cost center</option>{costCenterDeals.length>0&&<optgroup label="Cost centers">{costCenterDeals.map(d=><option key={d.id} value={d.id}>🏷 {d.contact||d.client}</option>)}</optgroup>}<optgroup label="Projects">{wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" — "+d.contact:""}</option>)}</optgroup></Sel></Fld>
                 {/* BIR: VAT + EWT capture (restored from the legacy expense flow) */}
                 {(()=>{
                   const amt=Number(payForm.amount)||0;
