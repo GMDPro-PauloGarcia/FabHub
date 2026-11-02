@@ -126,6 +126,8 @@ const _classifyError = (msg) => {
   // every heartbeat for 8 cycles before dropping the whole write. Seen live:
   // an older cached client queued a PO carrying the pre-rename 'po_disc_type'
   // column, which this schema no longer has.
+  // FabHub's own refusals (AP duplicate guard) can never succeed by replaying.
+  if (m.includes('duplicate_block') || m.includes('duplicate_review')) return 'data'
   if (m.includes('does not exist') || m.includes('violates') || m.includes('invalid input syntax') || m.includes('duplicate key') || m.includes('schema cache') || m.includes('could not find')) return 'data'
   return 'server'
 }
@@ -420,6 +422,23 @@ export const sbUpsert = async (table, data, conflictCol = 'id', { ignoreDuplicat
   const { error } = await _withTimeout(supabase.from(table).upsert(data, { onConflict: conflictCol, ignoreDuplicates }))
   if (error) { console.error(`SB UPSERT ${table}:`, error.message); const kind=_writeFailed('upsert', table, error.message); if(_isRetryable(kind)) _enqueue({ kind: 'upsert', table, data, conflictCol }); else _notifyDropped({ kind: 'upsert', table, data, conflictCol }, kind, error.message); return false }
   return true
+}
+
+// Like sbUpsert, but tells the caller why a write was refused. An AP duplicate
+// refusal (DUPLICATE_BLOCK / DUPLICATE_REVIEW from the database) is returned to
+// the caller, which explains it or asks a Manager for a reason; it is never
+// queued or reported as a sync failure.
+export const sbUpsertDetailed = async (table, data, conflictCol = 'id') => {
+  if (!supabase || _signedOut('UPSERT', table)) return { ok: false, message: '' }
+  const { error } = await _withTimeout(supabase.from(table).upsert(data, { onConflict: conflictCol }))
+  if (!error) return { ok: true }
+  const message = error.message || ''
+  const dup = /DUPLICATE_(BLOCK|REVIEW)/.exec(message)
+  if (dup) return { ok: false, message, duplicate: dup[1] === 'REVIEW' ? 'review' : 'block' }
+  console.error(`SB UPSERT ${table}:`, message)
+  const kind = _writeFailed('upsert', table, message)
+  if (_isRetryable(kind)) _enqueue({ kind: 'upsert', table, data, conflictCol }); else _notifyDropped({ kind: 'upsert', table, data, conflictCol }, kind, message)
+  return { ok: false, message }
 }
 
 // Create a row only if it doesn't exist yet; never overwrite. Unlike sbUpsert

@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback, useRef, useContext, c
 const WrapCtx = createContext(false);
 // Roles that must never see contract value — they get the QS budget instead.
 const BUDGET_ONLY=["Design","Operations","ProjectMover"];
-import {deductionFromSb,supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbInsertIfMissing,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbPendingIds,sbOnQueueChange,appLogin,appLogout,restoreAppToken,hasAppToken,appTokenExpired,setSessionExpiredHandler,logClientError} from './supabaseClient';
+import {deductionFromSb,supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbUpsertDetailed,sbInsertIfMissing,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbPendingIds,sbOnQueueChange,appLogin,appLogout,restoreAppToken,hasAppToken,appTokenExpired,setSessionExpiredHandler,logClientError} from './supabaseClient';
 import{idbGetMany,idbSetMany}from'./idb.js';
 import {useSharePdf} from "./views/SharePdf";
 import {fmt,addPrintClose,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable,HIDDEN_NAV_IDS,AP_HIDDEN,WAREHOUSE_HIDDEN,isHiddenView,HIDDEN_FIN_TABS,HIDDEN_PIPE_TABS,pageOn} from './shared';
@@ -9310,6 +9310,20 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(isSupabaseReady()) sbUpsert("payables",payableToSb(rec),"id").catch(()=>{});
     return rec;
   };
+  // The database refuses a likely duplicate bill or payment (AP safety net,
+  // migration 20261102113419): DUPLICATE_BLOCK always, DUPLICATE_REVIEW unless a
+  // Manager gives a reason. Returns the Manager's reason, or null after
+  // explaining the refusal.
+  const dupText=m=>String(m||"").replace(/^[\s\S]*?DUPLICATE_(BLOCK|REVIEW):\s*/,"");
+  const askDupOverride=async(res)=>{
+    const text=dupText(res.message);
+    if(res.duplicate==="review"&&role==="Manager"){
+      const r=await uiPrompt(`${text}\n\nIf this is not a duplicate, give the reason. It is kept in the audit log.`,"");
+      return String(r||"").trim()||null;
+    }
+    await uiAlert({title:res.duplicate==="block"?"Not saved: duplicate":"Not saved: needs a Manager",message:text});
+    return null;
+  };
   const savePayable=async(data)=>{
     if(!data.vendor||!data.amount) return;
     if(!String(data.accountCode||"").trim()){toastEmit("Select a Chart-of-Accounts code before saving — it drives the financial statements.","error");return;}
@@ -9398,15 +9412,20 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       id:editPayId||uid(),status:editPayId?derived:(paidAmount>0?derived:"Unpaid"),
       paidDate:derived==="Paid"?(data.paidDate||today):(data.paidDate||""),
       createdAt:editPayId?data.createdAt:today,createdBy:editPayId?(data.createdBy||session?.name||""):session?.name||""};
-    upPayables(ps=>editPayId?ps.map(p=>p.id===editPayId?rec:p):[rec,...ps]);
     if(isSupabaseReady()){
-      sbUpsert("payables",payableToSb(rec),"id").catch(e=>{
-        console.error("Payable save:",e);
-        toastEmit("⚠️ Payable saved locally but NOT synced to server — do not close this tab!","warning",9000);
-      });
+      let res=await sbUpsertDetailed("payables",payableToSb(rec),"id");
+      if(res.duplicate){
+        const reason=await askDupOverride(res);
+        if(!reason) return;
+        rec.dupOverrideReason=reason;
+        res=await sbUpsertDetailed("payables",payableToSb(rec),"id");
+        if(res.duplicate){await uiAlert({title:"Not saved",message:dupText(res.message)});return;}
+      }
+      if(!res.ok) toastEmit("⚠️ Payable saved locally but NOT synced to server — do not close this tab!","warning",9000);
     } else {
       toastEmit("⚠️ Payable saved locally only — no server connection. Do not close this tab!","warning",9000);
     }
+    upPayables(ps=>editPayId?ps.map(p=>p.id===editPayId?rec:p):[rec,...ps]);
     setPayModal(false);setEditPayId(null);setPayForm(emptyPayForm());
   };
   // Verification gate: a PO/WO-sourced payable is locked from payment until the
@@ -9506,7 +9525,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const now=new Date().toISOString();
     const rows=list.map(e=>({id:uid(),payableId:e.payableId,batchId,kind:e.kind==="Retention release"?"Retention release":"Payment",payDate:common.date,
       amount:r2(e.amount),retentionAmount:e.kind==="Retention release"?0:r2(e.retentionAmount),method:common.method||"",bank:common.bank||"",refNo:ref,
-      cvId:common.cvId||null,note:common.note||"",status:"Active",recordedBy:session?.name||"",createdAt:now}));
+      cvId:common.cvId||null,note:common.note||"",status:"Active",recordedBy:session?.name||"",createdAt:now,dupOverrideReason:common.overrideReason||null}));
     const nextPays=[...rows,...payPays];
     const touched=new Set(rows.map(r=>r.payableId));
     const nextPayables=payables.map(p=>touched.has(p.id)?recomputePayableFromPayments(p,nextPays):p);
@@ -9514,8 +9533,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     setPayables(nextPayables);persist(KEYS.payables,nextPayables);
     if(isSupabaseReady()){
       // One statement for the whole batch, so a check is recorded against all its bills or none.
-      const ok=await sbUpsert("payable_payments",rows.map(payablePaymentToSb),"id");
-      if(!ok) toastEmit("⚠️ Payment saved on this device but NOT confirmed by the server — do not close this tab.","warning",9000);
+      const res=await sbUpsertDetailed("payable_payments",rows.map(payablePaymentToSb),"id");
+      if(res.duplicate){
+        // Refused as a likely double payment: undo the screen, explain, and let a
+        // Manager record it with a reason.
+        setPayPays(payPays);persist(KEYS.payPays,payPays);
+        setPayables(payables);persist(KEYS.payables,payables);
+        const reason=await askDupOverride(res);
+        return reason?recordPayments(entries,{...common,overrideReason:reason}):false;
+      }
+      if(!res.ok) toastEmit("⚠️ Payment saved on this device but NOT confirmed by the server — do not close this tab.","warning",9000);
     } else toastEmit("⚠️ Payment saved on this device only — no server connection. Do not close this tab.","warning",9000);
     nextPayables.filter(p=>touched.has(p.id)&&p.status==="Paid"&&p.expenseId).forEach(p=>markExpensePaid(p.expenseId));
     const cash=rows.reduce((s,r)=>s+r.amount,0),held=rows.reduce((s,r)=>s+r.retentionAmount,0);
