@@ -89,3 +89,11 @@ For the smoke test locally, run `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers
 - **Sales Owner is locked once a deal has collections:** only a Manager can change it. Anyone else's change is silently dropped, so a stale full-row save still works, and logged to `audit_log`. Enforced by `salesOwnerLocked` (`src/core.js`, DealModal) and migration `20261026063739_deals_sales_owner_lock.sql`. Keep them in sync.
 - **`deals.amount_paid` comes from the billing ledger or a Manager only:** anyone else's change is dropped, and it is forced to 0 on insert. Logged to `audit_log`. Enforced by the deal import (Amount Paid is carried only for a Manager) and migration `20261026040000_deals_amount_paid_manager_only.sql`. Keep them in sync.
 - Never loosen these to fix a "saved locally only" error or a reassignment request. A Manager does the reassignment.
+
+## AP duplicate safety net (database-kept)
+- Supplier payments and bills are checked by the database (migration `20261102113419_ap_duplicate_safety_net.sql`, applied 2026-11-02):
+  - **Blocked:** paying more than a bill; a second bill with the same supplier + supplier invoice no.
+  - **Manager with a reason only:** a check no. already recorded for a different supplier; same supplier + same amount paid on another bill within 30 days under a different reference (only when a bill has no PO/WO, or both are on the same PO); a no-PO bill with the same supplier + amount as another bill within 60 days. Overrides go to `audit_log` (`action = 'duplicate_override'`).
+- Suppliers are compared by `ap_vendor_key()` (first 8 letters/digits) because names are free text.
+- The app shows the refusal and asks a Manager for the reason (`askDupOverride` in `src/App.jsx`, `sbUpsertDetailed` in `src/supabaseClient.js`). Never loosen the triggers to make a save go through.
+- `ap_health_alert()` runs daily at 7:52 AM Manila (pg_cron `fabhub-ap-health`) and posts problems to the Telegram management chat; runs are logged in `ap_health_log`.
