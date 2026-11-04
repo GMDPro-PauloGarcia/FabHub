@@ -97,3 +97,8 @@ For the smoke test locally, run `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers
 - Suppliers are compared by `ap_vendor_key()` (first 8 letters/digits) because names are free text.
 - The app shows the refusal and asks a Manager for the reason (`askDupOverride` in `src/App.jsx`, `sbUpsertDetailed` in `src/supabaseClient.js`). Never loosen the triggers to make a save go through.
 - `ap_health_alert()` runs daily at 7:52 AM Manila (pg_cron `fabhub-ap-health`) and posts problems to the Telegram management chat; runs are logged in `ap_health_log`.
+
+## AP numbers (database-issued, unique)
+- The server issues every AP / PRV number on insert (`payables_assign_number`); the app always sends a blank one for a new bill.
+- An issued number never changes: `trg_payables_lock_ap_number` silently keeps the old number on any update, so a stale device save can't undo it. A partial unique index (`payables_ap_number_unique`) refuses duplicates. Migration `20261104090000_ap_number_unique.sql`, applied 2026-11-04.
+- On 2026-11-04, 118 bills that shared a number were renumbered to AP-2026-0737…0854. The old number is in each bill's notes ("Formerly …") and in `audit_log` (`action = 'ap_renumber'`).
