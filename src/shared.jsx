@@ -139,9 +139,12 @@ export const cashDayLocked=(date,now=new Date())=>!!date&&now>=cashDayLockAt(dat
 // Orders and BOQ (now a Sales Pipeline tab) stay.
 // Warehousing (inventory / deliveries / stockmove) is back on 2026-10-27, under
 // the Procurement section of the sidebar (Paulo).
-export const HIDDEN_NAV_IDS = new Set(["finance","payables","ceqs","costanalysis"]);
+// The AP (Finance › Payables, Payments, Weekly Dues) is back on 2026-11-01: after
+// the AP sheet cutover FabHub is the AP, and Finance needs to enter bills that
+// have no PO (rent, utilities, OPEX) charged to a project or cost center (Paulo).
+export const HIDDEN_NAV_IDS = new Set(["ceqs","costanalysis"]);
 export const HIDDEN_PAGES = new Set(["acctdash","ceqs","costanalysis"]);
-export const HIDDEN_FIN_TABS = new Set(["payables","payments","duesboard"]);
+export const HIDDEN_FIN_TABS = new Set([]);
 export const AP_HIDDEN = HIDDEN_FIN_TABS.has("payables");
 export const WAREHOUSE_HIDDEN = HIDDEN_PAGES.has("inventory");
 export const isHiddenView=(page,finTab)=>HIDDEN_PAGES.has(page)||(page==="finance"&&HIDDEN_FIN_TABS.has(finTab));
