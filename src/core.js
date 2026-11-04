@@ -1301,6 +1301,55 @@ export const AP_RULES={subconRetentionPct:10,subconNoWoLimit:50000,subconNoWoWin
 // the chart, so it is kept here only to recognise those older rows).
 export const SUBCON_ACCOUNT_CODES=["5070","5100","5200"];
 export const isSubconPayable=p=>!!p&&(p.category==="Subcontractor"||SUBCON_ACCOUNT_CODES.includes(String(p.accountCode||"")));
+
+// ── Supplier payment documents (Paulo, 2026-11-04) ───────────────────────────
+// A supplier bill (category Supplier, not subcon) created from 2026-11-09 is
+// paid only with an approved PO, a DR Warehouse logged against that PO, the
+// supplier invoice no. + date + uploaded copy and the supplier TIN — and not
+// before its due date (invoice date + the PO's terms; COD/blank = invoice
+// date). A Manager can override a bill with a reason. Mirrors
+// supplier_docs_check() in migration 20261104090000_supplier_payment_docs.sql,
+// which the database enforces on every payment — keep them in sync.
+export const SUPPLIER_DOCS_GOLIVE="2026-11-09T00:00:00+08:00";
+export const termsDays=t=>{const m=String(t||"").match(/(\d+)/);return m?Number(m[1]):0;};
+export const apVendorKey=v=>String(v||"").replace(/[^a-zA-Z0-9]/g,"").toLowerCase().slice(0,8);
+const addDaysYmd=(ymd,n)=>{const d=new Date(ymd+"T00:00:00Z");d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);};
+export const supplierDocsStatus=(p,{prs=[],drs=[],suppliers=[]}={})=>{
+  if(!p) return {applies:false,ok:true,missing:[],items:[]};
+  const created=p.created_at||p.createdAt||"";
+  const overridden=!!p.docs_override_at;
+  const applies=(p.category||"")==="Supplier"&&!isSubconPayable(p)&&!!created
+    &&new Date(created)>=new Date(SUPPLIER_DOCS_GOLIVE)&&!overridden;
+  const po=String(p.poNumber||"").trim();
+  const poLines=po?prs.filter(x=>x.poNumber===po):[];
+  const poOk=poLines.some(x=>["PO Issued","Partially Delivered","Delivered"].includes(x.status));
+  const dr=po?drs.filter(d=>d.poNumber===po&&String(d.drNo||"").trim()&&String(d.receivedBy||"").trim())
+    .sort((a,b)=>String(b.drDate||"").localeCompare(String(a.drDate||"")))[0]:null;
+  const supTin=suppliers.find(s=>apVendorKey(s.companyName||s.company_name)===apVendorKey(p.vendor)&&String(s.tinNo||s.tin_no||"").trim());
+  const tin=String(p.tin||"").trim()||String(supTin?.tinNo||supTin?.tin_no||"").trim();
+  const terms=(poLines.find(x=>String(x.paymentTerms||x.payment_terms||"").trim())||{});
+  const termsLabel=String(terms.paymentTerms||terms.payment_terms||"").trim();
+  const dueDate=p.dueDate||(p.invoiceDate?addDaysYmd(p.invoiceDate,termsDays(termsLabel)):"");
+  const items=[
+    {key:"po",     label:"Approved PO",            ok:poOk,                              detail:po?`${po}${poLines[0]?` · ${poLines[0].status}`:" · not found"}`:"No PO on this bill"},
+    {key:"dr",     label:"Delivery Receipt",       ok:!!dr,                              detail:dr?`${dr.drNo} · received by ${dr.receivedBy}`:"Warehouse hasn't logged a DR for this PO"},
+    {key:"invno",  label:"Invoice no.",            ok:!!String(p.invoiceNumber||"").trim(), detail:p.invoiceNumber||"—"},
+    {key:"invdate",label:"Invoice date",           ok:!!p.invoiceDate,                   detail:p.invoiceDate||"—"},
+    {key:"invdoc", label:"Invoice copy",           ok:!!String(p.invoice_doc_path||"").trim(), detail:p.invoice_doc_path?"Uploaded":"Not uploaded"},
+    {key:"tin",    label:"Supplier TIN",           ok:!!tin,                             detail:tin||"Not on the bill or the supplier master"},
+  ];
+  const labelFor={po:"Approved PO",dr:"Delivery Receipt (logged by Warehouse)",invno:"Invoice no.",invdate:"Invoice date",invdoc:"Invoice copy",tin:"Supplier TIN"};
+  const missing=items.filter(i=>!i.ok).map(i=>labelFor[i.key]);
+  return {applies,overridden,ok:missing.length===0,missing,items,dueDate,terms:termsLabel,tin};
+};
+// Why a supplier payment dated payDate would be refused (null = allowed).
+export const supplierPayBlock=(p,payDate,ctx)=>{
+  const s=supplierDocsStatus(p,ctx);
+  if(!s.applies) return null;
+  if(!s.ok) return `${p.apNumber||p.vendor||"This bill"} is missing: ${s.missing.join(", ")}. A Manager can override with a reason.`;
+  if(s.dueDate&&payDate&&payDate<s.dueDate) return `${p.apNumber||p.vendor||"This bill"} is not due until ${s.dueDate} (${s.terms||"invoice-date"} terms). A Manager can override with a reason.`;
+  return null;
+};
 // D3: subcontractor payable at/above the limit with no Work Order linked.
 export const subconNeedsWo=p=>isSubconPayable(p)&&!String(p.poNumber||"").trim()&&(Number(p.amount)||0)>=AP_RULES.subconNoWoLimit;
 // Vendor names are free text: match them case- and spacing-insensitively.
