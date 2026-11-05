@@ -5,11 +5,12 @@ const BUDGET_ONLY=["Design","Operations","ProjectMover"];
 import {deductionFromSb,supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbUpsertDetailed,sbInsertIfMissing,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbPendingIds,sbOnQueueChange,appLogin,appLogout,restoreAppToken,hasAppToken,appTokenExpired,setSessionExpiredHandler,logClientError} from './supabaseClient';
 import{idbGetMany,idbSetMany}from'./idb.js';
 import {useSharePdf} from "./views/SharePdf";
+import SupplierDocsPanel from "./views/SupplierDocsPanel";
 import {fmt,addPrintClose,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable,HIDDEN_NAV_IDS,AP_HIDDEN,WAREHOUSE_HIDDEN,isHiddenView,HIDDEN_FIN_TABS,HIDDEN_PIPE_TABS,pageOn} from './shared';
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -9041,6 +9042,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const releaseCv=id=>{
     const releasedBy=session?.name||role;
     const cv=vouchers.find(v=>v.id===id);
+    // A check for a supplier bill is released only with complete documents and
+    // on/after the due date — checked before the CV is marked Released, so a
+    // refused payment never leaves a released check behind.
+    const cvBill=cv?.payableId?payables.find(p=>p.id===cv.payableId):null;
+    const cvBlock=cvBill?supplierPayBlock(cvBill,today,{prs,drs,suppliers}):null;
+    if(cvBlock){toastEmit("🚫 Check not released: "+cvBlock,"error",10000);return;}
     upVouchers(vs=>vs.map(v=>v.id===id?{...v,status:"Released",releasedBy,releasedDate:today}:v));
     if(isSupabaseReady()) sbUpsert("check_vouchers",{id,status:"Released",released_by:releasedBy,released_date:today},"id").catch(()=>{});
     if(cv?.payableId){
@@ -9346,6 +9353,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const savePayable=async(data)=>{
     if(!data.vendor||!data.amount) return;
     if(!String(data.accountCode||"").trim()){toastEmit("Select a Chart-of-Accounts code before saving — it drives the financial statements.","error");return;}
+    // Every peso is charged to a project or a cost center (GMD OPEX / Tools / Stocks).
+    if(!data.projectId){toastEmit("Charge this bill to a project or a cost center (GMD OPEX, GMD Tools, GMD Stocks) before saving.","error");return;}
+    // A bill charged to a cost center (GMD OPEX / Tools / Stocks) must say what it
+    // was used for, so a Manager can check it isn't project material hidden in OPEX.
+    {const cc=deals.find(d=>d.id===data.projectId);
+     if(cc?.isCostCenter&&String(data.notes||"").trim().length<10){toastEmit(`Say what this was used for in Notes (e.g. "Warehouse racking, bay 2") before charging it to ${cc.contact||cc.client||"a cost center"}.`,"error",9000);return;}}
     // Payment request (PRV) for subcontractor work. The Excel log paid ₱492K of
     // subcontractor PRVs with no Work Order, so Operations never confirmed the
     // work. A PRV linked to a WO that already has its own bill would pay the same
@@ -9535,6 +9548,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         if(claimed>cap+1){toastEmit(`No payment: that brings ${p.apNumber||p.vendor||"this bill"} to ₱${claimed.toLocaleString("en-PH")} but the PM certified only ${Number(p.verificationPct)||0}% (₱${cap.toLocaleString("en-PH")}). Ask the PM to certify more work first.`,"error",10000);return false;}
       }
       if(payIsSubcon(p)&&e.kind==="Retention release"&&(Number(p.verificationPct)||0)<100){toastEmit("Retention is released only when the PM certifies 100%.","error",8000);return false;}
+      // Supplier docs + terms (supplier_docs_check, migration 20261104090100).
+      const docsBlock=e.kind==="Retention release"?null:supplierPayBlock(p,common.date,{prs,drs,suppliers});
+      if(docsBlock){toastEmit("🚫 No payment: "+docsBlock,"error",10000);return false;}
       if(!payApproved(p)){toastEmit(`${p.vendor||"This payable"}${p.apNumber?` (${p.apNumber})`:""} isn't approved yet — a Manager or Finance Manager must approve it before payment.`,"error",7000);return false;}
     }
     if(!common.date){toastEmit("Enter the payment date.","error");return false;}
@@ -15535,6 +15551,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             <Fld label="Invoice No."><Inp value={payForm.invoiceNumber||""} onChange={e=>setPayForm(p=>({...p,invoiceNumber:e.target.value}))} placeholder="Vendor invoice #"/></Fld>
             <Fld label="Invoice Date"><Inp type="date" value={payForm.invoiceDate||""} onChange={e=>setPayForm(p=>({...p,invoiceDate:e.target.value}))}/></Fld>
           </div>
+          {editPayId&&<SupplierDocsPanel role={role} sendTelegramNotification={sendTelegramNotification} ctx={{prs,drs,suppliers}}
+            bill={{...(payables.find(x=>x.id===editPayId)||{}),...payForm,id:editPayId}}
+            onChanged={patch=>{upPayables(ps=>ps.map(x=>x.id===editPayId?{...x,...patch}:x));setPayForm(f=>({...f,...patch}));}}/>}
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
             <Fld label="Amount (₱)" required><Inp type="number" value={payForm.amount} onChange={e=>setPayForm(p=>({...p,amount:e.target.value}))} placeholder="0"/></Fld>
             <Fld label="Already Paid (₱)"><Inp type="number" value={payForm.paidAmount} onChange={e=>setPayForm(p=>({...p,paidAmount:e.target.value}))} placeholder="0"/></Fld>
@@ -15562,7 +15581,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               {payForm.poNumber&&<div style={{fontSize:".72rem",color:"#64748b",marginTop:3}}>Payment waits for Operations to verify % complete. Retention is held at payment.</div>}
             </Fld>
           )}
-          <Fld label="Link to Project"><Sel value={payForm.projectId||"none"} onChange={e=>setPayForm(p=>({...p,projectId:e.target.value==="none"?null:e.target.value}))}><option value="none">— No project</option>{wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" — "+d.contact:""}</option>)}{costCenterDeals.length>0&&<optgroup label="Cost centers">{costCenterDeals.map(d=><option key={d.id} value={d.id}>🏷 {d.contact||d.client}</option>)}</optgroup>}</Sel></Fld>
+          <Fld label="Charge to (project or cost center)"><Sel value={payForm.projectId||"none"} onChange={e=>setPayForm(p=>({...p,projectId:e.target.value==="none"?null:e.target.value}))}><option value="none">— Select a project or cost center</option>{costCenterDeals.length>0&&<optgroup label="Cost centers">{costCenterDeals.map(d=><option key={d.id} value={d.id}>🏷 {d.contact||d.client}</option>)}</optgroup>}<optgroup label="Projects">{wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" — "+d.contact:""}</option>)}</optgroup></Sel></Fld>
           {/* BIR: VAT + EWT capture (restored from the legacy expense flow) */}
           {(()=>{
             const amt=Number(payForm.amount)||0;
@@ -15591,7 +15610,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               </div>
             );
           })()}
-          <Fld label="Notes"><Inp value={payForm.notes||""} onChange={e=>setPayForm(p=>({...p,notes:e.target.value}))} placeholder="Optional details"/></Fld>
+          <Fld label={deals.find(d=>d.id===payForm.projectId)?.isCostCenter?"What was it used for? (required for cost centers)":"Notes"}><Inp value={payForm.notes||""} onChange={e=>setPayForm(p=>({...p,notes:e.target.value}))} placeholder={deals.find(d=>d.id===payForm.projectId)?.isCostCenter?"e.g. Warehouse racking, bay 2":"Optional details"}/></Fld>
           <div style={{display:"flex",gap:10,marginTop:18}}>
             <Btn full variant="green" onClick={()=>savePayable(payForm)}>Save Payable</Btn>
             <Btn variant="ghost" onClick={()=>{setPayModal(false);setEditPayId(null);}}>Cancel</Btn>
@@ -15841,7 +15860,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                               <td style={{...erpTd,fontVariantNumeric:"tabular-nums",color:ERP.muted,whiteSpace:"nowrap"}}>{p.poNumber||"—"}</td>
                               <td style={{...erpTd,fontWeight:600,color:ERP.ink,maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={p.vendor}>{p.vendor||"—"}{pn&&<div style={{fontSize:11,color:ERP.purple,fontWeight:500}}>📁 {pn}</div>}</td>
                               <td style={{...erpTd,fontVariantNumeric:"tabular-nums",fontSize:11.5,color:p.accountCode?ERP.ink:"#cbd5e1",whiteSpace:"nowrap"}} title={acct?`${acct.code} · ${acct.name}`:""}>{p.accountCode||"—"}</td>
-                              <td style={{...erpTd,color:ERP.muted,whiteSpace:"nowrap"}}>{p.invoiceNumber||p.invoiceRef||"—"}</td>
+                              <td style={{...erpTd,color:ERP.muted,whiteSpace:"nowrap"}}>{p.invoiceNumber||p.invoiceRef||"—"}{!settled&&(()=>{const ds=supplierDocsStatus(p,{prs,drs,suppliers});if(!ds.applies&&!ds.overridden)return null;const n=ds.items.filter(i=>i.ok).length;return <div title={ds.overridden?"Docs overridden by a Manager":ds.ok?"All payment documents on file":"Missing: "+ds.missing.join(", ")} style={{fontSize:10.5,fontWeight:700,color:ds.overridden?"#7c3aed":ds.ok?ERP.ok:"#b45309"}}>{ds.overridden?"Docs overridden":ds.ok?"Docs ✓":`Docs ${n}/${ds.items.length}`}</div>;})()}</td>
                               <td style={{...erpTd,fontVariantNumeric:"tabular-nums",color:ERP.muted,whiteSpace:"nowrap"}}>{p.invoiceDate||"—"}</td>
                               <td style={{...erpTd,fontVariantNumeric:"tabular-nums",color:ERP.muted,whiteSpace:"nowrap"}}>{p.dueDate||"—"}</td>
                               <td style={{...erpTd,fontWeight:700,color:settled?ERP.muted:ag.clr,whiteSpace:"nowrap"}}>{settled?"—":ag.label}</td>
