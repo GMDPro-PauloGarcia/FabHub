@@ -1,6 +1,6 @@
 import React,{useState,useMemo} from "react";
 import {today as TODAY,useIsMobile} from "../shared";
-import {projDisplayName,isSubconPayable} from "../core";
+import {projDisplayName,isSubconPayable,subconDpAllowPct} from "../core";
 import {num,r2,php2} from "../data/ledger";
 import {LedgerHost,chip,linkBtn} from "./Ledgers";
 
@@ -32,7 +32,7 @@ const DEAD_WO=["Cancelled","Void","Rejected"];
 const peso0=v=>"₱"+num(v).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmtD=d=>{if(!d)return"";const x=new Date(String(d).slice(0,10)+"T00:00:00");return isNaN(x)?String(d):x.toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"2-digit"});};
 
-const STATUS_CLR={"No bill":C.purple,"Paid outside AP":C.warn,"Fully paid":C.ok,"Not certified":C.bad,"Certified":C.blue};
+const STATUS_CLR={"No bill":C.purple,"Paid outside AP":C.warn,"Fully paid":C.ok,"Not certified":C.bad,"Certified":C.blue,"Down payment":C.blue};
 
 // One monitoring row per Work Order. Exported for tests / other views.
 export function subconMonitorRows({swos=[],payables=[],payPays=[],deals=[]}){
@@ -69,13 +69,17 @@ export function subconMonitorRows({swos=[],payables=[],payPays=[],deals=[]}){
     const billed=r2(bills.reduce((s,b)=>s+num(b.amount),0));
     const certPct=certBill?num(certBill.verificationPct):0;
     const gross=r2(progress.reduce((s,x)=>s+num(x.amount)+num(x.retentionAmount),0));
-    const dueNow=certBill&&balance>1?Math.max(0,r2(certPct/100*contract-gross)):0;
-    const status=balance<=1?"Fully paid":woOnlyPaid?"Paid outside AP":!bills.length?"No bill":certBill?"Certified":"Not certified";
+    // Payable now: up to greatest(certified %, the issued WO's down payment %)
+    // of the contract, less what's been claimed (payable_payments_subcon_gate).
+    const dpPct=subconDpAllowPct(w);
+    const allowPct=Math.max(certPct,dpPct);
+    const dueNow=allowPct>0&&balance>1?Math.max(0,r2(allowPct/100*contract-gross)):0;
+    const status=balance<=1?"Fully paid":woOnlyPaid?"Paid outside AP":!bills.length?"No bill":certBill?"Certified":dpPct>0?"Down payment":"Not certified";
     const d=dealById.get(w.dealId);
     return {id:w.id,wo:w,woNumber:w.woNumber||"—",subcon:w.subcontractor||bills[0]?.vendor||"—",dealId:w.dealId||null,
       project:d?projDisplayName(d):(w.projectName||"—"),scope:w.scopeOfWork||"",terms:w.paymentStructure||w.paymentTerms||"",
       woStatus:w.status||"",contract,retPct:num(w.retentionPct),bills,billed,toBill:Math.max(0,r2(contract-billed)),progress,releases,cash,ewt,retHeld,balance,certPct,
-      certBy:certBill?.verifiedBy||"",dueNow,status,woOnlyPaid,
+      certBy:certBill?.verifiedBy||"",dpPct,woDpPct:Number(w.dpPct)||0,allowPct,dueNow,status,woOnlyPaid,
       paidPct:contract>0?Math.min(100,Math.round(cash/contract*100)):0};
   }).sort((a,b)=>a.subcon.localeCompare(b.subcon)||String(a.woNumber).localeCompare(String(b.woNumber)));
 }
@@ -89,7 +93,7 @@ export default function SubconPaymentMonitor({swos=[],payables=[],payPays=[],dea
 
   const FILTERS=[
     ["open","Open balance",r=>r.balance>1],
-    ["due","Certified, unpaid",r=>r.dueNow>1],
+    ["due","Payable now",r=>r.dueNow>1],
     ["nobill","No bill yet",r=>r.status==="No bill"],
     ["outside","Paid outside AP",r=>r.status==="Paid outside AP"],
     ["paid","Fully paid",r=>r.status==="Fully paid"],
@@ -106,7 +110,7 @@ export default function SubconPaymentMonitor({swos=[],payables=[],payPays=[],dea
     ["Paid to date",php2(sum(all,"cash")),`${all.filter(r=>r.cash>0).length} WOs with a payment`,C.ok],
     ["Billed by subcons",php2(sum(all,"billed")),`${php2(sum(all,"toBill"))} not billed yet`,C.purple],
     ["Balance owed",php2(sum(all,"balance")),"contract − paid − EWT",C.bad],
-    ["Certified, not yet paid",php2(sum(all,"dueNow")),"payable now under PM certification",C.blue],
+    ["Payable now",php2(sum(all,"dueNow")),"within PM certification or the WO down payment",C.blue],
     ["Retention held",php2(sum(all,"retHeld")),`released at 100% · ${all.filter(r=>r.status==="No bill").length} WOs with no billing`,C.warn],
   ];
   const ewtMissing=all.filter(r=>r.cash>0&&r.ewt<=0).length;
@@ -116,11 +120,11 @@ export default function SubconPaymentMonitor({swos=[],payables=[],payPays=[],dea
     const maxN=Math.max(1,...rows.map(r=>r.progress.length));
     const head=["Subcontractor","Project","WO #","Scope","Payment terms","WO status","Total contract","Retention %",
       ...Array.from({length:maxN},(_,i)=>[`Payment ${i+1}`,`Date ${i+1}`,`Ref ${i+1}`]).flat(),
-      "Billed","Not billed yet","Total paid","Retention held","EWT","Balance","Certified %","Certified by","Certified, unpaid","Status"];
+      "Billed","Not billed yet","Total paid","Retention held","EWT","Balance","Certified %","Certified by","Down payment %","Payable now","Status"];
     const lines=[head.map(esc).join(",")];
     rows.forEach(r=>lines.push([r.subcon,r.project,r.woNumber,r.scope,r.terms,r.woStatus,r.contract.toFixed(2),r.retPct,
       ...Array.from({length:maxN},(_,i)=>{const p=r.progress[i];return p?[num(p.amount).toFixed(2),p.payDate,p.refNo]:["","",""];}).flat(),
-      r.billed.toFixed(2),r.toBill.toFixed(2),r.cash.toFixed(2),r.retHeld.toFixed(2),r.ewt.toFixed(2),r.balance.toFixed(2),r.certPct||"",r.certBy,r.dueNow.toFixed(2),r.status].map(esc).join(",")));
+      r.billed.toFixed(2),r.toBill.toFixed(2),r.cash.toFixed(2),r.retHeld.toFixed(2),r.ewt.toFixed(2),r.balance.toFixed(2),r.certPct||"",r.certBy,r.woDpPct||"",r.dueNow.toFixed(2),r.status].map(esc).join(",")));
     const blob=new Blob(["﻿"+lines.join("\n")],{type:"text/csv;charset=utf-8"});
     const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`GMD_subcon_payments_${today}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
   };
@@ -134,7 +138,7 @@ export default function SubconPaymentMonitor({swos=[],payables=[],payPays=[],dea
     return <span title={`${p.payDate} · ${p.method||""} ${p.bank||""} ${p.refNo||""}${num(p.retentionAmount)?` · retention held ${php2(p.retentionAmount)}`:""}`}>
       {peso0(p.amount)}<div style={{fontSize:".6rem",color:C.faint}}>{fmtD(p.payDate)}{p.refNo?` · ${p.refNo}`:""}</div></span>;
   };
-  const statusChip=r=>chip(r.status==="Certified"?`Certified ${r.certPct}%`:r.status,STATUS_CLR[r.status]||C.faint);
+  const statusChip=r=>chip(r.status==="Certified"?`Certified ${r.certPct}%`:r.status==="Down payment"?`DP ${r.dpPct}% allowed`:r.status,STATUS_CLR[r.status]||C.faint);
   const billBtn=r=>onNewBilling&&r.toBill>1&&r.status!=="Paid outside AP"?<button onClick={()=>onNewBilling(r.wo)} title="Log the subcontractor's next progress billing against this Work Order"
     style={{marginTop:4,display:"block",border:`1.5px solid ${C.navy}`,background:"#fff",color:C.navy,borderRadius:6,padding:"2px 8px",fontFamily:"inherit",fontSize:".66rem",fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>+ Billing</button>:null;
   const inp={border:"1.5px solid #e2e8f0",borderRadius:8,padding:"6px 9px",fontFamily:"inherit",fontSize:".78rem",background:"#fff"};
@@ -189,7 +193,7 @@ export default function SubconPaymentMonitor({swos=[],payables=[],payPays=[],dea
               </div>
               {r.progress.length>0&&<div style={{fontSize:".68rem",color:C.muted,marginTop:6}}>{r.progress.map((p,i)=><div key={p.id}>{i+1}. {fmtD(p.payDate)} · {php2(p.amount)}{p.refNo?` · ${p.refNo}`:""}</div>)}</div>}
               <div style={{fontSize:".7rem",color:r.balance>1?C.bad:C.ok,fontWeight:700,marginTop:4}}>Balance {php2(r.balance)}</div>
-              {r.dueNow>1&&<div style={{fontSize:".7rem",color:C.blue,fontWeight:700,marginTop:2}}>Certified, unpaid: {php2(r.dueNow)}</div>}
+              {r.dueNow>1&&<div style={{fontSize:".7rem",color:C.blue,fontWeight:700,marginTop:2}}>Payable now: {php2(r.dueNow)}</div>}
               {billBtn(r)}
             </div>
           ))}
@@ -202,7 +206,7 @@ export default function SubconPaymentMonitor({swos=[],payables=[],payPays=[],dea
               <th style={spmThR}>Total contract</th><th style={spmThR}>Billed</th>
               {Array.from({length:nCols},(_,i)=><th key={i} style={{...spmThR,background:"#eef2ff"}}>{i===MAX_COLS-1?`${i+1}+`:i+1}</th>)}
               <th style={spmThR}>Total paid</th><th style={spmThR}>Retention</th><th style={spmThR}>EWT</th><th style={spmThR}>Balance</th>
-              <th style={spmThR}>Cert., unpaid</th><th style={spmTh}>Status</th>
+              <th style={spmThR}>Payable now</th><th style={spmTh}>Status</th>
             </tr></thead>
             <tbody>
               {rows.map(r=>(
@@ -219,7 +223,7 @@ export default function SubconPaymentMonitor({swos=[],payables=[],payPays=[],dea
                   <td style={spmTdR}>{r.ewt>0?php2(r.ewt):"—"}</td>
                   <td style={{...spmTdR,fontWeight:700,color:r.balance>1?C.bad:C.ok}}>{php2(r.balance)}</td>
                   <td style={{...spmTdR,color:C.blue,fontWeight:r.dueNow>1?700:400}}>{r.dueNow>1?php2(r.dueNow):"—"}</td>
-                  <td style={{...spmTd,whiteSpace:"nowrap"}}>{statusChip(r)}{r.certBy&&<div style={{fontSize:".6rem",color:C.faint}}>by {r.certBy}</div>}{billBtn(r)}</td>
+                  <td style={{...spmTd,whiteSpace:"nowrap"}}>{statusChip(r)}{r.certBy&&<div style={{fontSize:".6rem",color:C.faint}}>by {r.certBy}</div>}{r.woDpPct>0&&<div style={{fontSize:".6rem",color:C.faint}}>DP {r.woDpPct}%{r.dpPct>0?"":" · WO not issued"}</div>}{billBtn(r)}</td>
                 </tr>
               ))}
             </tbody>

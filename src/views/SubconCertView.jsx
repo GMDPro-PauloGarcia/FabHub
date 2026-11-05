@@ -114,7 +114,7 @@ export default function SubconCertView({session,deals=[],sendTelegramNotificatio
                   <div style={{fontSize:".74rem",color:"#64748b"}}>{dealName(r.project_id)}{r.scope?` — ${r.scope}`:""}</div>
                 </div>
                 <span style={{alignSelf:"flex-start",fontSize:".66rem",fontWeight:700,borderRadius:20,padding:"3px 10px",
-                  color:certified?"#065f46":"#9a3412",background:certified?"#ecfdf5":"#fff7ed"}}>{certified?`${pct}% certified by ${r.verified_by}`:"Not certified — can't be paid"}</span>
+                  color:certified?"#065f46":"#9a3412",background:certified?"#ecfdf5":"#fff7ed"}}>{certified?`${pct}% certified by ${r.verified_by}`:"Not certified — only the WO's down payment can be paid"}</span>
               </div>
               <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:8,margin:"10px 0",fontSize:".76rem"}}>
                 {[["WO contract",scPeso(r.contract)],["Billed by subcon",`${scPeso(r.billed)} · ${r.bills.length} billing${r.bills.length===1?"":"s"}`],["Paid so far (incl. retention)",scPeso(claimed)],["Payable up to (certified)",scPeso(cap)]].map(([k,v])=>(

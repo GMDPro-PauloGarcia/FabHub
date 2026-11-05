@@ -896,6 +896,7 @@
     "created_at",
     "deal_id",
     "delivery",
+    "dp_pct",
     "id",
     "notes",
     "paid_amt",

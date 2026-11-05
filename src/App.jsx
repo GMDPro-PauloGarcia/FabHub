@@ -10,7 +10,7 @@ import {fmt,addPrintClose,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dro
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, parseDpPct, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -9509,7 +9509,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(enteredByMe(p)){
       toastEmit("You entered this bill — another Manager must approve it.","error",7000);return;
     }
-    if(payIsSubcon(p)&&!subconCertified(p)){toastEmit(`${p.vendor||"This subcontractor"}${p.apNumber?` (${p.apNumber})`:""} isn't certified by the project PM or Operations yet — no approval until they certify the work done.`,"error",8000);return;}
+    if(payIsSubcon(p)&&!subconCertified(p)){
+      // Not certified: approvable only as the WO's down payment, counting the
+      // WO's bills already approved (payables_subcon_cert_guard).
+      const wo=(swos||[]).find(w=>w.woNumber&&w.woNumber===p.poNumber);
+      const dp=subconDpAllowPct(wo), contract=Number(wo?.contractAmount)||0;
+      const approved=payables.filter(b=>b.id!==p.id&&payIsSubcon(b)&&b.poNumber===p.poNumber&&b.approvalStatus==="Approved"&&!["Cancelled","Void"].includes(b.status)).reduce((t,b)=>t+(Number(b.amount)||0),0);
+      if(!(dp>0&&contract>0&&approved+(Number(p.amount)||0)<=dp/100*contract+1)){
+        toastEmit(`${p.vendor||"This subcontractor"}${p.apNumber?` (${p.apNumber})`:""} isn't certified by the project PM or Operations yet${dp>0?` and is beyond the WO's ${dp}% down payment (₱${(dp/100*contract).toLocaleString("en-PH")})`:wo&&Number(wo.dpPct)>0?` and its Work Order isn't issued yet, so the down payment can't be used`:""} — no approval until they certify the work done.`,"error",9000);return;
+      }
+    }
     if(!(await uiConfirm(`Approve ${p.vendor||"this payable"}${p.apNumber?` (${p.apNumber})`:""} for ₱${Number(p.amount||0).toLocaleString("en-PH",{minimumFractionDigits:2})}? This clears it for payment.`))) return;
     if(!(await setPayableDecision(p,"Approved"))) return;
     toastEmit(`✅ Approved — ${p.vendor||"payable"} is now cleared for payment.`,"success");
@@ -9544,16 +9553,19 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       // Approval gate — enforced here for every pay surface, and again by the DB guard.
       // Subcon: paid only up to the PM-certified % (payable_payments_subcon_gate).
       if(payIsSubcon(p)&&e.kind!=="Retention release"){
-        if(!subconCertified(p)){toastEmit(`${p.vendor||"This subcontractor"}${p.apNumber?` (${p.apNumber})`:""} isn't certified by the project PM or Operations — no payment.`,"error",8000);return false;}
         const wo=(swos||[]).find(w=>w.woNumber&&w.woNumber===p.poNumber);
+        const certPct=subconCertified(p)?(Number(p.verificationPct)||0):0;
+        const dpPct=Number(wo?.contractAmount)>0?subconDpAllowPct(wo):0;
+        if(certPct<=0&&dpPct<=0){toastEmit(`${p.vendor||"This subcontractor"}${p.apNumber?` (${p.apNumber})`:""} isn't certified by the project PM or Operations, and its Work Order has no down payment allowed (set on an issued WO) — no payment.`,"error",9000);return false;}
+        const allowPct=Math.max(certPct,dpPct);
         const base=Number(wo?.contractAmount)>0?Number(wo.contractAmount):Number(p.amount)||0;
-        const cap=Math.round((Number(p.verificationPct)||0)/100*base*100)/100;
+        const cap=Math.round(allowPct/100*base*100)/100;
         // With a WO the cap covers every progress billing on it (and the other
         // entries in this same batch); without one, just this bill.
         const woBills=wo?payables.filter(b=>payIsSubcon(b)&&b.poNumber===p.poNumber).map(b=>b.id):[p.id];
         const claimed=payPays.filter(x=>woBills.includes(x.payableId)&&x.status!=="Cancelled"&&x.kind!=="Retention release").reduce((s,x)=>s+r2(x.amount)+r2(x.retentionAmount),0)
           +list.filter(o=>woBills.includes(o.payableId)&&o.kind!=="Retention release").reduce((s,o)=>s+r2(o.amount)+r2(o.retentionAmount),0);
-        if(claimed>cap+1){toastEmit(`No payment: that brings ${p.apNumber||p.vendor||"this bill"} to ₱${claimed.toLocaleString("en-PH")} but the PM certified only ${Number(p.verificationPct)||0}% (₱${cap.toLocaleString("en-PH")}). Ask the PM to certify more work first.`,"error",10000);return false;}
+        if(claimed>cap+1){toastEmit(`No payment: that brings ${p.apNumber||p.vendor||"this bill"} to ₱${claimed.toLocaleString("en-PH")} but only ${allowPct}% is allowed (₱${cap.toLocaleString("en-PH")}: PM certified ${certPct}%, down payment ${dpPct}%). Ask the PM to certify more work first.`,"error",10000);return false;}
       }
       if(payIsSubcon(p)&&e.kind==="Retention release"&&(Number(p.verificationPct)||0)<100){toastEmit("Retention is released only when the PM certifies 100%.","error",8000);return false;}
       // Supplier docs + terms (supplier_docs_check, migration 20261104090100).
@@ -15591,7 +15603,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           {!editPayId&&isSubconPayable(payForm)&&payForm.poNumber&&(()=>{const wo=swos.find(w=>w.woNumber===payForm.poNumber);const billed=payables.filter(p=>isSubconPayable(p)&&p.poNumber===payForm.poNumber&&!["Cancelled","Void"].includes(p.status)).reduce((t,p)=>t+(Number(p.amount)||0),0);return(
             <div style={{background:"#eef2ff",border:"1px solid #c7d2fe",borderRadius:8,padding:"8px 10px",fontSize:".76rem",color:"#3730a3",marginBottom:10}}>
               Subcon billing against <b style={{fontFamily:"monospace"}}>{payForm.poNumber}</b>{wo?` · contract ₱${(Number(wo.contractAmount)||0).toLocaleString("en-PH")} · billed so far ₱${billed.toLocaleString("en-PH")} · left to bill ₱${Math.max(0,(Number(wo.contractAmount)||0)-billed).toLocaleString("en-PH")}`:""}.
-              Enter the subcontractor's billing no. and this billing's amount. It's paid only up to the % the PM certifies.
+              Enter the subcontractor's billing no. and this billing's amount. It's paid only up to the % the PM certifies, or the WO's down payment % once the WO is issued.
             </div>);})()}
           <Fld label="Type">
             <Sel value={payForm.docType==="PRV"?"PRV":"AP"} onChange={e=>setPayForm(p=>({...p,docType:e.target.value}))} disabled={!!(editPayId&&payForm.apNumber)}>
@@ -22717,7 +22729,7 @@ function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,deal
     const recs=valid.map(r=>({
       subcontractor:r.subcontractor,projectId:r.projectId,projectName:r.projectName,
       specialty:r.specialty,scopeOfWork:r.scopeOfWork,contractAmount:r.contractAmount,
-      retentionPct:r.retentionPct,paymentStructure:r.paymentStructure,paymentTerms:r.paymentTerms,
+      retentionPct:r.retentionPct,dpPct:Math.min(SUBCON_DP_MAX_NON_MANAGER,parseDpPct(`${r.paymentStructure||""} ${r.paymentTerms||""}`)),paymentStructure:r.paymentStructure,paymentTerms:r.paymentTerms,
       startDate:r.startDate,targetEndDate:r.targetEndDate,woDate:r.woDate,notes:r.notes,
       delivery:null,
       status:woDirect?"Issued":"Pending Approval",
@@ -22751,7 +22763,10 @@ function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,deal
     if(!form.scopeOfWork.trim()){toastEmit&&toastEmit("Please describe the scope of work.","error");return;}
     if(n(form.contractAmount)<=0){toastEmit&&toastEmit("Contract amount must be greater than 0.","error");return;}
     const deal=wonDeals.find(d=>d.id===form.projectId);
-    const base={...form,projectName:projDisplayName(deal)||form.projectName||"",contractAmount:n(form.contractAmount),retentionPct:n(form.retentionPct)};
+    const dpPct=String(form.dpPct??"").trim()===""?parseDpPct(`${form.paymentStructure||""} ${form.paymentTerms||""}`):n(form.dpPct);
+    if(dpPct<0||dpPct>100){toastEmit&&toastEmit("Down payment % must be between 0 and 100.","error");return;}
+    if(dpPct>SUBCON_DP_MAX_NON_MANAGER&&canonRole(role)!=="Manager"&&dpPct!==Number(swos.find(w=>w.id===editingId)?.dpPct||0)){toastEmit&&toastEmit(`A subcontractor down payment above ${SUBCON_DP_MAX_NON_MANAGER}% needs a Manager.`,"error",8000);return;}
+    const base={...form,projectName:projDisplayName(deal)||form.projectName||"",contractAmount:n(form.contractAmount),retentionPct:n(form.retentionPct),dpPct};
     if(editingId){
       const orig=swos.find(w=>w.id===editingId);
       const dpBlk=orig&&WO_ISSUED.includes(base.status)&&!WO_ISSUED.includes(orig.status)&&dpBlockedDeal(base.projectId);
@@ -23028,6 +23043,14 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
               <Inp type="number" value={form.retentionPct} onChange={e=>f("retentionPct",e.target.value)} placeholder="e.g. 10" min={0} max={100}/>
             </Fld>
             <Fld label="Payment Structure"><Inp value={form.paymentStructure} onChange={e=>f("paymentStructure",e.target.value)} placeholder="e.g. 50% Start / 50% Completion"/></Fld>
+            {(()=>{const orig=editingId?swos.find(w=>w.id===editingId):null;
+              const locked=canonRole(role)!=="Manager"&&!!orig&&["Issued","In Progress","Completed"].includes(orig.status);
+              const guess=parseDpPct(`${form.paymentStructure||""} ${form.paymentTerms||""}`);
+              const dpv=String(form.dpPct??"").trim()===""?guess:n(form.dpPct);
+              return(
+              <Fld label="Down payment %" hint={locked?"Locked once the WO is issued (Manager only)":`Paid before PM certification, once the WO is issued${dpv>0&&n(form.contractAmount)>0?` · ${fmt(dpv/100*n(form.contractAmount))}`:""}. Over ${SUBCON_DP_MAX_NON_MANAGER}% needs a Manager.`}>
+                <Inp type="number" value={form.dpPct??""} disabled={locked} onChange={e=>f("dpPct",e.target.value)} placeholder={guess?`${guess} (from payment structure)`:"0 = no down payment"} min={0} max={100}/>
+              </Fld>);})()}
             <Fld label="Payment Terms"><Inp value={form.paymentTerms} onChange={e=>f("paymentTerms",e.target.value)} placeholder="e.g. 30 Days, Cash Basis"/></Fld>
             <Fld label="Account (Chart of Accounts)" hint="Defaults to 5200 · Subcontractor Costs">
               <Sel value={form.accountCode||""} onChange={e=>f("accountCode",e.target.value)}>
