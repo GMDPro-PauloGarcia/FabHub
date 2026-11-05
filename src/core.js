@@ -1308,6 +1308,10 @@ export const isSubconPayable=p=>!!p&&(p.category==="Subcontractor"||SUBCON_ACCOU
 export const SUBCON_DP_STATUSES=["Issued","In Progress","Completed"];
 export const SUBCON_DP_MAX_NON_MANAGER=50;
 export const parseDpPct=text=>{const m=/(\d{1,3})\s*%\s*(start|down|dp|mobili|advance|upon)/i.exec(String(text||""));return m?Math.min(100,Number(m[1])):0;};
+// Payroll / salary WOs are billed after the work is done: no down payment, the
+// PM certifies 100% instead (migration 20261105180000_subcon_payroll_wo_dp_zero.sql).
+export const isPayrollScope=scope=>/(payroll|salary)/i.test(String(scope||""));
+export const woDefaultDpPct=wo=>isPayrollScope(wo?.scopeOfWork)?0:parseDpPct(`${wo?.paymentStructure||""} ${wo?.paymentTerms||""}`);
 export const subconDpAllowPct=wo=>wo&&SUBCON_DP_STATUSES.includes(wo.status)?(Number(wo.dpPct)||0):0;
 
 // ── Supplier payment documents (Paulo, 2026-11-04) ───────────────────────────
