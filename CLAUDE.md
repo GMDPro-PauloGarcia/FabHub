@@ -124,3 +124,7 @@ For the smoke test locally, run `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers
 
 ## Cash sheet ↔ bills
 - A Daily Cash Position disbursement row can carry `payableIds` (the bills it paid) or `noBill` (payroll, bank transfer, loan, petty cash, tax, owner, other). It is set from the row's 🔗 on the sheet (a normal sheet edit, saved with Save) or from Expense Monitoring (which first checks the server's copy of the day with `cashDayIsCurrent`). Transaction History and Expense Monitoring match disbursements to AP payments from these tags; same-day same-amount moves between two GMD banks are paired as transfers.
+
+## PO lines closed at the AP cutover (2026-11-05)
+- 950 PO lines on 485 POs (₱7.17M) whose bill was Paid but whose receipt was never recorded were set to Delivered by migration `20261105222542_close_paid_pos_at_cutover.sql` (paid, project-tagged, dated before 2026-10-06; GMD Stocks and cost-center POs left for Warehouse). No stock movement was written.
+- Their `delivery_note` starts "Closed at AP cutover 2026-11-05": the receipt is not proven. Exclude or label them in any receiving / 3-way-match report. Lines as they were: `purchase_requests_backup_20261105`; rollback steps in the migration.
