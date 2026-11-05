@@ -142,8 +142,12 @@ export const cashDayLocked=(date,now=new Date())=>!!date&&now>=cashDayLockAt(dat
 // The AP (Finance › Payables, Payments, Weekly Dues) is back on 2026-11-01: after
 // the AP sheet cutover FabHub is the AP, and Finance needs to enter bills that
 // have no PO (rent, utilities, OPEX) charged to a project or cost center (Paulo).
+// The Finance / Accounting dashboard (acctdash) is back too (2026-11-05): the
+// 11-01 change showed the "Finance" menu item again but left its page hidden,
+// so the item, the ERP bar's Dashboard tab and the "← Accounting" buttons
+// bounced to Home.
 export const HIDDEN_NAV_IDS = new Set(["ceqs","costanalysis"]);
-export const HIDDEN_PAGES = new Set(["acctdash","ceqs","costanalysis"]);
+export const HIDDEN_PAGES = new Set(["ceqs","costanalysis"]);
 export const HIDDEN_FIN_TABS = new Set([]);
 export const AP_HIDDEN = HIDDEN_FIN_TABS.has("payables");
 export const WAREHOUSE_HIDDEN = HIDDEN_PAGES.has("inventory");
