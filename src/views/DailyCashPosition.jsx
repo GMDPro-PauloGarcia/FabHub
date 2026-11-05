@@ -1,6 +1,7 @@
 import React,{useState,useMemo,useEffect,useLayoutEffect,useRef} from "react";
 import {today,uid,BANKS,emptyBankRow,emptyDayPosition,uiConfirm,uiPrompt,addDaysLocalISO,CASH_PREFILL_DAYS,payeeOf,particularsOf,payeeRaw,particularsRaw,cashCanEdit,cashDayLocked} from "../shared";
 import {arSummary} from "../core";
+import {LinkModal} from "./ExpenseMonitoring";
 
 // ── Currency input: shows grouped digits, edits raw ────────────────────────────
 const CurrInp=({value,onChange,placeholder="—",style:sx={}})=>{
@@ -60,7 +61,7 @@ const WrapCell=({value,onType,placeholder})=>{
 // carry from day to day until they are marked cleared.
 function DailyCashPosition({
   cashPositions={},saveDayPos=()=>{},billings=[],wonDeals=[],payables=[],loans=[],suppliers=[],subcons=[],userName="",
-  role="",username="",cashStale=false
+  role="",username="",cashStale=false,payPays=[],canPay=false,onPayMany=null
 }){
   const[selDate,setSelDate]=useState(today);
   // ── Edit rights & day lock (see cashCanEdit / cashDayLocked in shared.jsx) ──
@@ -667,6 +668,32 @@ function DailyCashPosition({
     </select>
   );
   const textCell=(val,onType,ph)=><WrapCell value={val} onType={onType} placeholder={ph}/>;
+  // Bill(s) a disbursement row is tagged to (set from Expense Monitoring; kept
+  // on the row through every edit here). Display only.
+  // 🔗 Tie a disbursement row to the bill it paid (or tag it as paying no bill).
+  // Applied as a normal edit of this sheet, so it saves with Save like any other
+  // change. Recording the AP payment in the same step goes through onPayMany.
+  const[linkRow,setLinkRow]=useState(null);
+  const openLink=(row,ri)=>setLinkRow({ri,m:{key:`${selDate}#out#${row.id||ri}`,date:selDate,rowId:row.id||null,rowIndex:ri,bank:row.bank||"",
+    payee:payeeOf(row),particulars:particularsOf(row),amount:Math.round(n(row.amount)*100)/100,
+    payableIds:Array.isArray(row.payableIds)?row.payableIds:(row.payableId?[row.payableId]:[]),noBill:String(row.noBill||"")}});
+  const applyLink=(ids,noBill)=>{
+    const {ri,m}=linkRow||{};
+    const idx=m?.rowId?manualDisb.findIndex(x=>x.id===m.rowId):ri;
+    if(idx==null||idx<0||!manualDisb[idx]) return;
+    const md=[...manualDisb];
+    const row={...md[idx],payableIds:ids};
+    delete row.payableId;
+    if(noBill) row.noBill=noBill; else delete row.noBill;
+    md[idx]=row;
+    f("disbursements.manual",md);
+  };
+  const billLinkLabel=(row)=>{
+    const ids=Array.isArray(row?.payableIds)?row.payableIds:(row?.payableId?[row.payableId]:[]);
+    if(!ids.length) return row?.noBill?<span title="Tagged in Expense Monitoring: paid no supplier bill">{row.noBill}</span>:<span style={{color:"#cbd5e1"}}>—</span>;
+    const bs=ids.map(id=>(payables||[]).find(p=>p.id===id));
+    return <span title={bs.map(b=>b?`${b.vendor||""} ${b.apNumber||""} ${b.poId||""}`.trim():"bill not loaded").join("\n")}>🔗 {bs.map(b=>b?(b.apNumber||b.poId||"bill"):"?").join(", ")}</span>;
+  };
   const delBtn=(onClick)=>(
     <button onClick={onClick} style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:4,padding:"2px 7px",cursor:"pointer",color:"#dc2626",fontWeight:700,fontSize:".72rem",fontFamily:"inherit"}}>✕</button>
   );
@@ -1043,12 +1070,13 @@ function DailyCashPosition({
                 <th style={{...th,textAlign:"left"}}>Payee</th>
                 <th style={{...th,textAlign:"left"}}>Particulars</th>
                 <th style={{...th,width:mob?110:160}}>Amount</th>
+                <th style={{...th,width:mob?80:120}} title="The bill this disbursement paid. Tap 🔗 to link it.">Bill</th>
                 <th style={{...th,width:40,background:"#fff",border:"none"}}></th>
               </tr>
             </thead>
             <tbody>
               {manualDisb.length===0&&(
-                <tr><td colSpan={5} style={{...td,color:"#94a3b8",fontStyle:"italic",padding:"10px"}}>No disbursements for {fmtDate(selDate)}. Add rows below.</td></tr>
+                <tr><td colSpan={6} style={{...td,color:"#94a3b8",fontStyle:"italic",padding:"10px"}}>No disbursements for {fmtDate(selDate)}. Add rows below.</td></tr>
               )}
               {manualDisb.map((row,ri)=>(
                 <tr key={row.id||ri} style={{background:ri%2?C.zebra:"#fff"}}>
@@ -1059,12 +1087,20 @@ function DailyCashPosition({
                   <td style={{...td,padding:2}}>
                     <CurrInp value={row.amount||""} onChange={e=>{const md=[...manualDisb];md[ri]={...md[ri],amount:e.target.value};f("disbursements.manual",md);}} style={{textAlign:"right",fontSize:".8rem",padding:"5px 8px"}}/>
                   </td>
+                  <td style={{...td,fontSize:".7rem",color:"#475569"}}>
+                    {readOnly||!(n(row.amount)>0)
+                      ?billLinkLabel(row)
+                      :<button onClick={()=>openLink(row,ri)} title="Tie this disbursement to the bill it paid" style={{background:"none",border:"1px dashed #cbd5e1",borderRadius:5,padding:"3px 6px",cursor:"pointer",fontFamily:"inherit",fontSize:".7rem",color:"#475569",textAlign:"left",width:"100%"}}>
+                        {(row.payableIds?.length||row.payableId||row.noBill)?billLinkLabel(row):"🔗 Link bill"}
+                      </button>}
+                  </td>
                   <td style={{...td,padding:2,textAlign:"center",border:"none"}}>{delBtn(()=>f("disbursements.manual",manualDisb.filter((_,j)=>j!==ri)))}</td>
                 </tr>
               ))}
               <tr style={{background:"#f1e9e2"}}>
                 <td style={{...td,fontWeight:900,color:"#7c2d12"}} colSpan={3}>TOTAL</td>
                 <td style={{...td,...numCell,fontWeight:900,color:"#b45309"}}>{fmt2(disbTotal)}</td>
+                <td style={td}></td>
                 <td style={{...td,border:"none",background:"#fff"}}></td>
               </tr>
             </tbody>
@@ -1236,6 +1272,9 @@ function DailyCashPosition({
       </div>
       </fieldset>
       {pos.savedAt&&<div style={{textAlign:"right",fontSize:".7rem",color:"#94a3b8",marginTop:6}}>Last saved: {new Date(pos.savedAt).toLocaleString("en-PH")}</div>}
+      {linkRow&&<LinkModal key={linkRow.m.key} m={linkRow.m} r={{status:linkRow.m.payableIds.length?"linked":"none"}} onClose={()=>setLinkRow(null)}
+        payables={payables} payPays={payPays} role={role} username={username} userName={userName} canPay={canPay&&!!onPayMany} onPayMany={onPayMany}
+        onSheetLink={applyLink}/>}
     </div>
   );
 }
