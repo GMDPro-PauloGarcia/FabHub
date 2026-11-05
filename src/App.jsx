@@ -5711,7 +5711,6 @@ export default function App(){
     const rec={...wo,id:uid(),createdDate:today};
     upSwos(ws=>[rec,...ws]);
     if(isSupabaseReady()) sbSyncOne("subcon_work_orders",rec,swoToSb);
-    syncWoPayable(rec); // WO issued → subcontractor payable in the AP ledger
     const msg=`🛠 <b>${rec.status==="Pending Approval"?"Work Order Awaiting Approval":"Subcon Work Order Issued"} ${rec.woNumber||""}</b>\n${rec.subcontractor||"?"}${rec.specialty?` · ${rec.specialty}`:""}\nProject: ${rec.projectName||"?"}\nAmount: ₱${(Number(rec.contractAmount)||0).toLocaleString("en-PH")}\nBy: ${rec.requestedBy||session?.name||"?"}`;
     sendTelegramNotification("procurement",msg);
     sendTelegramNotification("management",msg);
@@ -5736,7 +5735,6 @@ export default function App(){
     });
     upSwos(ws=>[...recs,...ws]);
     if(isSupabaseReady()) recs.forEach(rec=>sbSyncOne("subcon_work_orders",rec,swoToSb));
-    recs.forEach(rec=>syncWoPayable(rec));
     const total=recs.reduce((s,r)=>s+(Number(r.contractAmount)||0),0);
     const anyPending=recs.some(r=>r.status==="Pending Approval");
     const msg=`🛠 <b>${recs.length} Subcon Work Order${recs.length>1?"s":""} uploaded${anyPending?" — some awaiting approval":""}</b>\nRange: ${recs[recs.length-1].woNumber} → ${recs[0].woNumber}\nTotal: ₱${total.toLocaleString("en-PH")}\nBy: ${session?.name||"?"}`;
@@ -5753,7 +5751,6 @@ export default function App(){
       if(isSupabaseReady()) sbSyncOne("subcon_work_orders",nw,swoToSb);
       return nw;
     }));
-    if(updated) syncWoPayable(updated); // keep the WO's AP payable in sync (created once it's Issued)
   };
   const deleteSWO=(id)=>{
     const wo=swos.find(w=>w.id===id);
@@ -9316,30 +9313,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // in the one AP ledger. Keyed by woNumber; account code defaults to 5070
   // (Production - Subcon). The full contract is the liability — retention (the
   // WO's rate, else AP_RULES.subconRetentionPct) is held back at payment time.
-  const syncWoPayable=(wo)=>{
-    if(!wo||!wo.woNumber) return null;
-    const amount=Math.round((Number(wo.contractAmount)||0)*100)/100;
-    const committed=["Issued","Partially Delivered","Delivered","Completed","For Accounting"].includes(wo.status);
-    const existing=payables.find(p=>p.poId===wo.woNumber);
-    if(!committed||!(amount>0)) return existing||null;
-    const linkedProjectId=(wo.projectId&&isUUID(wo.projectId))?wo.projectId:(wo.dealId&&isUUID(wo.dealId)?wo.dealId:null);
-    const vendor=wo.subcontractor||"Subcontractor";
-    if(existing){
-      if(existing.status==="Paid") return existing;
-      const upd={...existing,amount,vendor,projectId:linkedProjectId||existing.projectId,retentionPct:Number(wo.retentionPct)||0};
-      upPayables(ps=>ps.map(p=>p.id===existing.id?upd:p));
-      if(isSupabaseReady()&&isUUID(existing.id)) sbUpsert("payables",payableToSb(upd),"id").catch(()=>{});
-      return upd;
-    }
-    const rec={id:uid(),apNumber:"",vendor,amount,paidAmount:0,dueDate:"",category:"Subcontractor",
-      accountCode:wo.accountCode||"5070", // 5070 Production - Subcon (5200 is Load Allowance in the chart)
-      retentionPct:Number(wo.retentionPct)||0,
-      invoiceRef:wo.woNumber,invoiceNumber:"",invoiceDate:"",notes:`Auto-created from Work Order ${wo.woNumber}`,projectId:linkedProjectId,
-      poNumber:wo.woNumber,poId:wo.woNumber,status:"Unpaid",verified:false,verificationPct:0,createdAt:today,createdBy:session?.name||""};
-    upPayables(ps=>[rec,...ps]);
-    if(isSupabaseReady()) sbUpsert("payables",payableToSb(rec),"id").catch(()=>{});
-    return rec;
-  };
+  // A Work Order no longer creates a contract-sized bill (decided 2026-11-05):
+  // each subcontractor billing is its own bill against the WO (logged from
+  // Finance › Subcon Payments). The database caps the WO's bills at its contract
+  // and its payments at certified % x contract (migration
+  // 20261105160000_subcon_billing_per_progress_claim.sql).
   // The database refuses a likely duplicate bill or payment (AP safety net,
   // migration 20261102113419): DUPLICATE_BLOCK always, DUPLICATE_REVIEW unless a
   // Manager gives a reason. Returns the Manager's reason, or null after
@@ -9367,11 +9345,21 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // subcontractor PRVs with no Work Order, so Operations never confirmed the
     // work. A PRV linked to a WO that already has its own bill would pay the same
     // work twice — pay that bill instead.
-    if(data.docType==="PRV"&&isSubconPayable(data)){
-      const wo=String(data.poNumber||"").trim();
+    // Subcon billing on a Work Order: one bill per progress billing, carrying the
+    // subcontractor's own billing no., and all of a WO's bills stay within its
+    // contract (the database refuses more unless a Manager saves it).
+    if(isSubconPayable(data)&&String(data.poNumber||"").trim()){
+      const woNo=String(data.poNumber).trim();
+      const wo=swos.find(w=>w.woNumber===woNo);
       if(wo){
-        const woBill=payables.find(p=>p.poId===wo&&p.id!==editPayId);
-        if(woBill){toastEmit(`${wo} already has its own bill${woBill.apNumber?` (${woBill.apNumber})`:""}. Record the payment on that bill instead of a new payment request, so the work isn't paid twice.`,"error",9000);return;}
+        if(!String(data.invoiceNumber||"").trim()){toastEmit("Enter the subcontractor's billing / invoice no. for this progress billing.","error",8000);return;}
+        const contract=Number(wo.contractAmount)||0;
+        const others=payables.filter(p=>p.id!==editPayId&&isSubconPayable(p)&&p.poNumber===woNo&&!["Cancelled","Void"].includes(p.status)).reduce((t,p)=>t+(Number(p.amount)||0),0);
+        if(contract>0&&others+(Number(data.amount)||0)>contract+1){
+          const msg=`${woNo} is already billed ${fmt(others)} of its ${fmt(contract)} contract; this would bring it to ${fmt(others+(Number(data.amount)||0))}. Raise the WO contract first (variation)${canonRole(role)==="Manager"?", or save anyway as Manager":""}.`;
+          if(canonRole(role)!=="Manager"){toastEmit(msg,"error",10000);return;}
+          if(!(await uiConfirm({title:"Over the Work Order",tone:"warning",message:msg,confirmLabel:"Save anyway"}))) return;
+        }
       }
     }
     // D3: subcontractor work of ₱50,000+ must go through a Work Order (either
@@ -9382,8 +9370,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(woBlock){
       const lim="₱"+AP_RULES.subconNoWoLimit.toLocaleString("en-PH");
       toastEmit(woBlock.others>0
-        ?`${data.vendor} already has ${fmt(woBlock.others)} of subcontractor payables with no Work Order in the last ${AP_RULES.subconNoWoWindowDays} days. With this one it's ${fmt(woBlock.total)}, over the ${lim} limit. Create a Work Order for this work: its bill is created automatically.`
-        :`Subcontractor payables of ${lim} or more need a Work Order, so Operations can confirm the work before it's paid. Create the Work Order first: its bill is created automatically.`,"error",12000);
+        ?`${data.vendor} already has ${fmt(woBlock.others)} of subcontractor payables with no Work Order in the last ${AP_RULES.subconNoWoWindowDays} days. With this one it's ${fmt(woBlock.total)}, over the ${lim} limit. Create a Work Order for this work, then log each subcontractor billing against it.`
+        :`Subcontractor payables of ${lim} or more need a Work Order, so Operations can confirm the work before it's paid. Create the Work Order first, then log each subcontractor billing against it.`,"error",12000);
       return;
     }
     // Duplicate guard (new payables only) — the AP ledger has no unique key, so the
@@ -9560,7 +9548,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const wo=(swos||[]).find(w=>w.woNumber&&w.woNumber===p.poNumber);
         const base=Number(wo?.contractAmount)>0?Number(wo.contractAmount):Number(p.amount)||0;
         const cap=Math.round((Number(p.verificationPct)||0)/100*base*100)/100;
-        const claimed=paysOf(p.id).filter(x=>x.status!=="Cancelled"&&x.kind!=="Retention release").reduce((s,x)=>s+r2(x.amount)+r2(x.retentionAmount),0)+r2(e.amount)+r2(e.retentionAmount);
+        // With a WO the cap covers every progress billing on it (and the other
+        // entries in this same batch); without one, just this bill.
+        const woBills=wo?payables.filter(b=>payIsSubcon(b)&&b.poNumber===p.poNumber).map(b=>b.id):[p.id];
+        const claimed=payPays.filter(x=>woBills.includes(x.payableId)&&x.status!=="Cancelled"&&x.kind!=="Retention release").reduce((s,x)=>s+r2(x.amount)+r2(x.retentionAmount),0)
+          +list.filter(o=>woBills.includes(o.payableId)&&o.kind!=="Retention release").reduce((s,o)=>s+r2(o.amount)+r2(o.retentionAmount),0);
         if(claimed>cap+1){toastEmit(`No payment: that brings ${p.apNumber||p.vendor||"this bill"} to ₱${claimed.toLocaleString("en-PH")} but the PM certified only ${Number(p.verificationPct)||0}% (₱${cap.toLocaleString("en-PH")}). Ask the PM to certify more work first.`,"error",10000);return false;}
       }
       if(payIsSubcon(p)&&e.kind==="Retention release"&&(Number(p.verificationPct)||0)<100){toastEmit("Retention is released only when the PM certifies 100%.","error",8000);return false;}
@@ -15581,7 +15573,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
         {/* ── SUBCON PAYMENT MONITORING ── one row per WO, payments as columns (read-only). */}
         {finTab==="subconmon"&&(
-          <SubconPaymentMonitor swos={swos} payables={payables} payPays={payPays} deals={deals} prs={prs} exps={exps} today={today}/>
+          <SubconPaymentMonitor swos={swos} payables={payables} payPays={payPays} deals={deals} prs={prs} exps={exps} today={today}
+            onNewBilling={roleCanInsert("payables")?wo=>{
+              const pid=(wo.dealId&&isUUID(wo.dealId))?wo.dealId:((wo.projectId&&isUUID(wo.projectId))?wo.projectId:null);
+              setPayForm({...emptyPayForm(),docType:"AP",vendor:wo.subcontractor||"",category:"Subcontractor",accountCode:wo.accountCode||"5070",
+                projectId:pid,poNumber:wo.woNumber,poId:wo.woNumber,invoiceRef:wo.woNumber,retentionPct:Number(wo.retentionPct)||0,
+                notes:`Progress billing on Work Order ${wo.woNumber}`});
+              setEditPayId(null);setPayModal(true);
+            }:null}/>
         )}
 
         {/* Add/Edit Payable modal: page-level so Expense Monitoring (and the
@@ -15589,6 +15588,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 {/* Add/Edit Payable Modal */}
         <Modal open={payModal} onClose={()=>{setPayModal(false);setEditPayId(null);}} title={editPayId?(payForm.docType==="PRV"?"Edit Payment Request":"Edit Other Payable"):(payForm.docType==="PRV"?"New Payment Request (PRV)":"New Other Payable")}>
           {editPayId&&payForm.apNumber&&<div style={{fontSize:".72rem",color:"#6366f1",fontWeight:700,fontFamily:"monospace",marginBottom:8}}>{payForm.apNumber}{payForm.poNumber?` · PO ${payForm.poNumber}`:""}</div>}
+          {!editPayId&&isSubconPayable(payForm)&&payForm.poNumber&&(()=>{const wo=swos.find(w=>w.woNumber===payForm.poNumber);const billed=payables.filter(p=>isSubconPayable(p)&&p.poNumber===payForm.poNumber&&!["Cancelled","Void"].includes(p.status)).reduce((t,p)=>t+(Number(p.amount)||0),0);return(
+            <div style={{background:"#eef2ff",border:"1px solid #c7d2fe",borderRadius:8,padding:"8px 10px",fontSize:".76rem",color:"#3730a3",marginBottom:10}}>
+              Subcon billing against <b style={{fontFamily:"monospace"}}>{payForm.poNumber}</b>{wo?` · contract ₱${(Number(wo.contractAmount)||0).toLocaleString("en-PH")} · billed so far ₱${billed.toLocaleString("en-PH")} · left to bill ₱${Math.max(0,(Number(wo.contractAmount)||0)-billed).toLocaleString("en-PH")}`:""}.
+              Enter the subcontractor's billing no. and this billing's amount. It's paid only up to the % the PM certifies.
+            </div>);})()}
           <Fld label="Type">
             <Sel value={payForm.docType==="PRV"?"PRV":"AP"} onChange={e=>setPayForm(p=>({...p,docType:e.target.value}))} disabled={!!(editPayId&&payForm.apNumber)}>
               <option value="AP">Supplier bill (AP)</option>

@@ -5,11 +5,13 @@ import {projDisplayName} from "../core";
 
 // ─── SUBCON BILLING — PM / Operations certification ─────────────────────────
 // "No approval, no billing; no billing, no payment" (Paulo, 2026-10-27).
-// A Work Order raises one subcontractor payable for the whole contract and each
-// progress billing is a partial payment against it, so the PM certifies the
-// CUMULATIVE % of work actually done. The database refuses any subcon payment
-// beyond certified % x WO contract, and approval before any certification
-// (migration 20261027160000_subcon_billing_pm_certification.sql). Only a PM
+// Each subcontractor progress billing is its own bill against the Work Order
+// (since 2026-11-05), so the PM certifies the CUMULATIVE % of the WO's work
+// actually done, once per WO: it is stamped on every bill of that WO. The
+// database refuses any subcon payment that takes the WO's payments beyond
+// certified % x WO contract, and approval before any certification
+// (migrations 20261027160000_subcon_billing_pm_certification.sql and
+// 20261105160000_subcon_billing_per_progress_claim.sql). Only a PM
 // named on the project card, Operations or a Manager can certify — the list
 // comes from list_subcon_billings(), which already filters to those projects.
 
@@ -34,8 +36,24 @@ export default function SubconCertView({session,deals=[],sendTelegramNotificatio
   useEffect(()=>{load();},[load]);
 
   const dealName=id=>projDisplayName(deals.find(d=>d.id===id))||"—";
-  const open=r=>String(r.status||"")!=="Paid";
-  const shown=rows.filter(r=>showAll||open(r));
+  // One card per Work Order (a bill with no WO is its own card).
+  const groups=(()=>{
+    const m=new Map();
+    rows.forEach(r=>{const k=r.wo_number?"wo:"+r.wo_number:"id:"+r.id;if(!m.has(k))m.set(k,[]);m.get(k).push(r);});
+    return [...m.values()].map(bills=>{
+      const certs=bills.filter(b=>b.verified&&b.verified_by&&scNum(b.verification_pct)>0);
+      const top=certs.sort((a,b)=>scNum(b.verification_pct)-scNum(a.verification_pct))[0];
+      const noted=bills.find(b=>b.last_note);
+      const openBills=bills.filter(b=>String(b.status||"")!=="Paid");
+      return {key:bills[0].wo_number||bills[0].id,bills,id:(openBills[0]||bills[0]).id,
+        wo_number:bills[0].wo_number,ap_number:bills.length===1?bills[0].ap_number:"",vendor:bills[0].vendor,project_id:bills[0].project_id,scope:bills[0].scope,
+        contract:scNum(bills[0].contract),billed:bills.reduce((t,b)=>t+scNum(b.amount),0),claimed:bills.reduce((t,b)=>t+scNum(b.claimed),0),
+        verification_pct:top?scNum(top.verification_pct):0,verified:!!top,verified_by:top?.verified_by||"",
+        open:openBills.length>0,last_note:noted?.last_note||"",last_action:noted?.last_action||""};
+    });
+  })();
+  const open=g=>g.open;
+  const shown=groups.filter(g=>showAll||open(g));
   const notify=(r,head,body)=>{
     if(!sendTelegramNotification) return;
     const msg=`${head}\n<b>${r.wo_number||r.ap_number||"Subcon billing"}</b> · ${r.vendor||"?"}\nProject: ${dealName(r.project_id)}\n${body}\nBy: ${session?.name||"?"}`;
@@ -89,7 +107,7 @@ export default function SubconCertView({session,deals=[],sendTelegramNotificatio
           const cap=pct/100*scNum(r.contract), claimed=scNum(r.claimed);
           const f=form[r.id]||{};
           return(
-            <div key={r.id} style={{background:"#fff",border:`1.5px solid ${certified?"#a7f3d0":"#fed7aa"}`,borderRadius:12,padding:"12px 14px"}}>
+            <div key={r.key} style={{background:"#fff",border:`1.5px solid ${certified?"#a7f3d0":"#fed7aa"}`,borderRadius:12,padding:"12px 14px"}}>
               <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
                 <div style={{minWidth:0}}>
                   <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{r.vendor||"?"} · <span style={{fontFamily:"'IBM Plex Mono',monospace"}}>{r.wo_number||r.ap_number}</span></div>
@@ -99,10 +117,18 @@ export default function SubconCertView({session,deals=[],sendTelegramNotificatio
                   color:certified?"#065f46":"#9a3412",background:certified?"#ecfdf5":"#fff7ed"}}>{certified?`${pct}% certified by ${r.verified_by}`:"Not certified — can't be paid"}</span>
               </div>
               <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:8,margin:"10px 0",fontSize:".76rem"}}>
-                {[["WO contract",scPeso(r.contract)],["Billed / paid so far",scPeso(claimed)],["Payable up to (certified)",scPeso(cap)],["Status",`${r.status||"—"}${r.approval_status?` · ${r.approval_status}`:""}`]].map(([k,v])=>(
+                {[["WO contract",scPeso(r.contract)],["Billed by subcon",`${scPeso(r.billed)} · ${r.bills.length} billing${r.bills.length===1?"":"s"}`],["Paid so far (incl. retention)",scPeso(claimed)],["Payable up to (certified)",scPeso(cap)]].map(([k,v])=>(
                   <div key={k} style={{background:"#f8fafc",borderRadius:8,padding:"6px 9px"}}>
                     <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".6px",color:"#94a3b8"}}>{k}</div>
                     <div style={{fontWeight:700,color:"#0f172a"}}>{v}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:3,marginBottom:8}}>
+                {r.bills.map(b=>(
+                  <div key={b.id} style={{display:"flex",justifyContent:"space-between",gap:8,fontSize:".72rem",color:"#475569",background:"#f8fafc",borderRadius:6,padding:"4px 8px"}}>
+                    <span style={{fontFamily:"'IBM Plex Mono',monospace"}}>{b.ap_number||"(new bill)"}</span>
+                    <span>{scPeso(b.amount)} · {b.status||"—"}{b.approval_status?` · ${b.approval_status}`:""}</span>
                   </div>
                 ))}
               </div>

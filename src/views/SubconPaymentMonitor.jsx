@@ -10,13 +10,15 @@ import {LedgerHost,chip,linkBtn} from "./Ledgers";
 // Order, the contract, each payment as its own column (1, 2, 3 …), total paid,
 // retention and balance.
 //
-// Nothing here writes. Payments are still recorded on Supplier Bills / Payment
-// Run, and the PM still certifies on Subcon Billing (the database caps every
-// subcon payment at certified % x WO contract, migration
-// 20261027160000_subcon_billing_pm_certification.sql).
+// Each subcontractor progress billing is its own bill against the WO (since
+// 2026-11-05). "+ Billing" opens the normal bill form pre-filled for the WO;
+// everything else here is read-only. Payments are recorded on Supplier Bills /
+// Payment Run, and the PM certifies on Subcon Billing. The database keeps a
+// WO's bills within its contract and its payments within certified % x
+// contract (migrations 20261027160000 and 20261105160000).
 //
 // Sources: subcon_work_orders (contract), payables whose po_number is the WO
-// number (the subcon bill), payable_payments (each payment / retention release).
+// number (the subcon billings), payable_payments (each payment / release).
 // A WO with a paid amount typed on the WO itself but no bill is shown as
 // "Paid outside AP": that money isn't in the AP ledger and should be moved there.
 
@@ -63,7 +65,8 @@ export function subconMonitorRows({swos=[],payables=[],payPays=[],deals=[]}){
     // held is still owed, so it stays inside the balance (shown separately too).
     const balance=Math.max(0,r2(contract-cash-ewt));
     // Certified but not yet paid: what Finance owes now under the PM's cert.
-    const certBill=bills.find(b=>b.verifiedBy&&num(b.verificationPct)>0);
+    const certBill=bills.filter(b=>b.verifiedBy&&num(b.verificationPct)>0).sort((a,b)=>num(b.verificationPct)-num(a.verificationPct))[0];
+    const billed=r2(bills.reduce((s,b)=>s+num(b.amount),0));
     const certPct=certBill?num(certBill.verificationPct):0;
     const gross=r2(progress.reduce((s,x)=>s+num(x.amount)+num(x.retentionAmount),0));
     const dueNow=certBill&&balance>1?Math.max(0,r2(certPct/100*contract-gross)):0;
@@ -71,13 +74,13 @@ export function subconMonitorRows({swos=[],payables=[],payPays=[],deals=[]}){
     const d=dealById.get(w.dealId);
     return {id:w.id,wo:w,woNumber:w.woNumber||"—",subcon:w.subcontractor||bills[0]?.vendor||"—",dealId:w.dealId||null,
       project:d?projDisplayName(d):(w.projectName||"—"),scope:w.scopeOfWork||"",terms:w.paymentStructure||w.paymentTerms||"",
-      woStatus:w.status||"",contract,retPct:num(w.retentionPct),bills,progress,releases,cash,ewt,retHeld,balance,certPct,
+      woStatus:w.status||"",contract,retPct:num(w.retentionPct),bills,billed,toBill:Math.max(0,r2(contract-billed)),progress,releases,cash,ewt,retHeld,balance,certPct,
       certBy:certBill?.verifiedBy||"",dueNow,status,woOnlyPaid,
       paidPct:contract>0?Math.min(100,Math.round(cash/contract*100)):0};
   }).sort((a,b)=>a.subcon.localeCompare(b.subcon)||String(a.woNumber).localeCompare(String(b.woNumber)));
 }
 
-export default function SubconPaymentMonitor({swos=[],payables=[],payPays=[],deals=[],prs=[],exps=[],today=TODAY}){
+export default function SubconPaymentMonitor({swos=[],payables=[],payPays=[],deals=[],prs=[],exps=[],today=TODAY,onNewBilling=null}){
   const mob=useIsMobile();
   const[q,setQ]=useState("");
   const[filter,setFilter]=useState("open");
@@ -101,10 +104,10 @@ export default function SubconPaymentMonitor({swos=[],payables=[],payPays=[],dea
   const kpis=[
     ["Total WO contract",php2(sum(all,"contract")),`${all.length} work orders`,C.navy],
     ["Paid to date",php2(sum(all,"cash")),`${all.filter(r=>r.cash>0).length} WOs with a payment`,C.ok],
+    ["Billed by subcons",php2(sum(all,"billed")),`${php2(sum(all,"toBill"))} not billed yet`,C.purple],
     ["Balance owed",php2(sum(all,"balance")),"contract − paid − EWT",C.bad],
     ["Certified, not yet paid",php2(sum(all,"dueNow")),"payable now under PM certification",C.blue],
-    ["Retention held",php2(sum(all,"retHeld")),"released at 100% certified",C.warn],
-    ["WOs with no bill",String(all.filter(r=>r.status==="No bill").length),"no subcon bill in AP yet",C.purple],
+    ["Retention held",php2(sum(all,"retHeld")),`released at 100% · ${all.filter(r=>r.status==="No bill").length} WOs with no billing`,C.warn],
   ];
   const ewtMissing=all.filter(r=>r.cash>0&&r.ewt<=0).length;
 
@@ -113,11 +116,11 @@ export default function SubconPaymentMonitor({swos=[],payables=[],payPays=[],dea
     const maxN=Math.max(1,...rows.map(r=>r.progress.length));
     const head=["Subcontractor","Project","WO #","Scope","Payment terms","WO status","Total contract","Retention %",
       ...Array.from({length:maxN},(_,i)=>[`Payment ${i+1}`,`Date ${i+1}`,`Ref ${i+1}`]).flat(),
-      "Total paid","Retention held","EWT","Balance","Certified %","Certified by","Certified, unpaid","Status"];
+      "Billed","Not billed yet","Total paid","Retention held","EWT","Balance","Certified %","Certified by","Certified, unpaid","Status"];
     const lines=[head.map(esc).join(",")];
     rows.forEach(r=>lines.push([r.subcon,r.project,r.woNumber,r.scope,r.terms,r.woStatus,r.contract.toFixed(2),r.retPct,
       ...Array.from({length:maxN},(_,i)=>{const p=r.progress[i];return p?[num(p.amount).toFixed(2),p.payDate,p.refNo]:["","",""];}).flat(),
-      r.cash.toFixed(2),r.retHeld.toFixed(2),r.ewt.toFixed(2),r.balance.toFixed(2),r.certPct||"",r.certBy,r.dueNow.toFixed(2),r.status].map(esc).join(",")));
+      r.billed.toFixed(2),r.toBill.toFixed(2),r.cash.toFixed(2),r.retHeld.toFixed(2),r.ewt.toFixed(2),r.balance.toFixed(2),r.certPct||"",r.certBy,r.dueNow.toFixed(2),r.status].map(esc).join(",")));
     const blob=new Blob(["﻿"+lines.join("\n")],{type:"text/csv;charset=utf-8"});
     const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`GMD_subcon_payments_${today}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
   };
@@ -132,6 +135,8 @@ export default function SubconPaymentMonitor({swos=[],payables=[],payPays=[],dea
       {peso0(p.amount)}<div style={{fontSize:".6rem",color:C.faint}}>{fmtD(p.payDate)}{p.refNo?` · ${p.refNo}`:""}</div></span>;
   };
   const statusChip=r=>chip(r.status==="Certified"?`Certified ${r.certPct}%`:r.status,STATUS_CLR[r.status]||C.faint);
+  const billBtn=r=>onNewBilling&&r.toBill>1&&r.status!=="Paid outside AP"?<button onClick={()=>onNewBilling(r.wo)} title="Log the subcontractor's next progress billing against this Work Order"
+    style={{marginTop:4,display:"block",border:`1.5px solid ${C.navy}`,background:"#fff",color:C.navy,borderRadius:6,padding:"2px 8px",fontFamily:"inherit",fontSize:".66rem",fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>+ Billing</button>:null;
   const inp={border:"1.5px solid #e2e8f0",borderRadius:8,padding:"6px 9px",fontFamily:"inherit",fontSize:".78rem",background:"#fff"};
   const tot=k=>sum(rows,k);
 
@@ -140,7 +145,7 @@ export default function SubconPaymentMonitor({swos=[],payables=[],payPays=[],dea
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10,marginBottom:12}}>
         <div>
           <h2 style={{margin:0,fontWeight:800,color:C.ink,fontSize:"1.15rem"}}>🔨 Subcon Payment Monitoring</h2>
-          <div style={{fontSize:".75rem",color:C.muted,marginTop:2,maxWidth:680}}>One row per Work Order, like the client Sales &amp; Collection sheet. Payments are recorded on Supplier Bills; the PM certifies on Subcon Billing. Read-only.</div>
+          <div style={{fontSize:".75rem",color:C.muted,marginTop:2,maxWidth:680}}>One row per Work Order, like the client Sales &amp; Collection sheet. Log each subcontractor billing with “+ Billing”; the PM certifies on Subcon Billing; payments are recorded on Supplier Bills.</div>
         </div>
         <button onClick={exportCsv} style={{background:C.navy,color:"#fff",border:"none",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,cursor:"pointer"}}>⬇ Export CSV</button>
       </div>
@@ -179,11 +184,13 @@ export default function SubconPaymentMonitor({swos=[],payables=[],payPays=[],dea
                 <div>{statusChip(r)}</div>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginTop:8,fontSize:".72rem"}}>
-                {[["Contract",php2(r.contract)],["Paid",php2(r.cash)],["Balance",php2(r.balance)]].map(([k,v])=>(
+                {[["Contract",php2(r.contract)],["Billed",php2(r.billed)],["Paid",php2(r.cash)]].map(([k,v])=>(
                   <div key={k} style={{background:"#f8fafc",borderRadius:7,padding:"5px 7px"}}><div style={{fontSize:".56rem",color:C.faint,textTransform:"uppercase"}}>{k}</div><div style={{fontWeight:700}}>{v}</div></div>))}
               </div>
               {r.progress.length>0&&<div style={{fontSize:".68rem",color:C.muted,marginTop:6}}>{r.progress.map((p,i)=><div key={p.id}>{i+1}. {fmtD(p.payDate)} · {php2(p.amount)}{p.refNo?` · ${p.refNo}`:""}</div>)}</div>}
-              {r.dueNow>1&&<div style={{fontSize:".7rem",color:C.blue,fontWeight:700,marginTop:4}}>Certified, unpaid: {php2(r.dueNow)}</div>}
+              <div style={{fontSize:".7rem",color:r.balance>1?C.bad:C.ok,fontWeight:700,marginTop:4}}>Balance {php2(r.balance)}</div>
+              {r.dueNow>1&&<div style={{fontSize:".7rem",color:C.blue,fontWeight:700,marginTop:2}}>Certified, unpaid: {php2(r.dueNow)}</div>}
+              {billBtn(r)}
             </div>
           ))}
         </div>
@@ -191,40 +198,42 @@ export default function SubconPaymentMonitor({swos=[],payables=[],payPays=[],dea
         <div style={{background:"#fff",border:`1px solid ${C.line}`,borderRadius:12,overflow:"auto",maxHeight:"70vh"}}>
           <table style={{borderCollapse:"collapse",width:"100%",minWidth:1100}}>
             <thead><tr>
-              <spmTh style={spmTh}>Subcontractor</spmTh><spmTh style={spmTh}>Project</spmTh><spmTh style={spmTh}>WO #</spmTh>
-              <spmTh style={spmThR}>Total contract</spmTh>
-              {Array.from({length:nCols},(_,i)=><spmTh key={i} style={{...spmThR,background:"#eef2ff"}}>{i===MAX_COLS-1?`${i+1}+`:i+1}</spmTh>)}
-              <spmTh style={spmThR}>Total paid</spmTh><spmTh style={spmThR}>Retention</spmTh><spmTh style={spmThR}>EWT</spmTh><spmTh style={spmThR}>Balance</spmTh>
-              <spmTh style={spmThR}>Cert., unpaid</spmTh><spmTh style={spmTh}>Status</spmTh>
+              <th style={spmTh}>Subcontractor</th><th style={spmTh}>Project</th><th style={spmTh}>WO #</th>
+              <th style={spmThR}>Total contract</th><th style={spmThR}>Billed</th>
+              {Array.from({length:nCols},(_,i)=><th key={i} style={{...spmThR,background:"#eef2ff"}}>{i===MAX_COLS-1?`${i+1}+`:i+1}</th>)}
+              <th style={spmThR}>Total paid</th><th style={spmThR}>Retention</th><th style={spmThR}>EWT</th><th style={spmThR}>Balance</th>
+              <th style={spmThR}>Cert., unpaid</th><th style={spmTh}>Status</th>
             </tr></thead>
             <tbody>
               {rows.map(r=>(
                 <tr key={r.id}>
-                  <spmTd style={{...spmTd,maxWidth:180}}><button style={{...linkBtn,fontWeight:600}} onClick={()=>setLedger({kind:"supplier",id:r.subcon})}>{r.subcon}</button></spmTd>
-                  <spmTd style={{...spmTd,maxWidth:220}}>{r.dealId?<button style={linkBtn} onClick={()=>setLedger({kind:"project",id:r.dealId})}>{r.project}</button>:r.project}
-                    {r.terms&&<div style={{fontSize:".6rem",color:C.faint}}>{r.terms}</div>}</spmTd>
-                  <spmTd style={{...spmTd,fontFamily:"'IBM Plex Mono',monospace",whiteSpace:"nowrap"}} title={r.scope}>{r.woNumber}</spmTd>
-                  <spmTd style={{...spmTdR,fontWeight:700}}>{php2(r.contract)}{r.retPct>0&&<div style={{fontSize:".6rem",color:C.faint}}>ret. {r.retPct}%</div>}</spmTd>
-                  {Array.from({length:nCols},(_,i)=><spmTd key={i} style={{...spmTdR,background:"#fafbff"}}>{payCell(r,i)}</spmTd>)}
-                  <spmTd style={{...spmTdR,fontWeight:700,color:C.ok}}>{r.cash>0?php2(r.cash):"—"}{r.contract>0&&r.cash>0&&<div style={{fontSize:".6rem",color:C.faint}}>{r.paidPct}%</div>}</spmTd>
-                  <spmTd style={spmTdR}>{r.retHeld>0?php2(r.retHeld):"—"}</spmTd>
-                  <spmTd style={spmTdR}>{r.ewt>0?php2(r.ewt):"—"}</spmTd>
-                  <spmTd style={{...spmTdR,fontWeight:700,color:r.balance>1?C.bad:C.ok}}>{php2(r.balance)}</spmTd>
-                  <spmTd style={{...spmTdR,color:C.blue,fontWeight:r.dueNow>1?700:400}}>{r.dueNow>1?php2(r.dueNow):"—"}</spmTd>
-                  <spmTd style={{...spmTd,whiteSpace:"nowrap"}}>{statusChip(r)}{r.certBy&&<div style={{fontSize:".6rem",color:C.faint}}>by {r.certBy}</div>}</spmTd>
+                  <td style={{...spmTd,maxWidth:180}}><button style={{...linkBtn,fontWeight:600}} onClick={()=>setLedger({kind:"supplier",id:r.subcon})}>{r.subcon}</button></td>
+                  <td style={{...spmTd,maxWidth:220}}>{r.dealId?<button style={linkBtn} onClick={()=>setLedger({kind:"project",id:r.dealId})}>{r.project}</button>:r.project}
+                    {r.terms&&<div style={{fontSize:".6rem",color:C.faint}}>{r.terms}</div>}</td>
+                  <td style={{...spmTd,fontFamily:"'IBM Plex Mono',monospace",whiteSpace:"nowrap"}} title={r.scope}>{r.woNumber}</td>
+                  <td style={{...spmTdR,fontWeight:700}}>{php2(r.contract)}{r.retPct>0&&<div style={{fontSize:".6rem",color:C.faint}}>ret. {r.retPct}%</div>}</td>
+                  <td style={spmTdR}>{r.billed>0?php2(r.billed):"—"}<div style={{fontSize:".6rem",color:C.faint}}>{r.bills.length} billing{r.bills.length===1?"":"s"}{r.toBill>1?` · ${php2(r.toBill)} left`:""}</div></td>
+                  {Array.from({length:nCols},(_,i)=><td key={i} style={{...spmTdR,background:"#fafbff"}}>{payCell(r,i)}</td>)}
+                  <td style={{...spmTdR,fontWeight:700,color:C.ok}}>{r.cash>0?php2(r.cash):"—"}{r.contract>0&&r.cash>0&&<div style={{fontSize:".6rem",color:C.faint}}>{r.paidPct}%</div>}</td>
+                  <td style={spmTdR}>{r.retHeld>0?php2(r.retHeld):"—"}</td>
+                  <td style={spmTdR}>{r.ewt>0?php2(r.ewt):"—"}</td>
+                  <td style={{...spmTdR,fontWeight:700,color:r.balance>1?C.bad:C.ok}}>{php2(r.balance)}</td>
+                  <td style={{...spmTdR,color:C.blue,fontWeight:r.dueNow>1?700:400}}>{r.dueNow>1?php2(r.dueNow):"—"}</td>
+                  <td style={{...spmTd,whiteSpace:"nowrap"}}>{statusChip(r)}{r.certBy&&<div style={{fontSize:".6rem",color:C.faint}}>by {r.certBy}</div>}{billBtn(r)}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot><tr style={{background:"#f1f5f9",fontWeight:800}}>
-              <spmTd style={{...spmTd,fontWeight:800}} colSpan={3}>Total · {rows.length} WOs</spmTd>
-              <spmTd style={{...spmTdR,fontWeight:800}}>{php2(tot("contract"))}</spmTd>
-              {Array.from({length:nCols},(_,i)=><spmTd key={i} style={spmTdR}/>)}
-              <spmTd style={{...spmTdR,fontWeight:800}}>{php2(tot("cash"))}</spmTd>
-              <spmTd style={{...spmTdR,fontWeight:800}}>{php2(tot("retHeld"))}</spmTd>
-              <spmTd style={{...spmTdR,fontWeight:800}}>{php2(tot("ewt"))}</spmTd>
-              <spmTd style={{...spmTdR,fontWeight:800}}>{php2(tot("balance"))}</spmTd>
-              <spmTd style={{...spmTdR,fontWeight:800}}>{php2(tot("dueNow"))}</spmTd>
-              <spmTd style={spmTd}/>
+              <td style={{...spmTd,fontWeight:800}} colSpan={3}>Total · {rows.length} WOs</td>
+              <td style={{...spmTdR,fontWeight:800}}>{php2(tot("contract"))}</td>
+              <td style={{...spmTdR,fontWeight:800}}>{php2(tot("billed"))}</td>
+              {Array.from({length:nCols},(_,i)=><td key={i} style={spmTdR}/>)}
+              <td style={{...spmTdR,fontWeight:800}}>{php2(tot("cash"))}</td>
+              <td style={{...spmTdR,fontWeight:800}}>{php2(tot("retHeld"))}</td>
+              <td style={{...spmTdR,fontWeight:800}}>{php2(tot("ewt"))}</td>
+              <td style={{...spmTdR,fontWeight:800}}>{php2(tot("balance"))}</td>
+              <td style={{...spmTdR,fontWeight:800}}>{php2(tot("dueNow"))}</td>
+              <td style={spmTd}/>
             </tr></tfoot>
           </table>
         </div>

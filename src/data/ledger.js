@@ -67,8 +67,12 @@ export const buildOrders=({prs=[],swos=[],payables=[]})=>{
   const withBill=o=>{
     const bills=billsFor(o.no);
     const billed=bills.reduce((s,b)=>s+num(b.amount),0),paid=bills.reduce((s,b)=>s+num(b.paidAmount),0);
+    // A Work Order is billed in progress billings (one bill each), so it is
+    // "Paid" only once what's paid reaches its contract, not when every bill
+    // so far is paid.
+    const allBillsPaid=bills.length&&bills.every(b=>b.status==="Paid"||payBalance(b)<=0);
     const payStatus=!bills.length?(o.issued?"No bill on file":"Not issued")
-      :bills.every(b=>b.status==="Paid"||payBalance(b)<=0)?"Paid"
+      :allBillsPaid&&!(o.kind==="WO"&&num(o.amount)>0&&paid<num(o.amount)-1)?"Paid"
       :paid>0?"Partly paid":"Unpaid";
     return {...o,bills,billed:r2(billed),paid:r2(paid),balance:r2(Math.max(0,billed-paid)),payStatus};
   };
