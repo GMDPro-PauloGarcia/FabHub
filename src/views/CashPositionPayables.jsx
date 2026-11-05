@@ -225,7 +225,7 @@ export default function CashPositionPayables({payables=[],payPays=[],prs=[],swos
           <table style={{width:"100%",borderCollapse:"collapse",minWidth:mob?640:0}}>
             <thead><tr style={{background:"#f8fafc"}}>
               {canPay&&!showPaid&&<th style={{padding:"7px 0 7px 10px",width:22}}>{view==="bills"&&<input type="checkbox" aria-label="Select all shown approved bills" title="Select all shown approved bills" checked={allShownPicked} disabled={!shownPickable.length} onChange={toggleShown}/>}</th>}
-              {[view==="supplier"?"Supplier / bill":"Bill","Supplier / project","Due",showPaid?"Paid":"Balance",""].map((h,i)=><th key={i} style={{padding:"7px 10px",fontSize:".66rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",textAlign:i===3?"right":"left"}}>{h}</th>)}
+              {[view==="supplier"?"Supplier / bill":"Bill",view==="supplier"?"Project":"Supplier / project","Due",showPaid?"Paid":"Balance",""].map((h,i)=><th key={i} style={{padding:"7px 10px",fontSize:".66rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",textAlign:i===3?"right":"left"}}>{h}</th>)}
             </tr></thead>
             <tbody>
               {view==="bills"&&shown.map(p=>billRow(p,false))}

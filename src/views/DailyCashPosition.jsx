@@ -671,7 +671,7 @@ function DailyCashPosition({
   // on the row through every edit here). Display only.
   const billLinkLabel=(row)=>{
     const ids=Array.isArray(row?.payableIds)?row.payableIds:(row?.payableId?[row.payableId]:[]);
-    if(!ids.length) return <span style={{color:"#cbd5e1"}}>—</span>;
+    if(!ids.length) return row?.noBill?<span title="Tagged in Expense Monitoring: paid no supplier bill">{row.noBill}</span>:<span style={{color:"#cbd5e1"}}>—</span>;
     const bs=ids.map(id=>(payables||[]).find(p=>p.id===id));
     return <span title={bs.map(b=>b?`${b.vendor||""} ${b.apNumber||""} ${b.poId||""}`.trim():"bill not loaded").join("\n")}>🔗 {bs.map(b=>b?(b.apNumber||b.poId||"bill"):"?").join(", ")}</span>;
   };

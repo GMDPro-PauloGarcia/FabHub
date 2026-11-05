@@ -2,6 +2,7 @@ import React,{useState,useMemo} from "react";
 import {today as TODAY,BANKS,addDaysLocalISO} from "../shared";
 import {projDisplayName,dealJo} from "../core";
 import {num,php2,bankOf,bankLabel,cashMovements,reconcileLedger,buildOrders,payBalance} from "../data/ledger";
+// Transfers between GMD's own banks are shown but left out of Money in / out.
 import {Sheet,chip,linkBtn,LedgerHost} from "./Ledgers";
 
 // ─── TRANSACTION HISTORY (Executive) ───────────────────────────────────────
@@ -21,7 +22,7 @@ const C={ink:"#0f172a",muted:"#64748b",faint:"#94a3b8",line:"#e2e8f0",ok:"#05966
 const lgTh={padding:"7px 9px",fontSize:".64rem",fontWeight:700,color:C.muted,textTransform:"uppercase",letterSpacing:".5px",textAlign:"left",whiteSpace:"nowrap",background:"#f8fafc",borderBottom:`1px solid ${C.line}`};
 const lgTd={padding:"7px 9px",fontSize:".76rem",color:C.ink,borderBottom:"1px solid #f1f5f9",verticalAlign:"top"};
 const lgTdR={...lgTd,textAlign:"right",whiteSpace:"nowrap",fontVariantNumeric:"tabular-nums"};
-const LINK={linked:["Linked",C.ok],short:["Partly recorded",C.warn],suggested:["Suggested match","#2563eb"],none:["Not linked",C.faint],orphan:["Not in cash position",C.bad]};
+const LINK={transfer:["Bank transfer","#7c3aed"],nobill:["No bill",C.muted],linked:["Linked",C.ok],short:["Partly recorded",C.warn],suggested:["Suggested match","#2563eb"],none:["Not linked",C.faint],orphan:["Not in cash position",C.bad]};
 const PAGE=150;
 
 const Field=({l,children})=>(
@@ -65,10 +66,13 @@ export default function TransactionHistory({cashPositions={},payables=[],payPays
         who=[...new Set(bills.map(b=>b.vendor).filter(Boolean))].join(", ");
         project=[...new Set(bills.map(b=>projName(b.projectId)).filter(Boolean))].join(", ");
         ref=[...new Set(bills.map(b=>b.poId||b.poNumber||b.apNumber).filter(Boolean))].join(", ");
+      } else if(r.status==="nobill"){
+        who=r.kind;
       } else if(r.billing){
         const d=dealById.get(r.billing.ms.dealId);
         who=d?.client||"";project=d?projDisplayName(d):"";ref=r.billing.ms.invoiceNo||r.billing.ms.name||"";
       }
+      if(r.status==="transfer"&&r.pair) who=`${m.dir==="out"?"to":"from"} ${bankLabel(r.pair.bank)}`;
       return {...m,link:r.status,rec:r,who,project,ref};
     });
     // FabHub records with no bank movement on the sheet.
@@ -100,11 +104,12 @@ export default function TransactionHistory({cashPositions={},payables=[],payPays
       &&(!qq||[r.payee,r.particulars,r.who,r.project,r.ref,bankLabel(r.bank),String(r.amount)].some(v=>String(v||"").toLowerCase().includes(qq))));
   },[all,from,to,bank,dir,link,q]);
 
-  const cashRows=rows.filter(r=>r.src==="cash");
+  const cashRows=rows.filter(r=>r.src==="cash"&&r.link!=="transfer");
+  const transfers=rows.filter(r=>r.link==="transfer"&&r.dir==="out");
   const tIn=cashRows.filter(r=>r.dir==="in").reduce((s,r)=>s+r.amount,0);
   const tOut=cashRows.filter(r=>r.dir==="out").reduce((s,r)=>s+r.amount,0);
   const perBank=BANKS.map(b=>{
-    const rs=cashRows.filter(r=>bankOf(r.bank)?.id===b.id);
+    const rs=rows.filter(r=>r.src==="cash").filter(r=>bankOf(r.bank)?.id===b.id);
     return {b,inn:rs.filter(r=>r.dir==="in").reduce((s,r)=>s+r.amount,0),out:rs.filter(r=>r.dir==="out").reduce((s,r)=>s+r.amount,0),n:rs.length};
   }).filter(x=>x.n>0);
   const untagged=cashRows.filter(r=>!bankOf(r.bank));
@@ -145,6 +150,8 @@ export default function TransactionHistory({cashPositions={},payables=[],payPays
         <select value={link} onChange={e=>{setLink(e.target.value);setLimit(PAGE);}} style={inp} aria-label="Link status">
           <option value="all">Any link status</option>
           <option value="linked">Linked or suggested</option>
+          <option value="nobill">No bill (payroll, petty cash…)</option>
+          <option value="transfer">Bank transfers</option>
           <option value="none">Not linked</option>
           <option value="short">Partly recorded</option>
           <option value="orphan">Not in cash position</option>
@@ -154,6 +161,7 @@ export default function TransactionHistory({cashPositions={},payables=[],payPays
 
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8,marginBottom:12}}>
         {[["Money in",php2(tIn),C.inC],["Money out",php2(tOut),C.outC],["Net",php2(tIn-tOut),tIn-tOut>=0?C.ok:C.bad],
+          ["Between GMD banks",php2(transfers.reduce((s,r)=>s+r.amount,0)),"#7c3aed",`${transfers.length} transfer(s), not counted above`],
           ["Out, not linked",String(unlinkedOut.length),unlinkedOut.length?C.warn:C.ok,php2(unlinkedOut.reduce((s,r)=>s+r.amount,0))],
           ["Not in cash position",String(orphans.length),orphans.length?C.bad:C.ok,"recorded in FabHub only"]].map(([l,v,c,f])=>(
           <div key={l} style={{border:`1px solid ${C.line}`,borderRadius:10,padding:"9px 12px",background:"#fff"}}>
@@ -199,7 +207,7 @@ export default function TransactionHistory({cashPositions={},payables=[],payPays
         </table>
       </div>
       {rows.length>limit&&<button onClick={()=>setLimit(l=>l+PAGE)} style={{marginTop:8,background:"#f1f5f9",border:"none",borderRadius:7,padding:"6px 14px",fontSize:".76rem",fontWeight:600,color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>Show {Math.min(PAGE,rows.length-limit)} more of {rows.length-limit}</button>}
-      <div style={{fontSize:".7rem",color:C.faint,marginTop:10}}>"Linked" = the disbursement is tagged to a bill on the cash sheet and the AP payment matches. "Suggested" = same supplier and amount within 7 days, not tagged. Tag disbursements to bills on the Daily Cash Position (🔗 column) or in Expense Monitoring to firm these up.</div>
+      <div style={{fontSize:".7rem",color:C.faint,marginTop:10}}>"Linked" = the disbursement is tagged to a bill on the cash sheet and the AP payment matches. "Bank transfer" = same amount out of one GMD bank and into another the same day (or tagged so); left out of the totals. "Suggested" = same supplier and amount within 7 days, not tagged. Tag disbursements to bills on the Daily Cash Position (🔗 column) or in Expense Monitoring to firm these up.</div>
 
       {pick&&<TxnDetail r={pick} onClose={()=>setPick(null)} payById={payById} dealById={dealById} orderOf={orderOf} jos={jos} cashPositions={cashPositions}
         onSupplier={v=>{setPick(null);setLedger({kind:"supplier",id:v});}} onProject={id=>{setPick(null);setLedger({kind:"project",id});}}/>}
@@ -239,6 +247,8 @@ function TxnDetail({r,onClose,payById,dealById,orderOf,jos,cashPositions,onSuppl
         {lastSave&&<Field l="Sheet last saved">{lastSave.by||"—"} · {String(lastSave.at||"").replace("T"," ").slice(0,16)}</Field>}
         {r.link==="orphan"&&<div style={{fontSize:".74rem",color:C.bad,marginTop:6}}>⚠ No bank movement on the Daily Cash Position matches this within 7 days. Either the sheet is missing it, or it was recorded twice in FabHub.</div>}
         {r.link==="short"&&<div style={{fontSize:".74rem",color:C.warn,marginTop:6}}>⚠ Tagged to {bills.length} bill(s), but the AP payments recorded near this date total {php2(r.rec.recorded)} of {php2(r.amount)}. Record the rest in Expense Monitoring.</div>}
+        {r.link==="transfer"&&<div style={{fontSize:".74rem",color:"#7c3aed",marginTop:6}}>Money moved between GMD's own banks{r.rec?.pair?` (${r.dir==="out"?"into":"from"} ${bankLabel(r.rec.pair.bank)}, same day, same amount)`:""}. Not counted as money in or out.</div>}
+        {r.link==="nobill"&&<div style={{fontSize:".74rem",color:C.muted,marginTop:6}}>Tagged in Expense Monitoring as <b>{r.rec.kind}</b>: paid no supplier bill.</div>}
         {r.link==="none"&&r.dir==="out"&&<div style={{fontSize:".74rem",color:C.muted,marginTop:6}}>Not tied to any bill. Tag it on the Daily Cash Position (🔗) or in Expense Monitoring if it paid a supplier.</div>}
       </TxSection>
       {groups.map(g=>(

@@ -131,11 +131,17 @@ export const cashMovements=(cashPositions={})=>{
       if(!amt) return;
       out.push({key:`${d}#out#${r.id||i}`,src:"cash",dir:"out",date:d,rowId:r.id||null,rowIndex:i,bank:r.bank||"",
         payee:payeeOf(r),particulars:particularsOf(r),amount:amt,
-        payableIds:Array.isArray(r.payableIds)?r.payableIds.filter(Boolean):(r.payableId?[r.payableId]:[]),raw:r});
+        payableIds:Array.isArray(r.payableIds)?r.payableIds.filter(Boolean):(r.payableId?[r.payableId]:[]),
+        noBill:String(r.noBill||""),raw:r});
     });
   });
   return out.sort((a,b)=>b.date.localeCompare(a.date)||a.dir.localeCompare(b.dir));
 };
+
+// What a disbursement can be when it paid no supplier bill (tagged in Expense
+// Monitoring, stored on the cash-sheet row as noBill).
+export const NO_BILL_KINDS=["Payroll","Bank transfer (GMD to GMD)","Loan / financing","Petty cash / liquidation","Tax / government","Owner / officer","Other (no bill)"];
+export const isTransferKind=k=>/^Bank transfer/.test(String(k||""));
 
 // Match each disbursement to the AP payment(s) it paid, and each collection to
 // a client billing payment. A disbursement tagged with bills on the cash sheet
@@ -163,7 +169,20 @@ export const reconcileLedger=({movements=[],payables=[],payPays=[],billings=[]})
     g.vendorKeys=new Set(g.payableIds.map(id=>vendorKey(payById.get(id)?.vendor)).filter(Boolean));
   });
   const res=new Map();
-  const outs=movements.filter(m=>m.dir==="out");
+  // Money moved between GMD's own banks is not spending or income. A row tagged
+  // "Bank transfer", or an out and an in of the same amount on the same day in
+  // two different banks, is a transfer; both sides are marked and left out of
+  // the AP / billing matching.
+  const ins=movements.filter(m=>m.dir==="in");
+  const usedIn=new Set();
+  movements.filter(m=>m.dir==="out"&&!m.payableIds?.length&&(!m.noBill||isTransferKind(m.noBill))).forEach(m=>{
+    const bo=bankOf(m.bank);
+    const pair=bo&&ins.find(x=>!usedIn.has(x.key)&&x.date===m.date&&Math.abs(x.amount-m.amount)<0.01&&bankOf(x.bank)&&bankOf(x.bank).id!==bo.id);
+    if(pair){usedIn.add(pair.key);res.set(m.key,{status:"transfer",pair});res.set(pair.key,{status:"transfer",pair:m});}
+    else if(isTransferKind(m.noBill)) res.set(m.key,{status:"transfer"});
+  });
+  movements.filter(m=>m.dir==="out"&&m.noBill&&!res.has(m.key)).forEach(m=>res.set(m.key,{status:"nobill",kind:m.noBill}));
+  const outs=movements.filter(m=>m.dir==="out"&&!res.has(m.key));
   // Tagged rows first so a tag always wins over a guess.
   const order=[...outs.filter(m=>m.payableIds?.length),...outs.filter(m=>!m.payableIds?.length)];
   order.forEach(m=>{
@@ -194,7 +213,7 @@ export const reconcileLedger=({movements=[],payables=[],payPays=[],billings=[]})
     bp.push({id:p.id,ms,p,amount:r2(p.amount),date:p.valueDate||p.date||"",bank:p.bank||""});
   }));
   const bClaimed=new Set();
-  movements.filter(m=>m.dir==="in").forEach(m=>{
+  movements.filter(m=>m.dir==="in"&&!res.has(m.key)).forEach(m=>{
     const b=bankOf(m.bank);
     const c=bp.filter(x=>!bClaimed.has(x.id)&&Math.abs(x.amount-m.amount)<0.01&&dayDiff(x.date,m.date)<=7
       &&(!b||!x.bank||bankOf(x.bank)?.id===b.id))

@@ -1,7 +1,7 @@
 import React,{useState,useMemo} from "react";
 import {today as TODAY,Modal,Fld,Inp,Sel,uiAlert,uiPrompt,cashCanEdit,cashDayLocked,addDaysLocalISO} from "../shared";
 import {projDisplayName} from "../core";
-import {num,r2,php2,vendorKey,bankOf,bankLabel,cashMovements,reconcileLedger,payBalance,payIsOpen} from "../data/ledger";
+import {num,r2,php2,vendorKey,bankOf,bankLabel,cashMovements,reconcileLedger,payBalance,payIsOpen,NO_BILL_KINDS} from "../data/ledger";
 import {chip,linkBtn,LedgerHost} from "./Ledgers";
 
 // ─── EXPENSE MONITORING (Accounting) ───────────────────────────────────────
@@ -25,7 +25,7 @@ const lgTdR={...lgTd,textAlign:"right",whiteSpace:"nowrap",fontVariantNumeric:"t
 const emBtn=(clr,ghost)=>({background:ghost?"#fff":clr,color:ghost?clr:"#fff",border:`1px solid ${clr}`,borderRadius:7,padding:"5px 11px",fontSize:".72rem",fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"});
 const METHODS=["Check","Bank transfer","Online","Cash"];
 const CATS=["All","Supplier","Subcontractor","Utility","Rent","Labor","Government","Other"];
-const LINK={linked:["Linked",C.ok],short:["Partly recorded",C.warn],suggested:["Suggested","#2563eb"],none:["Not linked",C.bad]};
+const LINK={transfer:["Bank transfer","#7c3aed"],nobill:["No bill",C.muted],linked:["Linked",C.ok],short:["Partly recorded",C.warn],suggested:["Suggested","#2563eb"],none:["Not linked",C.bad]};
 const billLabel=b=>[b.apNumber,b.poId||b.poNumber||b.invoiceNumber||b.invoiceRef].filter(Boolean).join(" · ")||"bill";
 const approvedBill=b=>(b.approvalStatus||"Approved")==="Approved";
 
@@ -39,7 +39,7 @@ const Card=({title,desc,right,children})=>(
   </div>
 );
 
-export default function ExpenseMonitoring({cashPositions={},saveDayPos,payables=[],payPays=[],prs=[],swos=[],exps=[],deals=[],today=TODAY,role="",username="",userName="",canPay=false,onPayMany,onNewPayable,onEditPayable}){
+export default function ExpenseMonitoring({cashPositions={},saveDayPos,cashDayIsCurrent,payables=[],payPays=[],prs=[],swos=[],exps=[],deals=[],today=TODAY,role="",username="",userName="",canPay=false,onPayMany,onNewPayable,onEditPayable}){
   const[day,setDay]=useState(today);
   const[cat,setCat]=useState("All");
   const[due,setDue]=useState("open");
@@ -122,8 +122,8 @@ export default function ExpenseMonitoring({cashPositions={},saveDayPos,payables=
                     <td style={lgTd}><div style={{fontWeight:600}}>{m.payee||"—"}</div>{m.particulars&&<div style={{fontSize:".68rem",color:C.muted}}>{m.particulars}</div>}</td>
                     <td style={lgTdR}><b>{php2(m.amount)}</b></td>
                     <td style={lgTd}>{bills.length?bills.map(b=><div key={b.id}><button style={linkBtn} onClick={()=>setLedger({kind:"supplier",id:b.vendor,tab:"pays"})}>{b.vendor}</button> <span style={{fontSize:".68rem",color:C.muted}}>{billLabel(b)}</span></div>):<span style={{color:C.faint}}>—</span>}</td>
-                    <td style={lgTd}>{chip(lt,lc)}{r.status==="short"&&<div style={{fontSize:".66rem",color:C.warn}}>{php2(r.recorded)} recorded in AP</div>}</td>
-                    <td style={{...lgTd,textAlign:"right"}}><button style={emBtn("#0B2545",true)} onClick={()=>setLinkFor({m,r})}>{m.payableIds?.length?"Change":"Link bill"}</button></td>
+                    <td style={lgTd}>{chip(lt,lc)}{r.status==="nobill"&&<div style={{fontSize:".66rem",color:C.muted}}>{r.kind}</div>}{r.status==="transfer"&&r.pair&&<div style={{fontSize:".66rem",color:C.muted}}>to {bankLabel(r.pair.bank)}</div>}{r.status==="short"&&<div style={{fontSize:".66rem",color:C.warn}}>{php2(r.recorded)} recorded in AP</div>}</td>
+                    <td style={{...lgTd,textAlign:"right"}}><button style={emBtn("#0B2545",true)} onClick={()=>setLinkFor({m,r})}>{m.payableIds?.length||m.noBill?"Change":"Link bill"}</button></td>
                   </tr>
                 );
               })}
@@ -194,20 +194,22 @@ export default function ExpenseMonitoring({cashPositions={},saveDayPos,payables=
         {list.length>limit&&<button onClick={()=>setLimit(l=>l+80)} style={{marginTop:8,background:"#f1f5f9",border:"none",borderRadius:7,padding:"6px 14px",fontSize:".76rem",fontWeight:600,color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>Show more ({list.length-limit} left)</button>}
       </Card>
 
-      {linkFor&&<LinkModal key={linkFor.m.key} m={linkFor.m} r={linkFor.r} onClose={()=>setLinkFor(null)} payables={payables} payPays={payPays} cashPositions={cashPositions} saveDayPos={saveDayPos}
+      {linkFor&&<LinkModal key={linkFor.m.key} m={linkFor.m} r={linkFor.r} onClose={()=>setLinkFor(null)} payables={payables} payPays={payPays} cashPositions={cashPositions} saveDayPos={saveDayPos} cashDayIsCurrent={cashDayIsCurrent}
         role={role} username={username} userName={userName} canPay={canPay} onPayMany={onPayMany} projName={projName}/>}
       <LedgerHost open={ledger} setOpen={setLedger} prs={prs} swos={swos} payables={payables} payPays={payPays} exps={exps} deals={deals} today={today}/>
     </div>
   );
 }
 
-function LinkModal({m,r,onClose,payables,payPays,cashPositions,saveDayPos,role,username,userName,canPay,onPayMany,projName}){
+function LinkModal({m,r,onClose,payables,payPays,cashPositions,saveDayPos,cashDayIsCurrent,role,username,userName,canPay,onPayMany,projName}){
   const initial=m.payableIds?.length?m.payableIds:(r.status==="suggested"?r.payableIds:[]);
   const[sel,setSel]=useState(()=>new Set(initial));
   const[q,setQ]=useState("");
   const[method,setMethod]=useState("Check");
   const[ref,setRef]=useState("");
   const[busy,setBusy]=useState(false);
+  // "Not a supplier bill": payroll, a transfer between GMD banks, petty cash…
+  const[noBill,setNoBill]=useState(m.noBill||"");
   const vk=vendorKey(m.payee);
   const isMgr=role==="Manager";
   const locked=cashDayLocked(m.date);
@@ -238,10 +240,11 @@ function LinkModal({m,r,onClose,payables,payPays,cashPositions,saveDayPos,role,u
     :Math.abs(openBal-toRecord)<0.01?openPicked.map(p=>({payableId:p.id,amount:payBalance(p)})):null;
   const notApproved=openPicked.filter(p=>!approvedBill(p));
   const[record,setRecord]=useState(true);
-  const willRecord=record&&canPay&&entries&&entries.length>0;
+  const willRecord=!noBill&&record&&canPay&&entries&&entries.length>0;
 
   const save=async()=>{
     if(busy) return;
+    if(noBill&&!canSheet){await uiAlert("Only Managers and the cash-position preparer can tag the cash sheet, and only on an open day.");return;}
     if(!canSheet&&!willRecord){await uiAlert("You can't change this cash-position day, and there's no payment to record.");return;}
     if(willRecord&&method==="Check"&&!ref.trim()){await uiAlert("Enter the check number.");return;}
     if(willRecord&&notApproved.length){await uiAlert(`${notApproved.map(billLabel).join(", ")} ${notApproved.length>1?"aren't":"isn't"} approved yet. A Manager or Finance Manager approves it in Supplier Bills first.`);return;}
@@ -253,6 +256,12 @@ function LinkModal({m,r,onClose,payables,payPays,cashPositions,saveDayPos,role,u
     }
     setBusy(true);
     try{
+      // The cash sheet on this device must be the server's latest, or the link
+      // would overwrite a newer save. Checked before any payment is recorded.
+      if(canSheet&&cashDayIsCurrent){
+        const fresh=await cashDayIsCurrent(m.date);
+        if(!fresh.ok){await uiAlert(fresh.why);return;}
+      }
       if(willRecord){
         const ok=await onPayMany(entries,{date:m.date,method,bank:bankOf(m.bank)?.id||m.bank||"",ref:ref.trim(),note:`Cash position ${m.date}: ${m.payee||""} ${php2(m.amount)}`.trim()});
         if(!ok) return;
@@ -263,13 +272,14 @@ function LinkModal({m,r,onClose,payables,payPays,cashPositions,saveDayPos,role,u
         let idx=m.rowId?rows.findIndex(x=>x.id===m.rowId):-1;
         if(idx<0&&!m.rowId&&rows[m.rowIndex]&&Math.abs(num(rows[m.rowIndex].amount)-m.amount)<0.01) idx=m.rowIndex;
         if(!dayPos||idx<0){await uiAlert("That disbursement changed on the cash sheet since this page loaded. Reopen the day and try again.");return;}
-        const ids=[...sel];
+        const ids=noBill?[]:[...sel];
         const md=[...rows];
         const row={...md[idx],payableIds:ids};
         delete row.payableId;
+        if(noBill) row.noBill=noBill; else delete row.noBill;
         md[idx]=row;
         const at=new Date().toISOString();
-        const label=ids.length?picked.map(billLabel).join(", "):"removed";
+        const label=noBill?`no bill (${noBill})`:ids.length?picked.map(billLabel).join(", "):"removed";
         const entry={at,by:userName||"—",action:"Edited",changes:[{field:`Bill link · ${m.payee||"disbursement"} ${php2(m.amount)} → ${label}`,note:true}]};
         if(pastEdit) entry.pastEdit=pastEdit;
         saveDayPos(m.date,{...dayPos,disbursements:{...dayPos.disbursements,manual:md},audit:[...(Array.isArray(dayPos.audit)?dayPos.audit:[]),entry],savedAt:at});
@@ -282,6 +292,14 @@ function LinkModal({m,r,onClose,payables,payPays,cashPositions,saveDayPos,role,u
     <Modal open onClose={()=>!busy&&onClose()} title={`Link disbursement · ${php2(m.amount)}`} wide>
       <div style={{fontSize:".78rem",color:"#475569",marginBottom:10}}>{m.date} · {bankLabel(m.bank)} · <b>{m.payee||"—"}</b>{m.particulars?` · ${m.particulars}`:""}</div>
       {!canSheet&&<div style={{background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:8,padding:"7px 10px",fontSize:".72rem",color:"#9a3412",marginBottom:10}}>{locked?"This day is locked: only a Manager can link it on the cash sheet.":"Only Managers and the cash-position preparer can tag the cash sheet."} You can still record the AP payment.</div>}
+      <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:10,fontSize:".76rem"}}>
+        <span style={{fontWeight:700,color:"#475569"}}>This paid:</span>
+        <select value={noBill} onChange={e=>setNoBill(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"6px 9px",fontFamily:"inherit",fontSize:".78rem",background:"#fff"}} aria-label="What this disbursement paid">
+          <option value="">A supplier bill (pick below)</option>
+          {NO_BILL_KINDS.map(k=><option key={k} value={k}>No bill: {k}</option>)}
+        </select>
+      </div>
+      {!noBill&&<>
       <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search other bills: supplier, AP, PO, amount…" style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".8rem",marginBottom:8}}/>
       <div style={{maxHeight:260,overflowY:"auto",border:`1px solid ${C.line}`,borderRadius:8,marginBottom:10}}>
         {cands.map(({p,same,exact})=>(
@@ -299,7 +317,8 @@ function LinkModal({m,r,onClose,payables,payPays,cashPositions,saveDayPos,role,u
         ))}
         {cands.length===0&&<div style={{padding:16,textAlign:"center",color:C.faint,fontSize:".76rem"}}>No bill with this payee or amount. Search above, or add it with + New payable first.</div>}
       </div>
-      {picked.length>0&&(
+      </>}
+      {!noBill&&picked.length>0&&(
         <div style={{border:`1px solid ${C.line}`,borderRadius:8,padding:"9px 12px",marginBottom:10,fontSize:".76rem"}}>
           <div>Selected: <b>{picked.length}</b> bill(s) · open balance {php2(openBal)} · already recorded in AP near {m.date}: {php2(nearPaid)}</div>
           {toRecord<=0.005&&<div style={{color:C.ok,marginTop:4}}>✓ The AP payment is already recorded. Linking only tags the cash-sheet row.</div>}
@@ -318,10 +337,10 @@ function LinkModal({m,r,onClose,payables,payPays,cashPositions,saveDayPos,role,u
         </div>
       )}
       <div style={{display:"flex",gap:8,justifyContent:"space-between",flexWrap:"wrap"}}>
-        <div>{m.payableIds?.length>0&&canSheet&&<button disabled={busy} onClick={()=>{setSel(new Set());}} style={emBtn(C.bad,true)}>Clear links</button>}</div>
+        <div>{(m.payableIds?.length>0||m.noBill)&&canSheet&&<button disabled={busy} onClick={()=>{setSel(new Set());setNoBill("");}} style={emBtn(C.bad,true)}>Clear links</button>}</div>
         <div style={{display:"flex",gap:8}}>
           <button onClick={onClose} disabled={busy} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"9px 16px",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
-          <button onClick={save} disabled={busy||(!sel.size&&!m.payableIds?.length)} style={{background:"#059669",color:"#fff",border:"none",borderRadius:8,padding:"9px 16px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:busy?.6:1}}>{busy?"Saving…":willRecord?(canSheet?"Link & record payment":"Record payment"):"Save link"}</button>
+          <button onClick={save} disabled={busy||(!sel.size&&!noBill&&!m.payableIds?.length&&!m.noBill)} style={{background:"#059669",color:"#fff",border:"none",borderRadius:8,padding:"9px 16px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:busy?.6:1}}>{busy?"Saving…":willRecord?(canSheet?"Link & record payment":"Record payment"):"Save link"}</button>
         </div>
       </div>
     </Modal>

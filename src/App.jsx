@@ -7292,6 +7292,22 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       // Non-UUID id was never in Supabase — local-only record, just remove from localStorage (already done via upPrs)
     }
   };
+  // Before a screen other than the Daily Cash Position writes to a day (Expense
+  // Monitoring tagging a disbursement to a bill), make sure this device holds
+  // the server's latest copy of that day. The sheet does the same check before
+  // its own save ("updated elsewhere"); without it a stale copy would overwrite
+  // a newer sheet saved on another device.
+  const cashDayIsCurrent=async(date)=>{
+    if(!isSupabaseReady()) return {ok:false,why:"No server connection. Linking needs the latest cash sheet, so try again when you're back online."};
+    if(cashStale) return {ok:false,why:"The cash positions on this device aren't synced with the server. Tap 🔄 sync, then try again."};
+    const{data,error}=await supabase.from('cash_positions').select('updated_at').eq('date',date).maybeSingle();
+    if(error) return {ok:false,why:"Couldn't check the cash sheet on the server: "+error.message};
+    if(!data) return {ok:true};
+    const local=cashPositions[date]?.savedAt;
+    const a=new Date(data.updated_at).getTime(),b=local?new Date(local).getTime():NaN;
+    if(!(a===b)) return {ok:false,why:`The ${date} cash sheet was saved on another device after this one loaded it. Tap 🔄 sync (or reload), then link again so nothing on that sheet is overwritten.`};
+    return {ok:true};
+  };
   const saveDayPos=(date,pos)=>{
     // One timestamp for the local copy AND the server row, so the sheet's
     // "updated elsewhere" check compares like with like after a refresh.
@@ -15496,7 +15512,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         {/* ── EXPENSE MONITORING (Accounting) ── payables by due date, and each
             cash-position disbursement tied to the bill it paid. */}
         {finTab==="expmon"&&(
-          <ExpenseMonitoring cashPositions={cashPositions} saveDayPos={saveDayPos} payables={payables} payPays={payPays} prs={prs} swos={swos} exps={exps} deals={deals} today={today}
+          <ExpenseMonitoring cashPositions={cashPositions} saveDayPos={saveDayPos} cashDayIsCurrent={cashDayIsCurrent} payables={payables} payPays={payPays} prs={prs} swos={swos} exps={exps} deals={deals} today={today}
             role={role} username={session?.username||""} userName={session?.name||""} canPay={roleCanInsert("payable_payments")} onPayMany={recordPayments}
             onNewPayable={roleCanInsert("payables")?()=>{setPayForm(emptyPayForm());setEditPayId(null);setPayModal(true);}:null}
             onEditPayable={roleCanInsert("payables")?p=>{setPayForm({...p});setEditPayId(p.id);setPayModal(true);}:null}/>
@@ -24225,7 +24241,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,flexWrap:"wrap",gap:12}}>
         <div>
           <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>📦 Purchase Orders</h2>
-          <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Issue POs to suppliers — each with multiple project-tagged line items</div>
+          <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Issue POs to suppliers — each with multiple project-tagged line items · <b>click a supplier or project</b> for all its POs, bills and payments</div>
         </div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
             <div style={{display:"flex",gap:0,borderRadius:8,overflow:"hidden",border:"1.5px solid #e2e8f0",marginRight:4}}>
