@@ -15822,51 +15822,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 <ErpStat tone={overdueCount>0?"danger":"ok"} label="Overdue" value={overdueCount+" items"} foot="received & past due"/>
                 <ErpStat tone="ok" label="Paid This Month" value={fmtM(paidThisMonth)} foot="settled this month"/>
               </div>
-              {/* PO-derived payables — by supplier */}
-              {poPayables.length>0&&(
-                <div style={{marginBottom:20}}>
-                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,flexWrap:"wrap"}}>
-                    <div style={{fontSize:12.5,fontWeight:700,color:ERP.navy}}>🛒 Supplier Payables — Open POs</div>
-                    <ErpBadge kind="invoiced">{poPayables.length} supplier{poPayables.length!==1?"s":""} · {fmtM(totalPOPayables)}</ErpBadge>
-                    <input value={supPaySearch} onChange={e=>setSupPaySearch(e.target.value)} placeholder="Search supplier…" style={{marginLeft:"auto",minWidth:180,flex:"0 1 240px",border:`1px solid ${ERP.line}`,borderRadius:7,padding:"6px 11px",fontFamily:"inherit",fontSize:12,outline:"none",color:ERP.ink}}/>
-                  </div>
-                  <div style={{background:ERP.paper,borderRadius:12,border:`1px solid ${ERP.line}`,overflow:"hidden"}}>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 120px",padding:"9px 10px",background:ERP.navyLight,borderBottom:`2px solid ${ERP.line}`,gap:8}}>
-                      {["Supplier","POs","Items","Total Owed"].map((h,i)=>(
-                        <div key={i} style={{fontSize:11,fontWeight:700,color:ERP.navy,textTransform:"uppercase",letterSpacing:".5px",textAlign:i===3?"right":i===0?"left":"center"}}>{h}</div>
-                      ))}
-                    </div>
-                    {(()=>{
-                      const sq=supPaySearch.trim().toLowerCase();
-                      const supVisible=sq?poPayables.filter(g=>String(g.supplier||"").toLowerCase().includes(sq)):poPayables;
-                      const supTotal=supVisible.reduce((s,g)=>s+g.total,0);
-                      if(supVisible.length===0) return <div style={{padding:"18px 10px",textAlign:"center",color:ERP.muted,fontSize:12.5,fontStyle:"italic"}}>No suppliers match “{supPaySearch}”.</div>;
-                      return(<>
-                        {supVisible.map((g,idx)=>{
-                          const isOverdue=g.earliestDelivery&&g.earliestDelivery<today;
-                          return(
-                            <div key={g.supplier} style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 120px",padding:"9px 10px",gap:8,alignItems:"center",borderBottom:idx<supVisible.length-1?`1px solid ${ERP.line}`:"none",background:"#fff"}}
-                              onMouseEnter={ev=>ev.currentTarget.style.background="#FAFBFD"} onMouseLeave={ev=>ev.currentTarget.style.background="#fff"}>
-                              <div>
-                                <div style={{fontSize:13,color:ERP.ink,fontWeight:700}}>{g.supplier}</div>
-                                {g.earliestDelivery&&<div style={{fontSize:11,color:isOverdue?ERP.danger:ERP.muted,marginTop:1}}>{isOverdue?"⚠ Overdue: ":"Expected: "}{g.earliestDelivery}</div>}
-                              </div>
-                              <div style={{fontSize:13,color:ERP.muted,textAlign:"center",fontVariantNumeric:"tabular-nums"}}>{g.poCount||g.itemCount}</div>
-                              <div style={{fontSize:13,color:ERP.muted,textAlign:"center",fontVariantNumeric:"tabular-nums"}}>{g.itemCount}</div>
-                              <div style={{textAlign:"right",fontWeight:700,color:ERP.danger,fontSize:13,fontVariantNumeric:"tabular-nums"}}>{fmtM(g.total)}</div>
-                            </div>
-                          );
-                        })}
-                        <div style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 120px",padding:"9px 10px",gap:8,alignItems:"center",background:ERP.navyLight,borderTop:`2px solid ${ERP.line}`}}>
-                          <div style={{fontSize:12,fontWeight:700,color:ERP.navy}}>{sq?"Total (filtered)":"Total"}</div>
-                          <div/><div/>
-                          <div style={{textAlign:"right",fontWeight:800,color:ERP.danger,fontSize:14,fontVariantNumeric:"tabular-nums"}}>{fmtM(supTotal)}</div>
-                        </div>
-                      </>);
-                    })()}
-                  </div>
-                </div>
-              )}
+              {/* AP home, per supplier (Finance, 2026-11-04): one line per supplier with
+                  what is owed, its bills underneath, issued POs / WOs with no bill
+                  flagged, and the supplier's payment history one click away. The
+                  per-bill AP Log stays below. */}
+              <CashPositionPayables payables={payables} payPays={payPays} prs={prs} swos={swos} exps={exps} deals={deals} today={today}
+                canApprove={canApprovePayables} enteredByMe={enteredByMe} canPay={roleCanInsert("payable_payments")}
+                onApprove={approvePayable} onPay={(id,amt,o)=>recordPayablePayment(id,amt,o)} onPayMany={recordPayments} onCancelPay={cancelPayablePayment}/>
               {/* ── Accounts Payable Log — vendor invoices with aging & balances ── */}
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,flexWrap:"wrap"}}>
                 <div style={{fontSize:12.5,fontWeight:700,color:ERP.navy}}>📋 Accounts Payable Log</div>
