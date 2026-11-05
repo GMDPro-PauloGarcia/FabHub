@@ -10,7 +10,7 @@ import {fmt,addPrintClose,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dro
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, parseDpPct, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -55,6 +55,7 @@ const ExpenseMonitoring=_lazyView(()=>import('./views/ExpenseMonitoring'));
 const PaymentRun=_lazyView(()=>import('./views/PaymentRun'));
 const Bir2307=_lazyView(()=>import('./views/Bir2307'));
 const MonitoringBoard=_lazyView(()=>import('./views/MonitoringBoard'));
+const SubconPaymentMonitor=_lazyView(()=>import('./views/SubconPaymentMonitor'));
 const LedgerHost=_lazyView(()=>import('./views/Ledgers').then(m=>({default:m.LedgerHost})));
 const CERequestTracker=_lazyView(()=>import('./views/CERequestTracker'));
 const POApprovals=_lazyView(()=>import('./views/POApprovals'));
@@ -5710,7 +5711,6 @@ export default function App(){
     const rec={...wo,id:uid(),createdDate:today};
     upSwos(ws=>[rec,...ws]);
     if(isSupabaseReady()) sbSyncOne("subcon_work_orders",rec,swoToSb);
-    syncWoPayable(rec); // WO issued → subcontractor payable in the AP ledger
     const msg=`🛠 <b>${rec.status==="Pending Approval"?"Work Order Awaiting Approval":"Subcon Work Order Issued"} ${rec.woNumber||""}</b>\n${rec.subcontractor||"?"}${rec.specialty?` · ${rec.specialty}`:""}\nProject: ${rec.projectName||"?"}\nAmount: ₱${(Number(rec.contractAmount)||0).toLocaleString("en-PH")}\nBy: ${rec.requestedBy||session?.name||"?"}`;
     sendTelegramNotification("procurement",msg);
     sendTelegramNotification("management",msg);
@@ -5735,7 +5735,6 @@ export default function App(){
     });
     upSwos(ws=>[...recs,...ws]);
     if(isSupabaseReady()) recs.forEach(rec=>sbSyncOne("subcon_work_orders",rec,swoToSb));
-    recs.forEach(rec=>syncWoPayable(rec));
     const total=recs.reduce((s,r)=>s+(Number(r.contractAmount)||0),0);
     const anyPending=recs.some(r=>r.status==="Pending Approval");
     const msg=`🛠 <b>${recs.length} Subcon Work Order${recs.length>1?"s":""} uploaded${anyPending?" — some awaiting approval":""}</b>\nRange: ${recs[recs.length-1].woNumber} → ${recs[0].woNumber}\nTotal: ₱${total.toLocaleString("en-PH")}\nBy: ${session?.name||"?"}`;
@@ -5752,7 +5751,6 @@ export default function App(){
       if(isSupabaseReady()) sbSyncOne("subcon_work_orders",nw,swoToSb);
       return nw;
     }));
-    if(updated) syncWoPayable(updated); // keep the WO's AP payable in sync (created once it's Issued)
   };
   const deleteSWO=(id)=>{
     const wo=swos.find(w=>w.id===id);
@@ -9315,30 +9313,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // in the one AP ledger. Keyed by woNumber; account code defaults to 5070
   // (Production - Subcon). The full contract is the liability — retention (the
   // WO's rate, else AP_RULES.subconRetentionPct) is held back at payment time.
-  const syncWoPayable=(wo)=>{
-    if(!wo||!wo.woNumber) return null;
-    const amount=Math.round((Number(wo.contractAmount)||0)*100)/100;
-    const committed=["Issued","Partially Delivered","Delivered","Completed","For Accounting"].includes(wo.status);
-    const existing=payables.find(p=>p.poId===wo.woNumber);
-    if(!committed||!(amount>0)) return existing||null;
-    const linkedProjectId=(wo.projectId&&isUUID(wo.projectId))?wo.projectId:(wo.dealId&&isUUID(wo.dealId)?wo.dealId:null);
-    const vendor=wo.subcontractor||"Subcontractor";
-    if(existing){
-      if(existing.status==="Paid") return existing;
-      const upd={...existing,amount,vendor,projectId:linkedProjectId||existing.projectId,retentionPct:Number(wo.retentionPct)||0};
-      upPayables(ps=>ps.map(p=>p.id===existing.id?upd:p));
-      if(isSupabaseReady()&&isUUID(existing.id)) sbUpsert("payables",payableToSb(upd),"id").catch(()=>{});
-      return upd;
-    }
-    const rec={id:uid(),apNumber:"",vendor,amount,paidAmount:0,dueDate:"",category:"Subcontractor",
-      accountCode:wo.accountCode||"5070", // 5070 Production - Subcon (5200 is Load Allowance in the chart)
-      retentionPct:Number(wo.retentionPct)||0,
-      invoiceRef:wo.woNumber,invoiceNumber:"",invoiceDate:"",notes:`Auto-created from Work Order ${wo.woNumber}`,projectId:linkedProjectId,
-      poNumber:wo.woNumber,poId:wo.woNumber,status:"Unpaid",verified:false,verificationPct:0,createdAt:today,createdBy:session?.name||""};
-    upPayables(ps=>[rec,...ps]);
-    if(isSupabaseReady()) sbUpsert("payables",payableToSb(rec),"id").catch(()=>{});
-    return rec;
-  };
+  // A Work Order no longer creates a contract-sized bill (decided 2026-11-05):
+  // each subcontractor billing is its own bill against the WO (logged from
+  // Finance › Subcon Payments). The database caps the WO's bills at its contract
+  // and its payments at certified % x contract (migration
+  // 20261105160000_subcon_billing_per_progress_claim.sql).
   // The database refuses a likely duplicate bill or payment (AP safety net,
   // migration 20261102113419): DUPLICATE_BLOCK always, DUPLICATE_REVIEW unless a
   // Manager gives a reason. Returns the Manager's reason, or null after
@@ -9366,11 +9345,21 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // subcontractor PRVs with no Work Order, so Operations never confirmed the
     // work. A PRV linked to a WO that already has its own bill would pay the same
     // work twice — pay that bill instead.
-    if(data.docType==="PRV"&&isSubconPayable(data)){
-      const wo=String(data.poNumber||"").trim();
+    // Subcon billing on a Work Order: one bill per progress billing, carrying the
+    // subcontractor's own billing no., and all of a WO's bills stay within its
+    // contract (the database refuses more unless a Manager saves it).
+    if(isSubconPayable(data)&&String(data.poNumber||"").trim()){
+      const woNo=String(data.poNumber).trim();
+      const wo=swos.find(w=>w.woNumber===woNo);
       if(wo){
-        const woBill=payables.find(p=>p.poId===wo&&p.id!==editPayId);
-        if(woBill){toastEmit(`${wo} already has its own bill${woBill.apNumber?` (${woBill.apNumber})`:""}. Record the payment on that bill instead of a new payment request, so the work isn't paid twice.`,"error",9000);return;}
+        if(!String(data.invoiceNumber||"").trim()){toastEmit("Enter the subcontractor's billing / invoice no. for this progress billing.","error",8000);return;}
+        const contract=Number(wo.contractAmount)||0;
+        const others=payables.filter(p=>p.id!==editPayId&&isSubconPayable(p)&&p.poNumber===woNo&&!["Cancelled","Void"].includes(p.status)).reduce((t,p)=>t+(Number(p.amount)||0),0);
+        if(contract>0&&others+(Number(data.amount)||0)>contract+1){
+          const msg=`${woNo} is already billed ${fmt(others)} of its ${fmt(contract)} contract; this would bring it to ${fmt(others+(Number(data.amount)||0))}. Raise the WO contract first (variation)${canonRole(role)==="Manager"?", or save anyway as Manager":""}.`;
+          if(canonRole(role)!=="Manager"){toastEmit(msg,"error",10000);return;}
+          if(!(await uiConfirm({title:"Over the Work Order",tone:"warning",message:msg,confirmLabel:"Save anyway"}))) return;
+        }
       }
     }
     // D3: subcontractor work of ₱50,000+ must go through a Work Order (either
@@ -9381,8 +9370,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(woBlock){
       const lim="₱"+AP_RULES.subconNoWoLimit.toLocaleString("en-PH");
       toastEmit(woBlock.others>0
-        ?`${data.vendor} already has ${fmt(woBlock.others)} of subcontractor payables with no Work Order in the last ${AP_RULES.subconNoWoWindowDays} days. With this one it's ${fmt(woBlock.total)}, over the ${lim} limit. Create a Work Order for this work: its bill is created automatically.`
-        :`Subcontractor payables of ${lim} or more need a Work Order, so Operations can confirm the work before it's paid. Create the Work Order first: its bill is created automatically.`,"error",12000);
+        ?`${data.vendor} already has ${fmt(woBlock.others)} of subcontractor payables with no Work Order in the last ${AP_RULES.subconNoWoWindowDays} days. With this one it's ${fmt(woBlock.total)}, over the ${lim} limit. Create a Work Order for this work, then log each subcontractor billing against it.`
+        :`Subcontractor payables of ${lim} or more need a Work Order, so Operations can confirm the work before it's paid. Create the Work Order first, then log each subcontractor billing against it.`,"error",12000);
       return;
     }
     // Duplicate guard (new payables only) — the AP ledger has no unique key, so the
@@ -9520,7 +9509,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(enteredByMe(p)){
       toastEmit("You entered this bill — another Manager must approve it.","error",7000);return;
     }
-    if(payIsSubcon(p)&&!subconCertified(p)){toastEmit(`${p.vendor||"This subcontractor"}${p.apNumber?` (${p.apNumber})`:""} isn't certified by the project PM or Operations yet — no approval until they certify the work done.`,"error",8000);return;}
+    if(payIsSubcon(p)&&!subconCertified(p)){
+      // Not certified: approvable only as the WO's down payment, counting the
+      // WO's bills already approved (payables_subcon_cert_guard).
+      const wo=(swos||[]).find(w=>w.woNumber&&w.woNumber===p.poNumber);
+      const dp=subconDpAllowPct(wo), contract=Number(wo?.contractAmount)||0;
+      const approved=payables.filter(b=>b.id!==p.id&&payIsSubcon(b)&&b.poNumber===p.poNumber&&b.approvalStatus==="Approved"&&!["Cancelled","Void"].includes(b.status)).reduce((t,b)=>t+(Number(b.amount)||0),0);
+      if(!(dp>0&&contract>0&&approved+(Number(p.amount)||0)<=dp/100*contract+1)){
+        toastEmit(`${p.vendor||"This subcontractor"}${p.apNumber?` (${p.apNumber})`:""} isn't certified by the project PM or Operations yet${dp>0?` and is beyond the WO's ${dp}% down payment (₱${(dp/100*contract).toLocaleString("en-PH")})`:wo&&Number(wo.dpPct)>0?` and its Work Order isn't issued yet, so the down payment can't be used`:""} — no approval until they certify the work done.`,"error",9000);return;
+      }
+    }
     if(!(await uiConfirm(`Approve ${p.vendor||"this payable"}${p.apNumber?` (${p.apNumber})`:""} for ₱${Number(p.amount||0).toLocaleString("en-PH",{minimumFractionDigits:2})}? This clears it for payment.`))) return;
     if(!(await setPayableDecision(p,"Approved"))) return;
     toastEmit(`✅ Approved — ${p.vendor||"payable"} is now cleared for payment.`,"success");
@@ -9555,12 +9553,19 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       // Approval gate — enforced here for every pay surface, and again by the DB guard.
       // Subcon: paid only up to the PM-certified % (payable_payments_subcon_gate).
       if(payIsSubcon(p)&&e.kind!=="Retention release"){
-        if(!subconCertified(p)){toastEmit(`${p.vendor||"This subcontractor"}${p.apNumber?` (${p.apNumber})`:""} isn't certified by the project PM or Operations — no payment.`,"error",8000);return false;}
         const wo=(swos||[]).find(w=>w.woNumber&&w.woNumber===p.poNumber);
+        const certPct=subconCertified(p)?(Number(p.verificationPct)||0):0;
+        const dpPct=Number(wo?.contractAmount)>0?subconDpAllowPct(wo):0;
+        if(certPct<=0&&dpPct<=0){toastEmit(`${p.vendor||"This subcontractor"}${p.apNumber?` (${p.apNumber})`:""} isn't certified by the project PM or Operations, and its Work Order has no down payment allowed (set on an issued WO) — no payment.`,"error",9000);return false;}
+        const allowPct=Math.max(certPct,dpPct);
         const base=Number(wo?.contractAmount)>0?Number(wo.contractAmount):Number(p.amount)||0;
-        const cap=Math.round((Number(p.verificationPct)||0)/100*base*100)/100;
-        const claimed=paysOf(p.id).filter(x=>x.status!=="Cancelled"&&x.kind!=="Retention release").reduce((s,x)=>s+r2(x.amount)+r2(x.retentionAmount),0)+r2(e.amount)+r2(e.retentionAmount);
-        if(claimed>cap+1){toastEmit(`No payment: that brings ${p.apNumber||p.vendor||"this bill"} to ₱${claimed.toLocaleString("en-PH")} but the PM certified only ${Number(p.verificationPct)||0}% (₱${cap.toLocaleString("en-PH")}). Ask the PM to certify more work first.`,"error",10000);return false;}
+        const cap=Math.round(allowPct/100*base*100)/100;
+        // With a WO the cap covers every progress billing on it (and the other
+        // entries in this same batch); without one, just this bill.
+        const woBills=wo?payables.filter(b=>payIsSubcon(b)&&b.poNumber===p.poNumber).map(b=>b.id):[p.id];
+        const claimed=payPays.filter(x=>woBills.includes(x.payableId)&&x.status!=="Cancelled"&&x.kind!=="Retention release").reduce((s,x)=>s+r2(x.amount)+r2(x.retentionAmount),0)
+          +list.filter(o=>woBills.includes(o.payableId)&&o.kind!=="Retention release").reduce((s,o)=>s+r2(o.amount)+r2(o.retentionAmount),0);
+        if(claimed>cap+1){toastEmit(`No payment: that brings ${p.apNumber||p.vendor||"this bill"} to ₱${claimed.toLocaleString("en-PH")} but only ${allowPct}% is allowed (₱${cap.toLocaleString("en-PH")}: PM certified ${certPct}%, down payment ${dpPct}%). Ask the PM to certify more work first.`,"error",10000);return false;}
       }
       if(payIsSubcon(p)&&e.kind==="Retention release"&&(Number(p.verificationPct)||0)<100){toastEmit("Retention is released only when the PM certifies 100%.","error",8000);return false;}
       // Supplier docs + terms (supplier_docs_check, migration 20261104090100).
@@ -9829,7 +9834,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"boq",l:"BOQ"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Reports"}]},
       {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},...((session?.username==="paulo"||session?.username==="mar")?[{id:"projectmargins",l:"Project Margins"}]:[]),{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills"}]:[]),{id:"payrun",l:"Payment Run"},{id:"monboard",l:"Monitoring Board"},{id:"cashflow",l:"Cash Flow"},{id:"finance-reports",l:"Reports"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},...((session?.username==="paulo"||session?.username==="mar")?[{id:"projectmargins",l:"Project Margins"}]:[]),{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills"}]:[]),{id:"payrun",l:"Payment Run"},{id:"monboard",l:"Monitoring Board"},{id:"subconmon",l:"Subcon Payments"},{id:"cashflow",l:"Cash Flow"},{id:"finance-reports",l:"Reports"}]},
       {group:"Accounting",  items:[{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"},{id:"subconcert",l:"Subcon Billing"}]},
       {group:"Design",      items:[{id:"designboard",l:"Design Board"},{id:"drf",l:"Design Requests"}]},
@@ -9846,7 +9851,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     Finance:[
       {group:"Overview",    items:[{id:"home",l:"Cash Position"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"boq",l:"BOQ"},{id:"clients",l:"Clients"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills"}]:[]),{id:"payrun",l:"Payment Run"},{id:"monboard",l:"Monitoring Board"},{id:"cashflow",l:"Cash Flow"},{id:"finance-reports",l:"Reports"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills"}]:[]),{id:"payrun",l:"Payment Run"},{id:"monboard",l:"Monitoring Board"},{id:"subconmon",l:"Subcon Payments"},{id:"cashflow",l:"Cash Flow"},{id:"finance-reports",l:"Reports"}]},
       {group:"Accounting",  items:[{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"},{id:"subconcert",l:"Subcon Billing"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
@@ -9866,7 +9871,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     Accounting:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"acctdash",l:"Accounting"}]},
-      {group:"Accounting",  items:[{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
+      {group:"Accounting",  items:[{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"subconmon",l:"Subcon Payments"},{id:"coa",l:"Chart of Accounts"}]},
       {group:"Procurement", items:[{id:"subconwo",l:"SWO For Accounting"}]},
     ],
     Procurement:[
@@ -9922,7 +9927,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     FinanceAssistant:[
       {group:"Overview",   items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
-      {group:"Finance",    items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills"}]:[]),{id:"payrun",l:"Payment Run"},{id:"monboard",l:"Monitoring Board"},{id:"cashflow",l:"Cash Flow"},{id:"finance-reports",l:"Reports"}]},
+      {group:"Finance",    items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills"}]:[]),{id:"payrun",l:"Payment Run"},{id:"monboard",l:"Monitoring Board"},{id:"subconmon",l:"Subcon Payments"},{id:"cashflow",l:"Cash Flow"},{id:"finance-reports",l:"Reports"}]},
       {group:"Accounting", items:[{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
     ],
     // Procurement Manager sees the same workspace as Procurement — the only
@@ -9938,7 +9943,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const Nav=useStableComponent(()=>{
     const NAV_ICONS={
       home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   cashposition:"🏦",   supplierbills:"📦",   cashflow:"📈",   payables:"📤",   billing:"🧾",
-      reports:"📈", "sales-reports":"📈", "finance-reports":"📈", projectmargins:"🪙", acctdash:"📒", executive:"🎯", expmon:"🧾", payrun:"💸", bir2307:"📑", monboard:"🚦", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
+      reports:"📈", "sales-reports":"📈", "finance-reports":"📈", projectmargins:"🪙", acctdash:"📒", executive:"🎯", expmon:"🧾", payrun:"💸", bir2307:"📑", monboard:"🚦", subconmon:"🔨", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅", financecal:"📅",
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
       masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆", audit:"🔎", syshealth:"🩺", tvboard:"📺",
@@ -9956,13 +9961,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         :id==="cashposition"?(page==="finance"&&finTab==="cash")
         :id==="supplierbills"?(page==="finance"&&finTab==="bills")
         :id==="executive"?(page==="finance"&&["overview","pl","loans","txns"].includes(finTab))
-        :["expmon","payrun","bir2307","monboard"].includes(id)?(page==="finance"&&finTab===id)
+        :["expmon","payrun","bir2307","monboard","subconmon"].includes(id)?(page==="finance"&&finTab===id)
         :id==="finance"?(page==="acctdash")
         :page===id;
       const icon=NAV_ICONS[id]||NAV_ICONS[l]||"•";
       const fav=favNav.includes(id);
       return(
-        <button key={id} onClick={()=>{if(id==="payables"){setPage("finance");setFinTab("payables");}else if(id==="cashposition"){setPage("finance");setFinTab("cash");}else if(id==="supplierbills"){setPage("finance");setFinTab("bills");}else if(id==="executive"){setPage("finance");setFinTab("overview");}else if(["expmon","payrun","bir2307","monboard"].includes(id)){setPage("finance");setFinTab(id);}else if(id==="finance"){setPage("acctdash");}else{setPage(id);}setSelProj(null);setDealModal(false);setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(null);}}
+        <button key={id} onClick={()=>{if(id==="payables"){setPage("finance");setFinTab("payables");}else if(id==="cashposition"){setPage("finance");setFinTab("cash");}else if(id==="supplierbills"){setPage("finance");setFinTab("bills");}else if(id==="executive"){setPage("finance");setFinTab("overview");}else if(["expmon","payrun","bir2307","monboard","subconmon"].includes(id)){setPage("finance");setFinTab(id);}else if(id==="finance"){setPage("acctdash");}else{setPage(id);}setSelProj(null);setDealModal(false);setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(null);}}
           title={collapsed?l:""}
           style={{display:"flex",alignItems:"center",gap:10,width:"100%",border:"none",borderRadius:0,padding:collapsed?"10px 0":"8px 16px",justifyContent:collapsed?"center":"flex-start",background:active?"rgba(245,158,11,.15)":"transparent",color:active?"#f59e0b":"#94a3b8",fontFamily:"inherit",fontSize:".82rem",fontWeight:active?700:400,cursor:"pointer",borderLeft:active?"3px solid #f59e0b":"3px solid transparent",transition:"all .12s"}}>
           <span style={{fontSize:"1rem",flexShrink:0}}>{icon}</span>
@@ -10100,7 +10105,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       checklist:"✅",joborders:"📄", ops:"⚙️",        datamanagement:"⚙️", myfolder:"📁",
     };
     const NAV_LABELS={
-      home:"Home",pipeline:"Pipeline",projects:"Projects",finance:"Finance",executive:"Executive",expmon:"Expenses",payrun:"Pay Run",bir2307:"2307",monboard:"Board",
+      home:"Home",pipeline:"Pipeline",projects:"Projects",finance:"Finance",executive:"Executive",expmon:"Expenses",payrun:"Pay Run",bir2307:"2307",monboard:"Board",subconmon:"Subcons",
       billing:"Billing",checklist:"Checklist",joborders:"JOs",
       costanalysis:"Costs",accounting:"Daily Payables",procurement:"Orders",
       clients:"Clients",materialreq:"PRF",budgetreq:"Budget",
@@ -10134,7 +10139,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       else if(id==="supplierbills"){setFinTab("bills");pg="finance";}
       else if(id==="payables"){setFinTab("payables");pg="finance";}
       else if(id==="executive"){setFinTab("overview");pg="finance";}
-      else if(["expmon","payrun","bir2307","monboard"].includes(id)){setFinTab(id);pg="finance";}
+      else if(["expmon","payrun","bir2307","monboard","subconmon"].includes(id)){setFinTab(id);pg="finance";}
       else if(id==="finance"){pg="acctdash";} // Finance home = ERP operational dashboard
       setPage(pg);setSelProj(null);setDealModal(false);setMoreNavOpen(false);setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(null);if(id==="home")setFromHome(false);
     };
@@ -15578,11 +15583,28 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             progressOf={id=>{const p=projs[id];return p&&p.progress?overallProg(p):null;}}/>
         )}
 
+        {/* ── SUBCON PAYMENT MONITORING ── one row per WO, payments as columns (read-only). */}
+        {finTab==="subconmon"&&(
+          <SubconPaymentMonitor swos={swos} payables={payables} payPays={payPays} deals={deals} prs={prs} exps={exps} today={today}
+            onNewBilling={roleCanInsert("payables")?wo=>{
+              const pid=(wo.dealId&&isUUID(wo.dealId))?wo.dealId:((wo.projectId&&isUUID(wo.projectId))?wo.projectId:null);
+              setPayForm({...emptyPayForm(),docType:"AP",vendor:wo.subcontractor||"",category:"Subcontractor",accountCode:wo.accountCode||"5070",
+                projectId:pid,poNumber:wo.woNumber,poId:wo.woNumber,invoiceRef:wo.woNumber,retentionPct:Number(wo.retentionPct)||0,
+                notes:`Progress billing on Work Order ${wo.woNumber}`});
+              setEditPayId(null);setPayModal(true);
+            }:null}/>
+        )}
+
         {/* Add/Edit Payable modal: page-level so Expense Monitoring (and the
             hidden Accounts Payable tab) can both open it. */}
 {/* Add/Edit Payable Modal */}
         <Modal open={payModal} onClose={()=>{setPayModal(false);setEditPayId(null);}} title={editPayId?(payForm.docType==="PRV"?"Edit Payment Request":"Edit Other Payable"):(payForm.docType==="PRV"?"New Payment Request (PRV)":"New Other Payable")}>
           {editPayId&&payForm.apNumber&&<div style={{fontSize:".72rem",color:"#6366f1",fontWeight:700,fontFamily:"monospace",marginBottom:8}}>{payForm.apNumber}{payForm.poNumber?` · PO ${payForm.poNumber}`:""}</div>}
+          {!editPayId&&isSubconPayable(payForm)&&payForm.poNumber&&(()=>{const wo=swos.find(w=>w.woNumber===payForm.poNumber);const billed=payables.filter(p=>isSubconPayable(p)&&p.poNumber===payForm.poNumber&&!["Cancelled","Void"].includes(p.status)).reduce((t,p)=>t+(Number(p.amount)||0),0);return(
+            <div style={{background:"#eef2ff",border:"1px solid #c7d2fe",borderRadius:8,padding:"8px 10px",fontSize:".76rem",color:"#3730a3",marginBottom:10}}>
+              Subcon billing against <b style={{fontFamily:"monospace"}}>{payForm.poNumber}</b>{wo?` · contract ₱${(Number(wo.contractAmount)||0).toLocaleString("en-PH")} · billed so far ₱${billed.toLocaleString("en-PH")} · left to bill ₱${Math.max(0,(Number(wo.contractAmount)||0)-billed).toLocaleString("en-PH")}`:""}.
+              Enter the subcontractor's billing no. and this billing's amount. It's paid only up to the % the PM certifies, or the WO's down payment % once the WO is issued.
+            </div>);})()}
           <Fld label="Type">
             <Sel value={payForm.docType==="PRV"?"PRV":"AP"} onChange={e=>setPayForm(p=>({...p,docType:e.target.value}))} disabled={!!(editPayId&&payForm.apNumber)}>
               <option value="AP">Supplier bill (AP)</option>
@@ -22707,7 +22729,7 @@ function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,deal
     const recs=valid.map(r=>({
       subcontractor:r.subcontractor,projectId:r.projectId,projectName:r.projectName,
       specialty:r.specialty,scopeOfWork:r.scopeOfWork,contractAmount:r.contractAmount,
-      retentionPct:r.retentionPct,paymentStructure:r.paymentStructure,paymentTerms:r.paymentTerms,
+      retentionPct:r.retentionPct,dpPct:Math.min(SUBCON_DP_MAX_NON_MANAGER,parseDpPct(`${r.paymentStructure||""} ${r.paymentTerms||""}`)),paymentStructure:r.paymentStructure,paymentTerms:r.paymentTerms,
       startDate:r.startDate,targetEndDate:r.targetEndDate,woDate:r.woDate,notes:r.notes,
       delivery:null,
       status:woDirect?"Issued":"Pending Approval",
@@ -22741,7 +22763,10 @@ function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,deal
     if(!form.scopeOfWork.trim()){toastEmit&&toastEmit("Please describe the scope of work.","error");return;}
     if(n(form.contractAmount)<=0){toastEmit&&toastEmit("Contract amount must be greater than 0.","error");return;}
     const deal=wonDeals.find(d=>d.id===form.projectId);
-    const base={...form,projectName:projDisplayName(deal)||form.projectName||"",contractAmount:n(form.contractAmount),retentionPct:n(form.retentionPct)};
+    const dpPct=String(form.dpPct??"").trim()===""?parseDpPct(`${form.paymentStructure||""} ${form.paymentTerms||""}`):n(form.dpPct);
+    if(dpPct<0||dpPct>100){toastEmit&&toastEmit("Down payment % must be between 0 and 100.","error");return;}
+    if(dpPct>SUBCON_DP_MAX_NON_MANAGER&&canonRole(role)!=="Manager"&&dpPct!==Number(swos.find(w=>w.id===editingId)?.dpPct||0)){toastEmit&&toastEmit(`A subcontractor down payment above ${SUBCON_DP_MAX_NON_MANAGER}% needs a Manager.`,"error",8000);return;}
+    const base={...form,projectName:projDisplayName(deal)||form.projectName||"",contractAmount:n(form.contractAmount),retentionPct:n(form.retentionPct),dpPct};
     if(editingId){
       const orig=swos.find(w=>w.id===editingId);
       const dpBlk=orig&&WO_ISSUED.includes(base.status)&&!WO_ISSUED.includes(orig.status)&&dpBlockedDeal(base.projectId);
@@ -23018,6 +23043,14 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
               <Inp type="number" value={form.retentionPct} onChange={e=>f("retentionPct",e.target.value)} placeholder="e.g. 10" min={0} max={100}/>
             </Fld>
             <Fld label="Payment Structure"><Inp value={form.paymentStructure} onChange={e=>f("paymentStructure",e.target.value)} placeholder="e.g. 50% Start / 50% Completion"/></Fld>
+            {(()=>{const orig=editingId?swos.find(w=>w.id===editingId):null;
+              const locked=canonRole(role)!=="Manager"&&!!orig&&["Issued","In Progress","Completed"].includes(orig.status);
+              const guess=parseDpPct(`${form.paymentStructure||""} ${form.paymentTerms||""}`);
+              const dpv=String(form.dpPct??"").trim()===""?guess:n(form.dpPct);
+              return(
+              <Fld label="Down payment %" hint={locked?"Locked once the WO is issued (Manager only)":`Paid before PM certification, once the WO is issued${dpv>0&&n(form.contractAmount)>0?` · ${fmt(dpv/100*n(form.contractAmount))}`:""}. Over ${SUBCON_DP_MAX_NON_MANAGER}% needs a Manager.`}>
+                <Inp type="number" value={form.dpPct??""} disabled={locked} onChange={e=>f("dpPct",e.target.value)} placeholder={guess?`${guess} (from payment structure)`:"0 = no down payment"} min={0} max={100}/>
+              </Fld>);})()}
             <Fld label="Payment Terms"><Inp value={form.paymentTerms} onChange={e=>f("paymentTerms",e.target.value)} placeholder="e.g. 30 Days, Cash Basis"/></Fld>
             <Fld label="Account (Chart of Accounts)" hint="Defaults to 5200 · Subcontractor Costs">
               <Sel value={form.accountCode||""} onChange={e=>f("accountCode",e.target.value)}>

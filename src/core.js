@@ -1301,6 +1301,14 @@ export const AP_RULES={subconRetentionPct:10,subconNoWoLimit:50000,subconNoWoWin
 // the chart, so it is kept here only to recognise those older rows).
 export const SUBCON_ACCOUNT_CODES=["5070","5100","5200"];
 export const isSubconPayable=p=>!!p&&(p.category==="Subcontractor"||SUBCON_ACCOUNT_CODES.includes(String(p.accountCode||"")));
+// Subcon down payment (migration 20261105170000_subcon_down_payment_allowance.sql):
+// a Work Order's bills may be approved and paid up to dp % of its contract
+// before any PM certification, but only once the WO is issued. Keep in sync
+// with subcon_dp_allow_pct() and the "(\d+)% start|down|dp…" backfill there.
+export const SUBCON_DP_STATUSES=["Issued","In Progress","Completed"];
+export const SUBCON_DP_MAX_NON_MANAGER=50;
+export const parseDpPct=text=>{const m=/(\d{1,3})\s*%\s*(start|down|dp|mobili|advance|upon)/i.exec(String(text||""));return m?Math.min(100,Number(m[1])):0;};
+export const subconDpAllowPct=wo=>wo&&SUBCON_DP_STATUSES.includes(wo.status)?(Number(wo.dpPct)||0):0;
 
 // ── Supplier payment documents (Paulo, 2026-11-04) ───────────────────────────
 // A supplier bill (category Supplier, not subcon) created from 2026-11-09 is
@@ -1403,7 +1411,7 @@ export const SWO_STATUSES=["Draft","Pending Approval","Issued","In Progress","Co
 
 export const SWO_STATUS_CLR={Draft:"#94a3b8","Pending Approval":"#f59e0b",Issued:"#6366f1","In Progress":"#3b82f6",Completed:"#10b981",Cancelled:"#ef4444"};
 
-export const emptySWO=()=>({subcontractor:"",projectId:"",projectName:"",woNumber:"",woDate:"",specialty:"",status:"Draft",startDate:"",targetEndDate:"",scopeOfWork:"",contractAmount:0,retentionPct:AP_RULES.subconRetentionPct,paymentStructure:"",paymentTerms:"",notes:"",requestedBy:"",approvedBy:"",acctStatus:"",delivery:null});
+export const emptySWO=()=>({subcontractor:"",projectId:"",projectName:"",woNumber:"",woDate:"",specialty:"",status:"Draft",startDate:"",targetEndDate:"",scopeOfWork:"",contractAmount:0,retentionPct:AP_RULES.subconRetentionPct,dpPct:"",paymentStructure:"",paymentTerms:"",notes:"",requestedBy:"",approvedBy:"",acctStatus:"",delivery:null});
 
 export const emptyDelivery=()=>({mode:"",deliveredDate:"",inspectedBy:"",inspectedOn:"",checkQty:false,checkDimensions:false,checkFinish:false,defectNotes:"",inspectionNotes:"",signedOffBy:"",signedOffOn:"",status:"Pending",retentionReleased:false});
 
