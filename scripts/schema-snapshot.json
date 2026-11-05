@@ -127,6 +127,24 @@
     "ref_no",
     "value_date"
   ],
+  "bir_2307": [
+    "created_at",
+    "dated",
+    "deal_id",
+    "direction",
+    "ewt_amount",
+    "id",
+    "notes",
+    "party",
+    "party_key",
+    "quarter",
+    "recorded_at",
+    "recorded_by",
+    "ref",
+    "status",
+    "tax_base",
+    "updated_at"
+  ],
   "boq_library": [
     "category",
     "created_at",
@@ -684,6 +702,27 @@
     "verified",
     "verified_at",
     "verified_by"
+  ],
+  "payment_runs": [
+    "approved_at",
+    "approved_by",
+    "cancel_reason",
+    "cancelled_at",
+    "cancelled_by",
+    "cash_as_of",
+    "cash_available",
+    "created_at",
+    "created_by",
+    "id",
+    "items",
+    "notes",
+    "proposed_at",
+    "proposed_by",
+    "release_date",
+    "released_at",
+    "released_by",
+    "status",
+    "updated_at"
   ],
   "po_counter": [
     "id",

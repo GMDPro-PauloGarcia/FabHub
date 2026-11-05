@@ -52,6 +52,9 @@ const DailyCashPosition=_lazyView(()=>import('./views/DailyCashPosition'));
 const CashPositionPayables=_lazyView(()=>import('./views/CashPositionPayables'));
 const TransactionHistory=_lazyView(()=>import('./views/TransactionHistory'));
 const ExpenseMonitoring=_lazyView(()=>import('./views/ExpenseMonitoring'));
+const PaymentRun=_lazyView(()=>import('./views/PaymentRun'));
+const Bir2307=_lazyView(()=>import('./views/Bir2307'));
+const MonitoringBoard=_lazyView(()=>import('./views/MonitoringBoard'));
 const LedgerHost=_lazyView(()=>import('./views/Ledgers').then(m=>({default:m.LedgerHost})));
 const CERequestTracker=_lazyView(()=>import('./views/CERequestTracker'));
 const POApprovals=_lazyView(()=>import('./views/POApprovals'));
@@ -9489,23 +9492,37 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // FinanceAssistant's role intact while lending them Finance-Manager approval
   // authority — used for Mark Acejo during Aerwin's turnover. Must stay in sync
   // with the DB gate in supabase_migration_065 (enforce_payable_approval).
-  const PAYABLE_APPROVAL_GRANTEES=["mark"];
+  // Approvers: Managers (and the Finance role). Mark enters and pays bills, so he
+  // no longer approves them (migration 20261105042430_payables_approval_controls).
+  const PAYABLE_APPROVAL_GRANTEES=[];
   const canApprovePayables=["Manager","Finance"].includes(role)
     || PAYABLE_APPROVAL_GRANTEES.includes((session?.username||"").toLowerCase());
   const payApproved=p=>((p?.approvalStatus)||"Approved")==="Approved"; // legacy rows (no field) treated as approved
+  const enteredByMe=p=>{const nm=v=>String(v||"").trim().toLowerCase();const c=nm(p?.createdBy);return !!c&&(c===nm(session?.name)||c===nm(session?.username));};
+  // Approve / reject on the server first, sending only the decision plus the
+  // amount and supplier the approver is looking at. The database refuses the
+  // approval if the bill changed since this device loaded it, stamps who and
+  // when, and refuses self-approval (migration 20261105042430).
+  const setPayableDecision=async(p,decision,notes)=>{
+    if(!isSupabaseReady()){toastEmit("No server connection: approvals are made online only. Try again when you're back online.","error",8000);return false;}
+    const patch={approval_status:decision,amount:Math.round((Number(p.amount)||0)*100)/100,vendor:p.vendor||""};
+    if(notes!=null) patch.notes=notes;
+    const{data,error}=await supabase.from("payables").update(patch).eq("id",p.id).select("approval_status,approved_by,approved_at,amount,vendor,notes").maybeSingle();
+    if(error||!data){await uiAlert({title:decision==="Approved"?"Not approved":"Not rejected",message:error?.message||"The bill wasn't found on the server. Refresh and try again."});return false;}
+    upPayables(ps=>ps.map(x=>x.id===p.id?{...x,approvalStatus:data.approval_status,approvedBy:data.approved_by||"",approvedAt:data.approved_at,notes:data.notes??x.notes}:x));
+    if(data.approval_status!==decision){toastEmit(`The server kept this bill as ${data.approval_status}.`,"warning",8000);return false;}
+    return true;
+  };
   const approvePayable=async(id)=>{
     const p=payables.find(x=>x.id===id); if(!p) return;
     if(!canApprovePayables){toastEmit("Only a Manager or the Finance Manager can approve a payable.","error");return;}
-    // Block self-approval — the person who entered it can't clear it (Manager may override).
-    const nm=s=>String(s||"").trim().toLowerCase();
-    if(role!=="Manager"&&nm(p.createdBy)===nm(session?.name)&&nm(p.createdBy)!==""){
-      toastEmit("You entered this payable — another Manager or Finance approver must review it.","error",7000);return;
+    // No self-approval, for anyone (the database refuses it too).
+    if(enteredByMe(p)){
+      toastEmit("You entered this bill — another Manager must approve it.","error",7000);return;
     }
     if(payIsSubcon(p)&&!subconCertified(p)){toastEmit(`${p.vendor||"This subcontractor"}${p.apNumber?` (${p.apNumber})`:""} isn't certified by the project PM or Operations yet — no approval until they certify the work done.`,"error",8000);return;}
     if(!(await uiConfirm(`Approve ${p.vendor||"this payable"}${p.apNumber?` (${p.apNumber})`:""} for ₱${Number(p.amount||0).toLocaleString("en-PH",{minimumFractionDigits:2})}? This clears it for payment.`))) return;
-    const upd={...p,approvalStatus:"Approved",approvedBy:session?.name||role,approvedAt:today};
-    upPayables(ps=>ps.map(x=>x.id===id?upd:x));
-    if(isSupabaseReady()&&isUUID(id)) sbUpsert("payables",payableToSb(upd),"id").catch(()=>{toastEmit("⚠️ Approval saved locally but NOT synced — do not close this tab!","warning",9000);});
+    if(!(await setPayableDecision(p,"Approved"))) return;
     toastEmit(`✅ Approved — ${p.vendor||"payable"} is now cleared for payment.`,"success");
   };
   const rejectPayable=async(id)=>{
@@ -9513,9 +9530,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(!canApprovePayables){toastEmit("Only a Manager or the Finance Manager can reject a payable.","error");return;}
     const reason=await uiPrompt("Reason for rejecting this payable (kept on record):","");
     if(reason==null) return;
-    const upd={...p,approvalStatus:"Rejected",approvedBy:session?.name||role,approvedAt:today,notes:(p.notes?p.notes+" · ":"")+"REJECTED: "+(reason||"(no reason given)")};
-    upPayables(ps=>ps.map(x=>x.id===id?upd:x));
-    if(isSupabaseReady()&&isUUID(id)) sbUpsert("payables",payableToSb(upd),"id").catch(()=>{toastEmit("⚠️ Rejection saved locally but NOT synced — do not close this tab!","warning",9000);});
+    if(!(await setPayableDecision(p,"Rejected",(p.notes?p.notes+" · ":"")+"REJECTED: "+(reason||"(no reason given)")))) return;
     toastEmit("Payable rejected — it can be edited and re-submitted.","info");
   };
   // ── Payment history (payable_payments) ─────────────────────────────────────
@@ -9552,6 +9567,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       const docsBlock=e.kind==="Retention release"?null:supplierPayBlock(p,common.date,{prs,drs,suppliers});
       if(docsBlock){toastEmit("🚫 No payment: "+docsBlock,"error",10000);return false;}
       if(!payApproved(p)){toastEmit(`${p.vendor||"This payable"}${p.apNumber?` (${p.apNumber})`:""} isn't approved yet — a Manager or Finance Manager must approve it before payment.`,"error",7000);return false;}
+      // 3-way match (GMD Monitoring Flow): a materials PO bill is paid only once
+      // the PO is fully delivered. A Manager can still pay it, and so can anyone
+      // paying it from an approved payment run (the Manager saw the warning when
+      // approving). App-side check: delivery lives on the PO lines.
+      if(e.kind!=="Retention release"&&!payIsSubcon(p)&&canonRole(role)!=="Manager"&&!common.runCleared){
+        const lines=(prs||[]).filter(x=>x.poNumber&&x.poNumber===(p.poId||p.poNumber)&&x.status!=="Cancelled");
+        const qty=lines.reduce((s2,i)=>s2+(Number(i.qty)||0),0),got=lines.reduce((s2,i)=>s2+(Number(i.qtyDelivered)||0),0);
+        const full=lines.every(i=>i.status==="Delivered")||(qty>0&&got>=qty);
+        if(lines.length&&!full){toastEmit(`${p.vendor||"This bill"}${p.apNumber?` (${p.apNumber})`:""}: PO ${p.poId||p.poNumber} isn't fully delivered. Pay it through an approved payment run, or ask a Manager.`,"error",9000);return false;}
+      }
     }
     if(!common.date){toastEmit("Enter the payment date.","error");return false;}
     const ref=String(common.ref||"").trim();
@@ -9804,8 +9829,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"boq",l:"BOQ"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Reports"}]},
       {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},...((session?.username==="paulo"||session?.username==="mar")?[{id:"projectmargins",l:"Project Margins"}]:[]),{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills"}]:[]),{id:"cashflow",l:"Cash Flow"},{id:"finance-reports",l:"Reports"}]},
-      {group:"Accounting",  items:[{id:"expmon",l:"Expense Monitoring"},{id:"coa",l:"Chart of Accounts"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},...((session?.username==="paulo"||session?.username==="mar")?[{id:"projectmargins",l:"Project Margins"}]:[]),{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills"}]:[]),{id:"payrun",l:"Payment Run"},{id:"monboard",l:"Monitoring Board"},{id:"cashflow",l:"Cash Flow"},{id:"finance-reports",l:"Reports"}]},
+      {group:"Accounting",  items:[{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"},{id:"subconcert",l:"Subcon Billing"}]},
       {group:"Design",      items:[{id:"designboard",l:"Design Board"},{id:"drf",l:"Design Requests"}]},
       {group:"Procurement", items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
@@ -9821,8 +9846,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     Finance:[
       {group:"Overview",    items:[{id:"home",l:"Cash Position"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"boq",l:"BOQ"},{id:"clients",l:"Clients"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills"}]:[]),{id:"cashflow",l:"Cash Flow"},{id:"finance-reports",l:"Reports"}]},
-      {group:"Accounting",  items:[{id:"expmon",l:"Expense Monitoring"},{id:"coa",l:"Chart of Accounts"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills"}]:[]),{id:"payrun",l:"Payment Run"},{id:"monboard",l:"Monitoring Board"},{id:"cashflow",l:"Cash Flow"},{id:"finance-reports",l:"Reports"}]},
+      {group:"Accounting",  items:[{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"},{id:"subconcert",l:"Subcon Billing"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
       {group:"Procurement", items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
@@ -9841,7 +9866,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     Accounting:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"acctdash",l:"Accounting"}]},
-      {group:"Accounting",  items:[{id:"expmon",l:"Expense Monitoring"},{id:"coa",l:"Chart of Accounts"}]},
+      {group:"Accounting",  items:[{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
       {group:"Procurement", items:[{id:"subconwo",l:"SWO For Accounting"}]},
     ],
     Procurement:[
@@ -9897,8 +9922,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     FinanceAssistant:[
       {group:"Overview",   items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
-      {group:"Finance",    items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills"}]:[]),{id:"cashflow",l:"Cash Flow"},{id:"finance-reports",l:"Reports"}]},
-      {group:"Accounting", items:[{id:"expmon",l:"Expense Monitoring"},{id:"coa",l:"Chart of Accounts"}]},
+      {group:"Finance",    items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills"}]:[]),{id:"payrun",l:"Payment Run"},{id:"monboard",l:"Monitoring Board"},{id:"cashflow",l:"Cash Flow"},{id:"finance-reports",l:"Reports"}]},
+      {group:"Accounting", items:[{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
     ],
     // Procurement Manager sees the same workspace as Procurement — the only
     // difference is authority (they approve POs), not navigation.
@@ -9913,7 +9938,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const Nav=useStableComponent(()=>{
     const NAV_ICONS={
       home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   cashposition:"🏦",   supplierbills:"📦",   cashflow:"📈",   payables:"📤",   billing:"🧾",
-      reports:"📈", "sales-reports":"📈", "finance-reports":"📈", projectmargins:"🪙", acctdash:"📒", executive:"🎯", expmon:"🧾", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
+      reports:"📈", "sales-reports":"📈", "finance-reports":"📈", projectmargins:"🪙", acctdash:"📒", executive:"🎯", expmon:"🧾", payrun:"💸", bir2307:"📑", monboard:"🚦", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅", financecal:"📅",
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
       masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆", audit:"🔎", syshealth:"🩺", tvboard:"📺",
@@ -9931,13 +9956,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         :id==="cashposition"?(page==="finance"&&finTab==="cash")
         :id==="supplierbills"?(page==="finance"&&finTab==="bills")
         :id==="executive"?(page==="finance"&&["overview","pl","loans","txns"].includes(finTab))
-        :id==="expmon"?(page==="finance"&&finTab==="expmon")
+        :["expmon","payrun","bir2307","monboard"].includes(id)?(page==="finance"&&finTab===id)
         :id==="finance"?(page==="acctdash")
         :page===id;
       const icon=NAV_ICONS[id]||NAV_ICONS[l]||"•";
       const fav=favNav.includes(id);
       return(
-        <button key={id} onClick={()=>{if(id==="payables"){setPage("finance");setFinTab("payables");}else if(id==="cashposition"){setPage("finance");setFinTab("cash");}else if(id==="supplierbills"){setPage("finance");setFinTab("bills");}else if(id==="executive"){setPage("finance");setFinTab("overview");}else if(id==="expmon"){setPage("finance");setFinTab("expmon");}else if(id==="finance"){setPage("acctdash");}else{setPage(id);}setSelProj(null);setDealModal(false);setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(null);}}
+        <button key={id} onClick={()=>{if(id==="payables"){setPage("finance");setFinTab("payables");}else if(id==="cashposition"){setPage("finance");setFinTab("cash");}else if(id==="supplierbills"){setPage("finance");setFinTab("bills");}else if(id==="executive"){setPage("finance");setFinTab("overview");}else if(["expmon","payrun","bir2307","monboard"].includes(id)){setPage("finance");setFinTab(id);}else if(id==="finance"){setPage("acctdash");}else{setPage(id);}setSelProj(null);setDealModal(false);setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(null);}}
           title={collapsed?l:""}
           style={{display:"flex",alignItems:"center",gap:10,width:"100%",border:"none",borderRadius:0,padding:collapsed?"10px 0":"8px 16px",justifyContent:collapsed?"center":"flex-start",background:active?"rgba(245,158,11,.15)":"transparent",color:active?"#f59e0b":"#94a3b8",fontFamily:"inherit",fontSize:".82rem",fontWeight:active?700:400,cursor:"pointer",borderLeft:active?"3px solid #f59e0b":"3px solid transparent",transition:"all .12s"}}>
           <span style={{fontSize:"1rem",flexShrink:0}}>{icon}</span>
@@ -10075,7 +10100,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       checklist:"✅",joborders:"📄", ops:"⚙️",        datamanagement:"⚙️", myfolder:"📁",
     };
     const NAV_LABELS={
-      home:"Home",pipeline:"Pipeline",projects:"Projects",finance:"Finance",executive:"Executive",expmon:"Expenses",
+      home:"Home",pipeline:"Pipeline",projects:"Projects",finance:"Finance",executive:"Executive",expmon:"Expenses",payrun:"Pay Run",bir2307:"2307",monboard:"Board",
       billing:"Billing",checklist:"Checklist",joborders:"JOs",
       costanalysis:"Costs",accounting:"Daily Payables",procurement:"Orders",
       clients:"Clients",materialreq:"PRF",budgetreq:"Budget",
@@ -10109,7 +10134,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       else if(id==="supplierbills"){setFinTab("bills");pg="finance";}
       else if(id==="payables"){setFinTab("payables");pg="finance";}
       else if(id==="executive"){setFinTab("overview");pg="finance";}
-      else if(id==="expmon"){setFinTab("expmon");pg="finance";}
+      else if(["expmon","payrun","bir2307","monboard"].includes(id)){setFinTab(id);pg="finance";}
       else if(id==="finance"){pg="acctdash";} // Finance home = ERP operational dashboard
       setPage(pg);setSelProj(null);setDealModal(false);setMoreNavOpen(false);setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(null);if(id==="home")setFromHome(false);
     };
@@ -15499,7 +15524,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               );
             })()}
             {cashSub==="daily"&&(
-              <DailyCashPosition cashPositions={cashPositions} saveDayPos={saveDayPos} wonDeals={wonDeals} billings={billings} suppliers={suppliers} subcons={subcons} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps} updateMilestone={updateMilestone} upExps={upExps} toSbExpense={toSbExpense} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} vouchers={vouchers} payables={payables} loans={loans} inventory={inventory} userName={session?.name||""} role={role} username={session?.username||""} cashStale={cashStale}/>
+              <DailyCashPosition payPays={payPays} canPay={roleCanInsert("payable_payments")} onPayMany={recordPayments} cashPositions={cashPositions} saveDayPos={saveDayPos} wonDeals={wonDeals} billings={billings} suppliers={suppliers} subcons={subcons} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps} updateMilestone={updateMilestone} upExps={upExps} toSbExpense={toSbExpense} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} vouchers={vouchers} payables={payables} loans={loans} inventory={inventory} userName={session?.name||""} role={role} username={session?.username||""} cashStale={cashStale}/>
             )}
             {cashSub==="weekly"&&(
               <WeeklyCashFlow mode="weekly" cashPositions={cashPositions} billings={billings} exps={exps} chartOfAccounts={chartOfAccounts} setPage={setPage}/>
@@ -15515,7 +15540,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             so Running Payables on the Daily Cash Position stays true. */}
         {finTab==="bills"&&AP_HIDDEN&&role!=="Accounting"&&(
           <CashPositionPayables payables={payables} payPays={payPays} prs={prs} swos={swos} exps={exps} deals={deals} today={today}
-            canApprove={canApprovePayables} canPay={roleCanInsert("payable_payments")}
+            canApprove={canApprovePayables} enteredByMe={enteredByMe} canPay={roleCanInsert("payable_payments")}
             onApprove={approvePayable} onPay={(id,amt,o)=>recordPayablePayment(id,amt,o)} onPayMany={recordPayments} onCancelPay={cancelPayablePayment}/>
         )}
 
@@ -15532,6 +15557,25 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             role={role} username={session?.username||""} userName={session?.name||""} canPay={roleCanInsert("payable_payments")} onPayMany={recordPayments}
             onNewPayable={roleCanInsert("payables")?()=>{setPayForm(emptyPayForm());setEditPayId(null);setPayModal(true);}:null}
             onEditPayable={roleCanInsert("payables")?p=>{setPayForm({...p});setEditPayId(p.id);setPayModal(true);}:null}/>
+        )}
+
+        {/* ── PAYMENT RUN ── weekly: list Mon, propose Tue, Manager approves Wed, release Thu. */}
+        {finTab==="payrun"&&role!=="Accounting"&&(
+          <PaymentRun payables={payables} payPays={payPays} prs={prs} swos={swos} exps={exps} deals={deals} cashPositions={cashPositions} today={today}
+            role={canonRole(role)} session={session} canPay={roleCanInsert("payable_payments")} onPayMany={recordPayments} sendTelegramNotification={sendTelegramNotification}
+            onBillsApproved={ids=>upPayables(ps=>ps.map(p=>ids.includes(p.id)&&(p.approvalStatus||"Approved")==="Pending"?{...p,approvalStatus:"Approved",approvedBy:session?.name||"",approvedAt:new Date().toISOString()}:p))}/>
+        )}
+
+        {/* ── BIR 2307 ── certificates of tax withheld, to issue (suppliers) and receive (clients). */}
+        {finTab==="bir2307"&&(
+          <Bir2307 payables={payables} payPays={payPays} billings={billings} deals={deals} today={today} role={canonRole(role)}/>
+        )}
+
+        {/* ── MONITORING BOARD ── the desk's traffic lights (GMD Monitoring Flow, page 3). */}
+        {finTab==="monboard"&&role!=="Accounting"&&(
+          <MonitoringBoard payables={payables} payPays={payPays} prs={prs} swos={swos} exps={exps} billings={billings} deals={deals} wonDeals={wonDeals}
+            budgets={budgets} inventory={inventory} stocklog={stocklog} cashPositions={cashPositions} today={today}
+            progressOf={id=>{const p=projs[id];return p&&p.progress?overallProg(p):null;}}/>
         )}
 
         {/* Add/Edit Payable modal: page-level so Expense Monitoring (and the
@@ -16656,6 +16700,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           );
         })()}
         <DailyCashPosition
+          payPays={payPays} canPay={roleCanInsert("payable_payments")} onPayMany={recordPayments}
           cashPositions={cashPositions}
           saveDayPos={saveDayPos}
           wonDeals={wonDeals}

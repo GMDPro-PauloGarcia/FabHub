@@ -201,7 +201,10 @@ export default function ExpenseMonitoring({cashPositions={},saveDayPos,cashDayIs
   );
 }
 
-function LinkModal({m,r,onClose,payables,payPays,cashPositions,saveDayPos,cashDayIsCurrent,role,username,userName,canPay,onPayMany,projName}){
+// Also used by the Daily Cash Position row 🔗 (onSheetLink): there the link is
+// applied as an ordinary sheet edit and saved with the sheet's own Save (day
+// lock, Manager reason, "updated elsewhere" check), so nothing is written here.
+export function LinkModal({m,r={status:"none"},onClose,payables,payPays,cashPositions,saveDayPos,cashDayIsCurrent,role,username,userName,canPay,onPayMany,projName=()=>"",onSheetLink}){
   const initial=m.payableIds?.length?m.payableIds:(r.status==="suggested"?r.payableIds:[]);
   const[sel,setSel]=useState(()=>new Set(initial));
   const[q,setQ]=useState("");
@@ -213,7 +216,7 @@ function LinkModal({m,r,onClose,payables,payPays,cashPositions,saveDayPos,cashDa
   const vk=vendorKey(m.payee);
   const isMgr=role==="Manager";
   const locked=cashDayLocked(m.date);
-  const canSheet=cashCanEdit(role,username)&&(!locked||isMgr);
+  const canSheet=onSheetLink?true:cashCanEdit(role,username)&&(!locked||isMgr);
   // Candidates: open bills, plus bills settled in the last 60 days (the payment may
   // already be recorded in Supplier Bills). Same supplier first.
   const cutoff=addDaysLocalISO(m.date,-60);
@@ -249,7 +252,7 @@ function LinkModal({m,r,onClose,payables,payPays,cashPositions,saveDayPos,cashDa
     if(willRecord&&method==="Check"&&!ref.trim()){await uiAlert("Enter the check number.");return;}
     if(willRecord&&notApproved.length){await uiAlert(`${notApproved.map(billLabel).join(", ")} ${notApproved.length>1?"aren't":"isn't"} approved yet. A Manager or Finance Manager approves it in Supplier Bills first.`);return;}
     let pastEdit=null;
-    if(canSheet&&locked&&isMgr){
+    if(!onSheetLink&&canSheet&&locked&&isMgr){
       const why=await uiPrompt({title:`${m.date} is locked`,tone:"warning",confirmLabel:"Link on locked day",message:"This cash-position day has locked. As a Manager you can still link the disbursement; the reason is kept in the Audit Trail and sent to management.\n\nWhy?"});
       if(!why||!String(why).trim()) return;
       pastEdit={reason:String(why).trim()};
@@ -258,7 +261,7 @@ function LinkModal({m,r,onClose,payables,payPays,cashPositions,saveDayPos,cashDa
     try{
       // The cash sheet on this device must be the server's latest, or the link
       // would overwrite a newer save. Checked before any payment is recorded.
-      if(canSheet&&cashDayIsCurrent){
+      if(!onSheetLink&&canSheet&&cashDayIsCurrent){
         const fresh=await cashDayIsCurrent(m.date);
         if(!fresh.ok){await uiAlert(fresh.why);return;}
       }
@@ -266,7 +269,9 @@ function LinkModal({m,r,onClose,payables,payPays,cashPositions,saveDayPos,cashDa
         const ok=await onPayMany(entries,{date:m.date,method,bank:bankOf(m.bank)?.id||m.bank||"",ref:ref.trim(),note:`Cash position ${m.date}: ${m.payee||""} ${php2(m.amount)}`.trim()});
         if(!ok) return;
       }
-      if(canSheet){
+      if(onSheetLink){
+        onSheetLink(noBill?[]:[...sel],noBill);
+      } else if(canSheet){
         const dayPos=cashPositions[m.date];
         const rows=dayPos?.disbursements?.manual||[];
         let idx=m.rowId?rows.findIndex(x=>x.id===m.rowId):-1;
@@ -292,6 +297,7 @@ function LinkModal({m,r,onClose,payables,payPays,cashPositions,saveDayPos,cashDa
     <Modal open onClose={()=>!busy&&onClose()} title={`Link disbursement · ${php2(m.amount)}`} wide>
       <div style={{fontSize:".78rem",color:"#475569",marginBottom:10}}>{m.date} · {bankLabel(m.bank)} · <b>{m.payee||"—"}</b>{m.particulars?` · ${m.particulars}`:""}</div>
       {!canSheet&&<div style={{background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:8,padding:"7px 10px",fontSize:".72rem",color:"#9a3412",marginBottom:10}}>{locked?"This day is locked: only a Manager can link it on the cash sheet.":"Only Managers and the cash-position preparer can tag the cash sheet."} You can still record the AP payment.</div>}
+      {onSheetLink&&<div style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:8,padding:"7px 10px",fontSize:".72rem",color:"#1e40af",marginBottom:10}}>The link is added to this row on the sheet. Save the cash position to keep it. A payment you record here is saved to AP right away.</div>}
       <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:10,fontSize:".76rem"}}>
         <span style={{fontWeight:700,color:"#475569"}}>This paid:</span>
         <select value={noBill} onChange={e=>setNoBill(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"6px 9px",fontFamily:"inherit",fontSize:".78rem",background:"#fff"}} aria-label="What this disbursement paid">

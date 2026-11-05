@@ -28,7 +28,7 @@ const pesoAmt=v=>"₱"+num(v).toLocaleString("en-PH",{minimumFractionDigits:2,ma
 const METHODS=["Check","Bank transfer","Online","Cash"];
 const PAGE=60;
 
-export default function CashPositionPayables({payables=[],payPays=[],prs=[],swos=[],exps=[],deals=[],today=TODAY,canApprove=false,canPay=false,onApprove,onPay,onPayMany,onCancelPay}){
+export default function CashPositionPayables({payables=[],payPays=[],prs=[],swos=[],exps=[],deals=[],today=TODAY,canApprove=false,enteredByMe=()=>false,canPay=false,onApprove,onPay,onPayMany,onCancelPay}){
   const mob=typeof window!=="undefined"&&window.innerWidth<860;
   const[open,setOpen]=useState(true);
   const[q,setQ]=useState("");
@@ -187,7 +187,7 @@ export default function CashPositionPayables({payables=[],payPays=[],prs=[],swos
         </td>
         <td style={{padding:"8px 10px",verticalAlign:"top",textAlign:"right"}}>
           {showPaid?(canPay&&btn("Undo",()=>undo(p),"#64748b"))
-            :!approved(p)?(canApprove&&p.approvalStatus!=="Rejected"&&btn("Approve",()=>onApprove(p.id),"#d97706"))
+            :!approved(p)?(canApprove&&p.approvalStatus!=="Rejected"&&(enteredByMe(p)?<span style={{fontSize:".68rem",color:"#94a3b8"}} title="Another Manager approves bills you entered">You entered this</span>:btn("Approve",()=>onApprove(p.id),"#d97706")))
             :(canPay&&btn("Mark paid",()=>startPay(p),"#059669"))}
         </td>
       </tr>
