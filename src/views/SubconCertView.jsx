@@ -39,7 +39,7 @@ export default function SubconCertView({session,deals=[],sendTelegramNotificatio
   // One card per Work Order (a bill with no WO is its own card).
   const groups=(()=>{
     const m=new Map();
-    rows.forEach(r=>{const k=r.wo_number?"wo:"+r.wo_number:"id:"+r.id;if(!m.has(k))m.set(k,[]);m.get(k).push(r);});
+    rows.filter(r=>!["Cancelled","Void"].includes(String(r.status||""))).forEach(r=>{const k=r.wo_number?"wo:"+r.wo_number:"id:"+r.id;if(!m.has(k))m.set(k,[]);m.get(k).push(r);});
     return [...m.values()].map(bills=>{
       const certs=bills.filter(b=>b.verified&&b.verified_by&&scNum(b.verification_pct)>0);
       const top=certs.sort((a,b)=>scNum(b.verification_pct)-scNum(a.verification_pct))[0];

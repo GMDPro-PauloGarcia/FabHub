@@ -5743,11 +5743,9 @@ export default function App(){
     return recs.length;
   };
   const updateSWO=(id,changes)=>{
-    let updated=null;
     upSwos(ws=>ws.map(w=>{
       if(w.id!==id) return w;
       const nw={...w,...changes};
-      updated=nw;
       if(isSupabaseReady()) sbSyncOne("subcon_work_orders",nw,swoToSb);
       return nw;
     }));
@@ -9430,7 +9428,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       if(prev&&prev.approvalStatus==="Approved"&&amtChanged){approvalStatus="Pending";approvedBy="";approvedAt=null;}
       else{approvalStatus=prev?.approvalStatus||"Pending";approvedBy=prev?.approvedBy||"";approvedAt=prev?.approvedAt||null;}
     }
-    const rec={...data,amount,paidAmount,vatable,netAmount,inputVat,ewtRate,ewtAmount,tin:data.tin||"",approvalStatus,approvedBy,approvedAt,
+    // A new billing on a WO carries the WO's PM certification; the database copies
+    // it on insert (payables_subcon_cert_guard), so mirror it here or the bill
+    // reads uncertified until the next refresh.
+    const woCert=!editPayId&&isSubconPayable(data)&&String(data.poNumber||"").trim()
+      ?payables.filter(p=>isSubconPayable(p)&&p.poNumber===data.poNumber&&p.verified&&String(p.verifiedBy||"").trim()&&(Number(p.verificationPct)||0)>0)
+          .sort((a,b)=>(Number(b.verificationPct)||0)-(Number(a.verificationPct)||0))[0]
+      :null;
+    const certFields=woCert?{verified:true,verificationPct:Number(woCert.verificationPct)||0,verifiedBy:woCert.verifiedBy,verifiedAt:woCert.verifiedAt||""}:{};
+    const rec={...data,...certFields,amount,paidAmount,vatable,netAmount,inputVat,ewtRate,ewtAmount,tin:data.tin||"",approvalStatus,approvedBy,approvedAt,
       apNumber:data.apNumber||"", // blank → the server assigns AP-YYYY-NNNN / PRV-YYYY-NNNN on insert
       docType:data.docType==="PRV"?"PRV":"AP",
       id:editPayId||uid(),status:editPayId?derived:(paidAmount>0?derived:"Unpaid"),
@@ -15639,7 +15645,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           </Fld>
           {payForm.docType==="PRV"&&isSubconPayable(payForm)&&(
             <Fld label="Work order">
-              <Sel value={payForm.poNumber||""} onChange={e=>setPayForm(p=>({...p,poNumber:e.target.value}))}>
+              <Sel value={payForm.poNumber||""} onChange={e=>setPayForm(p=>({...p,poNumber:e.target.value,poId:e.target.value||null}))}>
                 <option value="">— None —</option>
                 {(swos||[]).filter(w=>w.woNumber&&w.status!=="Cancelled").slice().sort((a,b)=>String(b.woNumber).localeCompare(String(a.woNumber))).map(w=><option key={w.id||w.woNumber} value={w.woNumber}>{w.woNumber} · {w.subcontractor||"—"} · {"₱"+(Number(w.contractAmount)||0).toLocaleString("en-PH",{maximumFractionDigits:0})}</option>)}
               </Sel>
@@ -18798,9 +18804,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   <tbody>
                     {visibleRows.length===0&&<tr><td colSpan={10} style={{...erpTd,textAlign:"center",color:ERP.muted,fontStyle:"italic",padding:26}}>{rows.length===0?"No purchase orders or work orders yet.":"No orders match this filter."}</td></tr>}
                     {visibleRows.map((r,idx)=>{
-                      const pay=payables.find(x=>x.poId===r.no||x.poNumber===r.no);
-                      const payBal=pay?Math.max(0,(Number(pay.amount)||0)-(Number(pay.paidAmount)||0)):0;
-                      const settled=pay&&pay.status==="Paid";
+                      // A WO can have several bills (one per subcon billing): sum them,
+                      // act on the first open one, and call it settled only when the
+                      // bills are paid and, for a WO, they reach its contract.
+                      const bills=payables.filter(x=>(x.poId===r.no||x.poNumber===r.no)&&!["Cancelled","Void"].includes(x.status));
+                      const billBal=x=>Math.max(0,(Number(x.amount)||0)-(Number(x.paidAmount)||0));
+                      const pay=bills.find(x=>x.status!=="Paid"&&billBal(x)>0)||bills[bills.length-1];
+                      const payBal=bills.reduce((t,x)=>t+billBal(x),0);
+                      const billsPaid=bills.reduce((t,x)=>t+(Number(x.paidAmount)||0),0);
+                      const settled=bills.length>0&&bills.every(x=>x.status==="Paid"||billBal(x)<=0)&&!(r.kind==="wo"&&(Number(r.amount)||0)>0&&billsPaid<(Number(r.amount)||0)-1);
                       const isSub=r.type==="Subcontractor";
                       return(
                       <tr key={r.kind+r.no+idx} onMouseEnter={ev=>ev.currentTarget.style.background="#FAFBFD"} onMouseLeave={ev=>ev.currentTarget.style.background=""}>
