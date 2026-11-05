@@ -97,6 +97,7 @@ For the smoke test locally, run `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers
 - Suppliers are compared by `ap_vendor_key()` (first 8 letters/digits) because names are free text.
 - The app shows the refusal and asks a Manager for the reason (`askDupOverride` in `src/App.jsx`, `sbUpsertDetailed` in `src/supabaseClient.js`). Never loosen the triggers to make a save go through.
 - `ap_health_alert()` runs daily at 7:52 AM Manila (pg_cron `fabhub-ap-health`) and posts problems to the Telegram management chat; runs are logged in `ap_health_log`.
+- `opex_review_alert()` runs every Monday at 8:06 AM Manila (pg_cron `fabhub-opex-review`, migration `20261105010000`, applied 2026-11-05). It lists cost-center bills of ₱10,000 or more from the past 7 days, and any cost-center bill with no "what it was used for" note, for Managers to check that project materials aren't hidden in OPEX. `opex_review_alert(false)` is a dry run. Runs are logged in `ap_health_log` (`details->>'kind' = 'opex_review'`).
 
 ## AP numbers (database-issued, unique)
 - The server issues every AP / PRV number on insert (`payables_assign_number`); the app always sends a blank one for a new bill.
