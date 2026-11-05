@@ -1,5 +1,7 @@
 import React,{useState,useMemo} from "react";
 import {today as TODAY,BANKS,Modal,Fld,Inp,Sel,uiConfirm,uiAlert} from "../shared";
+import {vendorKey,buildOrders} from "../data/ledger";
+import {LedgerHost,linkBtn} from "./Ledgers";
 
 // ─── SUPPLIER BILLS TO PAY (Finance → Supplier Bills) ──────────────────────
 // Stand-in for the hidden Accounts Payable while the new AP/AR system is built.
@@ -13,13 +15,20 @@ import {today as TODAY,BANKS,Modal,Fld,Inp,Sel,uiConfirm,uiAlert} from "../share
 // the payable_payments history (recordPayablePayment / cancelPayablePayment),
 // so the database rules still apply: approval before payment, check number for
 // a check, and an undo is a cancellation with a reason, never a delete.
+//
+// Home view is per SUPPLIER (Finance, 2026-11-04): one line per supplier with
+// the total owed, its bills underneath, so a supplier's balance is read in one
+// place and no PO is missed. A supplier is grouped by vendorKey (the AP safety
+// net's rule). Each supplier also shows issued POs / WOs that have no bill on
+// file yet, and its name opens the supplier ledger (orders, bills, payment
+// history) to check before paying.
 
 const num=v=>Number(String(v??"").replace(/,/g,""))||0;
 const pesoAmt=v=>"₱"+num(v).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
 const METHODS=["Check","Bank transfer","Online","Cash"];
 const PAGE=60;
 
-export default function CashPositionPayables({payables=[],payPays=[],prs=[],deals=[],today=TODAY,canApprove=false,canPay=false,onApprove,onPay,onPayMany,onCancelPay}){
+export default function CashPositionPayables({payables=[],payPays=[],prs=[],swos=[],exps=[],deals=[],today=TODAY,canApprove=false,canPay=false,onApprove,onPay,onPayMany,onCancelPay}){
   const mob=typeof window!=="undefined"&&window.innerWidth<860;
   const[open,setOpen]=useState(true);
   const[q,setQ]=useState("");
@@ -30,6 +39,9 @@ export default function CashPositionPayables({payables=[],payPays=[],prs=[],deal
   const[form,setForm]=useState({});
   const[busy,setBusy]=useState(false);
   const[sel,setSel]=useState(()=>new Set()); // bulk: ids picked for one payment
+  const[view,setView]=useState("supplier");   // "supplier" (grouped) | "bills" (flat list)
+  const[openSup,setOpenSup]=useState(()=>new Set());
+  const[ledger,setLedger]=useState(null);
 
   const dealName=id=>{const d=id&&deals.find(x=>x.id===id);return d?(d.client||d.name||"")+(d.ceNo?` · ${d.ceNo}`:""):"";};
   const sourceOf=p=>!p.poId?"Other":p.category==="Subcontractor"?"WO":"PO";
@@ -56,6 +68,44 @@ export default function CashPositionPayables({payables=[],payPays=[],prs=[],deal
       .sort((a,b)=>showPaid?String(b.paidDate||"").localeCompare(String(a.paidDate||"")):(a.dueDate||"9999").localeCompare(b.dueDate||"9999")||String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
   },[payables,prs,deals,q,src,showPaid,paidCutoff]);
 
+  // Issued POs / WOs with no bill on file: owed soon, but not in Running Payables.
+  const noBillBySup=useMemo(()=>{
+    const m=new Map();
+    buildOrders({prs,swos,payables}).filter(o=>o.payStatus==="No bill on file").forEach(o=>{
+      const k=vendorKey(o.vendor);if(!k) return;
+      if(!m.has(k)) m.set(k,[]);
+      m.get(k).push(o);
+    });
+    return m;
+  },[prs,swos,payables]);
+  const groups=useMemo(()=>{
+    const m=new Map();
+    rows.forEach(p=>{
+      const k=vendorKey(p.vendor)||"__none__";
+      if(!m.has(k)) m.set(k,{key:k,names:{},bills:[],bal:0,overdue:0,pending:0,earliest:""});
+      const g=m.get(k);
+      const nm=String(p.vendor||"").trim()||"(no supplier)";
+      g.names[nm]=(g.names[nm]||0)+1;
+      g.bills.push(p);
+      g.bal+=showPaid?num(p.paidAmount):balanceOf(p);
+      if(!showPaid&&p.dueDate&&p.dueDate<today) g.overdue+=balanceOf(p);
+      if(!showPaid&&!approved(p)) g.pending++;
+      if(p.dueDate&&(!g.earliest||p.dueDate<g.earliest)) g.earliest=p.dueDate;
+    });
+    // A supplier whose only open item is an issued PO / WO with no bill yet still
+    // gets a line, so nothing ordered is missing from this list.
+    const qq=q.trim().toLowerCase();
+    if(!showPaid&&src!=="Other") noBillBySup.forEach((orders,k)=>{
+      if(m.has(k)) return;
+      const os=orders.filter(o=>src==="All"||o.kind===src);
+      if(!os.length) return;
+      if(qq&&!os.some(o=>[o.vendor,o.no,...o.projectIds.map(dealName)].some(v=>String(v||"").toLowerCase().includes(qq)))) return;
+      m.set(k,{key:k,names:{[String(os[0].vendor).trim()]:1},bills:[],bal:0,overdue:0,pending:0,earliest:""});
+    });
+    return [...m.values()].map(g=>({...g,name:Object.entries(g.names).sort((a,b)=>b[1]-a[1])[0][0],noBill:showPaid?[]:(noBillBySup.get(g.key)||[]).filter(o=>src==="All"||o.kind===src)}))
+      .sort((a,b)=>b.overdue-a.overdue||b.bal-a.bal);
+  },[rows,showPaid,today,noBillBySup,q,src,deals]);
+  const toggleSup=k=>setOpenSup(prev=>{const n=new Set(prev);n.has(k)?n.delete(k):n.add(k);return n;});
   const openAll=payables.filter(isOpen);
   const openTotal=openAll.reduce((s,p)=>s+balanceOf(p),0);
   const overdue=openAll.filter(p=>p.dueDate&&p.dueDate<today);
@@ -111,12 +161,44 @@ export default function CashPositionPayables({payables=[],payPays=[],prs=[],deal
   const chip=(txt,clr)=><span style={{fontSize:".66rem",fontWeight:700,color:clr,background:clr+"18",border:`1px solid ${clr}44`,borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap"}}>{txt}</span>;
   const btn=(label,onClick,clr)=><button onClick={onClick} style={{background:clr,color:"#fff",border:"none",borderRadius:7,padding:"5px 12px",fontSize:".74rem",fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>{label}</button>;
   const RC_CLR={"Received":"#059669","Partly received":"#d97706","Not received":"#94a3b8"};
+  const shownGroups=groups.slice(0,limit);
+  const billRow=(p,nested)=>{
+    const s=sourceOf(p),rc=s==="PO"?receiptOf(p):null,late=!showPaid&&p.dueDate&&p.dueDate<today;
+    return(
+      <tr key={p.id} style={{borderTop:"1px solid #f1f5f9",background:sel.has(p.id)?"#f0fdf4":undefined}}>
+        {canPay&&!showPaid&&<td style={{padding:"9px 0 8px 10px",verticalAlign:"top"}}>{canPick(p)&&<input type="checkbox" aria-label={`Select ${p.vendor||"bill"} ${p.poId||""}`} checked={sel.has(p.id)} onChange={()=>togglePick(p.id)}/>}</td>}
+        <td style={{padding:nested?"8px 10px 8px 28px":"8px 10px",fontSize:".78rem",verticalAlign:"top"}}>
+          <div style={{fontWeight:700,color:"#0f172a"}}>{s} {p.poId||p.invoiceRef||"—"}</div>
+          <div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:3}}>
+            {p.apNumber&&<span style={{fontSize:".66rem",color:"#94a3b8"}}>{p.apNumber}</span>}
+            {rc&&chip(rc,RC_CLR[rc])}
+            {!showPaid&&!approved(p)&&chip(p.approvalStatus==="Rejected"?"Rejected":"Awaiting approval",p.approvalStatus==="Rejected"?"#dc2626":"#d97706")}
+          </div>
+        </td>
+        <td style={{padding:"8px 10px",fontSize:".78rem",verticalAlign:"top"}}>
+          {!nested&&(vendorKey(p.vendor)?<button style={{...linkBtn,fontWeight:600,color:"#0f172a"}} onClick={()=>setLedger({kind:"supplier",id:p.vendor})}>{p.vendor}</button>:<div style={{fontWeight:600,color:"#0f172a"}}>{p.vendor||"—"}</div>)}
+          <div style={{fontSize:".7rem",color:"#64748b"}}>{p.projectId&&dealName(p.projectId)?<button style={{...linkBtn,color:"#475569"}} onClick={()=>setLedger({kind:"project",id:p.projectId})}>{dealName(p.projectId)}</button>:"No project"}</div>
+        </td>
+        <td style={{padding:"8px 10px",fontSize:".76rem",verticalAlign:"top",color:late?"#dc2626":"#475569",fontWeight:late?700:400,whiteSpace:"nowrap"}}>{showPaid?(p.paidDate||"—"):(p.dueDate||"No date")}</td>
+        <td style={{padding:"8px 10px",fontSize:".8rem",verticalAlign:"top",textAlign:"right",whiteSpace:"nowrap"}}>
+          <div style={{fontWeight:800,color:showPaid?"#059669":"#0f172a"}}>{pesoAmt(showPaid?p.paidAmount:balanceOf(p))}</div>
+          {showPaid?<div style={{fontSize:".66rem",color:"#94a3b8"}}>{[p.payMethod,p.payRef].filter(Boolean).join(" · ")}</div>
+            :num(p.paidAmount)>0&&<div style={{fontSize:".66rem",color:"#94a3b8"}}>of {pesoAmt(p.amount)}</div>}
+        </td>
+        <td style={{padding:"8px 10px",verticalAlign:"top",textAlign:"right"}}>
+          {showPaid?(canPay&&btn("Undo",()=>undo(p),"#64748b"))
+            :!approved(p)?(canApprove&&p.approvalStatus!=="Rejected"&&btn("Approve",()=>onApprove(p.id),"#d97706"))
+            :(canPay&&btn("Mark paid",()=>startPay(p),"#059669"))}
+        </td>
+      </tr>
+    );
+  };
 
   return(
     <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",marginBottom:16}}>
       <button onClick={()=>setOpen(o=>!o)} style={{display:"flex",width:"100%",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap",padding:"14px 18px",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
         <div>
-          <div style={{fontWeight:800,color:"#0f172a",fontSize:".92rem"}}>📦 Supplier bills to pay <span style={{fontWeight:500,color:"#64748b",fontSize:".78rem"}}>· POs & Work Orders</span></div>
+          <div style={{fontWeight:800,color:"#0f172a",fontSize:".92rem"}}>📦 Supplier bills to pay <span style={{fontWeight:500,color:"#64748b",fontSize:".78rem"}}>· POs & Work Orders, per supplier</span></div>
           <div style={{fontSize:".74rem",color:"#64748b",marginTop:2}}>{openAll.length} open · {pesoAmt(openTotal)}{overdue.length>0&&<span style={{color:"#dc2626",fontWeight:700}}> · {overdue.length} overdue</span>}{pending>0&&<span style={{color:"#d97706",fontWeight:700}}> · {pending} awaiting approval</span>}</div>
         </div>
         <span style={{color:"#64748b",fontSize:".8rem"}}>{open?"▲ Hide":"▼ Show"}</span>
@@ -127,6 +209,9 @@ export default function CashPositionPayables({payables=[],payPays=[],prs=[],deal
           {["All","PO","WO","Other"].map(s=>(
             <button key={s} onClick={()=>{setSrc(s);setLimit(PAGE);}} style={{padding:"5px 12px",borderRadius:20,border:`1px solid ${src===s?"#1e293b":"#e2e8f0"}`,background:src===s?"#1e293b":"#fff",color:src===s?"#fff":"#64748b",cursor:"pointer",fontSize:".74rem",fontWeight:600,fontFamily:"inherit"}}>{s}</button>
           ))}
+          <div style={{display:"flex",border:"1px solid #e2e8f0",borderRadius:20,overflow:"hidden"}}>
+            {[["supplier","By supplier"],["bills","All bills"]].map(([k,l])=><button key={k} onClick={()=>{setView(k);setLimit(PAGE);}} style={{padding:"5px 12px",border:"none",background:view===k?"#0B2545":"#fff",color:view===k?"#fff":"#64748b",cursor:"pointer",fontSize:".74rem",fontWeight:700,fontFamily:"inherit"}}>{l}</button>)}
+          </div>
           <label style={{display:"flex",alignItems:"center",gap:5,fontSize:".76rem",color:"#475569",cursor:"pointer"}}>
             <input type="checkbox" checked={showPaid} onChange={e=>{setShowPaid(e.target.checked);setLimit(PAGE);setSel(new Set());}}/> Paid in the last 30 days
           </label>
@@ -139,48 +224,50 @@ export default function CashPositionPayables({payables=[],payPays=[],prs=[],deal
         <div style={{overflowX:"auto"}}>
           <table style={{width:"100%",borderCollapse:"collapse",minWidth:mob?640:0}}>
             <thead><tr style={{background:"#f8fafc"}}>
-              {canPay&&!showPaid&&<th style={{padding:"7px 0 7px 10px",width:22}}><input type="checkbox" aria-label="Select all shown approved bills" title="Select all shown approved bills" checked={allShownPicked} disabled={!shownPickable.length} onChange={toggleShown}/></th>}
-              {["Bill","Supplier / project","Due",showPaid?"Paid":"Balance",""].map((h,i)=><th key={i} style={{padding:"7px 10px",fontSize:".66rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",textAlign:i===3?"right":"left"}}>{h}</th>)}
+              {canPay&&!showPaid&&<th style={{padding:"7px 0 7px 10px",width:22}}>{view==="bills"&&<input type="checkbox" aria-label="Select all shown approved bills" title="Select all shown approved bills" checked={allShownPicked} disabled={!shownPickable.length} onChange={toggleShown}/>}</th>}
+              {[view==="supplier"?"Supplier / bill":"Bill","Supplier / project","Due",showPaid?"Paid":"Balance",""].map((h,i)=><th key={i} style={{padding:"7px 10px",fontSize:".66rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",textAlign:i===3?"right":"left"}}>{h}</th>)}
             </tr></thead>
             <tbody>
-              {shown.map(p=>{
-                const s=sourceOf(p),rc=s==="PO"?receiptOf(p):null,late=!showPaid&&p.dueDate&&p.dueDate<today;
+              {view==="bills"&&shown.map(p=>billRow(p,false))}
+              {view==="supplier"&&shownGroups.map(g=>{
+                const isOpenG=openSup.has(g.key)||!!q.trim();
+                const pickable=g.bills.filter(canPick);
+                const allPicked=pickable.length>0&&pickable.every(p=>sel.has(p.id));
+                const noBillAmt=g.noBill.reduce((s2,o)=>s2+num(o.amount),0);
                 return(
-                  <tr key={p.id} style={{borderTop:"1px solid #f1f5f9",background:sel.has(p.id)?"#f0fdf4":undefined}}>
-                    {canPay&&!showPaid&&<td style={{padding:"9px 0 8px 10px",verticalAlign:"top"}}>{canPick(p)&&<input type="checkbox" aria-label={`Select ${p.vendor||"bill"} ${p.poId||""}`} checked={sel.has(p.id)} onChange={()=>togglePick(p.id)}/>}</td>}
-                    <td style={{padding:"8px 10px",fontSize:".78rem",verticalAlign:"top"}}>
-                      <div style={{fontWeight:700,color:"#0f172a"}}>{s} {p.poId||p.invoiceRef||"—"}</div>
-                      <div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:3}}>
-                        {p.apNumber&&<span style={{fontSize:".66rem",color:"#94a3b8"}}>{p.apNumber}</span>}
-                        {rc&&chip(rc,RC_CLR[rc])}
-                        {!showPaid&&!approved(p)&&chip(p.approvalStatus==="Rejected"?"Rejected":"Awaiting approval",p.approvalStatus==="Rejected"?"#dc2626":"#d97706")}
-                      </div>
-                    </td>
-                    <td style={{padding:"8px 10px",fontSize:".78rem",verticalAlign:"top"}}>
-                      <div style={{fontWeight:600,color:"#0f172a"}}>{p.vendor||"—"}</div>
-                      <div style={{fontSize:".7rem",color:"#64748b"}}>{dealName(p.projectId)||"No project"}</div>
-                    </td>
-                    <td style={{padding:"8px 10px",fontSize:".76rem",verticalAlign:"top",color:late?"#dc2626":"#475569",fontWeight:late?700:400,whiteSpace:"nowrap"}}>{showPaid?(p.paidDate||"—"):(p.dueDate||"No date")}</td>
-                    <td style={{padding:"8px 10px",fontSize:".8rem",verticalAlign:"top",textAlign:"right",whiteSpace:"nowrap"}}>
-                      <div style={{fontWeight:800,color:showPaid?"#059669":"#0f172a"}}>{pesoAmt(showPaid?p.paidAmount:balanceOf(p))}</div>
-                      {showPaid?<div style={{fontSize:".66rem",color:"#94a3b8"}}>{[p.payMethod,p.payRef].filter(Boolean).join(" · ")}</div>
-                        :num(p.paidAmount)>0&&<div style={{fontSize:".66rem",color:"#94a3b8"}}>of {pesoAmt(p.amount)}</div>}
-                    </td>
-                    <td style={{padding:"8px 10px",verticalAlign:"top",textAlign:"right"}}>
-                      {showPaid?(canPay&&btn("Undo",()=>undo(p),"#64748b"))
-                        :!approved(p)?(canApprove&&p.approvalStatus!=="Rejected"&&btn("Approve",()=>onApprove(p.id),"#d97706"))
-                        :(canPay&&btn("Mark paid",()=>startPay(p),"#059669"))}
-                    </td>
-                  </tr>
+                  <React.Fragment key={g.key}>
+                    <tr style={{borderTop:"2px solid #e2e8f0",background:isOpenG?"#f1f5f9":"#fff",cursor:"pointer"}} onClick={()=>toggleSup(g.key)}>
+                      {canPay&&!showPaid&&<td style={{padding:"10px 0 8px 10px",verticalAlign:"top"}} onClick={e=>e.stopPropagation()}>{pickable.length>0&&<input type="checkbox" aria-label={`Select all approved bills of ${g.name}`} title="Select all this supplier's approved bills" checked={allPicked} onChange={()=>setSel(prev=>{const n=new Set(prev);pickable.forEach(p=>allPicked?n.delete(p.id):n.add(p.id));return n;})}/>}</td>}
+                      <td colSpan={2} style={{padding:"9px 10px",fontSize:".8rem",verticalAlign:"top"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                          <span style={{color:"#64748b",fontSize:".7rem",width:10}}>{isOpenG?"▾":"▸"}</span>
+                          {g.key==="__none__"?<b>{g.name}</b>:<button style={{...linkBtn,fontWeight:800,color:"#0f172a"}} title="Open supplier ledger: POs, bills, payment history" onClick={e=>{e.stopPropagation();setLedger({kind:"supplier",id:g.name});}}>{g.name}</button>}
+                          <span style={{fontSize:".7rem",color:"#64748b"}}>{g.bills.length?`${g.bills.length} bill${g.bills.length!==1?"s":""}`:"no bill on file yet"}</span>
+                          {g.overdue>0&&chip(`${pesoAmt(g.overdue)} overdue`,"#dc2626")}
+                          {g.pending>0&&chip(`${g.pending} awaiting approval`,"#d97706")}
+                          {g.noBill.length>0&&<span title={g.noBill.map(o=>`${o.kind} ${o.no}`).join(", ")}>{chip(`${g.noBill.length} PO/WO not billed · ${pesoAmt(noBillAmt)}`,"#7c3aed")}</span>}
+                        </div>
+                      </td>
+                      <td style={{padding:"9px 10px",fontSize:".74rem",verticalAlign:"top",color:"#64748b",whiteSpace:"nowrap"}}>{!showPaid&&g.earliest?`from ${g.earliest}`:""}</td>
+                      <td style={{padding:"9px 10px",fontSize:".86rem",verticalAlign:"top",textAlign:"right",whiteSpace:"nowrap",fontWeight:900,color:showPaid?"#059669":"#0f172a"}}>{g.bills.length?pesoAmt(g.bal):"—"}</td>
+                      <td style={{padding:"9px 10px",verticalAlign:"top",textAlign:"right"}} onClick={e=>e.stopPropagation()}>
+                        {g.key!=="__none__"&&<button onClick={()=>setLedger({kind:"supplier",id:g.name,tab:"pays"})} style={{background:"#eef2ff",color:"#3730a3",border:"none",borderRadius:7,padding:"5px 10px",fontSize:".72rem",fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>Payment history</button>}
+                      </td>
+                    </tr>
+                    {isOpenG&&g.bills.map(p=>billRow(p,true))}
+                  </React.Fragment>
                 );
               })}
-              {rows.length===0&&<tr><td colSpan={canPay&&!showPaid?6:5} style={{textAlign:"center",padding:22,color:"#94a3b8",fontSize:".8rem"}}>{showPaid?"Nothing marked paid in the last 30 days.":"No open supplier bills."}</td></tr>}
+              {(view==="bills"?rows.length===0:groups.length===0)&&<tr><td colSpan={canPay&&!showPaid?6:5} style={{textAlign:"center",padding:22,color:"#94a3b8",fontSize:".8rem"}}>{showPaid?"Nothing marked paid in the last 30 days.":"No open supplier bills."}</td></tr>}
             </tbody>
           </table>
         </div>
-        {rows.length>limit&&<button onClick={()=>setLimit(l=>l+PAGE)} style={{marginTop:8,background:"#f1f5f9",border:"none",borderRadius:7,padding:"6px 14px",fontSize:".76rem",fontWeight:600,color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>Show {Math.min(PAGE,rows.length-limit)} more of {rows.length-limit}</button>}
-        <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:10}}>Mark a bill paid only once the money has actually gone out (check released or transfer confirmed). That takes it off Running Payables. Still log the disbursement in the daily position as usual.</div>
+        {view==="bills"&&rows.length>limit&&<button onClick={()=>setLimit(l=>l+PAGE)} style={{marginTop:8,background:"#f1f5f9",border:"none",borderRadius:7,padding:"6px 14px",fontSize:".76rem",fontWeight:600,color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>Show {Math.min(PAGE,rows.length-limit)} more of {rows.length-limit}</button>}
+        {view==="supplier"&&groups.length>limit&&<button onClick={()=>setLimit(l=>l+PAGE)} style={{marginTop:8,background:"#f1f5f9",border:"none",borderRadius:7,padding:"6px 14px",fontSize:".76rem",fontWeight:600,color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>Show {Math.min(PAGE,groups.length-limit)} more of {groups.length-limit} suppliers</button>}
+        <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:10}}>Mark a bill paid only once the money has actually gone out (check released or transfer confirmed). That takes it off Running Payables. Still log the disbursement in the daily position as usual, and tie it to this bill in Expense Monitoring.</div>
       </div>}
+
+      <LedgerHost open={ledger} setOpen={setLedger} prs={prs} swos={swos} payables={payables} payPays={payPays} exps={exps} deals={deals} today={today}/>
 
       <Modal open={!!payFor} onClose={()=>!busy&&setPayFor(null)} title={payFor?.bulk?`Mark ${picked.length} bills paid`:payFor?`Mark paid · ${payFor.vendor||""}`:""}>
         {payFor&&<div>

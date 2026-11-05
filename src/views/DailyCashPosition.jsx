@@ -667,6 +667,14 @@ function DailyCashPosition({
     </select>
   );
   const textCell=(val,onType,ph)=><WrapCell value={val} onType={onType} placeholder={ph}/>;
+  // Bill(s) a disbursement row is tagged to (set from Expense Monitoring; kept
+  // on the row through every edit here). Display only.
+  const billLinkLabel=(row)=>{
+    const ids=Array.isArray(row?.payableIds)?row.payableIds:(row?.payableId?[row.payableId]:[]);
+    if(!ids.length) return <span style={{color:"#cbd5e1"}}>—</span>;
+    const bs=ids.map(id=>(payables||[]).find(p=>p.id===id));
+    return <span title={bs.map(b=>b?`${b.vendor||""} ${b.apNumber||""} ${b.poId||""}`.trim():"bill not loaded").join("\n")}>🔗 {bs.map(b=>b?(b.apNumber||b.poId||"bill"):"?").join(", ")}</span>;
+  };
   const delBtn=(onClick)=>(
     <button onClick={onClick} style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:4,padding:"2px 7px",cursor:"pointer",color:"#dc2626",fontWeight:700,fontSize:".72rem",fontFamily:"inherit"}}>✕</button>
   );
@@ -1043,12 +1051,13 @@ function DailyCashPosition({
                 <th style={{...th,textAlign:"left"}}>Payee</th>
                 <th style={{...th,textAlign:"left"}}>Particulars</th>
                 <th style={{...th,width:mob?110:160}}>Amount</th>
+                <th style={{...th,width:mob?80:120}} title="The bill this disbursement paid. Link it in Finance → Expense Monitoring.">Bill</th>
                 <th style={{...th,width:40,background:"#fff",border:"none"}}></th>
               </tr>
             </thead>
             <tbody>
               {manualDisb.length===0&&(
-                <tr><td colSpan={5} style={{...td,color:"#94a3b8",fontStyle:"italic",padding:"10px"}}>No disbursements for {fmtDate(selDate)}. Add rows below.</td></tr>
+                <tr><td colSpan={6} style={{...td,color:"#94a3b8",fontStyle:"italic",padding:"10px"}}>No disbursements for {fmtDate(selDate)}. Add rows below.</td></tr>
               )}
               {manualDisb.map((row,ri)=>(
                 <tr key={row.id||ri} style={{background:ri%2?C.zebra:"#fff"}}>
@@ -1059,12 +1068,14 @@ function DailyCashPosition({
                   <td style={{...td,padding:2}}>
                     <CurrInp value={row.amount||""} onChange={e=>{const md=[...manualDisb];md[ri]={...md[ri],amount:e.target.value};f("disbursements.manual",md);}} style={{textAlign:"right",fontSize:".8rem",padding:"5px 8px"}}/>
                   </td>
+                  <td style={{...td,fontSize:".7rem",color:"#475569"}}>{billLinkLabel(row)}</td>
                   <td style={{...td,padding:2,textAlign:"center",border:"none"}}>{delBtn(()=>f("disbursements.manual",manualDisb.filter((_,j)=>j!==ri)))}</td>
                 </tr>
               ))}
               <tr style={{background:"#f1e9e2"}}>
                 <td style={{...td,fontWeight:900,color:"#7c2d12"}} colSpan={3}>TOTAL</td>
                 <td style={{...td,...numCell,fontWeight:900,color:"#b45309"}}>{fmt2(disbTotal)}</td>
+                <td style={td}></td>
                 <td style={{...td,border:"none",background:"#fff"}}></td>
               </tr>
             </tbody>
