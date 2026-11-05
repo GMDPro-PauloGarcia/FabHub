@@ -8,7 +8,7 @@ import {supplierDocsStatus} from "../core";
 // upload the supplier invoice copy, and lets a Manager override a bill with a
 // reason (override_supplier_docs RPC → audit_log). The database refuses a
 // payment on a gated bill until every item is ticked and the due date is
-// reached (migration 20261104090000_supplier_payment_docs.sql).
+// reached (migration 20261104090100_supplier_payment_docs.sql).
 
 export default function SupplierDocsPanel({bill,ctx,role,sendTelegramNotification,onChanged}){
   const[busy,setBusy]=useState(false);

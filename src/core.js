@@ -1308,7 +1308,7 @@ export const isSubconPayable=p=>!!p&&(p.category==="Subcontractor"||SUBCON_ACCOU
 // supplier invoice no. + date + uploaded copy and the supplier TIN — and not
 // before its due date (invoice date + the PO's terms; COD/blank = invoice
 // date). A Manager can override a bill with a reason. Mirrors
-// supplier_docs_check() in migration 20261104090000_supplier_payment_docs.sql,
+// supplier_docs_check() in migration 20261104090100_supplier_payment_docs.sql,
 // which the database enforces on every payment — keep them in sync.
 export const SUPPLIER_DOCS_GOLIVE="2026-11-09T00:00:00+08:00";
 export const termsDays=t=>{const m=String(t||"").match(/(\d+)/);return m?Number(m[1]):0;};

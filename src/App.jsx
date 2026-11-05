@@ -9529,7 +9529,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         if(claimed>cap+1){toastEmit(`No payment: that brings ${p.apNumber||p.vendor||"this bill"} to ₱${claimed.toLocaleString("en-PH")} but the PM certified only ${Number(p.verificationPct)||0}% (₱${cap.toLocaleString("en-PH")}). Ask the PM to certify more work first.`,"error",10000);return false;}
       }
       if(payIsSubcon(p)&&e.kind==="Retention release"&&(Number(p.verificationPct)||0)<100){toastEmit("Retention is released only when the PM certifies 100%.","error",8000);return false;}
-      // Supplier docs + terms (supplier_docs_check, migration 20261104090000).
+      // Supplier docs + terms (supplier_docs_check, migration 20261104090100).
       const docsBlock=e.kind==="Retention release"?null:supplierPayBlock(p,common.date,{prs,drs,suppliers});
       if(docsBlock){toastEmit("🚫 No payment: "+docsBlock,"error",10000);return false;}
       if(!payApproved(p)){toastEmit(`${p.vendor||"This payable"}${p.apNumber?` (${p.apNumber})`:""} isn't approved yet — a Manager or Finance Manager must approve it before payment.`,"error",7000);return false;}
