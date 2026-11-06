@@ -3066,7 +3066,7 @@ function AcctHome({exps,vouchers,fmt,today,greeting,todayL,session,setPage,setFi
         </div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
           <button onClick={()=>{setFinTab&&setFinTab("payables");setPage("finance");}} style={{background:"#6366f1",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📤 Accounts Payable</button>
-          <button onClick={()=>setPage("checkvouchers")} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📄 Check Vouchers</button>
+          {pageOn("checkvouchers")&&<button onClick={()=>setPage("checkvouchers")} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📄 Check Vouchers</button>}
         </div>
       </div>
       {/* KPI strip */}
@@ -3111,7 +3111,7 @@ function AcctHome({exps,vouchers,fmt,today,greeting,todayL,session,setPage,setFi
           {tab==="check"&&(checkItems.length===0
             ?<div style={{padding:"24px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No check vouchers pending.</div>
             :checkItems.sort((a,b)=>(a.date||"").localeCompare(b.date||"")).map((v,i)=>(
-              <div key={v.id} onClick={()=>setPage("checkvouchers")} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",borderBottom:i<checkItems.length-1?"1px solid #f1f5f9":"",cursor:"pointer",background:"#fff"}}
+              <div key={v.id} onClick={pageOn("checkvouchers")?()=>setPage("checkvouchers"):undefined} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",borderBottom:i<checkItems.length-1?"1px solid #f1f5f9":"",cursor:"pointer",background:"#fff"}}
                 onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
                 onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
                 <div style={{flex:1,minWidth:0}}>
@@ -15987,7 +15987,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                                   {!settled&&balance>0&&payApproved(p)&&(!payNeedsVerify(p)||p.verified)&&(!payIsSubcon(p)||(Number(p.amount)||0)-payableClaimed(p)>0.005)&&<button onClick={()=>openPayModal(p)} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"4px 12px",fontSize:".7rem",color:"#fff",cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>Pay</button>}
                                   {(Number(p.retentionHeld)||0)>0&&payApproved(p)&&(!payNeedsVerify(p)||(Number(p.verificationPct)||0)>=100)&&<button onClick={()=>openRetentionRelease(p)} title="Release the retention held on this subcontractor bill" style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#b45309",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>Release ret.</button>}
                                   {(paysOf(p.id).length>0||paidAmt>0)&&<button onClick={()=>setPayHistId(p.id)} title="Payment history" style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>History</button>}
-                                  {!settled&&payApproved(p)&&(!payNeedsVerify(p)||p.verified)&&!(p.cvId||p.status==="Check Issued")&&<button onClick={()=>payableToCheck(p.id)} title="Route to Check Voucher" style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#2563eb",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🖊 CV</button>}
+                                  {pageOn("checkvouchers")&&!settled&&payApproved(p)&&(!payNeedsVerify(p)||p.verified)&&!(p.cvId||p.status==="Check Issued")&&<button onClick={()=>payableToCheck(p.id)} title="Route to Check Voucher" style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#2563eb",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🖊 CV</button>}
                                   <button onClick={()=>{setPayForm({...p});setEditPayId(p.id);setPayModal(true);}} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
                                   <button onClick={()=>delPayable(p.id)} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
                                 </div>
@@ -16267,7 +16267,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                           <td style={{...erpTd,color:ERP.muted,whiteSpace:"nowrap"}}>{r.bank}</td>
                           <td style={{...erpTd,color:ERP.muted,whiteSpace:"nowrap"}}>{r.ref}</td>
                           <td style={{...erpTdNum,fontWeight:800,color:ERP.navy,whiteSpace:"nowrap"}}>{fmt(r.amount)}</td>
-                          <td style={{...erpTd,whiteSpace:"nowrap"}}>{r.cvId&&<button onClick={()=>{setPage("checkvouchers");setCvView(r.cvId);}} style={{background:"transparent",border:`1px solid ${ERP.line}`,borderRadius:6,padding:"5px 10px",fontSize:12,fontWeight:600,color:ERP.navy,cursor:"pointer",fontFamily:"inherit"}}>View CV</button>}</td>
+                          <td style={{...erpTd,whiteSpace:"nowrap"}}>{pageOn("checkvouchers")&&r.cvId&&<button onClick={()=>{setPage("checkvouchers");setCvView(r.cvId);}} style={{background:"transparent",border:`1px solid ${ERP.line}`,borderRadius:6,padding:"5px 10px",fontSize:12,fontWeight:600,color:ERP.navy,cursor:"pointer",fontFamily:"inherit"}}>View CV</button>}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -16735,7 +16735,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 18px",marginBottom:16}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
                 <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>🏗 Materials Issued to Projects</div>
-                <button onClick={()=>setPage("stockmove")} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 14px",fontFamily:"inherit",fontWeight:600,fontSize:".75rem",color:"#475569",cursor:"pointer"}}>View Stock Log →</button>
+                {pageOn("stockmove")&&<button onClick={()=>setPage("stockmove")} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 14px",fontFamily:"inherit",fontWeight:600,fontSize:".75rem",color:"#475569",cursor:"pointer"}}>View Stock Log →</button>}
               </div>
               <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(3,1fr)",gap:8}}>
                 {projRows.map(r=>(
@@ -16842,7 +16842,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             <button onClick={()=>{setIssueForm({itemId:"",qty:"",projectId:"",requestedBy:"",deliveryLink:"",date:today});setIssueModal(true);}} style={{background:"#f97316",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📤 Issue to Site</button>
             <button onClick={()=>{setFabForm({itemId:"",qty:"",projectId:"",requestedBy:"",notes:"",date:today});setFabModal(true);}} style={{background:"#8b5cf6",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>🔨 Fab Release</button>
             <button onClick={()=>setPage("inventory")} style={{background:"#64748b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📦 Inventory</button>
-            <button onClick={()=>setPage("stockmove")} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📋 Stock Log</button>
+            {pageOn("stockmove")&&<button onClick={()=>setPage("stockmove")} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📋 Stock Log</button>}
           </div>
         </div>
         {(()=>{
@@ -16862,7 +16862,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   {l:"Arriving Today",    v:arrivedToday.length,        c:"#dc2626", icon:"🚨", pg:"deliveries"},
                   {l:"Overdue",           v:overdueDeliveries.length,   c:"#f97316", icon:"⏰", pg:"deliveries"},
                   {l:"This Week",         v:thisWeek.length,            c:"#3b82f6", icon:"🚚", pg:"deliveries"},
-                  {l:"Received (3d)",     v:recentlyReceived.length,    c:"#059669", icon:"✅", pg:"stockmove"},
+                  {l:"Received (3d)",     v:recentlyReceived.length,    c:"#059669", icon:"✅", pg:pageOn("stockmove")?"stockmove":"inventory"},
                   {l:"Low Stock",        v:lowStockItems.length,       c:lowStockItems.length>0?"#f59e0b":"#94a3b8", icon:"📉", pg:"inventory"},
                 ].map(({l,v,c,icon,pg})=>(
                   <div key={l} onClick={()=>setPage(pg)} style={{background:"#fff",borderRadius:12,padding:"14px",border:`1.5px solid ${c}33`,textAlign:"center",cursor:"pointer"}}>
@@ -16977,7 +16977,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   <div style={{fontWeight:700,color:"#0f172a",marginTop:6,fontSize:".88rem"}}>Inventory</div>
                   <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:2}}>{inventory.length} items tracked</div>
                 </div>
-                <div onClick={()=>setPage("stockmove")} style={{background:"#fff",borderRadius:10,padding:"16px",border:"1.5px solid #e2e8f0",cursor:"pointer",textAlign:"center"}}>
+                <div onClick={()=>setPage(pageOn("stockmove")?"stockmove":"inventory")} style={{background:"#fff",borderRadius:10,padding:"16px",border:"1.5px solid #e2e8f0",cursor:"pointer",textAlign:"center"}}>
                   <div style={{fontSize:"1.4rem"}}>📋</div>
                   <div style={{fontWeight:700,color:"#0f172a",marginTop:6,fontSize:".88rem"}}>Stock Log</div>
                   <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:2}}>Full history · IN / OUT / Adjust</div>
@@ -18590,7 +18590,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             <span style={{fontSize:".68rem",color:"#94a3b8"}}>from Procurement's POs & the AP ledger</span>
             {(role==="Finance"||role==="Manager"||role==="FinanceAssistant")
               ?<button onClick={()=>{setFinTab("payables");setPage("finance");}} style={{marginLeft:"auto",background:"transparent",border:"1px solid #e2e8f0",borderRadius:6,padding:"3px 10px",color:"#475569",fontSize:".7rem",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>Open AP Ledger →</button>
-              :<button onClick={()=>setPage("checkvouchers")} style={{marginLeft:"auto",background:"transparent",border:"1px solid #e2e8f0",borderRadius:6,padding:"3px 10px",color:"#475569",fontSize:".7rem",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>Check Payables →</button>}
+              :<button onClick={()=>{if(pageOn("checkvouchers"))setPage("checkvouchers");else{setFinTab("payables");setPage("finance");}}} style={{marginLeft:"auto",background:"transparent",border:"1px solid #e2e8f0",borderRadius:6,padding:"3px 10px",color:"#475569",fontSize:".7rem",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>Check Payables →</button>}
           </div>
           <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(auto-fit,minmax(190px,1fr))",gap:12,marginBottom:20}}>
             <ErpStat label="Open Purchase Orders" value={String(openPOset.size)} foot={openPOset.size===1?"PO awaiting invoice":"POs awaiting invoice"}/>

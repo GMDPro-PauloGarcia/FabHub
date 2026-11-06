@@ -158,7 +158,10 @@ export const isHiddenView=(page,finTab)=>HIDDEN_PAGES.has(page)||(page==="financ
 // Loans) or none since July (AE Updates). Hidden, not deleted: their data and
 // code stay, and removing an id here brings the module back. "materialreq" is not
 // retired: it is the PRF page.
-const RETIRED_PAGES = ["dailylog","swatchboard","budgetreq","requests","audit"];
+// 6 Nov 2026 (Paulo): Check Vouchers (0 vouchers ever: payments are recorded on
+// the bill) and Stock Movements (1 movement ever; Inventory's own Log tab shows
+// the same) are hidden too. Every link to them is gated with pageOn().
+const RETIRED_PAGES = ["dailylog","swatchboard","budgetreq","requests","audit","checkvouchers","stockmove"];
 RETIRED_PAGES.forEach(id=>{HIDDEN_NAV_IDS.add(id);HIDDEN_PAGES.add(id);});
 HIDDEN_FIN_TABS.add("loans");
 export const HIDDEN_PIPE_TABS = new Set(["updates"]);
