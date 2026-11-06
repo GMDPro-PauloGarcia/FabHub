@@ -1307,7 +1307,10 @@ export const isSubconPayable=p=>!!p&&(p.category==="Subcontractor"||SUBCON_ACCOU
 // with subcon_dp_allow_pct() and the "(\d+)% start|down|dp…" backfill there.
 export const SUBCON_DP_STATUSES=["Issued","In Progress","Completed"];
 export const SUBCON_DP_MAX_NON_MANAGER=50;
-export const parseDpPct=text=>{const m=/(\d{1,3})\s*%\s*(start|down|dp|mobili|advance|upon)/i.exec(String(text||""));return m?Math.min(100,Number(m[1])):0;};
+// "upon" counts only when it's about starting ("50% upon signing"), never
+// "100% upon completion / delivery", which would let the whole contract be paid
+// before any PM certification.
+export const parseDpPct=text=>{const m=/(\d{1,3})\s*%\s*(start|down|dp|mobili|advance|upon\s+(?:signing|award|mobili|start|po\b|order|approval|confirm|issuance))/i.exec(String(text||""));return m?Math.min(100,Number(m[1])):0;};
 // Payroll / salary WOs are billed after the work is done: no down payment, the
 // PM certifies 100% instead (migration 20261105180000_subcon_payroll_wo_dp_zero.sql).
 export const isPayrollScope=scope=>/(payroll|salary)/i.test(String(scope||""));
