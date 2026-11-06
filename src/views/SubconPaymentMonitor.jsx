@@ -73,7 +73,8 @@ export function subconMonitorRows({swos=[],payables=[],payPays=[],deals=[]}){
     // of the contract, less what's been claimed (payable_payments_subcon_gate).
     const dpPct=subconDpAllowPct(w);
     const allowPct=Math.max(certPct,dpPct);
-    const dueNow=allowPct>0&&balance>1?Math.max(0,r2(allowPct/100*contract-gross)):0;
+    // …and never more than the subcon has actually billed.
+    const dueNow=allowPct>0&&balance>1?Math.max(0,r2(Math.min(allowPct/100*contract,billed)-gross)):0;
     const status=balance<=1?"Fully paid":woOnlyPaid?"Paid outside AP":!bills.length?"No bill":certBill?"Certified":dpPct>0?"Down payment":"Not certified";
     const d=dealById.get(w.dealId);
     return {id:w.id,wo:w,woNumber:w.woNumber||"—",subcon:w.subcontractor||bills[0]?.vendor||"—",dealId:w.dealId||null,
