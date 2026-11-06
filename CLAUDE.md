@@ -124,6 +124,11 @@ For the smoke test locally, run `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers
 
 - Upserts and triggers: the app saves with an upsert, and Postgres runs BEFORE INSERT triggers even when the upsert updates an existing row. Every subcon / WO guard (`swo_require_approver`, `swo_require_dp`, `swo_dp_pct_guard`, `payables_subcon_cert_guard`, `payables_subcon_overbill_guard`) returns early on INSERT when the row already exists and lets its UPDATE branch decide (migration `20261106000000_subcon_billing_audit_fixes.sql`, applied 2026-11-06). Any new BEFORE INSERT guard on an upserted table must do the same.
 
+## Purchasing (Orders › Purchasing)
+- `src/views/PurchasingHub.jsx`, added 2026-11-06: one row per supplier PO and subcon WO (Ordered → Received / Certified → Billed → Paid → Payable now) with the next step and who owns it; "Needs me" follows the role (`PH_ROLE_KEYS`). Built on `buildOrders` (`src/data/ledger.js`).
+- Read-only: its buttons open the existing screens (bill form via `purchasingPage` in `src/App.jsx`, Supplier Bills, Subcon Billing, Purchase Orders, Work Orders). Never add writes here; money rules stay in the database and `savePayable` / `approvePayable` / `recordPayments`.
+- PO lines closed at the AP cutover count as received but are labelled "Closed at cutover, not proven".
+
 ## Cash sheet ↔ bills
 - A Daily Cash Position disbursement row can carry `payableIds` (the bills it paid) or `noBill` (payroll, bank transfer, loan, petty cash, tax, owner, other). It is set from the row's 🔗 on the sheet (a normal sheet edit, saved with Save) or from Expense Monitoring (which first checks the server's copy of the day with `cashDayIsCurrent`). Transaction History and Expense Monitoring match disbursements to AP payments from these tags; same-day same-amount moves between two GMD banks are paired as transfers.
 
@@ -132,6 +137,6 @@ For the smoke test locally, run `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers
 - Their `delivery_note` starts "Closed at AP cutover 2026-11-05": the receipt is not proven. Exclude or label them in any receiving / 3-way-match report. Lines as they were: `purchase_requests_backup_20261105`; rollback steps in the migration.
 
 ## Navigation hubs
-- Pages that belong together share one sidebar item, and a tab strip at the top of the page switches between them: `NAV_HUBS` / `NAV_HUB_OF` (top of `src/App.jsx`), `hubbedNav`, `hubMembers`, the strip in `Wrap`. Orders = Purchase Orders + Subcon Work Orders; Warehouse = Inventory + Deliveries + Stock Movements.
+- Pages that belong together share one sidebar item, and a tab strip at the top of the page switches between them: `NAV_HUBS` / `NAV_HUB_OF` (top of `src/App.jsx`), `hubbedNav`, `hubMembers`, the strip in `Wrap`. Orders = Purchasing + Purchase Orders + Subcon Work Orders; Warehouse = Inventory + Deliveries + Stock Movements.
 - The strip lists only the role's own nav items, so access is still set by `navMap`. To give a role a page, add it to `navMap`, not to the strip.
 - `navIsActive` is the one active-item rule for the desktop sidebar and the phone nav. Use it for any new virtual item.
