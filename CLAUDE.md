@@ -122,6 +122,11 @@ For the smoke test locally, run `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers
 - Payroll / salary WOs carry 0% down payment (the PM certifies 100% instead); set by migration `20261105180000_subcon_payroll_wo_dp_zero.sql` (applied 2026-11-05) and defaulted in the WO form by `woDefaultDpPct`.
 - Down payment: a WO's `dp_pct` lets its bills be approved and paid up to dp % of the contract before any certification, only while the WO is Issued / In Progress / Completed (issuing needs an approver and the client's DP). The cap is cumulative, greatest(certified %, dp %) x contract, so the DP is recouped automatically. Non-Managers may set dp_pct up to 50% and only before the WO is issued or paid; other changes are silently kept and logged to `audit_log`. Migration `20261105170000_subcon_down_payment_allowance.sql` (applied 2026-11-05); app mirrors `parseDpPct` / `woDefaultDpPct` / `subconDpAllowPct` (`src/core.js`), `approvePayable` / `recordPayments` and the WO form (`src/App.jsx`). Keep them in sync.
 
+## Purchasing (Orders › Purchasing)
+- `src/views/PurchasingHub.jsx`, added 2026-11-06: one row per supplier PO and subcon WO (Ordered → Received / Certified → Billed → Paid → Payable now) with the next step and who owns it; "Needs me" follows the role (`PH_ROLE_KEYS`). Built on `buildOrders` (`src/data/ledger.js`).
+- Read-only: its buttons open the existing screens (bill form via `purchasingPage` in `src/App.jsx`, Supplier Bills, Subcon Billing, Purchase Orders, Work Orders). Never add writes here; money rules stay in the database and `savePayable` / `approvePayable` / `recordPayments`.
+- PO lines closed at the AP cutover count as received but are labelled "Closed at cutover, not proven".
+
 ## Cash sheet ↔ bills
 - A Daily Cash Position disbursement row can carry `payableIds` (the bills it paid) or `noBill` (payroll, bank transfer, loan, petty cash, tax, owner, other). It is set from the row's 🔗 on the sheet (a normal sheet edit, saved with Save) or from Expense Monitoring (which first checks the server's copy of the day with `cashDayIsCurrent`). Transaction History and Expense Monitoring match disbursements to AP payments from these tags; same-day same-amount moves between two GMD banks are paired as transfers.
 
@@ -130,6 +135,6 @@ For the smoke test locally, run `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers
 - Their `delivery_note` starts "Closed at AP cutover 2026-11-05": the receipt is not proven. Exclude or label them in any receiving / 3-way-match report. Lines as they were: `purchase_requests_backup_20261105`; rollback steps in the migration.
 
 ## Navigation hubs
-- Pages that belong together share one sidebar item, and a tab strip at the top of the page switches between them: `NAV_HUBS` / `NAV_HUB_OF` (top of `src/App.jsx`), `hubbedNav`, `hubMembers`, the strip in `Wrap`. Orders = Purchase Orders + Subcon Work Orders; Warehouse = Inventory + Deliveries + Stock Movements.
+- Pages that belong together share one sidebar item, and a tab strip at the top of the page switches between them: `NAV_HUBS` / `NAV_HUB_OF` (top of `src/App.jsx`), `hubbedNav`, `hubMembers`, the strip in `Wrap`. Orders = Purchasing + Purchase Orders + Subcon Work Orders; Warehouse = Inventory + Deliveries + Stock Movements.
 - The strip lists only the role's own nav items, so access is still set by `navMap`. To give a role a page, add it to `navMap`, not to the strip.
 - `navIsActive` is the one active-item rule for the desktop sidebar and the phone nav. Use it for any new virtual item.
