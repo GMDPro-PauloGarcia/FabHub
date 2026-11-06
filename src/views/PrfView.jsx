@@ -93,7 +93,7 @@ export default function PrfView({session,role,deals=[],pcards={},prs=[],sendTele
     const msg=`${head}\n<b>${prfEsc(p.prf_no||"Draft PRF")}</b> · ${prfEsc(projName(p.deal_id))}\nBy: ${prfEsc(p.requested_by_name||p.requested_by)} · ${ls.length} item${ls.length!==1?"s":""} · est ${prfPeso(estTotal(p.id))}${p.required_date?`\nNeeded: ${p.required_date}`:""}\nAction by: ${prfEsc(myName)}`;
     chs.forEach(ch=>sendTelegramNotification(ch,msg));
   };
-  const NEXT_CH={"For PM Approval":["ops"],"For Warehouse":["warehouse"],"For Cost Control":["financialcontrol"],"For Procurement":["procurement"],"From Stock":["ops","warehouse"],"Ordered":["ops","warehouse"]};
+  const NEXT_CH={"For PM Approval":["ops"],"For Warehouse":["warehouse"],"For Cost Control":["financialcontrol"],"For Procurement":["financialcontrol"],"From Stock":["ops","warehouse"],"Ordered":["ops","warehouse"]};
   const NEXT_HEAD={"For PM Approval":"📝 PRF needs PM approval","For Warehouse":"📦 PRF for warehouse stock check","For Cost Control":"🧮 PRF for cost verification",
     "For Procurement":"🛒 PRF ready to order","From Stock":"✅ PRF — all items from stock","Ordered":"✅ PRF ordered"};
 

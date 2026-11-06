@@ -30,7 +30,7 @@ const useStableComponent=(impl)=>{
 // Sidebar hubs: one nav item for pages that belong together (see hubbedNav).
 const NAV_HUBS={orders:{l:"Orders",icon:"📦"},warehouse:{l:"Warehouse",icon:"🗃️"},
   payables:{l:"Payables",icon:"📤"},cash:{l:"Cash",icon:"🏦"},monitoring:{l:"Monitoring",icon:"🚦"},accounting:{l:"Accounting",icon:"📒"}};
-const NAV_HUB_OF={purchasing:"orders",procurement:"orders",subconwo:"orders",inventory:"warehouse",deliveries:"warehouse",stockmove:"warehouse",
+const NAV_HUB_OF={orderboard:"orders",purchasing:"orders",procurement:"orders",subconwo:"orders",inventory:"warehouse",deliveries:"warehouse",stockmove:"warehouse",
   payables:"payables",payments:"payables",payrun:"payables",checkvouchers:"payables",subconmon:"payables",purchaseorders:"payables",
   cashposition:"cash",cashflow:"cash",monboard:"monitoring","finance-reports":"monitoring",
   expmon:"accounting",bir2307:"accounting",coa:"accounting"};
@@ -75,6 +75,7 @@ const POApprovals=_lazyView(()=>import('./views/POApprovals'));
 const PrfView=_lazyView(()=>import('./views/PrfView'));
 const SubconCertView=_lazyView(()=>import('./views/SubconCertView'));
 const PurchasingHub=_lazyView(()=>import('./views/PurchasingHub'));
+const OrderBoard=_lazyView(()=>import('./views/OrderBoard'));
 const ARDrill=_lazyView(()=>import('./views/ARDrill'));
 const AttentionPanel=_lazyView(()=>import('./views/AttentionPanel'));
 const WeeklyCashFlow=_lazyView(()=>import('./views/WeeklyCashFlow'));
@@ -3066,7 +3067,7 @@ function AcctHome({exps,vouchers,fmt,today,greeting,todayL,session,setPage,setFi
         </div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
           <button onClick={()=>{setFinTab&&setFinTab("payables");setPage("finance");}} style={{background:"#6366f1",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📤 Accounts Payable</button>
-          <button onClick={()=>setPage("checkvouchers")} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📄 Check Vouchers</button>
+          {pageOn("checkvouchers")&&<button onClick={()=>setPage("checkvouchers")} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📄 Check Vouchers</button>}
         </div>
       </div>
       {/* KPI strip */}
@@ -3111,7 +3112,7 @@ function AcctHome({exps,vouchers,fmt,today,greeting,todayL,session,setPage,setFi
           {tab==="check"&&(checkItems.length===0
             ?<div style={{padding:"24px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No check vouchers pending.</div>
             :checkItems.sort((a,b)=>(a.date||"").localeCompare(b.date||"")).map((v,i)=>(
-              <div key={v.id} onClick={()=>setPage("checkvouchers")} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",borderBottom:i<checkItems.length-1?"1px solid #f1f5f9":"",cursor:"pointer",background:"#fff"}}
+              <div key={v.id} onClick={pageOn("checkvouchers")?()=>setPage("checkvouchers"):undefined} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",borderBottom:i<checkItems.length-1?"1px solid #f1f5f9":"",cursor:"pointer",background:"#fff"}}
                 onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
                 onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
                 <div style={{flex:1,minWidth:0}}>
@@ -9701,6 +9702,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   };
   // Open the Record-Payment modal for a payable, pre-filled with its open balance.
   // Navigation + badge counts for the Aerwin-styled Finance module tab bar.
+  const[poDraft,setPoDraft]=useState(null); // PRF lines handed from the Order Board to the PO form
   const financeErpCounts=()=>({
     po:new Set(prs.filter(p=>["PO Issued","Partially Delivered"].includes(p.status)&&p.poNumber).map(p=>p.poNumber)).size,
     ap:payables.filter(p=>p.status!=="Paid").length,
@@ -9720,6 +9722,33 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ── PURCHASING (Orders › Purchasing, src/views/PurchasingHub.jsx) ──
   // Read-only overview; its buttons open the screens that already do the work.
   const billsTab=AP_HIDDEN?"bills":"payables";
+  // ── ORDER BOARD (Orders › Order Board, src/views/OrderBoard.jsx) ──
+  // "Create PO" hands the ticked PRF lines to the PO form (poDraft); once the PO
+  // is saved, linkPrfLines links each PRF line to it (link_prf_po), retrying
+  // while the new PO lines reach the server.
+  const orderBoardPage=()=>(
+    <OrderBoard deals={deals} prs={prs} suppliers={suppliers} role={role}
+      onCreatePo={d=>{setPoDraft(d);setPage("procurement");}}/>
+  );
+  const linkPrfLines=async(poNo,items)=>{
+    const byPrf={};
+    items.filter(i=>i._prfId&&i._prfLineId).forEach(i=>{(byPrf[i._prfId]=byPrf[i._prfId]||[]).push({id:i._prfLineId,po_number:poNo});});
+    const ids=Object.keys(byPrf); if(!ids.length||!isSupabaseReady()) return;
+    let ok=0,ordered=0;const fail=[];
+    for(const id of ids){
+      let err=null,res=null;
+      for(let attempt=0;attempt<6;attempt++){
+        if(attempt) await new Promise(r=>setTimeout(r,1500*attempt));
+        const{data,error}=await supabase.rpc("link_prf_po",{p_id:id,p_lines:byPrf[id]});
+        err=error;res=data;
+        if(!error||!/not on this project yet/i.test(error.message||"")) break;
+      }
+      if(err) fail.push(err.message||String(err)); else {ok++;if(res==="Ordered")ordered++;}
+    }
+    if(ok) toastEmit(`PO ${poNo} linked to ${ok} PRF${ok>1?"s":""}${ordered?` · ${ordered} fully ordered`:""}`,"success");
+    if(fail.length) toastEmit(`PO ${poNo} saved, but ${fail.length} PRF link(s) failed: ${fail[0]}. Link it from the PRF page.`,"error",12000);
+    if(ordered) sendTelegramNotification("ops",`✅ <b>PO ${poNo}</b> issued for ${ordered} PRF${ordered>1?"s":""} (all items ordered).`);
+  };
   const purchasingPage=()=>(
     <PurchasingHub prs={prs} swos={swos} payables={payables} payPays={payPays} deals={deals} exps={exps} role={role} today={today}
       onGo={id=>{if(id==="bills"){setPage("finance");setFinTab(billsTab);}else setPage(id);}}
@@ -9896,7 +9925,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},...((session?.username==="paulo"||session?.username==="mar")?[{id:"projectmargins",l:"Project Margins"}]:[]),{id:"billing",l:"Billing"},{id:"payables",l:"Supplier Bills"},{id:"payments",l:"Payments"},{id:"payrun",l:"Payment Run"},{id:"checkvouchers",l:"Check Vouchers"},{id:"subconmon",l:"Subcon Payments"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills (old)"}]:[]),{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"monboard",l:"Monitoring Board"},{id:"finance-reports",l:"Reports"},{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"},{id:"subconcert",l:"Subcon Billing"}]},
       {group:"Design",      items:[{id:"designboard",l:"Design Board"},{id:"drf",l:"Design Requests"}]},
-      {group:"Procurement", items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"purchasing",l:"Purchasing"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Suppliers"}]},
+      {group:"Procurement", items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"orderboard",l:"Order Board"},{id:"purchasing",l:"Purchasing"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Suppliers"}]},
       {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"audit",l:"Audit"},{id:"syshealth",l:"System Health"},{id:"botsettings",l:"Bot Settings"},{id:"tvboard",l:"Office TV Board"},{id:"activity",l:"Team Activity"}]},
     ],
     Sales:[
@@ -9933,7 +9962,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     Procurement:[
       {group:"Overview",   items:[{id:"home",l:"Overview"}]},
-      {group:"Orders",     items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"purchasing",l:"Purchasing"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Suppliers"}]},
+      {group:"Orders",     items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"orderboard",l:"Order Board"},{id:"purchasing",l:"Purchasing"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Suppliers"}]},
       {group:"Projects",   items:[{id:"projects",l:"Projects"},{id:"clients",l:"Clients"}]},
     ],
     QS:[
@@ -9991,7 +10020,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // difference is authority (they approve POs), not navigation.
     ProcurementManager:[
       {group:"Overview",   items:[{id:"home",l:"Overview"}]},
-      {group:"Orders",     items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"purchasing",l:"Purchasing"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Suppliers"}]},
+      {group:"Orders",     items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"orderboard",l:"Order Board"},{id:"purchasing",l:"Purchasing"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Suppliers"}]},
       {group:"Projects",   items:[{id:"projects",l:"Projects"},{id:"clients",l:"Clients"}]},
     ],
   };
@@ -10029,7 +10058,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   cashposition:"🏦",   supplierbills:"📦",   cashflow:"📈",   payables:"📤",   billing:"🧾",
       reports:"📈", "sales-reports":"📈", "finance-reports":"📈", projectmargins:"🪙", acctdash:"📒", executive:"🎯", expmon:"🧾", payrun:"💸", bir2307:"📑", monboard:"🚦", subconmon:"🔨", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅", financecal:"📅",
-      drf:"🖌️",    procurement:"📦", purchasing:"🛒", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
+      drf:"🖌️",    procurement:"📦", purchasing:"🛒", orderboard:"📋", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
       masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆", audit:"🔎", syshealth:"🩺", tvboard:"📺",
       deliveries:"🚚",stockmove:"🔄",addenda:"⚠️",   pmupdates:"📝",  pmfeed:"📋",  suppliers:"🏭",
       subcontractors:"👷",materialreq:"🔧",subconcert:"🔨",budgetreq:"💳",collections:"💵",
@@ -10178,7 +10207,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   cashposition:"🏦",   supplierbills:"📦",   cashflow:"📈",   payables:"📤",   billing:"🧾",
       reports:"📈", "sales-reports":"📈", "finance-reports":"📈", projectmargins:"🪙", acctdash:"📒", executive:"🎯", expmon:"🧾", payrun:"💸", bir2307:"📑", monboard:"🚦", subconmon:"🔨", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅", financecal:"📅",
-      drf:"🖌️",    procurement:"📦", purchasing:"🛒", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
+      drf:"🖌️",    procurement:"📦", purchasing:"🛒", orderboard:"📋", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
       masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆", audit:"🔎", syshealth:"🩺", tvboard:"📺",
       deliveries:"🚚",stockmove:"🔄",addenda:"⚠️",   pmupdates:"📝",  pmfeed:"📋",  suppliers:"🏭",
       subcontractors:"👷",materialreq:"🔧",subconcert:"🔨",budgetreq:"💳",collections:"💵",
@@ -16012,7 +16041,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                                   {!settled&&balance>0&&payApproved(p)&&(!payNeedsVerify(p)||p.verified)&&(!payIsSubcon(p)||(Number(p.amount)||0)-payableClaimed(p)>0.005)&&<button onClick={()=>openPayModal(p)} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"4px 12px",fontSize:".7rem",color:"#fff",cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>Pay</button>}
                                   {(Number(p.retentionHeld)||0)>0&&payApproved(p)&&(!payNeedsVerify(p)||(Number(p.verificationPct)||0)>=100)&&<button onClick={()=>openRetentionRelease(p)} title="Release the retention held on this subcontractor bill" style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#b45309",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>Release ret.</button>}
                                   {(paysOf(p.id).length>0||paidAmt>0)&&<button onClick={()=>setPayHistId(p.id)} title="Payment history" style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>History</button>}
-                                  {!settled&&payApproved(p)&&(!payNeedsVerify(p)||p.verified)&&!(p.cvId||p.status==="Check Issued")&&<button onClick={()=>payableToCheck(p.id)} title="Route to Check Voucher" style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#2563eb",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🖊 CV</button>}
+                                  {pageOn("checkvouchers")&&!settled&&payApproved(p)&&(!payNeedsVerify(p)||p.verified)&&!(p.cvId||p.status==="Check Issued")&&<button onClick={()=>payableToCheck(p.id)} title="Route to Check Voucher" style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#2563eb",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🖊 CV</button>}
                                   <button onClick={()=>{setPayForm({...p});setEditPayId(p.id);setPayModal(true);}} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
                                   <button onClick={()=>delPayable(p.id)} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
                                 </div>
@@ -16292,7 +16321,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                           <td style={{...erpTd,color:ERP.muted,whiteSpace:"nowrap"}}>{r.bank}</td>
                           <td style={{...erpTd,color:ERP.muted,whiteSpace:"nowrap"}}>{r.ref}</td>
                           <td style={{...erpTdNum,fontWeight:800,color:ERP.navy,whiteSpace:"nowrap"}}>{fmt(r.amount)}</td>
-                          <td style={{...erpTd,whiteSpace:"nowrap"}}>{r.cvId&&<button onClick={()=>{setPage("checkvouchers");setCvView(r.cvId);}} style={{background:"transparent",border:`1px solid ${ERP.line}`,borderRadius:6,padding:"5px 10px",fontSize:12,fontWeight:600,color:ERP.navy,cursor:"pointer",fontFamily:"inherit"}}>View CV</button>}</td>
+                          <td style={{...erpTd,whiteSpace:"nowrap"}}>{pageOn("checkvouchers")&&r.cvId&&<button onClick={()=>{setPage("checkvouchers");setCvView(r.cvId);}} style={{background:"transparent",border:`1px solid ${ERP.line}`,borderRadius:6,padding:"5px 10px",fontSize:12,fontWeight:600,color:ERP.navy,cursor:"pointer",fontFamily:"inherit"}}>View CV</button>}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -16459,8 +16488,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         })()}
       </Wrap>
     );
-    if(page==="procurement") return(<Wrap><ProcurementView2 payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 poDraft={poDraft} clearPoDraft={()=>setPoDraft(null)} onPoFromPrf={linkPrfLines} payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="purchasing") return(<Wrap>{purchasingPage()}</Wrap>);
+    if(page==="orderboard") return(<Wrap>{orderBoardPage()}</Wrap>);
     if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="costing") return(<Wrap><CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role}/></Wrap>);
@@ -16760,7 +16790,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 18px",marginBottom:16}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
                 <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>🏗 Materials Issued to Projects</div>
-                <button onClick={()=>setPage("stockmove")} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 14px",fontFamily:"inherit",fontWeight:600,fontSize:".75rem",color:"#475569",cursor:"pointer"}}>View Stock Log →</button>
+                {pageOn("stockmove")&&<button onClick={()=>setPage("stockmove")} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 14px",fontFamily:"inherit",fontWeight:600,fontSize:".75rem",color:"#475569",cursor:"pointer"}}>View Stock Log →</button>}
               </div>
               <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(3,1fr)",gap:8}}>
                 {projRows.map(r=>(
@@ -16800,8 +16830,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       </Wrap>
     );
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
-    if(page==="procurement") return(<Wrap><ProcurementView2 payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 poDraft={poDraft} clearPoDraft={()=>setPoDraft(null)} onPoFromPrf={linkPrfLines} payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="purchasing") return(<Wrap>{purchasingPage()}</Wrap>);
+    if(page==="orderboard") return(<Wrap>{orderBoardPage()}</Wrap>);
     if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap} addMR={addMR} wonDeals={wonDeals} session={session}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView sendTelegramNotification={sendTelegramNotification} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
@@ -16867,7 +16898,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             <button onClick={()=>{setIssueForm({itemId:"",qty:"",projectId:"",requestedBy:"",deliveryLink:"",date:today});setIssueModal(true);}} style={{background:"#f97316",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📤 Issue to Site</button>
             <button onClick={()=>{setFabForm({itemId:"",qty:"",projectId:"",requestedBy:"",notes:"",date:today});setFabModal(true);}} style={{background:"#8b5cf6",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>🔨 Fab Release</button>
             <button onClick={()=>setPage("inventory")} style={{background:"#64748b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📦 Inventory</button>
-            <button onClick={()=>setPage("stockmove")} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📋 Stock Log</button>
+            {pageOn("stockmove")&&<button onClick={()=>setPage("stockmove")} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📋 Stock Log</button>}
           </div>
         </div>
         {(()=>{
@@ -16887,7 +16918,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   {l:"Arriving Today",    v:arrivedToday.length,        c:"#dc2626", icon:"🚨", pg:"deliveries"},
                   {l:"Overdue",           v:overdueDeliveries.length,   c:"#f97316", icon:"⏰", pg:"deliveries"},
                   {l:"This Week",         v:thisWeek.length,            c:"#3b82f6", icon:"🚚", pg:"deliveries"},
-                  {l:"Received (3d)",     v:recentlyReceived.length,    c:"#059669", icon:"✅", pg:"stockmove"},
+                  {l:"Received (3d)",     v:recentlyReceived.length,    c:"#059669", icon:"✅", pg:pageOn("stockmove")?"stockmove":"inventory"},
                   {l:"Low Stock",        v:lowStockItems.length,       c:lowStockItems.length>0?"#f59e0b":"#94a3b8", icon:"📉", pg:"inventory"},
                 ].map(({l,v,c,icon,pg})=>(
                   <div key={l} onClick={()=>setPage(pg)} style={{background:"#fff",borderRadius:12,padding:"14px",border:`1.5px solid ${c}33`,textAlign:"center",cursor:"pointer"}}>
@@ -17002,7 +17033,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   <div style={{fontWeight:700,color:"#0f172a",marginTop:6,fontSize:".88rem"}}>Inventory</div>
                   <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:2}}>{inventory.length} items tracked</div>
                 </div>
-                <div onClick={()=>setPage("stockmove")} style={{background:"#fff",borderRadius:10,padding:"16px",border:"1.5px solid #e2e8f0",cursor:"pointer",textAlign:"center"}}>
+                <div onClick={()=>setPage(pageOn("stockmove")?"stockmove":"inventory")} style={{background:"#fff",borderRadius:10,padding:"16px",border:"1.5px solid #e2e8f0",cursor:"pointer",textAlign:"center"}}>
                   <div style={{fontSize:"1.4rem"}}>📋</div>
                   <div style={{fontWeight:700,color:"#0f172a",marginTop:6,fontSize:".88rem"}}>Stock Log</div>
                   <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:2}}>Full history · IN / OUT / Adjust</div>
@@ -17297,8 +17328,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   if(role==="Operations"){
     if(page==="home") return <OpsView sendTelegramNotification={sendTelegramNotification} projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role} openPmModal={d=>setPmUpdateModal(d)} onCloseProject={(dealId,stage)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,stage}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{stage}).catch(()=>{});logActivity(dealId,"Stage Change",`Pipeline stage → ${stage}`,session?.name);["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,`📌 <b>Project Stage Updated</b>\nClient: <b>${projDeal?.client||"?"}</b>${projDeal?.ceNo?`\nCE: ${projDeal.ceNo}`:""}\nNew Stage: ${stage}\nBy: ${session?.name||"Ops"}`));}}/>;
-    if(page==="procurement") return(<Wrap><ProcurementView2 payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 poDraft={poDraft} clearPoDraft={()=>setPoDraft(null)} onPoFromPrf={linkPrfLines} payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="purchasing") return(<Wrap>{purchasingPage()}</Wrap>);
+    if(page==="orderboard") return(<Wrap>{orderBoardPage()}</Wrap>);
     if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView sendTelegramNotification={sendTelegramNotification} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
@@ -18615,7 +18647,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             <span style={{fontSize:".68rem",color:"#94a3b8"}}>from Procurement's POs & the AP ledger</span>
             {(role==="Finance"||role==="Manager"||role==="FinanceAssistant")
               ?<button onClick={()=>{setFinTab("payables");setPage("finance");}} style={{marginLeft:"auto",background:"transparent",border:"1px solid #e2e8f0",borderRadius:6,padding:"3px 10px",color:"#475569",fontSize:".7rem",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>Open AP Ledger →</button>
-              :<button onClick={()=>setPage("checkvouchers")} style={{marginLeft:"auto",background:"transparent",border:"1px solid #e2e8f0",borderRadius:6,padding:"3px 10px",color:"#475569",fontSize:".7rem",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>Check Payables →</button>}
+              :<button onClick={()=>{if(pageOn("checkvouchers"))setPage("checkvouchers");else{setFinTab("payables");setPage("finance");}}} style={{marginLeft:"auto",background:"transparent",border:"1px solid #e2e8f0",borderRadius:6,padding:"3px 10px",color:"#475569",fontSize:".7rem",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>Check Payables →</button>}
           </div>
           <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(auto-fit,minmax(190px,1fr))",gap:12,marginBottom:20}}>
             <ErpStat label="Open Purchase Orders" value={String(openPOset.size)} foot={openPOset.size===1?"PO awaiting invoice":"POs awaiting invoice"}/>
@@ -18942,7 +18974,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   if((["Cost Control","Finance","Manager","Operations"].includes(role))&&page==="procurement") return(
     <Wrap>
-      <ProcurementView2 payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms}
+      <ProcurementView2 poDraft={poDraft} clearPoDraft={()=>setPoDraft(null)} onPoFromPrf={linkPrfLines} payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms}
         prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR}
         wonDeals={wonDeals} deals={deals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}
         upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/>
@@ -23755,7 +23787,7 @@ function DpGate({deal,deals,role,onWaiveDp,onCreditTerms,what="POs"}){
 }
 
 // ─── PROCUREMENT VIEW 2 (Full PO → Multi-item → Delivery) ───────────────────
-function ProcurementView2({payPays=[],prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allDeals,budgets,exps,swos,session,role,toastEmit,suppliers,addSupplier,upPayables,payables,sendTelegramNotification,isSupabaseReady,sbUpsert,payableToSb,syncPoPayable,approvePOs,chartOfAccounts=[],onWaiveDp,onCreditTerms,costCenterDeals=[],onCreateCostCenter}){
+function ProcurementView2({poDraft=null,clearPoDraft,onPoFromPrf,payPays=[],prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allDeals,budgets,exps,swos,session,role,toastEmit,suppliers,addSupplier,upPayables,payables,sendTelegramNotification,isSupabaseReady,sbUpsert,payableToSb,syncPoPayable,approvePOs,chartOfAccounts=[],onWaiveDp,onCreditTerms,costCenterDeals=[],onCreateCostCenter}){
   // Internal cost centers (HR, GMD Tools, warehouse stock…): deals flagged
   // is_cost_center, bought against like a project but kept out of project
   // lists. Only a Manager adds one (create_cost_center RPC).
@@ -23847,13 +23879,25 @@ function ProcurementView2({payPays=[],prs,addPR,updatePR,deletePR,upPrs,wonDeals
   // number. The real, collision-free number is claimed via nextPoNo() at save.
   const previewPoNo=()=>{const mx=prs.reduce((m,p)=>{const t=/^PO-(\d+)$/.exec(String(p.poNumber||""));return t?Math.max(m,Number(t[1])):m;},0);return `PO-${String(mx+1).padStart(4,"0")}`;};
 
+  const prfDraftRef=useRef(null); // PRF lines this new PO came from (Order Board)
   const openNewPO=()=>{
+    prfDraftRef.current=null;
     setPoSupplier(""); setPoNumber(previewPoNo()); setPoNumberAuto(true); setPoDate(new Date().toISOString().split("T")[0]);
     setPoStatus("PO Issued"); setPoExpectedDelivery(""); setPoItems([emptyPoItem()]);
     setPoLevelDiscType("none"); setPoLevelDiscValue(""); setPoWithVat(false); setPoAccountCode(""); setPoTerms("");
     setPoTermsText(PO_TERMS_DEFAULT);
     setEditingPrIds(null); setMode("newpo");
   };
+  // Order Board → "Create PO": open the new-PO form pre-filled with those lines.
+  useEffect(()=>{
+    if(!poDraft) return;
+    openNewPO();
+    setPoSupplier(poDraft.supplier||"");
+    setPoItems(poDraft.lines.map(l=>({...emptyPoItem(),projectId:l.dealId||"",projectName:(()=>{const d=activeDeals.find(x=>x.id===l.dealId)||(allDeals||[]).find(x=>x.id===l.dealId);return d?projDisplayName(d):"";})(),itemName:l.itemName,category:l.category||"Materials",budgetCategory:"Materials",
+      qty:Number(l.qty)||1,unit:l.unit||"pcs",estUnitCost:Number(l.estUnitCost)||0,_prfId:l.prfId,_prfLineId:l.lineId,_prfNo:l.prfNo})));
+    prfDraftRef.current=true;
+    clearPoDraft&&clearPoDraft();
+  },[poDraft]);
 
   const openEditPO=(poNo,items)=>{
     const first=items[0]||{};
@@ -24038,6 +24082,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
     // one payable per PO number; the delivery/receive flow later reconciles the
     // same payable instead of creating a duplicate.
     syncPoPayable&&syncPoPayable(poNo,poItems.map(buildUpdate));
+    if(!editingPrIds&&prfDraftRef.current&&onPoFromPrf){prfDraftRef.current=null;onPoFromPrf(poNo,poItems);}
     setMode("list");
   };
 
