@@ -130,3 +130,8 @@ For the smoke test locally, run `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers
 ## PO lines closed at the AP cutover (2026-11-05)
 - 950 PO lines on 485 POs (₱7.17M) whose bill was Paid but whose receipt was never recorded were set to Delivered by migration `20261105222542_close_paid_pos_at_cutover.sql` (paid, project-tagged, dated before 2026-10-06; GMD Stocks and cost-center POs left for Warehouse). No stock movement was written.
 - Their `delivery_note` starts "Closed at AP cutover 2026-11-05": the receipt is not proven. Exclude or label them in any receiving / 3-way-match report. Lines as they were: `purchase_requests_backup_20261105`; rollback steps in the migration.
+
+## Navigation hubs
+- Pages that belong together share one sidebar item, and a tab strip at the top of the page switches between them: `NAV_HUBS` / `NAV_HUB_OF` (top of `src/App.jsx`), `hubbedNav`, `hubMembers`, the strip in `Wrap`. Orders = Purchase Orders + Subcon Work Orders; Warehouse = Inventory + Deliveries + Stock Movements.
+- The strip lists only the role's own nav items, so access is still set by `navMap`. To give a role a page, add it to `navMap`, not to the strip.
+- `navIsActive` is the one active-item rule for the desktop sidebar and the phone nav. Use it for any new virtual item.
