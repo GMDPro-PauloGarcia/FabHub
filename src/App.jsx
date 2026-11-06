@@ -27,6 +27,10 @@ const useStableComponent=(impl)=>{
   return useRef((props)=>ref.current(props)).current;
 };
 
+// Sidebar hubs: one nav item for pages that belong together (see hubbedNav).
+const NAV_HUBS={orders:{l:"Orders",icon:"📦"},warehouse:{l:"Warehouse",icon:"🗃️"}};
+const NAV_HUB_OF={procurement:"orders",subconwo:"orders",inventory:"warehouse",deliveries:"warehouse",stockmove:"warehouse"};
+
 // ─── CODE-SPLIT VIEWS ────────────────────────────────────────────────────────
 // Each of these pages ships as its own chunk, downloaded the first time the
 // page is opened instead of being part of the initial bundle. _lazyView bakes
@@ -4180,13 +4184,13 @@ function FinancialOverview({deals=[],wonDeals=[],exps=[],payables=[],prs=[],swos
           <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",fontWeight:700}}>Total Payables</div>
           <div style={{fontSize:".62rem",color:"#64748b",fontWeight:600,marginTop:3}}>{payCount} unpaid</div>
         </div>
-        {/* Loans */}
-        <div onClick={()=>{setFinTab&&setFinTab("loans");setPage&&setPage("finance");}} style={{...card(),cursor:"pointer",textAlign:"center"}}>
+        {/* Loans (tile hidden while the Loans tab is hidden: it bounced to Home) */}
+        {!HIDDEN_FIN_TABS.has("loans")&&<div onClick={()=>{setFinTab&&setFinTab("loans");setPage&&setPage("finance");}} style={{...card(),cursor:"pointer",textAlign:"center"}}>
           <div style={{fontSize:"1.2rem"}}>💳</div>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.5rem",color:loanOutstanding>0?"#7c3aed":"#94a3b8"}}>{_fmtM(loanOutstanding)}</div>
           <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",fontWeight:700}}>Loans Outstanding</div>
           <div style={{fontSize:".62rem",color:"#64748b",fontWeight:600,marginTop:3}}>{_fmtM(loanMonthly)}/mo</div>
-        </div>
+        </div>}
       </div>
 
       {/* Margin preview — only the 5 that need attention; full list on its own page */}
@@ -9838,7 +9842,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Accounting",  items:[{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"},{id:"subconcert",l:"Subcon Billing"}]},
       {group:"Design",      items:[{id:"designboard",l:"Design Board"},{id:"drf",l:"Design Requests"}]},
-      {group:"Procurement", items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
+      {group:"Procurement", items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Suppliers"}]},
       {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"audit",l:"Audit"},{id:"syshealth",l:"System Health"},{id:"botsettings",l:"Bot Settings"},{id:"tvboard",l:"Office TV Board"},{id:"activity",l:"Team Activity"}]},
     ],
     Sales:[
@@ -9849,13 +9853,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"QS",           items:[{id:"ceqs",l:"CE Requests"}]},
     ],
     Finance:[
-      {group:"Overview",    items:[{id:"home",l:"Cash Position"},{id:"calendar",l:"Calendar"}]},
+      {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"boq",l:"BOQ"},{id:"clients",l:"Clients"}]},
       {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills"}]:[]),{id:"payrun",l:"Payment Run"},{id:"monboard",l:"Monitoring Board"},{id:"subconmon",l:"Subcon Payments"},{id:"cashflow",l:"Cash Flow"},{id:"finance-reports",l:"Reports"}]},
       {group:"Accounting",  items:[{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"},{id:"subconcert",l:"Subcon Billing"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
-      {group:"Procurement", items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
+      {group:"Procurement", items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Suppliers"}]},
       {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"}]},
       {group:"Admin",       items:[{id:"audit",l:"Audit"},{id:"botsettings",l:"Bot Settings"},{id:"activity",l:"Team Activity"}]},
     ],
@@ -9876,7 +9880,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     Procurement:[
       {group:"Overview",   items:[{id:"home",l:"Overview"}]},
-      {group:"Orders",     items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
+      {group:"Orders",     items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Suppliers"}]},
       {group:"Projects",   items:[{id:"projects",l:"Projects"},{id:"clients",l:"Clients"}]},
     ],
     QS:[
@@ -9934,12 +9938,38 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // difference is authority (they approve POs), not navigation.
     ProcurementManager:[
       {group:"Overview",   items:[{id:"home",l:"Overview"}]},
-      {group:"Orders",     items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
+      {group:"Orders",     items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Suppliers"}]},
       {group:"Projects",   items:[{id:"projects",l:"Projects"},{id:"clients",l:"Clients"}]},
     ],
   };
   // Hidden modules drop out of every role's nav; a group left empty goes too.
   const visibleNav=r=>(navMap[r]||[]).map(g=>({...g,items:(g.items||[]).filter(it=>!HIDDEN_NAV_IDS.has(it.id))})).filter(g=>g.items.length);
+  // Nav hubs (2026-11-05): pages that belong together share one sidebar item,
+  // and a tab strip at the top of each page (HubTabs, in Wrap) switches between
+  // them. Procurement went from 7 items to 4. Which pages a role can open is
+  // unchanged: the strip lists only that role's own nav items.
+  const hubbedNav=r=>visibleNav(r).map(g=>{
+    const seen=new Set();
+    return{...g,items:g.items.flatMap(it=>{
+      const h=NAV_HUB_OF[it.id];
+      if(!h) return [it];
+      if(g.items.filter(x=>NAV_HUB_OF[x.id]===h).length<2) return [it];
+      if(seen.has(h)) return [];
+      seen.add(h);
+      return [{...it,l:NAV_HUBS[h].l,hub:h}];
+    })};
+  });
+  const hubMembers=(r,h)=>{const ids=new Set();return visibleNav(r).flatMap(g=>g.items).filter(it=>NAV_HUB_OF[it.id]===h&&!ids.has(it.id)&&ids.add(it.id));};
+  // One active-item rule for the desktop sidebar and the phone nav (virtual
+  // Finance items open the Finance page on a tab; a hub is active on any of its pages).
+  const navIsActive=(id,hub)=>hub?NAV_HUB_OF[page]===hub
+    :id==="payables"?(page==="finance"&&finTab==="payables")
+    :id==="cashposition"?(page==="finance"&&finTab==="cash")
+    :id==="supplierbills"?(page==="finance"&&finTab==="bills")
+    :id==="executive"?(page==="finance"&&["overview","pl","loans","txns"].includes(finTab))
+    :["expmon","payrun","bir2307","monboard","subconmon"].includes(id)?(page==="finance"&&finTab===id)
+    :id==="finance"?(page==="acctdash")
+    :page===id;
   const Nav=useStableComponent(()=>{
     const NAV_ICONS={
       home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   cashposition:"🏦",   supplierbills:"📦",   cashflow:"📈",   payables:"📤",   billing:"🧾",
@@ -9951,20 +9981,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       subcontractors:"👷",materialreq:"🔧",subconcert:"🔨",budgetreq:"💳",collections:"💵",
       checklist:"✅",joborders:"📄", ops:"⚙️",        datamanagement:"⚙️", myfolder:"📁",
     };
-    const groups=visibleNav(role);
+    const groups=hubbedNav(role);
     const allItems=groups.flatMap(g=>g.items||[]);
+    const favPool=visibleNav(role).flatMap(g=>g.items||[]);
     const pauloExtra=session?.username==="paulo"?[{id:"datamanagement",l:"Data"}]:[];
-    const NavBtn=({id,l,collapsed})=>{
+    const NavBtn=({id,l,collapsed,hub})=>{
       // "payables" is a virtual nav entry: it opens the Finance page pinned to the
       // Accounts Payable tab, so the AP Ledger reads as its own top-level item.
-      const active=id==="payables"?(page==="finance"&&finTab==="payables")
-        :id==="cashposition"?(page==="finance"&&finTab==="cash")
-        :id==="supplierbills"?(page==="finance"&&finTab==="bills")
-        :id==="executive"?(page==="finance"&&["overview","pl","loans","txns"].includes(finTab))
-        :["expmon","payrun","bir2307","monboard","subconmon"].includes(id)?(page==="finance"&&finTab===id)
-        :id==="finance"?(page==="acctdash")
-        :page===id;
-      const icon=NAV_ICONS[id]||NAV_ICONS[l]||"•";
+      const active=navIsActive(id,hub);
+      const icon=(hub&&NAV_HUBS[hub].icon)||NAV_ICONS[id]||NAV_ICONS[l]||"•";
       const fav=favNav.includes(id);
       return(
         <button key={id} onClick={()=>{if(id==="payables"){setPage("finance");setFinTab("payables");}else if(id==="cashposition"){setPage("finance");setFinTab("cash");}else if(id==="supplierbills"){setPage("finance");setFinTab("bills");}else if(id==="executive"){setPage("finance");setFinTab("overview");}else if(["expmon","payrun","bir2307","monboard","subconmon"].includes(id)){setPage("finance");setFinTab(id);}else if(id==="finance"){setPage("acctdash");}else{setPage(id);}setSelProj(null);setDealModal(false);setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(null);}}
@@ -9977,7 +10002,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       );
     };
     // Resolve favorited ids to {id,l} for the pinned group (drop any no longer in this role's nav).
-    const itemLookup={};[...allItems,...pauloExtra].forEach(it=>{itemLookup[it.id]=it;});
+    const itemLookup={};[...favPool,...pauloExtra].forEach(it=>{itemLookup[it.id]=it;});
     const favItems=favNav.map(id=>itemLookup[id]).filter(Boolean);
     const W = navCollapsed ? 64 : 220;
     return(
@@ -9992,7 +10017,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         {/* Nav items */}
         <div style={{flex:1,overflowY:"auto",padding:"8px 0"}}>
           {navCollapsed ? (
-            [...allItems,...pauloExtra].map(({id,l})=><NavBtn key={id} id={id} l={l} collapsed={true}/>)
+            [...allItems,...pauloExtra].map(({id,l,hub})=><NavBtn key={id} id={id} l={l} hub={hub} collapsed={true}/>)
           ) : (
             <>
               {favItems.length>0&&(
@@ -10017,7 +10042,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     <span>{section.group}</span>
                     <span style={{fontSize:".7rem",color:"#334155",transform:open?"rotate(90deg)":"rotate(0deg)",transition:"transform .15s",lineHeight:1}}>›</span>
                   </div>
-                  {open&&(section.items||[]).map(({id,l})=><NavBtn key={id} id={id} l={l} collapsed={false}/>)}
+                  {open&&(section.items||[]).map(({id,l,hub})=><NavBtn key={id} id={id} l={l} hub={hub} collapsed={false}/>)}
                 </div>
               );})}
               {!(favOnly&&favItems.length>0)&&pauloExtra.map(({id,l})=><NavBtn key={id} id={id} l={l} collapsed={false}/>)}
@@ -10092,11 +10117,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ── MOBILE BOTTOM NAV ─────────────────────────────────────────────────────
   const MobileBottomNav=useStableComponent(()=>{
     if(!isMobile) return null;
-    const groups=visibleNav(role);
+    const groups=hubbedNav(role);
     const allItems=groups.flatMap(g=>g.items||[]);
+    const favPool=visibleNav(role).flatMap(g=>g.items||[]);
     const NAV_ICONS={
       home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   cashposition:"🏦",   supplierbills:"📦",   cashflow:"📈",   payables:"📤",   billing:"🧾",
-      reports:"📈", "sales-reports":"📈", "finance-reports":"📈", projectmargins:"🪙", acctdash:"📒", executive:"🎯", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
+      reports:"📈", "sales-reports":"📈", "finance-reports":"📈", projectmargins:"🪙", acctdash:"📒", executive:"🎯", expmon:"🧾", payrun:"💸", bir2307:"📑", monboard:"🚦", subconmon:"🔨", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅", financecal:"📅",
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
       masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆", audit:"🔎", syshealth:"🩺", tvboard:"📺",
@@ -10113,7 +10139,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       stockmove:"Stock",reports:"Reports",suppliers:"Suppliers",
       subcontractors:"Subcon",calendar:"Calendar",inventory:"Inventory",
       pmupdates:"Updates",addenda:"Scope",botsettings:"Bot",activity:"Activity",
-      requests:"Requests",masters:"Masters",tvboard:"TV Board",
+      requests:"Requests",masters:"Suppliers",tvboard:"TV Board",
     };
     // Notification badge counts per tab
     const openBlockersAll=(blockers||[]).filter(b=>b.status==="Open").length;
@@ -10145,7 +10171,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     };
     // Favorites (if the user set any) drive the mobile bottom bar and lead the More sheet,
     // matching the desktop sidebar. Only ids present in this role's nav are kept.
-    const favItemsM=favNav.map(id=>allItems.find(x=>x.id===id)).filter(Boolean);
+    const favItemsM=favNav.map(id=>favPool.find(x=>x.id===id)).filter(Boolean);
     // For Manager show fixed key tabs + More; others show first 4 + Me.
     // When favorites exist, the first 4 favorites take the primary slots instead.
     const primaryIds=favItemsM.length>0
@@ -10155,7 +10181,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         : allItems.slice(0,4).map(x=>x.id);
     const moreBadge=Object.entries(BADGE_MAP).filter(([id])=>!primaryIds.includes(id)).reduce((s,[,v])=>s+v,0);
     const tabs=[
-      ...primaryIds.map(id=>({id,l:allItems.find(x=>x.id===id)?.l||id})),
+      ...primaryIds.map(id=>{const it=allItems.find(x=>x.id===id)||favPool.find(x=>x.id===id);return{id,l:it?.l||id,hub:it?.hub};}),
       {id:"__more__",l:"More"},
     ];
     return(
@@ -10181,7 +10207,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 <div style={{padding:"4px 16px 2px",fontSize:".58rem",fontWeight:800,color:"#f59e0b",textTransform:"uppercase",letterSpacing:".08em"}}>★ Favorites</div>
                 <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:0}}>
                   {favItemsM.map(({id,l})=>{
-                    const active=page===id;
+                    const active=navIsActive(id);
                     const icon=NAV_ICONS[id]||"•";
                     const label=NAV_LABELS[id]||l?.replace(/📅|📋|📝|⚠️|📊|📦/g,"").trim()||l;
                     return(
@@ -10199,10 +10225,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               <div key={si} style={{padding:"6px 0"}}>
                 <div style={{padding:"4px 16px 2px",fontSize:".58rem",fontWeight:800,color:"#475569",textTransform:"uppercase",letterSpacing:".08em"}}>{sec.group}</div>
                 <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:0}}>
-                  {(sec.items||[]).map(({id,l})=>{
-                    const active=page===id;
-                    const icon=NAV_ICONS[id]||"•";
-                    const label=NAV_LABELS[id]||l?.replace(/📅|📋|📝|⚠️|📊|📦/g,"").trim()||l;
+                  {(sec.items||[]).map(({id,l,hub})=>{
+                    const active=navIsActive(id,hub);
+                    const icon=(hub&&NAV_HUBS[hub].icon)||NAV_ICONS[id]||"•";
+                    const label=hub?NAV_HUBS[hub].l:(NAV_LABELS[id]||l?.replace(/📅|📋|📝|⚠️|📊|📦/g,"").trim()||l);
                     const fav=favNav.includes(id);
                     return(
                       <button key={id} onClick={()=>navigate(id)}
@@ -10227,7 +10253,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         )}
         {/* Bottom tab bar */}
         <div style={{position:"fixed",bottom:0,left:0,right:0,height:62,background:"#1e293b",display:"flex",alignItems:"stretch",zIndex:300,borderTop:"1px solid rgba(255,255,255,.08)",boxShadow:"0 -2px 12px rgba(0,0,0,.2)"}} className="noprint">
-          {tabs.map(({id,l})=>{
+          {tabs.map(({id,l,hub})=>{
             if(id==="__more__"){
               return(
                 <button key="__more__" onClick={()=>setMoreNavOpen(o=>!o)}
@@ -10248,9 +10274,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 </button>
               );
             }
-            const active=page===id;
-            const icon=NAV_ICONS[id]||"•";
-            const label=NAV_LABELS[id]||l?.replace(/📅|📋|📝|⚠️|📊|📦/g,"").trim()||l;
+            const active=navIsActive(id,hub);
+            const icon=(hub&&NAV_HUBS[hub].icon)||NAV_ICONS[id]||"•";
+            const label=hub?NAV_HUBS[hub].l:(NAV_LABELS[id]||l?.replace(/📅|📋|📝|⚠️|📊|📦/g,"").trim()||l);
             const bc=BADGE_MAP[id]||0;
             return(
               <button key={id} onClick={()=>navigate(id)}
@@ -10399,6 +10425,24 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               ← Dashboard
             </button>
           )}
+          {!alreadyWrapped&&(()=>{
+            const h=NAV_HUB_OF[page];
+            const members=h?hubMembers(role,h):[];
+            if(members.length<2) return null;
+            return(
+              <div className="noprint" role="tablist" aria-label={NAV_HUBS[h].l} style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:14,background:"#fff",border:"1px solid #e2e8f0",borderRadius:10,padding:4,width:"fit-content",maxWidth:"100%"}}>
+                {members.map(it=>{
+                  const on=page===it.id;
+                  return(
+                    <button key={it.id} role="tab" aria-selected={on} onClick={()=>{setPage(it.id);setSelProj(null);}}
+                      style={{border:"none",borderRadius:7,padding:"7px 14px",background:on?"#1e293b":"transparent",color:on?"#fff":"#475569",fontFamily:"inherit",fontSize:".8rem",fontWeight:on?700:600,cursor:"pointer",whiteSpace:"nowrap"}}>
+                      {it.l}
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })()}
           <ViewErrorBoundary key={page} view={page} onHome={()=>{setPage("home");setFromHome(false);}}>
             {children}
           </ViewErrorBoundary>
@@ -10845,7 +10889,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {/* What needs a person today, each with a button to fix it */}
       <AttentionPanel billings={billings} deals={deals} prs={prs} payables={payables} today={today}
         pages={role==="FinanceAssistant"?["billing","bills"]:["billing","procurement","bills"]}
-        go={to=>{if(to==="bills"){setFinTab("bills");setPage("finance");}else setPage(to);}}/>
+        go={to=>{if(to==="bills"){setFinTab(AP_HIDDEN?"bills":"payables");setPage("finance");}else setPage(to);}}/>
 
       {/* KPI row */}
       {(()=>{
@@ -11880,7 +11924,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     <Wrap>
       <AttentionPanel billings={billings} deals={deals} prs={prs} payables={payables} today={today}
         pages={role==="FinanceAssistant"?["billing","bills"]:["billing","procurement","bills"]}
-        go={to=>{if(to==="bills"){setFinTab("bills");setPage("finance");}else setPage(to);}}/>
+        go={to=>{if(to==="bills"){setFinTab(AP_HIDDEN?"bills":"payables");setPage("finance");}else setPage(to);}}/>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
         <div>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, {session?.name?.split(" ")[0]||"there"} 👋</div>
@@ -12301,7 +12345,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     <Wrap>
       <AttentionPanel billings={billings} deals={deals} prs={prs} payables={payables} today={today}
         pages={role==="FinanceAssistant"?["billing","bills"]:["billing","procurement","bills"]}
-        go={to=>{if(to==="bills"){setFinTab("bills");setPage("finance");}else setPage(to);}}/>
+        go={to=>{if(to==="bills"){setFinTab(AP_HIDDEN?"bills":"payables");setPage("finance");}else setPage(to);}}/>
       {/* ── COMMAND BAR ─────────────────────────────────────────────── */}
       <div style={{background:"#0f172a",borderRadius:14,padding:ceoMob?"11px 16px":"16px 20px",marginBottom:ceoMob?10:14,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
         <div>
