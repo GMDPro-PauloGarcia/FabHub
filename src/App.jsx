@@ -10734,7 +10734,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
 
 
-  if(page==="home"){
+  // Warehouse is left out: its Home is the Deliveries board below (role==="Warehouse"), not the CEO overview.
+  if(page==="home"&&role!=="Warehouse"){
 
   // ── SALES HOME ───────────────────────────────────────────────────────────
   if(role==="Sales") return(
@@ -10891,7 +10892,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         buttons={[
           {label:"+ New Deal",     icon:"🤝", bg:"#6366f1", action:()=>openAddDeal()},
           {label:"+ Add Client",   icon:"🏢", bg:"#059669", action:()=>{setPage("pipeline");setQuickAddClientOpen(true);}},
-          {label:"Submit CE",      icon:"📐", bg:"#7c3aed", action:()=>setPage("ceqs")},
+          ...(pageOn("ceqs")?[{label:"Submit CE",      icon:"📐", bg:"#7c3aed", action:()=>setPage("ceqs")}]:[]),
           {label:"Billing",        icon:"🧾", bg:"#1e293b", action:()=>setPage("billing")},
           {label:"Projects",       icon:"📋", bg:"#f97316", action:()=>setPage("projects")},
         ]}
@@ -10909,7 +10910,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:12}}>
               {[
                 {l:"Active Pipeline",    v:activePipe.length,        c:"#6366f1", icon:"📊", action:()=>setPage("pipeline")},
-                {l:"CE Requests Open",   v:pendingCE.length,         c:"#7c3aed", icon:"📐", action:()=>setPage("ceqs")},
+                ...(pageOn("ceqs")?[{l:"CE Requests Open",   v:pendingCE.length,         c:"#7c3aed", icon:"📐", action:()=>setPage("ceqs")}]:[]),
                 {l:"Outstanding Billing",v:fmtK2(outstanding),       c:outstanding>0?"#ef4444":"#94a3b8", icon:"🧾", action:()=>setPage("billing")},
                 {l:"Active Projects",    v:activeProjects.length,    c:"#f97316", icon:"📋", action:()=>setPage("projects")},
               ].map(({l,v,c,icon,action})=>(
@@ -11091,7 +11092,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, {session?.name?.split(" ")[0]||"there"} 👋</div>
           <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>QS Dashboard · {todayL}</div>
         </div>
-        <button onClick={()=>setPage("costanalysis")} style={{background:"#8b5cf6",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📈 Cost Analysis</button>
+        {pageOn("costanalysis")&&<button onClick={()=>setPage("costanalysis")} style={{background:"#8b5cf6",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📈 Cost Analysis</button>}
       </div>
 
       {(()=>{
@@ -11154,8 +11155,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             {[
               {l:"Active Projects",    v:wonDeals.length,         c:"#8b5cf6", icon:"📋"},
               {l:"Auto-Budget Set",    v:autoBudgets.length,      c:"#06b6d4", icon:"🤖", sub:"needs QS review"},
-              {l:"Needs Budget",       v:noBudget.length,         c:"#f59e0b", icon:"⏳", click:()=>setPage("costanalysis")},
-              {l:"Over Budget",        v:overBudget.length,       c:"#ef4444", icon:"🚨", click:()=>setPage("costanalysis")},
+              {l:"Needs Budget",       v:noBudget.length,         c:"#f59e0b", icon:"⏳", click:pageOn("costanalysis")?()=>setPage("costanalysis"):undefined},
+              {l:"Over Budget",        v:overBudget.length,       c:"#ef4444", icon:"🚨", click:pageOn("costanalysis")?()=>setPage("costanalysis"):undefined},
             ].map(({l,v,c,icon,sub,click})=>(
               <div key={l} onClick={click} style={{background:"#fff",borderRadius:12,padding:"16px",border:`1.5px solid ${c}33`,textAlign:"center",cursor:click?"pointer":"default"}}>
                 <div style={{fontSize:"1.4rem",marginBottom:4}}>{icon}</div>
@@ -11194,7 +11195,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 const margin=Number(d.value||0)>0?Math.round((Number(d.value||0)-total)/Number(d.value||0)*100):0;
                 const jo=dealJo(jos,d.id);
                 return(
-                  <div key={d.id} onClick={()=>setPage("costanalysis")} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:i<autoBudgets.length-1?"1px solid #dbeafe":"",cursor:"pointer",background:"#fff"}}
+                  <div key={d.id} onClick={pageOn("costanalysis")?()=>setPage("costanalysis"):undefined} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:i<autoBudgets.length-1?"1px solid #dbeafe":"",cursor:"pointer",background:"#fff"}}
                     onMouseEnter={e=>e.currentTarget.style.background="#eff6ff"}
                     onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
                     <div>
@@ -11326,7 +11327,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             {pending.map((m,i)=>{
               const d=wonDeals.find(x=>x.id===m.dealId);
               return(
-                <div key={m.id} onClick={()=>setPage("requests")} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:i<pending.length-1?"1px solid #f8fafc":"",cursor:"pointer"}}
+                <div key={m.id} onClick={pageOn("requests")?()=>setPage("requests"):undefined} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:i<pending.length-1?"1px solid #f8fafc":"",cursor:"pointer"}}
                   onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
                   onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                   <div>
@@ -11353,7 +11354,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             {toBuy.map((s,i)=>{
               const d=wonDeals.find(x=>x.id===s.dealId);
               return(
-                <div key={s.id} onClick={()=>setPage("swatchboard")} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:i<toBuy.length-1?"1px solid #f8fafc":"",cursor:"pointer"}}
+                <div key={s.id} onClick={pageOn("swatchboard")?()=>setPage("swatchboard"):undefined} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:i<toBuy.length-1?"1px solid #f8fafc":"",cursor:"pointer"}}
                   onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
                   onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                   <div>
@@ -11376,7 +11377,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #fde68a",overflow:"hidden",marginBottom:16}}>
             <div style={{background:"#d97706",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>⚠️ Swatches Received — Awaiting Client Approval ({pendingApproval.length})</span>
-              <button onClick={()=>setPage("swatchboard")} style={{background:"rgba(255,255,255,.2)",border:"none",borderRadius:6,padding:"3px 10px",color:"#fff",fontSize:".72rem",cursor:"pointer",fontFamily:"inherit"}}>Open Swatchboard →</button>
+              {pageOn("swatchboard")&&<button onClick={()=>setPage("swatchboard")} style={{background:"rgba(255,255,255,.2)",border:"none",borderRadius:6,padding:"3px 10px",color:"#fff",fontSize:".72rem",cursor:"pointer",fontFamily:"inherit"}}>Open Swatchboard →</button>}
             </div>
             {pendingApproval.map((s,i)=>{
               const d=wonDeals.find(x=>x.id===s.projectId||x.id===s.dealId);
@@ -11505,7 +11506,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 {l:"My Projects",   v:display.length,     icon:"🏗", c:"#6366f1", pg:"projects"},
                 {l:"Needs Update",  v:needsUpdate.length, icon:"🚨", c:needsUpdate.length>0?"#dc2626":"#94a3b8", pg:"projects"},
                 {l:"At Risk",       v:atRisk.length,      icon:"⏰", c:atRisk.length>0?"#d97706":"#94a3b8", pg:"projects"},
-                {l:"Open Tasks",    v:myOpenTasks.length, icon:"✅", c:"#3b82f6", pg:"checklist"},
+                {l:"Open Tasks",    v:myOpenTasks.length, icon:"✅", c:"#3b82f6", pg:"projects"},
                 {l:"Open Blockers", v:openBlockers,       icon:"⛔", c:openBlockers>0?"#ef4444":"#94a3b8", pg:"projects"},
               ].map(({l,v,icon,c,pg})=>(
                 <div key={l} onClick={()=>setPage(pg)} style={{background:"#fff",borderRadius:10,padding:"12px 14px",border:`1.5px solid ${c}22`,textAlign:"center",cursor:"pointer"}}>
@@ -11616,11 +11617,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             {/* Pending requests — kept as a slim reachable strip (MRs/BRs) */}
             {(mreqs.filter(m=>m.status==="Submitted").length>0||breqs.filter(b=>b.status==="Pending").length>0)&&(
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                <div onClick={()=>setPage("requests")} style={{background:"#fff",borderRadius:10,padding:"12px 14px",border:"1.5px solid #f9731622",cursor:"pointer",display:"flex",alignItems:"center",gap:10}}>
+                <div onClick={pageOn("requests")?()=>setPage("requests"):undefined} style={{background:"#fff",borderRadius:10,padding:"12px 14px",border:"1.5px solid #f9731622",cursor:"pointer",display:"flex",alignItems:"center",gap:10}}>
                   <span style={{fontSize:"1.2rem"}}>🔧</span>
                   <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.2rem",color:"#f97316"}}>{mreqs.filter(m=>m.status==="Submitted").length}</div><div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8"}}>Pending Material Requests</div></div>
                 </div>
-                <div onClick={()=>setPage("requests")} style={{background:"#fff",borderRadius:10,padding:"12px 14px",border:"1.5px solid #8b5cf622",cursor:"pointer",display:"flex",alignItems:"center",gap:10}}>
+                <div onClick={pageOn("requests")?()=>setPage("requests"):undefined} style={{background:"#fff",borderRadius:10,padding:"12px 14px",border:"1.5px solid #8b5cf622",cursor:"pointer",display:"flex",alignItems:"center",gap:10}}>
                   <span style={{fontSize:"1.2rem"}}>💳</span>
                   <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.2rem",color:"#8b5cf6"}}>{breqs.filter(b=>b.status==="Pending").length}</div><div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8"}}>Pending Budget Requests</div></div>
                 </div>
@@ -11632,7 +11633,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
                 <div style={{background:"#3b82f6",padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>✅ My Open Tasks ({myOpenTasks.length})</span>
-                  <button onClick={()=>setPage("checklist")} style={{background:"rgba(255,255,255,.2)",border:"none",borderRadius:6,padding:"3px 10px",color:"#fff",fontSize:".72rem",cursor:"pointer",fontFamily:"inherit"}}>See all →</button>
+                  <button onClick={()=>setPage("projects")} style={{background:"rgba(255,255,255,.2)",border:"none",borderRadius:6,padding:"3px 10px",color:"#fff",fontSize:".72rem",cursor:"pointer",fontFamily:"inherit"}}>See all →</button>
                 </div>
                 {myOpenTasks.slice(0,5).map((t,i)=>{
                   const d=wonDeals.find(x=>x.id===t.projectId);
@@ -12478,7 +12479,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         if(mrPendingCnt){
           const mr=mreqs.filter(m=>m.status==="Submitted");
           const rows=mr.map(m=>{const d=attnWonMap.get(m.dealId||m.projectId);return{name:d?.contact||d?.client||m.title||"Material Request",sub:m.item||m.note||m.title||"Pending",id:m.dealId||m.projectId};});
-          items.push({icon:"📋",n:mrPendingCnt,l:"Material Requests",sub:"pending",tone:"info",rows,unit:"request",fullPage:()=>setPage("requests"),fullPageLabel:"Open Requests →"});
+          items.push({icon:"📋",n:mrPendingCnt,l:"Material Requests",sub:"pending",tone:"info",rows,unit:"request",fullPage:pageOn("requests")?()=>setPage("requests"):undefined,fullPageLabel:"Open Requests →"});
         }
         if(addendaAlertCnt){
           const sc=addenda.filter(a=>!a.salesNotified&&a.status!=="Rejected");
