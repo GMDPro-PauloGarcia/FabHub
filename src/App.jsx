@@ -10,7 +10,7 @@ import {fmt,addPrintClose,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dro
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -4477,6 +4477,30 @@ export default function App(){
   const[customClients,setCustomClients]= useState([]);
   const[customMembers,setCustomMembers]= useState(()=>{try{return JSON.parse(localStorage.getItem("gmdv5:customMembers")||"[]");}catch{return[];}});  // extra team members typed in (beyond the built-in roster)
   const[clientProfiles,setClientProfiles]= useState({});  // keyed by client name
+  // Clients on credit terms (client_credit_terms, migration 20261106020000):
+  // they skip the client down-payment rule. Registered in core.js so every
+  // dealDpClear caller sees them. Changed only by a Manager, through the RPC.
+  const[creditTerms,setCreditTerms]=useState([]);
+  const loadCreditTerms=useCallback(async()=>{
+    if(!isSupabaseReady()) return;
+    const{data,error}=await supabase.from('client_credit_terms').select('*').order('client_name');
+    if(error) return;
+    setCreditTermClients((data||[]).filter(r=>r.active).map(r=>r.client_name));
+    setCreditTerms(data||[]);
+  },[]);
+  const setClientCreditTerms=async(client,on,days,reason)=>{
+    if(canonRole(role)!=="Manager"){toastEmit("Only a Manager can change a client's credit terms.","error");return false;}
+    const r=String(reason||"").trim();
+    if(r.length<5){toastEmit("Give the reason (at least 5 characters).","error");return false;}
+    const{error}=await supabase.rpc('set_client_credit_terms',{p_client:client,p_on:!!on,p_days:Number(days)||30,p_reason:r});
+    if(error){toastEmit("⚠ "+error.message,"error",9000);return false;}
+    await loadCreditTerms();
+    sendTelegramNotification("management",on
+      ?`🧾 <b>Client on credit terms</b>\n${client} · ${Number(days)||30} days\nPOs no longer wait for a down payment.\nReason: ${r}\nBy: ${session?.name||"?"}`
+      :`↩️ <b>Credit terms removed</b>\n${client}\nDown payment required again.\nReason: ${r}\nBy: ${session?.name||"?"}`);
+    toastEmit(on?`${client} is on credit terms: its POs no longer wait for a down payment.`:`${client} is off credit terms.`,"success");
+    return true;
+  };
   // Saves ONE client's profile through set_client_profile (migration
   // 20261026053903), which merges it server-side. The old whole-object upsert
   // was rejected for Sales under RLS (error swallowed, edit lost on reload) and
@@ -4496,6 +4520,7 @@ export default function App(){
   };
   const[budgets,     setBudgets]   = useState({});   // keyed by dealId
   const[session,  setSession] = useState(null);   // {userId, username, name, role}
+  useEffect(()=>{if(session) loadCreditTerms();},[session,loadCreditTerms]);
   const[authView, setAuthView]= useState("login"); // login | register
   const[role,     setRole]    = useState(null);
   // Sales users explicitly granted deal-delete rights (for clearing duplicate /
@@ -16463,10 +16488,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         })()}
       </Wrap>
     );
-    if(page==="procurement") return(<Wrap><ProcurementView2 poDraft={poDraft} clearPoDraft={()=>setPoDraft(null)} onPoFromPrf={linkPrfLines} payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 poDraft={poDraft} clearPoDraft={()=>setPoDraft(null)} onPoFromPrf={linkPrfLines} payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="purchasing") return(<Wrap>{purchasingPage()}</Wrap>);
     if(page==="orderboard") return(<Wrap>{orderBoardPage()}</Wrap>);
-    if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="costing") return(<Wrap><CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView sendTelegramNotification={sendTelegramNotification} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
@@ -16478,7 +16503,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap} addMR={addMR} wonDeals={wonDeals} session={session}/></Wrap>);
     if(page==="clients") return(
       <Wrap>
-        <ClientDirectory deals={deals} session={session} role={role} vvipClients={vvipClients} toggleVvip={toggleVvip} customClients={customClients} isMobile={isMobile}
+        <ClientDirectory deals={deals} session={session} role={role} vvipClients={vvipClients} toggleVvip={toggleVvip} customClients={customClients} isMobile={isMobile} creditTerms={creditTerms} onCreditTerms={setClientCreditTerms}
           clientProfiles={clientProfiles}
           saveClientProfile={saveClientProfileRemote}
           addNewClient={(name)=>{
@@ -16805,10 +16830,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       </Wrap>
     );
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
-    if(page==="procurement") return(<Wrap><ProcurementView2 poDraft={poDraft} clearPoDraft={()=>setPoDraft(null)} onPoFromPrf={linkPrfLines} payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 poDraft={poDraft} clearPoDraft={()=>setPoDraft(null)} onPoFromPrf={linkPrfLines} payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="purchasing") return(<Wrap>{purchasingPage()}</Wrap>);
     if(page==="orderboard") return(<Wrap>{orderBoardPage()}</Wrap>);
-    if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap} addMR={addMR} wonDeals={wonDeals} session={session}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView sendTelegramNotification={sendTelegramNotification} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="requests") return(<Wrap><RequestsView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
@@ -17303,10 +17328,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   if(role==="Operations"){
     if(page==="home") return <OpsView sendTelegramNotification={sendTelegramNotification} projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role} openPmModal={d=>setPmUpdateModal(d)} onCloseProject={(dealId,stage)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,stage}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{stage}).catch(()=>{});logActivity(dealId,"Stage Change",`Pipeline stage → ${stage}`,session?.name);["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,`📌 <b>Project Stage Updated</b>\nClient: <b>${projDeal?.client||"?"}</b>${projDeal?.ceNo?`\nCE: ${projDeal.ceNo}`:""}\nNew Stage: ${stage}\nBy: ${session?.name||"Ops"}`));}}/>;
-    if(page==="procurement") return(<Wrap><ProcurementView2 poDraft={poDraft} clearPoDraft={()=>setPoDraft(null)} onPoFromPrf={linkPrfLines} payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 poDraft={poDraft} clearPoDraft={()=>setPoDraft(null)} onPoFromPrf={linkPrfLines} payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="purchasing") return(<Wrap>{purchasingPage()}</Wrap>);
     if(page==="orderboard") return(<Wrap>{orderBoardPage()}</Wrap>);
-    if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView sendTelegramNotification={sendTelegramNotification} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="requests") return(<Wrap><RequestsView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
@@ -18949,7 +18974,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   if((["Cost Control","Finance","Manager","Operations"].includes(role))&&page==="procurement") return(
     <Wrap>
-      <ProcurementView2 poDraft={poDraft} clearPoDraft={()=>setPoDraft(null)} onPoFromPrf={linkPrfLines} payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp}
+      <ProcurementView2 poDraft={poDraft} clearPoDraft={()=>setPoDraft(null)} onPoFromPrf={linkPrfLines} payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms}
         prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR}
         wonDeals={wonDeals} deals={deals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}
         upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/>
@@ -18959,7 +18984,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // Clients directory (Manager, Sales, Finance)
   if(page==="clients") return(
     <Wrap>
-      <ClientDirectory deals={deals} session={session} role={role} vvipClients={vvipClients} toggleVvip={toggleVvip} customClients={customClients} isMobile={isMobile}
+      <ClientDirectory deals={deals} session={session} role={role} vvipClients={vvipClients} toggleVvip={toggleVvip} customClients={customClients} isMobile={isMobile} creditTerms={creditTerms} onCreditTerms={setClientCreditTerms}
         clientProfiles={clientProfiles}
         saveClientProfile={saveClientProfileRemote}
         addNewClient={(name)=>{
@@ -21296,7 +21321,8 @@ function SalesCalendarView({deals, session, role, pcards, jos, billings}){
 // (migration 20261026053903_set_client_profile_rpc.sql): keep them in sync.
 const CLIENT_PROFILE_EDITORS=["Manager","Finance","FinanceAssistant","Accounting","Sales","SalesOpsAdmin"];
 // ─── CLIENT AUTOCOMPLETE ──────────────────────────────────────────────────────
-function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customClients, clientProfiles, saveClientProfile, addNewClient, isMobile}){
+function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customClients, clientProfiles, saveClientProfile, addNewClient, isMobile, creditTerms=[], onCreditTerms}){
+  const[ctOpen,setCtOpen]=useState(false);
   const[selClient,  setSelClient]  = useState(null);
   const[search,     setSearch]     = useState("");
   const[filter,     setFilter]     = useState("all");
@@ -21374,6 +21400,25 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
 
   return(
     <div>
+      {/* Clients on credit terms (client_credit_terms, migration 20261106020000):
+          they skip the down-payment rule. Put on from a blocked PO / WO (DpGate);
+          a Manager takes them off here. */}
+      {(()=>{const on=(creditTerms||[]).filter(r=>r.active);const mgr=canonRole(role)==="Manager";return(
+        <div style={{background:"#fff",border:"1px solid #e2e8f0",borderRadius:10,padding:"10px 14px",marginBottom:14}}>
+          <button type="button" onClick={()=>setCtOpen(v=>!v)} aria-expanded={ctOpen} style={{background:"none",border:"none",padding:0,cursor:"pointer",fontFamily:"inherit",fontSize:".82rem",fontWeight:700,color:"#0f172a"}}>
+            {ctOpen?"▾":"▸"} Clients on credit terms ({on.length})
+          </button>
+          <div style={{fontSize:".72rem",color:"#64748b",marginTop:2}}>Their projects do not wait for a down payment before POs and Work Orders. A Manager puts a client on terms from a blocked PO or Work Order.</div>
+          {ctOpen&&(on.length===0?<div style={{fontSize:".76rem",color:"#94a3b8",marginTop:8}}>None yet.</div>:
+            <div style={{display:"flex",flexDirection:"column",gap:4,marginTop:8}}>
+              {on.map(r=>(
+                <div key={r.client_name} style={{display:"flex",flexWrap:"wrap",justifyContent:"space-between",gap:8,alignItems:"center",background:"#f8fafc",borderRadius:7,padding:"6px 10px",fontSize:".76rem"}}>
+                  <span><b>{r.client_name}</b> · {r.days} days · {r.reason} <span style={{color:"#64748b"}}>({r.set_by}, {String(r.set_at||"").slice(0,10)})</span></span>
+                  {mgr&&onCreditTerms&&<button type="button" onClick={async()=>{const why=await uiPrompt(`Take ${r.client_name} off credit terms? Its projects will need a down payment again before new POs.\n\nReason:`,"");if(why==null)return;await onCreditTerms(r.client_name,false,r.days,why);}}
+                    style={{background:"none",border:"1px solid #fecaca",color:"#b91c1c",borderRadius:6,padding:"3px 10px",fontFamily:"inherit",fontSize:".72rem",fontWeight:700,cursor:"pointer"}}>Remove</button>}
+                </div>))}
+            </div>)}
+        </div>);})()}
       {/* Header */}
       <div style={{marginBottom:20,display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10}}>
         <div>
@@ -22576,7 +22621,7 @@ function CEQSView({ceReqs,addCEReq,updateCEReq,session,role,toastEmit,deals}){
 // ─── BOQ MODAL (opened from pipeline 📋 button) ──────────────────────────────
 
 // ─── SUBCON WORK ORDERS VIEW ───────────────────────────────────────────────────
-function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,deals,subcons,session,role,toastEmit,sendTelegramNotification,chartOfAccounts=[],onWaiveDp}){
+function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,deals,subcons,session,role,toastEmit,sendTelegramNotification,chartOfAccounts=[],onWaiveDp,onCreditTerms}){
   const today=new Date().toISOString().split("T")[0];
   const[mode,setMode]=useState("list");
   const[editingId,setEditingId]=useState(null);
@@ -23121,7 +23166,7 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
                 noneLabel="— Select Project —"
                 noneValue=""
               />
-              {(()=>{const d=allD.find(x=>x.id===form.projectId);return d&&(d.dpWaivedAt||!dealDpClear(d,allD))?<div style={{marginTop:6}}><DpGate deal={d} deals={allD} role={role} onWaiveDp={onWaiveDp} what="Work orders"/></div>:null;})()}
+              {(()=>{const d=allD.find(x=>x.id===form.projectId);return d&&(d.dpWaivedAt||!dealDpClear(d,allD))?<div style={{marginTop:6}}><DpGate deal={d} deals={allD} role={role} onWaiveDp={onWaiveDp} onCreditTerms={onCreditTerms} what="Work orders"/></div>:null;})()}
             </Fld>
             <Fld label="WO Number" required hint={editingId?undefined:"Suggested — confirmed on submit to avoid duplicates"}>
               <Inp value={form.woNumber} onChange={e=>f("woNumber",e.target.value)} placeholder="WO-0001"/>
@@ -23710,13 +23755,16 @@ ${a.acctNotes?`<div class="trail"><b>Accounting notes:</b><br>${esc(a.acctNotes)
 // payment yet ("NO DP = NO production"). Managers can waive the down payment
 // for the deal right here, with a reason; everyone else is told who can.
 // Rule: dealDpClear (core.js) + migration 20261020110000.
-function DpGate({deal,deals,role,onWaiveDp,what="POs"}){
+function DpGate({deal,deals,role,onWaiveDp,onCreditTerms,what="POs"}){
   const[reason,setReason]=useState("");
   const[busy,setBusy]=useState(false);
   if(!deal) return null;
   const mgr=canonRole(role)==="Manager";
   const label=`${deal.client||"This deal"}${deal.ceNo?" ("+deal.ceNo+")":""}`;
   const waive=async(r)=>{if(busy||!onWaiveDp)return;setBusy(true);const ok=await onWaiveDp(deal.id,r);setBusy(false);if(ok)setReason("");};
+  // A client on credit terms (corporates paying 30-60 days after delivery) skips
+  // the rule for all its projects: Manager only, logged (set_client_credit_terms).
+  const putOnTerms=async()=>{if(busy||!onCreditTerms||!deal.client)return;setBusy(true);const ok=await onCreditTerms(deal.client,true,30,reason);setBusy(false);if(ok)setReason("");};
   if(deal.dpWaivedAt) return(
     <div style={{fontSize:".72rem",color:"#92400e",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"7px 10px",marginBottom:8,lineHeight:1.5}}>
       Down payment waived on {label} by {deal.dpWaivedBy||"a Manager"}{deal.dpWaivedAt?" on "+String(deal.dpWaivedAt).slice(0,10):""}: {deal.dpWaivedReason||"—"}
@@ -23731,13 +23779,15 @@ function DpGate({deal,deals,role,onWaiveDp,what="POs"}){
             <input value={reason} onChange={e=>setReason(e.target.value)} placeholder="Reason, e.g. SM credit terms, pays 30 days after delivery" aria-label="Reason for waiving the down payment"
               style={{flex:"1 1 220px",minWidth:0,border:"1.5px solid #fecaca",borderRadius:7,padding:"6px 9px",fontFamily:"inherit",fontSize:".76rem",background:"#fff",boxSizing:"border-box"}}/>
             <button type="button" disabled={busy||reason.trim().length<5} onClick={()=>waive(reason)} style={{background:reason.trim().length<5?"#fca5a5":"#b91c1c",border:"none",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#fff",cursor:reason.trim().length<5?"not-allowed":"pointer"}}>{busy?"Saving…":"Waive down payment"}</button>
+            {onCreditTerms&&deal.client&&<button type="button" disabled={busy||reason.trim().length<5} onClick={putOnTerms} title={`Every project of ${deal.client} skips the down payment rule`}
+              style={{background:"#fff",border:"1.5px solid #b91c1c",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontSize:".76rem",fontWeight:700,color:"#b91c1c",cursor:busy||reason.trim().length<5?"not-allowed":"pointer"}}>Put {deal.client} on credit terms</button>}
           </div>
         :<div style={{marginTop:4,color:"#7f1d1d"}}>Ask a Manager to waive it, or wait for Finance to record the client's payment.</div>}
     </div>);
 }
 
 // ─── PROCUREMENT VIEW 2 (Full PO → Multi-item → Delivery) ───────────────────
-function ProcurementView2({poDraft=null,clearPoDraft,onPoFromPrf,payPays=[],prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allDeals,budgets,exps,swos,session,role,toastEmit,suppliers,addSupplier,upPayables,payables,sendTelegramNotification,isSupabaseReady,sbUpsert,payableToSb,syncPoPayable,approvePOs,chartOfAccounts=[],onWaiveDp,costCenterDeals=[],onCreateCostCenter}){
+function ProcurementView2({poDraft=null,clearPoDraft,onPoFromPrf,payPays=[],prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allDeals,budgets,exps,swos,session,role,toastEmit,suppliers,addSupplier,upPayables,payables,sendTelegramNotification,isSupabaseReady,sbUpsert,payableToSb,syncPoPayable,approvePOs,chartOfAccounts=[],onWaiveDp,onCreditTerms,costCenterDeals=[],onCreateCostCenter}){
   // Internal cost centers (HR, GMD Tools, warehouse stock…): deals flagged
   // is_cost_center, bought against like a project but kept out of project
   // lists. Only a Manager adds one (create_cost_center RPC).
@@ -24303,7 +24353,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
               );
             })}
           </div>
-          {[...new Set(poItems.map(i=>i.projectId))].map(pid=>{const d=(allDeals||wonDeals||[]).find(x=>x.id===pid);return d&&(d.dpWaivedAt||!dealDpClear(d,allDeals||wonDeals||[]))?<DpGate key={pid} deal={d} deals={allDeals||wonDeals||[]} role={role} onWaiveDp={onWaiveDp}/>:null;})}
+          {[...new Set(poItems.map(i=>i.projectId))].map(pid=>{const d=(allDeals||wonDeals||[]).find(x=>x.id===pid);return d&&(d.dpWaivedAt||!dealDpClear(d,allDeals||wonDeals||[]))?<DpGate key={pid} deal={d} deals={allDeals||wonDeals||[]} role={role} onWaiveDp={onWaiveDp} onCreditTerms={onCreditTerms}/>:null;})}
           <button onClick={addPoItem} style={{background:"#f8fafc",border:"1.5px dashed #cbd5e1",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontSize:".82rem",color:"#64748b",cursor:"pointer",fontWeight:700,width:"100%",marginBottom:16}}>+ Add Item</button>
           {/* PO-level discount */}
           <div style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:10,padding:"12px 16px",marginBottom:12}}>

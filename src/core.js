@@ -945,13 +945,25 @@ export const isMotherPO = (deal) => !!deal?.standbyPO;
 // its parent deal is paid or waived; a mother PO once any sub-project is; internal
 // GMD jobs and stock POs (no deal) are always clear. Enforced in the database
 // by migrations 20261020110000 / 20261020110100 — keep in sync.
+// Clients on credit terms skip the down-payment rule (client_credit_terms,
+// migration 20261106020000; set by a Manager). The app loads the active names
+// once and registers them here so every dealDpClear caller sees them.
+let _creditTermClients = new Set();
+const _ctKey = n => String(n || "").trim().toLowerCase();
+export const setCreditTermClients = (names = []) => { _creditTermClients = new Set((names || []).map(_ctKey).filter(Boolean)); };
+export const clientOnCreditTerms = name => !!_ctKey(name) && _creditTermClients.has(_ctKey(name));
+// Mirrors deal_dp_clear() (migration 20261106020000): a sub-project of a
+// mother PO (standby umbrella) is clear once the umbrella is, i.e. once any
+// of its sub-projects is paid or waived.
+const _paidOrWaived = d => !!(d && (d.dpWaivedAt || Number(d.amountPaid) > 0));
 export const dealDpClear = (deal, deals = []) => {
   if (!deal) return true;
   if (/^GMD Production/i.test(deal.client || "")) return true;
-  if (deal.dpWaivedAt || Number(deal.amountPaid) > 0) return true;
+  if (_paidOrWaived(deal) || clientOnCreditTerms(deal.client)) return true;
   const parent = deal.parentDealId && deals.find(d => d.id === deal.parentDealId);
-  if (parent && (parent.dpWaivedAt || Number(parent.amountPaid) > 0)) return true;
-  return !!deal.standbyPO && deals.some(c => c.parentDealId === deal.id && (c.dpWaivedAt || Number(c.amountPaid) > 0));
+  if (parent && (_paidOrWaived(parent) || clientOnCreditTerms(parent.client)
+      || (parent.standbyPO && deals.some(s => s.parentDealId === parent.id && _paidOrWaived(s))))) return true;
+  return !!deal.standbyPO && deals.some(c => c.parentDealId === deal.id && _paidOrWaived(c));
 };
 const _familyRoot = (dealId, byId) => { const d = byId.get(dealId); return d?.parentDealId || dealId; };
 // The same money already recorded in this contract family (the mother PO / main
