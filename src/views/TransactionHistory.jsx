@@ -23,7 +23,13 @@ const lgTh={padding:"7px 9px",fontSize:".64rem",fontWeight:700,color:C.muted,tex
 const lgTd={padding:"7px 9px",fontSize:".76rem",color:C.ink,borderBottom:"1px solid #f1f5f9",verticalAlign:"top"};
 const lgTdR={...lgTd,textAlign:"right",whiteSpace:"nowrap",fontVariantNumeric:"tabular-nums"};
 const LINK={transfer:["Bank transfer","#7c3aed"],nobill:["No bill",C.muted],linked:["Linked",C.ok],short:["Partly recorded",C.warn],suggested:["Suggested match","#2563eb"],none:["Not linked",C.faint],orphan:["Not in cash position",C.bad]};
-const PAGE=150;
+// Opens on this week, grouped by day (2026-11-06: the full list was too long to scroll).
+const weekStart=d=>{const w=new Date(d+"T00:00:00").getDay();return addDaysLocalISO(d,-((w+6)%7));};
+const PERIODS=[["week","This week"],["last","Last week"],["month","This month"],["custom","Custom"]];
+const periodRange=(k,t)=>k==="week"?[weekStart(t),t]
+  :k==="last"?[addDaysLocalISO(weekStart(t),-7),addDaysLocalISO(weekStart(t),-1)]
+  :k==="month"?[t.slice(0,8)+"01",t]:null;
+const dayLabel=d=>{try{return new Date(d+"T00:00:00").toLocaleDateString("en-PH",{weekday:"short",month:"short",day:"numeric",year:"numeric"});}catch{return d;}};
 
 const Field=({l,children})=>(
   <div style={{display:"grid",gridTemplateColumns:"150px 1fr",gap:8,padding:"5px 0",borderBottom:"1px dashed #eef2f7",fontSize:".78rem"}}>
@@ -39,13 +45,15 @@ const TxSection=({title,children})=>(
 const bankFull=v=>{const b=bankOf(v);return b?`${b.name} (${b.short}) · ${b.acctNo} · ${b.branch}`:(v||"Not tagged");};
 
 export default function TransactionHistory({cashPositions={},payables=[],payPays=[],billings=[],deals=[],prs=[],swos=[],exps=[],jos=[],today=TODAY}){
-  const[from,setFrom]=useState(()=>addDaysLocalISO(today,-30));
-  const[to,setTo]=useState(today);
+  const[period,setPeriod]=useState("week");
+  const[cFrom,setCFrom]=useState(()=>addDaysLocalISO(today,-30));
+  const[cTo,setCTo]=useState(today);
+  const[from,to]=periodRange(period,today)||[cFrom,cTo];
+  const[openDays,setOpenDays]=useState(null); // null = only the latest day open
   const[bank,setBank]=useState("all");
   const[dir,setDir]=useState("all");
   const[link,setLink]=useState("all");
   const[q,setQ]=useState("");
-  const[limit,setLimit]=useState(PAGE);
   const[pick,setPick]=useState(null);
   const[ledger,setLedger]=useState(null);
 
@@ -125,7 +133,10 @@ export default function TransactionHistory({cashPositions={},payables=[],payPays
   };
 
   const inp={border:"1.5px solid #e2e8f0",borderRadius:8,padding:"6px 9px",fontFamily:"inherit",fontSize:".78rem",background:"#fff"};
-  const shown=rows.slice(0,limit);
+  const days=[];{const idx=new Map();rows.forEach(r=>{const k=r.date||"";if(!idx.has(k)){idx.set(k,days.length);days.push({date:k,rows:[]});}days[idx.get(k)].rows.push(r);});}
+  const isOpen=d=>openDays?openDays.has(d):d===days[0]?.date;
+  const toggleDay=d=>setOpenDays(prev=>{const base=prev||new Set(days[0]?[days[0].date]:[]);const n=new Set(base);n.has(d)?n.delete(d):n.add(d);return n;});
+  const setP=k=>{setPeriod(k);setOpenDays(null);};
   return(
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,flexWrap:"wrap",marginBottom:12}}>
@@ -137,17 +148,22 @@ export default function TransactionHistory({cashPositions={},payables=[],payPays
       </div>
 
       <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center",marginBottom:12}}>
-        <label style={{fontSize:".72rem",color:C.muted}}>From <input type="date" value={from} onChange={e=>{setFrom(e.target.value);setLimit(PAGE);}} style={inp}/></label>
-        <label style={{fontSize:".72rem",color:C.muted}}>To <input type="date" value={to} onChange={e=>{setTo(e.target.value);setLimit(PAGE);}} style={inp}/></label>
-        <select value={bank} onChange={e=>{setBank(e.target.value);setLimit(PAGE);}} style={inp} aria-label="Bank">
+        <div role="tablist" aria-label="Period" style={{display:"flex",gap:2,background:"#f1f5f9",borderRadius:8,padding:3}}>
+          {PERIODS.map(([k,l])=><button key={k} role="tab" aria-selected={period===k} onClick={()=>setP(k)} style={{border:"none",borderRadius:6,padding:"5px 11px",background:period===k?"#0B2545":"transparent",color:period===k?"#fff":C.muted,fontWeight:period===k?700:600,fontSize:".74rem",cursor:"pointer",fontFamily:"inherit"}}>{l}</button>)}
+        </div>
+        {period==="custom"&&<>
+          <label style={{fontSize:".72rem",color:C.muted}}>From <input type="date" value={cFrom} onChange={e=>{setCFrom(e.target.value);setOpenDays(null);}} style={inp}/></label>
+          <label style={{fontSize:".72rem",color:C.muted}}>To <input type="date" value={cTo} onChange={e=>{setCTo(e.target.value);setOpenDays(null);}} style={inp}/></label>
+        </>}
+        <select value={bank} onChange={e=>{setBank(e.target.value);setOpenDays(null);}} style={inp} aria-label="Bank">
           <option value="all">All banks</option>
           {BANKS.map(b=><option key={b.id} value={b.id}>{b.short}</option>)}
           <option value="none">No bank tagged</option>
         </select>
-        <select value={dir} onChange={e=>{setDir(e.target.value);setLimit(PAGE);}} style={inp} aria-label="Direction">
+        <select value={dir} onChange={e=>{setDir(e.target.value);setOpenDays(null);}} style={inp} aria-label="Direction">
           <option value="all">In & out</option><option value="in">Collections (in)</option><option value="out">Disbursements (out)</option>
         </select>
-        <select value={link} onChange={e=>{setLink(e.target.value);setLimit(PAGE);}} style={inp} aria-label="Link status">
+        <select value={link} onChange={e=>{setLink(e.target.value);setOpenDays(null);}} style={inp} aria-label="Link status">
           <option value="all">Any link status</option>
           <option value="linked">Linked or suggested</option>
           <option value="nobill">No bill (payroll, petty cash…)</option>
@@ -156,7 +172,7 @@ export default function TransactionHistory({cashPositions={},payables=[],payPays
           <option value="short">Partly recorded</option>
           <option value="orphan">Not in cash position</option>
         </select>
-        <input value={q} onChange={e=>{setQ(e.target.value);setLimit(PAGE);}} placeholder="Search payee, supplier, project, PO, amount…" style={{...inp,flex:"1 1 220px",minWidth:0}}/>
+        <input value={q} onChange={e=>{setQ(e.target.value);setOpenDays(null);}} placeholder="Search payee, supplier, project, PO, amount…" style={{...inp,flex:"1 1 220px",minWidth:0}}/>
       </div>
 
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8,marginBottom:12}}>
@@ -164,7 +180,8 @@ export default function TransactionHistory({cashPositions={},payables=[],payPays
           ["Between GMD banks",php2(transfers.reduce((s,r)=>s+r.amount,0)),"#7c3aed",`${transfers.length} transfer(s), not counted above`],
           ["Out, not linked",String(unlinkedOut.length),unlinkedOut.length?C.warn:C.ok,php2(unlinkedOut.reduce((s,r)=>s+r.amount,0))],
           ["Not in cash position",String(orphans.length),orphans.length?C.bad:C.ok,"recorded in FabHub only"]].map(([l,v,c,f])=>(
-          <div key={l} style={{border:`1px solid ${C.line}`,borderRadius:10,padding:"9px 12px",background:"#fff"}}>
+          <div key={l} onClick={l==="Out, not linked"&&unlinkedOut.length?()=>{setDir("out");setLink("none");setOpenDays(new Set(days.map(d=>d.date)));}:undefined} title={l==="Out, not linked"?"Show only disbursements not linked to a bill":undefined}
+            style={{border:`1px solid ${C.line}`,borderRadius:10,padding:"9px 12px",background:"#fff",cursor:l==="Out, not linked"&&unlinkedOut.length?"pointer":undefined}}>
             <div style={{fontSize:".62rem",fontWeight:700,color:C.muted,textTransform:"uppercase",letterSpacing:".5px"}}>{l}</div>
             <div style={{fontSize:"1.02rem",fontWeight:800,color:c,marginTop:2}}>{v}</div>
             {f&&<div style={{fontSize:".66rem",color:C.faint}}>{f}</div>}
@@ -187,12 +204,25 @@ export default function TransactionHistory({cashPositions={},payables=[],payPays
         <table style={{width:"100%",borderCollapse:"collapse",minWidth:860}}>
           <thead><tr>{[["Date"],["Bank"],["In",1],["Out",1],["Payee / particulars"],["Project · supplier / client · PO"],["Link"]].map(([h,r],i)=><th key={i} style={{...lgTh,textAlign:r?"right":"left"}}>{h}</th>)}</tr></thead>
           <tbody>
-            {shown.map(r=>{
+            {days.map(day=>{
+              const open=isOpen(day.date);
+              const cash=day.rows.filter(r=>r.src==="cash"&&r.link!=="transfer");
+              const dIn=cash.filter(r=>r.dir==="in").reduce((s,r)=>s+r.amount,0);
+              const dOut=cash.filter(r=>r.dir==="out").reduce((s,r)=>s+r.amount,0);
+              const flag=day.rows.filter(r=>r.link==="none"&&r.dir==="out"||r.link==="orphan").length;
+              return(<React.Fragment key={"d"+day.date}>
+                <tr onClick={()=>toggleDay(day.date)} aria-expanded={open} style={{cursor:"pointer",background:"#f8fafc"}}>
+                  <td colSpan={2} style={{...lgTd,fontWeight:800,color:"#0B2545",whiteSpace:"nowrap",borderBottom:`1px solid ${C.line}`}}>{open?"▾":"▸"} {day.date?dayLabel(day.date):"No date"}</td>
+                  <td style={{...lgTdR,color:C.inC,fontWeight:800,borderBottom:`1px solid ${C.line}`}}>{dIn?php2(dIn):""}</td>
+                  <td style={{...lgTdR,color:C.outC,fontWeight:800,borderBottom:`1px solid ${C.line}`}}>{dOut?php2(dOut):""}</td>
+                  <td colSpan={3} style={{...lgTd,color:C.muted,borderBottom:`1px solid ${C.line}`}}>{day.rows.length} transaction{day.rows.length>1?"s":""}{flag>0&&<span style={{color:C.warn,fontWeight:700}}> · {flag} to check</span>}</td>
+                </tr>
+                {open&&day.rows.map(r=>{
               const [lt,lc]=LINK[r.link]||[r.link,C.faint];
               return(
                 <tr key={r.key} onClick={()=>setPick(r)} style={{cursor:"pointer",background:r.link==="orphan"?"#fef2f2":undefined}}
                   onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background=r.link==="orphan"?"#fef2f2":""}>
-                  <td style={{...lgTd,whiteSpace:"nowrap"}}>{r.date||"—"}</td>
+                  <td style={{...lgTd,whiteSpace:"nowrap",color:C.faint}}>{r.src==="cash"?"":r.src==="ap"?"AP":"Billing"}</td>
                   <td style={lgTd}>{bankOf(r.bank)?<span style={{fontWeight:700,color:bankOf(r.bank).color}}>{bankOf(r.bank).short}</span>:<span style={{color:C.bad}}>{r.bank||"—"}</span>}</td>
                   <td style={{...lgTdR,color:C.inC,fontWeight:700}}>{r.dir==="in"?php2(r.amount):""}</td>
                   <td style={{...lgTdR,color:C.outC,fontWeight:700}}>{r.dir==="out"?php2(r.amount):""}</td>
@@ -202,11 +232,16 @@ export default function TransactionHistory({cashPositions={},payables=[],payPays
                 </tr>
               );
             })}
+              </React.Fragment>);
+            })}
             {rows.length===0&&<tr><td colSpan={7} style={{...lgTd,textAlign:"center",color:C.faint,padding:24}}>No transactions match these filters.</td></tr>}
           </tbody>
         </table>
       </div>
-      {rows.length>limit&&<button onClick={()=>setLimit(l=>l+PAGE)} style={{marginTop:8,background:"#f1f5f9",border:"none",borderRadius:7,padding:"6px 14px",fontSize:".76rem",fontWeight:600,color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>Show {Math.min(PAGE,rows.length-limit)} more of {rows.length-limit}</button>}
+      {days.length>1&&<div style={{display:"flex",gap:8,marginTop:8}}>
+        <button onClick={()=>setOpenDays(new Set(days.map(d=>d.date)))} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"6px 14px",fontSize:".76rem",fontWeight:600,color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>Open all days</button>
+        <button onClick={()=>setOpenDays(new Set())} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"6px 14px",fontSize:".76rem",fontWeight:600,color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>Close all</button>
+      </div>}
       <div style={{fontSize:".7rem",color:C.faint,marginTop:10}}>"Linked" = the disbursement is tagged to a bill on the cash sheet and the AP payment matches. "Bank transfer" = same amount out of one GMD bank and into another the same day (or tagged so); left out of the totals. "Suggested" = same supplier and amount within 7 days, not tagged. Tag disbursements to bills on the Daily Cash Position (🔗 column) or in Expense Monitoring to firm these up.</div>
 
       {pick&&<TxnDetail r={pick} onClose={()=>setPick(null)} payById={payById} dealById={dealById} orderOf={orderOf} jos={jos} cashPositions={cashPositions}

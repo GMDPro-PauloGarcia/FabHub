@@ -28,8 +28,17 @@ const useStableComponent=(impl)=>{
 };
 
 // Sidebar hubs: one nav item for pages that belong together (see hubbedNav).
-const NAV_HUBS={orders:{l:"Orders",icon:"📦"},warehouse:{l:"Warehouse",icon:"🗃️"}};
-const NAV_HUB_OF={procurement:"orders",subconwo:"orders",inventory:"warehouse",deliveries:"warehouse",stockmove:"warehouse"};
+const NAV_HUBS={orders:{l:"Orders",icon:"📦"},warehouse:{l:"Warehouse",icon:"🗃️"},
+  payables:{l:"Payables",icon:"📤"},cash:{l:"Cash",icon:"🏦"},monitoring:{l:"Monitoring",icon:"🚦"},accounting:{l:"Accounting",icon:"📒"}};
+const NAV_HUB_OF={procurement:"orders",subconwo:"orders",inventory:"warehouse",deliveries:"warehouse",stockmove:"warehouse",
+  payables:"payables",payments:"payables",payrun:"payables",checkvouchers:"payables",subconmon:"payables",purchaseorders:"payables",
+  cashposition:"cash",cashflow:"cash",monboard:"monitoring","finance-reports":"monitoring",
+  expmon:"accounting",bir2307:"accounting",coa:"accounting"};
+// Nav items that are a Finance tab, not a page of their own.
+const NAV_FIN_TAB={payables:"payables",payments:"payments",cashposition:"cash",supplierbills:"bills",executive:"overview",
+  expmon:"expmon",payrun:"payrun",bir2307:"bir2307",monboard:"monboard",subconmon:"subconmon"};
+const FIN_TAB_NAV={payables:"payables",payments:"payments",cash:"cashposition",bills:"supplierbills",overview:"executive",pl:"executive",loans:"executive",txns:"executive",
+  expmon:"expmon",payrun:"payrun",bir2307:"bir2307",monboard:"monboard",subconmon:"subconmon"};
 
 // ─── CODE-SPLIT VIEWS ────────────────────────────────────────────────────────
 // Each of these pages ships as its own chunk, downloaded the first time the
@@ -9665,13 +9674,6 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ap:payables.filter(p=>p.status!=="Paid").length,
     cv:vouchers.filter(v=>["Draft","For Release"].includes(v.status)).length,
   });
-  const financeErpGo=(k)=>{
-    if(k==="dashboard") setPage("acctdash");
-    else if(k==="po") setPage(["Finance","Manager","FinanceAssistant","Accounting"].includes(role)?"purchaseorders":"procurement");
-    else if(k==="ap"){setPage("finance");setFinTab("payables");}
-    else if(k==="payments"){setPage("finance");setFinTab("payments");}
-    else if(k==="cv") setPage("checkvouchers");
-  };
   const openPayModal=(p)=>{
     if(!p) return;
     const balance=Math.max(0,(Number(p.amount)||0)-(Number(p.paidAmount)||0));
@@ -9838,8 +9840,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"boq",l:"BOQ"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Reports"}]},
       {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},...((session?.username==="paulo"||session?.username==="mar")?[{id:"projectmargins",l:"Project Margins"}]:[]),{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills"}]:[]),{id:"payrun",l:"Payment Run"},{id:"monboard",l:"Monitoring Board"},{id:"subconmon",l:"Subcon Payments"},{id:"cashflow",l:"Cash Flow"},{id:"finance-reports",l:"Reports"}]},
-      {group:"Accounting",  items:[{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},...((session?.username==="paulo"||session?.username==="mar")?[{id:"projectmargins",l:"Project Margins"}]:[]),{id:"billing",l:"Billing"},{id:"payables",l:"Supplier Bills"},{id:"payments",l:"Payments"},{id:"payrun",l:"Payment Run"},{id:"checkvouchers",l:"Check Vouchers"},{id:"subconmon",l:"Subcon Payments"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills (old)"}]:[]),{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"monboard",l:"Monitoring Board"},{id:"finance-reports",l:"Reports"},{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"},{id:"subconcert",l:"Subcon Billing"}]},
       {group:"Design",      items:[{id:"designboard",l:"Design Board"},{id:"drf",l:"Design Requests"}]},
       {group:"Procurement", items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Suppliers"}]},
@@ -9855,8 +9856,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     Finance:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"boq",l:"BOQ"},{id:"clients",l:"Clients"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills"}]:[]),{id:"payrun",l:"Payment Run"},{id:"monboard",l:"Monitoring Board"},{id:"subconmon",l:"Subcon Payments"},{id:"cashflow",l:"Cash Flow"},{id:"finance-reports",l:"Reports"}]},
-      {group:"Accounting",  items:[{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"payables",l:"Supplier Bills"},{id:"payments",l:"Payments"},{id:"payrun",l:"Payment Run"},{id:"checkvouchers",l:"Check Vouchers"},{id:"subconmon",l:"Subcon Payments"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills (old)"}]:[]),{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"monboard",l:"Monitoring Board"},{id:"finance-reports",l:"Reports"},{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"},{id:"subconcert",l:"Subcon Billing"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
       {group:"Procurement", items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Suppliers"}]},
@@ -9874,8 +9874,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Admin",    items:[{id:"activity",l:"Team Activity"}]},
     ],
     Accounting:[
-      {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"acctdash",l:"Accounting"}]},
-      {group:"Accounting",  items:[{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"subconmon",l:"Subcon Payments"},{id:"coa",l:"Chart of Accounts"}]},
+      {group:"Overview",    items:[{id:"home",l:"Dashboard"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"payables",l:"Supplier Bills"},{id:"payments",l:"Payments"},{id:"checkvouchers",l:"Check Vouchers"},{id:"subconmon",l:"Subcon Payments"},{id:"purchaseorders",l:"Purchase Orders"},{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
       {group:"Procurement", items:[{id:"subconwo",l:"SWO For Accounting"}]},
     ],
     Procurement:[
@@ -9931,8 +9931,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     FinanceAssistant:[
       {group:"Overview",   items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
-      {group:"Finance",    items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills"}]:[]),{id:"payrun",l:"Payment Run"},{id:"monboard",l:"Monitoring Board"},{id:"subconmon",l:"Subcon Payments"},{id:"cashflow",l:"Cash Flow"},{id:"finance-reports",l:"Reports"}]},
-      {group:"Accounting", items:[{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
+      {group:"Finance",    items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"payables",l:"Supplier Bills"},{id:"payments",l:"Payments"},{id:"payrun",l:"Payment Run"},{id:"checkvouchers",l:"Check Vouchers"},{id:"subconmon",l:"Subcon Payments"},{id:"purchaseorders",l:"Purchase Orders"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills (old)"}]:[]),{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"monboard",l:"Monitoring Board"},{id:"finance-reports",l:"Reports"},{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
     ],
     // Procurement Manager sees the same workspace as Procurement — the only
     // difference is authority (they approve POs), not navigation.
@@ -9962,14 +9961,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const hubMembers=(r,h)=>{const ids=new Set();return visibleNav(r).flatMap(g=>g.items).filter(it=>NAV_HUB_OF[it.id]===h&&!ids.has(it.id)&&ids.add(it.id));};
   // One active-item rule for the desktop sidebar and the phone nav (virtual
   // Finance items open the Finance page on a tab; a hub is active on any of its pages).
-  const navIsActive=(id,hub)=>hub?NAV_HUB_OF[page]===hub
-    :id==="payables"?(page==="finance"&&finTab==="payables")
-    :id==="cashposition"?(page==="finance"&&finTab==="cash")
-    :id==="supplierbills"?(page==="finance"&&finTab==="bills")
-    :id==="executive"?(page==="finance"&&["overview","pl","loans","txns"].includes(finTab))
-    :["expmon","payrun","bir2307","monboard","subconmon"].includes(id)?(page==="finance"&&finTab===id)
-    :id==="finance"?(page==="acctdash")
-    :page===id;
+  // navLoc: the nav item for where the user is now (a Finance tab maps to its item).
+  const navLoc=page==="finance"?(FIN_TAB_NAV[finTab]||"finance:"+finTab):page==="acctdash"?"finance":page;
+  const navIsActive=(id,hub)=>hub?NAV_HUB_OF[navLoc]===hub:navLoc===id;
+  // navGo: open a nav item (virtual Finance items open the Finance page on their tab).
+  const navGo=(id)=>{
+    if(NAV_FIN_TAB[id]){setPage("finance");setFinTab(NAV_FIN_TAB[id]);}
+    else if(id==="finance") setPage("acctdash");
+    else setPage(id);
+  };
   const Nav=useStableComponent(()=>{
     const NAV_ICONS={
       home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   cashposition:"🏦",   supplierbills:"📦",   cashflow:"📈",   payables:"📤",   billing:"🧾",
@@ -9992,7 +9992,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       const icon=(hub&&NAV_HUBS[hub].icon)||NAV_ICONS[id]||NAV_ICONS[l]||"•";
       const fav=favNav.includes(id);
       return(
-        <button key={id} onClick={()=>{if(id==="payables"){setPage("finance");setFinTab("payables");}else if(id==="cashposition"){setPage("finance");setFinTab("cash");}else if(id==="supplierbills"){setPage("finance");setFinTab("bills");}else if(id==="executive"){setPage("finance");setFinTab("overview");}else if(["expmon","payrun","bir2307","monboard","subconmon"].includes(id)){setPage("finance");setFinTab(id);}else if(id==="finance"){setPage("acctdash");}else{setPage(id);}setSelProj(null);setDealModal(false);setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(null);}}
+        <button key={id} onClick={()=>{navGo(id);setSelProj(null);setDealModal(false);setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(null);}}
           title={collapsed?l:""}
           style={{display:"flex",alignItems:"center",gap:10,width:"100%",border:"none",borderRadius:0,padding:collapsed?"10px 0":"8px 16px",justifyContent:collapsed?"center":"flex-start",background:active?"rgba(245,158,11,.15)":"transparent",color:active?"#f59e0b":"#94a3b8",fontFamily:"inherit",fontSize:".82rem",fontWeight:active?700:400,cursor:"pointer",borderLeft:active?"3px solid #f59e0b":"3px solid transparent",transition:"all .12s"}}>
           <span style={{fontSize:"1rem",flexShrink:0}}>{icon}</span>
@@ -10160,14 +10160,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       // Virtual nav items open the Finance page pinned to a tab (same as the
       // desktop sidebar) — they are not standalone pages, so route them here or
       // they hit the "No view" fallback on mobile.
-      let pg=id;
-      if(id==="cashposition"){setFinTab("cash");pg="finance";}
-      else if(id==="supplierbills"){setFinTab("bills");pg="finance";}
-      else if(id==="payables"){setFinTab("payables");pg="finance";}
-      else if(id==="executive"){setFinTab("overview");pg="finance";}
-      else if(["expmon","payrun","bir2307","monboard","subconmon"].includes(id)){setFinTab(id);pg="finance";}
-      else if(id==="finance"){pg="acctdash";} // Finance home = ERP operational dashboard
-      setPage(pg);setSelProj(null);setDealModal(false);setMoreNavOpen(false);setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(null);if(id==="home")setFromHome(false);
+      navGo(id);setSelProj(null);setDealModal(false);setMoreNavOpen(false);setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(null);if(id==="home")setFromHome(false);
     };
     // Favorites (if the user set any) drive the mobile bottom bar and lead the More sheet,
     // matching the desktop sidebar. Only ids present in this role's nav are kept.
@@ -10426,17 +10419,20 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             </button>
           )}
           {!alreadyWrapped&&(()=>{
-            const h=NAV_HUB_OF[page];
+            const h=NAV_HUB_OF[navLoc];
             const members=h?hubMembers(role,h):[];
             if(members.length<2) return null;
+            const cnt=h==="payables"?financeErpCounts():{};
+            const badge={payables:cnt.ap,checkvouchers:cnt.cv,purchaseorders:cnt.po};
             return(
               <div className="noprint" role="tablist" aria-label={NAV_HUBS[h].l} style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:14,background:"#fff",border:"1px solid #e2e8f0",borderRadius:10,padding:4,width:"fit-content",maxWidth:"100%"}}>
                 {members.map(it=>{
-                  const on=page===it.id;
+                  const on=navLoc===it.id;
                   return(
-                    <button key={it.id} role="tab" aria-selected={on} onClick={()=>{setPage(it.id);setSelProj(null);}}
+                    <button key={it.id} role="tab" aria-selected={on} onClick={()=>{navGo(it.id);setSelProj(null);}}
                       style={{border:"none",borderRadius:7,padding:"7px 14px",background:on?"#1e293b":"transparent",color:on?"#fff":"#475569",fontFamily:"inherit",fontSize:".8rem",fontWeight:on?700:600,cursor:"pointer",whiteSpace:"nowrap"}}>
                       {it.l}
+                      {badge[it.id]>0&&<span style={{marginLeft:6,background:on?"rgba(255,255,255,.85)":"#C9A24B",color:"#0B2545",borderRadius:10,padding:"1px 7px",fontSize:".68rem",fontWeight:700}}>{badge[it.id]}</span>}
                     </button>
                   );
                 })}
@@ -15226,11 +15222,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         {/* Aerwin's Purchase-to-Payment ERP header shows only on the ERP operational
             tabs (Accounts Payable, Payments). The owner/executive views — Executive
             dashboard (overview/P&L/Loans) and Cash Position — are their own pages. */}
-        {["payables","payments"].includes(finTab)&&<FinanceErpBar active={finTab==="payables"?"ap":"payments"} go={financeErpGo} counts={financeErpCounts()}/>}
         {/* Weekly Dues board toggle — always reachable from anywhere in Finance
             (hidden with the AP while the new AP/AR system is built). */}
-        {!AP_HIDDEN&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:12}}>
-          <button onClick={()=>setFinTab(finTab==="duesboard"?"overview":"duesboard")} style={{whiteSpace:"nowrap",padding:"6px 14px",borderRadius:20,border:`1px solid ${finTab==="duesboard"?ERP.navy:ERP.line}`,background:finTab==="duesboard"?ERP.navy:"#fff",color:finTab==="duesboard"?"#fff":ERP.muted,cursor:"pointer",fontSize:".78rem",fontWeight:600,fontFamily:"inherit"}}>📅 Weekly Dues</button>
+        {!AP_HIDDEN&&["payables","payments","duesboard"].includes(finTab)&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:12}}>
+          <button onClick={()=>setFinTab(finTab==="duesboard"?"payables":"duesboard")} style={{whiteSpace:"nowrap",padding:"6px 14px",borderRadius:20,border:`1px solid ${finTab==="duesboard"?ERP.navy:ERP.line}`,background:finTab==="duesboard"?ERP.navy:"#fff",color:finTab==="duesboard"?"#fff":ERP.muted,cursor:"pointer",fontSize:".78rem",fontWeight:600,fontFamily:"inherit"}}>📅 Weekly Dues</button>
         </div>}
         {finTab==="duesboard"&&(
           <FinanceWeeklyDues billings={billings} payables={payables} wonDeals={wonDeals} deals={deals} completedDeals={completedDeals} today={today} setPage={setPage} setFinTab={setFinTab} role={role}/>
@@ -15240,11 +15235,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             Accounts Payable) and the ERP bar (Accounts Payable, Payments). Only
             P&L and Loans have no other home, so they stay as two compact pills. */}
         {role!=="Accounting"&&["overview","pl","loans","txns"].includes(finTab)&&(
-          <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginBottom:20,flexWrap:"wrap"}}>
-            {[["txns","🏦 Transaction History"],["pl","📈 P&L"],["loans","💳 Loans"]].filter(([t])=>!HIDDEN_FIN_TABS.has(t)).map(([t,l])=>{
+          <div role="tablist" aria-label="Executive" style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:20,background:"#fff",border:"1px solid #e2e8f0",borderRadius:10,padding:4,width:"fit-content",maxWidth:"100%"}}>
+            {[["overview","Overview"],["txns","Transactions"],["pl","P&L"],["loans","Loans"]].filter(([t])=>!HIDDEN_FIN_TABS.has(t)).map(([t,l])=>{
               const on=finTab===t;
               return(
-                <button key={t} onClick={()=>setFinTab(on?"overview":t)} style={{whiteSpace:"nowrap",padding:"6px 14px",borderRadius:20,border:`1px solid ${on?ERP.navy:ERP.line}`,background:on?ERP.navy:"#fff",color:on?"#fff":ERP.muted,cursor:"pointer",fontSize:".78rem",fontWeight:600,fontFamily:"inherit"}}>
+                <button key={t} role="tab" aria-selected={on} onClick={()=>setFinTab(t)} style={{whiteSpace:"nowrap",border:"none",borderRadius:7,padding:"7px 14px",background:on?"#1e293b":"transparent",color:on?"#fff":"#475569",cursor:"pointer",fontSize:".8rem",fontWeight:on?700:600,fontFamily:"inherit"}}>
                   {l}{t==="loans"&&loans.length>0&&<span style={{marginLeft:5,background:on?"rgba(255,255,255,.85)":"#7c3aed",color:on?ERP.navy:"#fff",borderRadius:20,padding:"1px 6px",fontSize:".62rem",fontWeight:700}}>{loans.length}</span>}
                 </button>
               );
@@ -18145,7 +18140,6 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ── CHECK PAYABLES ────────────────────────────────────────────────────────────
   if(page==="checkvouchers"&&(role==="Accounting"||role==="Finance"||role==="Manager"||role==="FinanceAssistant")) return(
     <Wrap>
-      <FinanceErpBar active="cv" go={financeErpGo} counts={financeErpCounts()}/>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:10}}>
         <div>
           <div style={{fontWeight:800,color:"#0f172a",fontSize:"1.1rem"}}>✅ Check Payables</div>
@@ -18502,7 +18496,6 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   );
   if(page==="acctdash"&&(role==="Finance"||role==="Manager"||role==="Accounting"||role==="FinanceAssistant")) return(
     <Wrap>
-      <FinanceErpBar active="dashboard" go={financeErpGo} counts={financeErpCounts()}/>
       <FinanceDigestPanel billings={billings} exps={exps} wonDeals={wonDeals} completedDeals={completedDeals} deals={deals} payables={payables} prs={prs} swos={swos} cashPositions={cashPositions} today={today} isMobile={isMobile} sendTelegramNotification={sendTelegramNotification} toastEmit={toastEmit}/>
       {(()=>{
         const bpiPos=Object.values(cashPositions).filter(p=>(p?.date||"")<=today).sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0];
@@ -18771,7 +18764,6 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // and Work Order modules so each keeps its own form + features. ──────────────
   if(page==="purchaseorders"&&(role==="Finance"||role==="Manager"||role==="FinanceAssistant"||role==="Accounting")) return(
     <Wrap>
-      <FinanceErpBar active="po" go={financeErpGo} counts={financeErpCounts()}/>
       {(()=>{
         const N=v=>Number(v)||0;
         const projName=(id,fallback)=>{const d=wonDeals.find(x=>x.id===id)||completedDeals.find(x=>x.id===id);return d?projDisplayName(d):(fallback||"—");};
@@ -29964,44 +29956,6 @@ const erpTd={padding:"9px 10px",borderBottom:`1px solid ${ERP.line}`,verticalAli
 const erpThNum={...erpTh,textAlign:"right"};
 const erpTdNum={...erpTd,textAlign:"right",fontVariantNumeric:"tabular-nums"};
 
-function FinanceErpBar({active,go,counts={}}){
-  const mob=window.innerWidth<768;
-  const tabs=[
-    {k:"dashboard",l:"Dashboard"},
-    {k:"po",l:"Purchase Orders",n:counts.po},
-    {k:"ap",l:"Accounts Payable",n:counts.ap},
-    {k:"payments",l:"Payments",n:counts.payments},
-    {k:"cv",l:"Check Vouchers",n:counts.cv},
-  ];
-  return(
-    <div style={{marginBottom:mob?12:18}}>
-      {/* The full GMD banner is desktop-only — on mobile it eats a whole screen
-          of vertical space, so we drop it and let the tab strip lead. */}
-      {!mob&&(
-        <div style={{background:"linear-gradient(135deg,#0B2545 0%,#132F5C 100%)",borderRadius:12,padding:"18px 24px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10,boxShadow:"0 4px 14px rgba(11,37,69,0.18)"}}>
-          <div>
-            <div style={{fontSize:18,fontWeight:700,color:"#fff",letterSpacing:".3px"}}>GMD <span style={{color:"#C9A24B"}}>Production Inc.</span></div>
-            <div style={{fontSize:12,color:"#C7D4E8",marginTop:2,fontWeight:500}}>Purchase-to-Payment · Accounts Payable · Check Voucher · Chart of Accounts</div>
-          </div>
-          <span style={{background:"rgba(201,162,75,0.18)",border:"1px solid #C9A24B",color:"#C9A24B",borderRadius:20,padding:"5px 10px",fontSize:11,fontWeight:600,letterSpacing:"1.2px",textTransform:"uppercase"}}>Finance Module</span>
-        </div>
-      )}
-      {/* Mobile: a horizontal-scroll tab strip (no wrapping, no huge min-widths).
-          Desktop: keep the even flex row. */}
-      <div style={{background:"#fff",border:"1px solid #DCE2EC",borderRadius:10,padding:mob?4:6,marginTop:mob?0:18,display:"flex",gap:6,flexWrap:mob?"nowrap":"wrap",overflowX:mob?"auto":"visible",WebkitOverflowScrolling:"touch"}}>
-        {tabs.map(t=>{
-          const on=t.k===active;
-          return(
-            <button key={t.k} onClick={()=>!on&&go&&go(t.k)} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,flex:mob?"0 0 auto":1,minWidth:mob?"auto":108,whiteSpace:"nowrap",background:on?"#0B2545":"transparent",color:on?"#fff":"#5B6472",border:"none",borderRadius:8,padding:mob?"9px 14px":"10px 10px",fontFamily:"inherit",fontSize:13,fontWeight:600,cursor:on?"default":"pointer",transition:"all .15s ease"}}>
-              {t.l}
-              {t.n>0&&<span style={{background:on?"rgba(255,255,255,0.85)":"#C9A24B",color:"#0B2545",borderRadius:10,padding:"1px 7px",fontSize:11,fontWeight:700}}>{t.n}</span>}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 function ChartOfAccountsView({chartOfAccounts=[],saveChartOfAccounts,session,role}){
   const canEdit=["Manager","Finance","Accounting"].includes(role);
