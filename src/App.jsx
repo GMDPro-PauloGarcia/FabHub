@@ -31,11 +31,23 @@ const useStableComponent=(impl)=>{
 const BLOCKERS_ON=false;
 // Sidebar hubs: one nav item for pages that belong together (see hubbedNav).
 const NAV_HUBS={orders:{l:"Orders",icon:"📦"},warehouse:{l:"Warehouse",icon:"🗃️"},
-  payables:{l:"Payables",icon:"📤"},cash:{l:"Cash",icon:"🏦"},monitoring:{l:"Monitoring",icon:"🚦"},accounting:{l:"Accounting",icon:"📒"}};
+  payables:{l:"Payables",icon:"📤"},cash:{l:"Cash",icon:"🏦"},monitoring:{l:"Monitoring",icon:"🚦"},accounting:{l:"Accounting",icon:"📒"},
+  sales:{l:"Sales",icon:"📊"},projects:{l:"Projects",icon:"📋"},design:{l:"Design",icon:"🖌️"},executive:{l:"Executive",icon:"🎯"},money:{l:"Cash & Billing",icon:"🏦"},admin:{l:"Admin",icon:"⚙️"}};
 const NAV_HUB_OF={orderboard:"orders",purchasing:"orders",procurement:"orders",subconwo:"orders",inventory:"warehouse",deliveries:"warehouse",stockmove:"warehouse",
   payables:"payables",payments:"payables",payrun:"payables",checkvouchers:"payables",subconmon:"payables",purchaseorders:"payables",
   cashposition:"cash",cashflow:"cash",monboard:"monitoring","finance-reports":"monitoring",
   expmon:"accounting",bir2307:"accounting",coa:"accounting"};
+// Manager-only hubs (2026-11-07): the Manager sidebar went from 29 items to 11.
+// Same pages, grouped; the tab strip at the top of each page switches between them.
+const MGR_HUB_OF={pipeline:"sales",boq:"sales",clients:"sales","sales-reports":"sales",ceqs:"sales",
+  projects:"projects",progress:"projects",subconcert:"projects",designboard:"design",drf:"design",
+  materialreq:"orders",deliveries:"orders",masters:"orders",
+  executive:"executive",monboard:"executive","finance-reports":"executive",projectmargins:"executive",costanalysis:"executive",
+  billing:"money",cashposition:"money",cashflow:"money",finance:"accounting",
+  accounts:"admin",audit:"admin",syshealth:"admin",botsettings:"admin",tvboard:"admin",activity:"admin"};
+const hubOf=(r,id)=>(r==="Manager"&&MGR_HUB_OF[id])||NAV_HUB_OF[id];
+// Simplified Manager home (views/ManagerHome.jsx). false = the old CEO / COO dashboards.
+const MGR_SIMPLE_HOME=true;
 // Nav items that are a Finance tab, not a page of their own.
 const NAV_FIN_TAB={payables:"payables",payments:"payments",cashposition:"cash",supplierbills:"bills",executive:"overview",
   expmon:"expmon",payrun:"payrun",bir2307:"bir2307",monboard:"monboard",subconmon:"subconmon"};
@@ -79,6 +91,7 @@ const SubconCertView=_lazyView(()=>import('./views/SubconCertView'));
 const PurchasingHub=_lazyView(()=>import('./views/PurchasingHub'));
 const OrderBoard=_lazyView(()=>import('./views/OrderBoard'));
 const ProjectProgress=_lazyView(()=>import('./views/ProjectProgress'));
+const ManagerHome=_lazyView(()=>import('./views/ManagerHome'));
 const ARDrill=_lazyView(()=>import('./views/ARDrill'));
 const AttentionPanel=_lazyView(()=>import('./views/AttentionPanel'));
 const WeeklyCashFlow=_lazyView(()=>import('./views/WeeklyCashFlow'));
@@ -9931,14 +9944,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const hr=new Date().getHours();
   const greeting=hr<12?"morning":hr<17?"afternoon":"evening";
   const navMap={
+    // One group per question; hubs (MGR_HUB_OF) fold each group's pages into one item.
     Manager:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
-      {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"boq",l:"BOQ"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Reports"}]},
-      {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},...((session?.username==="paulo"||session?.username==="mar")?[{id:"projectmargins",l:"Project Margins"}]:[]),{id:"billing",l:"Billing"},{id:"payables",l:"Supplier Bills"},{id:"payments",l:"Payments"},{id:"payrun",l:"Payment Run"},{id:"checkvouchers",l:"Check Vouchers"},{id:"subconmon",l:"Subcon Payments"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills (old)"}]:[]),{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"monboard",l:"Monitoring Board"},{id:"finance-reports",l:"Reports"},{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
-      {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"progress",l:"Progress"},{id:"addenda",l:"Scope Changes"},{id:"subconcert",l:"Subcon Billing"}]},
-      {group:"Design",      items:[{id:"designboard",l:"Design Board"},{id:"drf",l:"Design Requests"}]},
-      {group:"Procurement", items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"orderboard",l:"Order Board"},{id:"purchasing",l:"Purchasing"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Suppliers"}]},
+      {group:"Work",        items:[{id:"pipeline",l:"Pipeline"},{id:"boq",l:"BOQ"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Sales Reports"},{id:"ceqs",l:"CE/QS Queue"},
+                                   {id:"projects",l:"Projects"},{id:"progress",l:"Progress"},{id:"subconcert",l:"Subcon Billing"},
+                                   {id:"designboard",l:"Design Board"},{id:"drf",l:"Design Requests"},
+                                   {id:"materialreq",l:"PRF"},{id:"orderboard",l:"Order Board"},{id:"purchasing",l:"Purchasing"},{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"deliveries",l:"Deliveries"},{id:"inventory",l:"Inventory"},{id:"masters",l:"Suppliers"}]},
+      {group:"Money",       items:[{id:"executive",l:"Overview"},{id:"monboard",l:"Monitoring Board"},...((session?.username==="paulo"||session?.username==="mar")?[{id:"projectmargins",l:"Project Margins"}]:[]),{id:"costanalysis",l:"Budget & Costs"},{id:"finance-reports",l:"Reports"},
+                                   {id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},
+                                   {id:"payables",l:"Supplier Bills"},{id:"payments",l:"Payments"},{id:"payrun",l:"Payment Run"},{id:"checkvouchers",l:"Check Vouchers"},{id:"subconmon",l:"Subcon Payments"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills (old)"}]:[]),
+                                   {id:"finance",l:"Accounting Home"},{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
       {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"audit",l:"Audit"},{id:"syshealth",l:"System Health"},{id:"botsettings",l:"Bot Settings"},{id:"tvboard",l:"Office TV Board"},{id:"activity",l:"Team Activity"}]},
     ],
     Sales:[
@@ -10046,20 +10062,20 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const hubbedNav=r=>visibleNav(r).map(g=>{
     const seen=new Set();
     return{...g,items:g.items.flatMap(it=>{
-      const h=NAV_HUB_OF[it.id];
+      const h=hubOf(r,it.id);
       if(!h) return [it];
-      if(g.items.filter(x=>NAV_HUB_OF[x.id]===h).length<2) return [it];
+      if(g.items.filter(x=>hubOf(r,x.id)===h).length<2) return [it];
       if(seen.has(h)) return [];
       seen.add(h);
       return [{...it,l:NAV_HUBS[h].l,hub:h}];
     })};
   });
-  const hubMembers=(r,h)=>{const ids=new Set();return visibleNav(r).flatMap(g=>g.items).filter(it=>NAV_HUB_OF[it.id]===h&&!ids.has(it.id)&&ids.add(it.id));};
+  const hubMembers=(r,h)=>{const ids=new Set();return visibleNav(r).flatMap(g=>g.items).filter(it=>hubOf(r,it.id)===h&&!ids.has(it.id)&&ids.add(it.id));};
   // One active-item rule for the desktop sidebar and the phone nav (virtual
   // Finance items open the Finance page on a tab; a hub is active on any of its pages).
   // navLoc: the nav item for where the user is now (a Finance tab maps to its item).
   const navLoc=page==="finance"?(FIN_TAB_NAV[finTab]||"finance:"+finTab):page==="acctdash"?"finance":page;
-  const navIsActive=(id,hub)=>hub?NAV_HUB_OF[navLoc]===hub:navLoc===id;
+  const navIsActive=(id,hub)=>hub?hubOf(role,navLoc)===hub:navLoc===id;
   // navGo: open a nav item (virtual Finance items open the Finance page on their tab).
   const navGo=(id)=>{
     if(NAV_FIN_TAB[id]){setPage("finance");setFinTab(NAV_FIN_TAB[id]);}
@@ -10515,7 +10531,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             </button>
           )}
           {!alreadyWrapped&&(()=>{
-            const h=NAV_HUB_OF[navLoc];
+            const h=hubOf(role,navLoc);
             const members=h?hubMembers(role,h):[];
             if(members.length<2) return null;
             const cnt=h==="payables"?financeErpCounts():{};
@@ -12011,6 +12027,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   // ── OWNER DASHBOARDS — customized by title ─────────────────────────────────
   const ownerTitle = session?.title || role;
+
+  if(role==="Manager"&&MGR_SIMPLE_HOME) return(
+    <Wrap>
+      <ManagerHome session={session} today={today} deals={deals} billings={billings} payables={payables} prs={prs} pcards={pcards}
+        cash={bankCashSummary(cashPositions,today)} arTot={arTot} dealById={dealById} enteredByMe={enteredByMe} isMobile={isMobile}
+        go={setPage} goFin={navGo} openProject={id=>{setJumpDeal(id);setPage("projects");}}/>
+    </Wrap>
+  );
 
   // ─── MAR MUNGCAL — COO ──────────────────────────────────────────────────────
   if(ownerTitle === "COO") return(
