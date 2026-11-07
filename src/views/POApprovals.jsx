@@ -1,10 +1,10 @@
 import React,{useState,useMemo} from "react";
 import {uiConfirm} from "../shared";
-import {canApprovePO,dealDpClear} from "../core";
+import {canApprovePOLine,poLinesTotal,dealDpClear} from "../core";
 
 // ─── PO APPROVALS (Purchase Orders page) ───────────────────────────────────
-// Only a Manager or a Procurement Manager (not on their own request) may move
-// a PO to "PO Issued" (canApprovePO; the database checks it too). Approving meant opening
+// Cost Control (QS) up to ₱150,000 or a Manager (any amount) may move a PO to
+// "PO Issued" (canApprovePOLine; the database checks it too, 20261107010000). Approving meant opening
 // each PO line's status dropdown, so POs piled up at "Pending Approval" and,
 // because a PO raises its supplier bill only once issued, no payables were
 // created either. This panel lists every pending PO the viewer may approve,
@@ -31,7 +31,7 @@ export default function POApprovals({prs=[],deals=[],role,session,approvePOs}){
     const by={};
     prs.filter(p=>p.status==="Pending Approval"&&p.poNumber).forEach(p=>{(by[p.poNumber]=by[p.poNumber]||[]).push(p);});
     return Object.entries(by)
-      .filter(([,ls])=>ls.every(l=>canApprovePO(role,me,l.requestedBy)))
+      .filter(([no,ls])=>{const tot=poLinesTotal(prs.filter(p=>p.poNumber===no));return ls.every(l=>canApprovePOLine(role,me,l.requestedBy,tot));})
       .map(([no,ls])=>{
         const f=ls[0];
         const gross=ls.reduce((s,i)=>s+(num(i.actUnitCost)||num(i.estUnitCost))*num(i.qty),0);

@@ -146,11 +146,14 @@ export const cashDayLocked=(date,now=new Date())=>!!date&&now>=cashDayLockAt(dat
 // 11-01 change showed the "Finance" menu item again but left its page hidden,
 // so the item, the ERP bar's Dashboard tab and the "← Accounting" buttons
 // bounced to Home.
-export const HIDDEN_NAV_IDS = new Set(["ceqs","costanalysis"]);
-export const HIDDEN_PAGES = new Set(["ceqs","costanalysis"]);
+// Cost Analysis (Budget · Costing · Profitability) is back for Cost Control (QS) and Managers, 2026-11-07.
+export const HIDDEN_NAV_IDS = new Set(["ceqs"]);
+export const HIDDEN_PAGES = new Set(["ceqs"]);
 export const HIDDEN_FIN_TABS = new Set([]);
 export const AP_HIDDEN = HIDDEN_FIN_TABS.has("payables");
-export const WAREHOUSE_HIDDEN = HIDDEN_PAGES.has("inventory");
+// Inventory is hidden on its own (below) while Warehouse keeps working, so the
+// whole-warehouse switch is separate from it now.
+export const WAREHOUSE_HIDDEN = false;
 export const isHiddenView=(page,finTab)=>HIDDEN_PAGES.has(page)||(page==="finance"&&HIDDEN_FIN_TABS.has(finTab));
 
 // Unused modules retired from every menu (Paulo, 27 Oct 2026): no records ever
@@ -161,7 +164,12 @@ export const isHiddenView=(page,finTab)=>HIDDEN_PAGES.has(page)||(page==="financ
 // 6 Nov 2026 (Paulo): Check Vouchers (0 vouchers ever: payments are recorded on
 // the bill) and Stock Movements (1 movement ever; Inventory's own Log tab shows
 // the same) are hidden too. Every link to them is gated with pageOn().
-const RETIRED_PAGES = ["dailylog","swatchboard","budgetreq","requests","audit","checkvouchers","stockmove"];
+// 7 Nov 2026 (Paulo): Inventory hidden until Warehouse provides its stock count
+// (an Excel file); no item was updated in the 30 days before. Warehouse keeps
+// Deliveries (receiving). Issue to Site / Fab Release / Stock Log / low-stock
+// prompts are gated with pageOn("inventory"). PM Updates (pmupdates) and Scope
+// Changes (addenda) are replaced by the Progress list (30/60/90/100).
+const RETIRED_PAGES = ["dailylog","swatchboard","budgetreq","requests","audit","checkvouchers","stockmove","inventory","pmupdates","addenda"];
 RETIRED_PAGES.forEach(id=>{HIDDEN_NAV_IDS.add(id);HIDDEN_PAGES.add(id);});
 HIDDEN_FIN_TABS.add("loans");
 export const HIDDEN_PIPE_TABS = new Set(["updates"]);

@@ -789,6 +789,8 @@
     "pm1",
     "pm2",
     "pm3",
+    "progress_set_at",
+    "progress_set_by",
     "project_ref",
     "scope_notes",
     "special_instructions",

@@ -827,7 +827,11 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addPR,addInv
   const toolStatus=t=>t.actualReturn?"Returned":(t.expectedReturn&&t.expectedReturn<today?"Overdue":"Borrowed");
   const toolsOut=(tools||[]).filter(t=>!t.actualReturn).length;
   const toolsOverdue=(tools||[]).filter(t=>toolStatus(t)==="Overdue").length;
-  const TABS=[["dashboard","📊 Dashboard"],["deliveries",`📦 Deliveries${prs.filter(p=>!["Delivered","Cancelled"].includes(p.status)).length>0?" ("+prs.filter(p=>!["Delivered","Cancelled"].includes(p.status)).length+")":""}`],["receipts",`🧾 Receipts${receipts.length?" ("+receipts.length+")":""}`],["inventory",`≡ Inventory (${rows.length})`],["demand",`🔮 Demand${demandGaps>0?" ⚠"+demandGaps:""}`],["alerts",`⚠ Alerts${(lowStock.length+outOfStk.length)>0?" ("+(lowStock.length+outOfStk.length)+")":""}`],["projects",`🏗 Projects${projConsumption.length?" ("+projConsumption.length+")":""}`],["tools",`🔧 Tools${toolsOut>0?" ("+toolsOut+")":""}`],["log",`⟳ Log (${stocklog.length})`]];
+  // Tools and Receipts (supplier DR log) hidden 2026-11-07: no tool and no DR
+  // was ever recorded. Receiving is done on the PO line (Deliveries tab /
+  // Warehouse › Deliveries). Remove an id here to bring a tab back.
+  const INV_HIDDEN_TABS=new Set(["tools","receipts"]);
+  const TABS=[["dashboard","📊 Dashboard"],["deliveries",`📦 Deliveries${prs.filter(p=>!["Delivered","Cancelled"].includes(p.status)).length>0?" ("+prs.filter(p=>!["Delivered","Cancelled"].includes(p.status)).length+")":""}`],["receipts",`🧾 Receipts${receipts.length?" ("+receipts.length+")":""}`],["inventory",`≡ Inventory (${rows.length})`],["demand",`🔮 Demand${demandGaps>0?" ⚠"+demandGaps:""}`],["alerts",`⚠ Alerts${(lowStock.length+outOfStk.length)>0?" ("+(lowStock.length+outOfStk.length)+")":""}`],["projects",`🏗 Projects${projConsumption.length?" ("+projConsumption.length+")":""}`],["tools",`🔧 Tools${toolsOut>0?" ("+toolsOut+")":""}`],["log",`⟳ Log (${stocklog.length})`]].filter(([id])=>!INV_HIDDEN_TABS.has(id));
 
   return(
     <div style={{display:"flex",flexDirection:"column",gap:0,height:"100%"}}>
