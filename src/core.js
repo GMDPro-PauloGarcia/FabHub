@@ -1278,6 +1278,23 @@ export const emptyPR = () => ({
   notes:"", createdDate:"",
 });
 
+// PO approval (2026-11-07, department audit): Cost Control (QS) approves a PO
+// whose total is ₱150,000 or less, never one they requested; a Manager approves
+// any amount (Paolo Gomez as Finance manager above ₱150,000). The Procurement
+// Manager no longer approves POs. Total = qty × estimated unit cost over the PO's
+// lines that aren't Cancelled. Mirrors po_line_approver_name() / po_require_approver()
+// (migration 20261107010000). Work orders still use canApprovePO below.
+export const PO_COST_CONTROL_LIMIT=150000;
+export const poLinesTotal=lines=>(lines||[]).filter(l=>l.status!=="Cancelled")
+  .reduce((s,l)=>s+(Number(l.qty)||0)*(Number(l.estUnitCost??l.estimatedCost)||0),0);
+export const canApprovePOLine=(role,sessionName,requestedBy,total)=>{
+  if(role==="Manager") return true;
+  if(role==="QS") return (Number(total)||0)<=PO_COST_CONTROL_LIMIT
+    &&(!requestedBy||!sessionName||sessionName.trim().toLowerCase()!==requestedBy.trim().toLowerCase());
+  return false;
+};
+export const PO_APPROVER_MSG="Needs Cost Control (POs up to ₱150,000) or a Manager (above ₱150,000: Paolo Gomez)";
+
 export const canApprovePO=(role,sessionName,requestedBy)=>{
   // Only a Manager or a Procurement Manager may approve (issue) a PO or subcon
   // work order, and a Procurement Manager never one they requested. Plain
