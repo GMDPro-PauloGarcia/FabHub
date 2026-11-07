@@ -1,5 +1,5 @@
 import React from 'react';
-import { supabase, isSupabaseReady } from './supabaseClient';
+import { supabase, isSupabaseReady, appTokenExpired } from './supabaseClient';
 
 // Update banner — tells the team when a new version / data cleanup has been
 // published and prompts a reload. Driven by the single-row `app_release` table
@@ -23,6 +23,9 @@ export default function UpdateBanner() {
     let alive = true;
 
     const check = async () => {
+      // A login past its 12h lifetime gets a 401 on every read; skip until the
+      // user logs in again (was ~26 refused requests an hour from one idle tab).
+      if (appTokenExpired()) return;
       try {
         const { data, error } = await supabase
           .from('app_release')
