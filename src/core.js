@@ -940,11 +940,14 @@ export const scheduleSummary = (terms) => {
 // mother PO is usually a copy of a sub-project's and double-counts Collected.
 export const isMotherPO = (deal) => !!deal?.standbyPO;
 // "NO DP = NO production": a PO or subcon work order can only be issued on a
-// client deal once the client has paid something, or a Manager has waived the
-// down payment (credit-term clients). A sub-project or addendum is clear when
-// its parent deal is paid or waived; a mother PO once any sub-project is; internal
-// GMD jobs and stock POs (no deal) are always clear. Enforced in the database
-// by migrations 20261020110000 / 20261020110100 — keep in sync.
+// client deal once the client has paid its down payment: 50% of the deal value
+// (VAT and all) by default, or the deal's own % when a Manager agreed special
+// terms (downpayment_pct, set only through set_deal_dp_pct). 2 points of slack
+// absorb the EWT a client withholds. A Manager waiver or a client on credit
+// terms clears it too. A sub-project or addendum is clear when its parent deal
+// is; a mother PO once any sub-project is; internal GMD jobs and stock POs (no
+// deal) are always clear. Enforced in the database by deal_dp_clear /
+// deal_dp_met (migration 20261107010000) — keep in sync.
 // Clients on credit terms skip the down-payment rule (client_credit_terms,
 // migration 20261106020000; set by a Manager). The app loads the active names
 // once and registers them here so every dealDpClear caller sees them.
@@ -952,18 +955,32 @@ let _creditTermClients = new Set();
 const _ctKey = n => String(n || "").trim().toLowerCase();
 export const setCreditTermClients = (names = []) => { _creditTermClients = new Set((names || []).map(_ctKey).filter(Boolean)); };
 export const clientOnCreditTerms = name => !!_ctKey(name) && _creditTermClients.has(_ctKey(name));
-// Mirrors deal_dp_clear() (migration 20261106020000): a sub-project of a
-// mother PO (standby umbrella) is clear once the umbrella is, i.e. once any
-// of its sub-projects is paid or waived.
-const _paidOrWaived = d => !!(d && (d.dpWaivedAt || Number(d.amountPaid) > 0));
+export const DP_DEFAULT_PCT = 50;
+export const DP_SLACK_PTS = 2;
+export const dealDpRequiredPct = d => {
+  const v = d?.downpaymentPct;
+  return v === null || v === undefined || v === "" || isNaN(Number(v)) ? DP_DEFAULT_PCT : Number(v);
+};
+// What the deal needs and has: {pct, value, need, paid}. need is null for a deal with no value.
+export const dealDpStatus = d => {
+  const pct = dealDpRequiredPct(d), value = Number(d?.value) || 0, paid = Number(d?.amountPaid) || 0;
+  return { pct, value, paid, need: value > 0 ? pct / 100 * value : null };
+};
+// Does this one deal (not its parent or siblings) meet its down payment?
+export const dealDpMet = d => {
+  if (!d) return false;
+  if (d.dpWaivedAt || clientOnCreditTerms(d.client)) return true;
+  const { pct, value, paid } = dealDpStatus(d);
+  return value > 0 ? paid >= (pct - DP_SLACK_PTS) / 100 * value : paid > 0;
+};
 export const dealDpClear = (deal, deals = []) => {
   if (!deal) return true;
   if (/^GMD Production/i.test(deal.client || "")) return true;
-  if (_paidOrWaived(deal) || clientOnCreditTerms(deal.client)) return true;
+  if (dealDpMet(deal)) return true;
   const parent = deal.parentDealId && deals.find(d => d.id === deal.parentDealId);
-  if (parent && (_paidOrWaived(parent) || clientOnCreditTerms(parent.client)
-      || (parent.standbyPO && deals.some(s => s.parentDealId === parent.id && _paidOrWaived(s))))) return true;
-  return !!deal.standbyPO && deals.some(c => c.parentDealId === deal.id && _paidOrWaived(c));
+  if (parent && (dealDpMet(parent)
+      || (parent.standbyPO && deals.some(s => s.parentDealId === parent.id && dealDpMet(s))))) return true;
+  return !!deal.standbyPO && deals.some(c => c.parentDealId === deal.id && dealDpMet(c));
 };
 const _familyRoot = (dealId, byId) => { const d = byId.get(dealId); return d?.parentDealId || dealId; };
 // The same money already recorded in this contract family (the mother PO / main

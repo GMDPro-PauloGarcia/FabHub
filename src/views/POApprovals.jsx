@@ -97,9 +97,9 @@ export default function POApprovals({prs=[],deals=[],role,session,approvePOs}){
             <tbody>
               {shown.map(p=>(
                 <tr key={p.no} style={{borderTop:"1px solid #f1f5f9",background:sel.has(p.no)?"#f0fdf4":undefined}}>
-                  <td style={td}><input type="checkbox" aria-label={`Select PO ${p.no}`} checked={sel.has(p.no)} disabled={!!p.dpHold} title={p.dpHold?"No down payment yet: a Manager must waive it on the deal first":undefined} onChange={()=>toggle(p.no)}/></td>
+                  <td style={td}><input type="checkbox" aria-label={`Select PO ${p.no}`} checked={sel.has(p.no)} disabled={!!p.dpHold} title={p.dpHold?"Down payment not met: a Manager must waive it or set special terms on the deal first":undefined} onChange={()=>toggle(p.no)}/></td>
                   <td style={td}><div style={{fontWeight:700,color:"#0f172a"}}>{p.no}</div><div style={{fontSize:".68rem",color:"#94a3b8"}}>{p.date||"—"} · {p.lines} line{p.lines>1?"s":""}</div></td>
-                  <td style={td}><div style={{fontWeight:600,color:"#0f172a"}}>{p.supplier||"—"}</div><div style={{fontSize:".7rem",color:"#64748b"}}>{p.project}</div>{p.dpHold&&<div style={{fontSize:".68rem",color:"#b91c1c",fontWeight:700,marginTop:2}}>No down payment yet on {p.dpHold}: waive it on the deal first</div>}</td>
+                  <td style={td}><div style={{fontWeight:600,color:"#0f172a"}}>{p.supplier||"—"}</div><div style={{fontSize:".7rem",color:"#64748b"}}>{p.project}</div>{p.dpHold&&<div style={{fontSize:".68rem",color:"#b91c1c",fontWeight:700,marginTop:2}}>Down payment not met on {p.dpHold}: waive it or set special terms first</div>}</td>
                   <td style={{...td,color:"#475569"}}>{p.requestedBy||"—"}</td>
                   <td style={{...td,textAlign:"right",fontWeight:800,whiteSpace:"nowrap"}}>{pesoAmt(p.gross)}</td>
                 </tr>
