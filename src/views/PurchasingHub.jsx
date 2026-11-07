@@ -69,7 +69,7 @@ export function purchasingRows({prs=[],swos=[],payables=[],deals=[]}){
     // Next step and who owns it (first that applies).
     let next="",owner="",status="";
     if(!o.issued){
-      if(isWO&&deal&&!dealDpClear(deal,deals)){next="Client hasn't paid its down payment: waive it or wait";owner="approve";status="Blocked";}
+      if(isWO&&deal&&!dealDpClear(deal,deals)){next="Client's down payment not met: a Manager waives it or sets terms";owner="approve";status="Blocked";}
       else{next=`Approve & issue the ${isWO?"WO":"PO"}`;owner="approve";status="Not issued";}
     }else if(done){next="Done";status="Paid";}
     else if(!isWO&&o.delivery!=="Delivered"){next=o.delivery==="Partly delivered"?"Receive the rest of the delivery":"Receive the delivery";owner="warehouse";status=o.delivery==="Partly delivered"?"Partly received":"Issued";}
