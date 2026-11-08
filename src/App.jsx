@@ -6,7 +6,7 @@ import {deductionFromSb,supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpse
 import{idbGetMany,idbSetMany}from'./idb.js';
 import {useSharePdf} from "./views/SharePdf";
 import SupplierDocsPanel from "./views/SupplierDocsPanel";
-import {fmt,addPrintClose,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable,HIDDEN_NAV_IDS,AP_HIDDEN,WAREHOUSE_HIDDEN,isHiddenView,HIDDEN_FIN_TABS,HIDDEN_PIPE_TABS,pageOn} from './shared';
+import {fmt,addPrintClose,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable,HIDDEN_NAV_IDS,AP_HIDDEN,WAREHOUSE_HIDDEN,isHiddenView,HIDDEN_FIN_TABS,HIDDEN_PIPE_TABS,pageOn,cashCanEdit} from './shared';
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
@@ -51,6 +51,8 @@ const hubOf=(r,id)=>(r==="Manager"&&MGR_HUB_OF[id])||NAV_HUB_OF[id];
 const MGR_FIN_TAB_NAV={txns:"exectxns",pl:"execpl",loans:"execloans"};
 // Simplified Manager home (views/ManagerHome.jsx). false = the old CEO / COO dashboards.
 const MGR_SIMPLE_HOME=true;
+// Loans (preview 2026-11-08): credit lines + bank loans, linked to the cash sheet (views/LoansView.jsx).
+const LOANS_V2=true;
 // Nav items that are a Finance tab, not a page of their own.
 const NAV_FIN_TAB={payables:"payables",payments:"payments",cashposition:"cash",supplierbills:"bills",executive:"overview",exectxns:"txns",execpl:"pl",execloans:"loans",
   expmon:"expmon",payrun:"payrun",bir2307:"bir2307",monboard:"monboard",subconmon:"subconmon"};
@@ -95,6 +97,7 @@ const PurchasingHub=_lazyView(()=>import('./views/PurchasingHub'));
 const OrderBoard=_lazyView(()=>import('./views/OrderBoard'));
 const ProjectProgress=_lazyView(()=>import('./views/ProjectProgress'));
 const ManagerHome=_lazyView(()=>import('./views/ManagerHome'));
+const LoansView=_lazyView(()=>import('./views/LoansView'));
 const ARDrill=_lazyView(()=>import('./views/ARDrill'));
 const AttentionPanel=_lazyView(()=>import('./views/AttentionPanel'));
 const WeeklyCashFlow=_lazyView(()=>import('./views/WeeklyCashFlow'));
@@ -16372,7 +16375,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             </div>
           );
         })()}
-        {finTab==="loans"&&role!=="Accounting"&&(()=>{
+        {finTab==="loans"&&role!=="Accounting"&&LOANS_V2&&(
+          <LoansView loans={loans} cashPositions={cashPositions} today={today} isMobile={isMobile}
+            canEdit={cashCanEdit(role,session?.username)} sample={loans.some(l=>l.sample)}/>
+        )}
+        {finTab==="loans"&&role!=="Accounting"&&!LOANS_V2&&(()=>{
           const fmtM=v=>"₱"+Number(v).toLocaleString("en-PH",{maximumFractionDigits:0});
           const totalPrincipal=loans.reduce((s,l)=>s+l.principal,0);
           const totalPaid=loans.reduce((s,l)=>s+(l.payments||[]).reduce((a,p)=>a+p.amount,0),0);
