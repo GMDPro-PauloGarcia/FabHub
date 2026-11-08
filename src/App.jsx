@@ -42,14 +42,17 @@ const NAV_HUB_OF={orderboard:"orders",purchasing:"orders",procurement:"orders",s
 const MGR_HUB_OF={pipeline:"sales",boq:"sales",clients:"sales","sales-reports":"sales",ceqs:"sales",
   projects:"projects",progress:"projects",subconcert:"projects",designboard:"design",drf:"design",
   materialreq:"orders",deliveries:"orders",masters:"orders",
-  executive:"executive",monboard:"executive","finance-reports":"executive",projectmargins:"executive",costanalysis:"executive",
+  executive:"executive",exectxns:"executive",execpl:"executive",execloans:"executive",monboard:"executive","finance-reports":"executive",projectmargins:"executive",costanalysis:"executive",
   billing:"money",cashposition:"money",cashflow:"money",finance:"accounting",
   accounts:"admin",audit:"admin",syshealth:"admin",botsettings:"admin",tvboard:"admin",activity:"admin"};
 const hubOf=(r,id)=>(r==="Manager"&&MGR_HUB_OF[id])||NAV_HUB_OF[id];
+// Manager: Executive's own sub-tabs (Transactions, P&L, Loans) are tabs of the
+// Executive hub strip, so the page shows one tab row instead of two.
+const MGR_FIN_TAB_NAV={txns:"exectxns",pl:"execpl",loans:"execloans"};
 // Simplified Manager home (views/ManagerHome.jsx). false = the old CEO / COO dashboards.
 const MGR_SIMPLE_HOME=true;
 // Nav items that are a Finance tab, not a page of their own.
-const NAV_FIN_TAB={payables:"payables",payments:"payments",cashposition:"cash",supplierbills:"bills",executive:"overview",
+const NAV_FIN_TAB={payables:"payables",payments:"payments",cashposition:"cash",supplierbills:"bills",executive:"overview",exectxns:"txns",execpl:"pl",execloans:"loans",
   expmon:"expmon",payrun:"payrun",bir2307:"bir2307",monboard:"monboard",subconmon:"subconmon"};
 const FIN_TAB_NAV={payables:"payables",payments:"payments",cash:"cashposition",bills:"supplierbills",overview:"executive",pl:"executive",loans:"executive",txns:"executive",
   expmon:"expmon",payrun:"payrun",bir2307:"bir2307",monboard:"monboard",subconmon:"subconmon"};
@@ -9951,7 +9954,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                                    {id:"projects",l:"Projects"},{id:"progress",l:"Progress"},{id:"subconcert",l:"Subcon Billing"},
                                    {id:"designboard",l:"Design Board"},{id:"drf",l:"Design Requests"},
                                    {id:"materialreq",l:"PRF"},{id:"orderboard",l:"Order Board"},{id:"purchasing",l:"Purchasing"},{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"deliveries",l:"Deliveries"},{id:"inventory",l:"Inventory"},{id:"masters",l:"Suppliers"}]},
-      {group:"Money",       items:[{id:"executive",l:"Overview"},{id:"monboard",l:"Monitoring Board"},...((session?.username==="paulo"||session?.username==="mar")?[{id:"projectmargins",l:"Project Margins"}]:[]),{id:"costanalysis",l:"Budget & Costs"},{id:"finance-reports",l:"Reports"},
+      {group:"Money",       items:[{id:"executive",l:"Overview"},...[["exectxns","txns","Transactions"],["execpl","pl","P&L"],["execloans","loans","Loans"]].filter(([,t])=>!HIDDEN_FIN_TABS.has(t)).map(([id,,l])=>({id,l})),{id:"monboard",l:"Monitoring Board"},...((session?.username==="paulo"||session?.username==="mar")?[{id:"projectmargins",l:"Project Margins"}]:[]),{id:"costanalysis",l:"Budget & Costs"},{id:"finance-reports",l:"Reports"},
                                    {id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},
                                    {id:"payables",l:"Supplier Bills"},{id:"payments",l:"Payments"},{id:"payrun",l:"Payment Run"},{id:"checkvouchers",l:"Check Vouchers"},{id:"subconmon",l:"Subcon Payments"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills (old)"}]:[]),
                                    {id:"finance",l:"Accounting Home"},{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
@@ -10074,7 +10077,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // One active-item rule for the desktop sidebar and the phone nav (virtual
   // Finance items open the Finance page on a tab; a hub is active on any of its pages).
   // navLoc: the nav item for where the user is now (a Finance tab maps to its item).
-  const navLoc=page==="finance"?(FIN_TAB_NAV[finTab]||"finance:"+finTab):page==="acctdash"?"finance":page;
+  const navLoc=page==="finance"?((role==="Manager"&&MGR_FIN_TAB_NAV[finTab])||FIN_TAB_NAV[finTab]||"finance:"+finTab):page==="acctdash"?"finance":page;
   const navIsActive=(id,hub)=>hub?hubOf(role,navLoc)===hub:navLoc===id;
   // navGo: open a nav item (virtual Finance items open the Finance page on their tab).
   const navGo=(id)=>{
@@ -15355,7 +15358,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             those views are reached from the left nav (Finance, Cash Position,
             Accounts Payable) and the ERP bar (Accounts Payable, Payments). Only
             P&L and Loans have no other home, so they stay as two compact pills. */}
-        {role!=="Accounting"&&["overview","pl","loans","txns"].includes(finTab)&&(
+        {role!=="Accounting"&&role!=="Manager"&&["overview","pl","loans","txns"].includes(finTab)&&(
           <div role="tablist" aria-label="Executive" style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:20,background:"#fff",border:"1px solid #e2e8f0",borderRadius:10,padding:4,width:"fit-content",maxWidth:"100%"}}>
             {[["overview","Overview"],["txns","Transactions"],["pl","P&L"],["loans","Loans"]].filter(([t])=>!HIDDEN_FIN_TABS.has(t)).map(([t,l])=>{
               const on=finTab===t;
