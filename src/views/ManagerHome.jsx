@@ -1,5 +1,5 @@
 import React,{useMemo} from "react";
-import {poLinesTotal,PO_COST_CONTROL_LIMIT,dealDpClear,isBillingOverdue,milestoneBalance,isCashPayment,WON_STAGES} from "../core";
+import {poLinesTotal,PO_COST_CONTROL_LIMIT,PO_MANAGER_LIMIT,PO_TIERS_ON,isTopApprover,dealDpClear,isBillingOverdue,milestoneBalance,isCashPayment,WON_STAGES} from "../core";
 import {payBalance,payIsOpen} from "../data/ledger";
 
 // ─── MANAGER HOME (2026-11-07) ──────────────────────────────────────────────
@@ -32,8 +32,13 @@ export default function ManagerHome({session,today,deals=[],billings=[],payables
       const d=ls.map(l=>deals.find(x=>x.id===(l.projectId||l.dealId))).find(Boolean);
       return{no,tot,held:!!d&&!dealDpClear(d,deals)};
     });
-    const big=pos.filter(p=>!p.held&&p.tot>PO_COST_CONTROL_LIMIT);
-    if(big.length) out.push({k:"po",n:big.length,l:`PO${big.length>1?"s":""} over ₱150K to approve`,sub:"Cost Control approves up to ₱150K; these need a Manager",amt:big.reduce((s,p)=>s+p.tot,0),tone:"red",open:()=>go("procurement"),cta:"Approve"});
+    // Tiers: Cost Control ≤ ₱150K · Paolo Gomez < ₱250K · Paulo / Mar / Arrius ≥ ₱250K.
+    const top=!PO_TIERS_ON||isTopApprover(session?.name);
+    const mid=PO_TIERS_ON?pos.filter(p=>!p.held&&p.tot>PO_COST_CONTROL_LIMIT&&p.tot<PO_MANAGER_LIMIT):[];
+    const big=pos.filter(p=>!p.held&&p.tot>=(PO_TIERS_ON?PO_MANAGER_LIMIT:PO_COST_CONTROL_LIMIT+0.01));
+    if(top&&big.length) out.push({k:"po",n:big.length,l:PO_TIERS_ON?`PO${big.length>1?"s":""} of ₱250K or more to approve`:`PO${big.length>1?"s":""} over ₱150K to approve`,sub:PO_TIERS_ON?"Only Paulo, Mar or Arrius approve these":"Cost Control approves up to ₱150K; these need a Manager",amt:big.reduce((s,p)=>s+p.tot,0),tone:"red",open:()=>go("procurement"),cta:"Approve"});
+    if(!top&&mid.length) out.push({k:"po",n:mid.length,l:`PO${mid.length>1?"s":""} of ₱150K–₱250K to approve`,sub:"Cost Control approves up to ₱150K; ₱250K and up goes to Paulo, Mar or Arrius",amt:mid.reduce((s,p)=>s+p.tot,0),tone:"red",open:()=>go("procurement"),cta:"Approve"});
+    if(top&&mid.length) out.push({k:"pomid",n:mid.length,l:`PO${mid.length>1?"s":""} of ₱150K–₱250K with Paolo Gomez`,sub:"Paolo Gomez approves these. FYI, you can approve too",amt:mid.reduce((s,p)=>s+p.tot,0),tone:"info",open:()=>go("procurement"),cta:"View"});
     const bills=payables.filter(p=>payIsOpen(p)&&(p.approvalStatus||"Approved")==="Pending"&&!(enteredByMe&&enteredByMe(p)));
     if(bills.length) out.push({k:"bills",n:bills.length,l:`Supplier bill${bills.length>1?"s":""} to approve`,sub:"Before they can go into a payment run",amt:bills.reduce((s,p)=>s+payBalance(p),0),tone:"red",open:()=>goFin("payables"),cta:"Review"});
     const awards=deals.filter(d=>d.notes&&d.notes.includes("[AWARD REQUEST"));
@@ -43,7 +48,7 @@ export default function ManagerHome({session,today,deals=[],billings=[],payables
     const qs=pos.filter(p=>!p.held&&p.tot<=PO_COST_CONTROL_LIMIT);
     if(qs.length) out.push({k:"qs",n:qs.length,l:`PO${qs.length>1?"s":""} with Cost Control`,sub:"Up to ₱150K: Ardrin / Rodney approve. FYI only",amt:qs.reduce((s,p)=>s+p.tot,0),tone:"info",open:()=>go("procurement"),cta:"View"});
     return out;
-  },[prs,deals,payables,enteredByMe,go,goFin]);
+  },[prs,deals,payables,enteredByMe,go,goFin,session]);
 
   // ── 2. Money ─────────────────────────────────────────────────────────────
   const money=useMemo(()=>{
