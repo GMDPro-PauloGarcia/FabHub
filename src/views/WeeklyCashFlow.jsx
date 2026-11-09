@@ -11,7 +11,21 @@ const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","De
 const PIE=["#2f5aa8","#c0504d","#9bbb59","#8064a2","#4bacc6","#f79646","#5b9bd5","#d99694","#c3d69b","#b2a2c7","#92cddc","#fac08f","#c0c0c0","#8db4e2","#e6b9b8","#7f7f7f"];
 const iso=(x)=>`${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,"0")}-${String(x.getDate()).padStart(2,"0")}`;
 
-function WeeklyCashFlow({cashPositions={},billings=[],setPage,mode="weekly"}){
+// Collections (fixed 2026-11-09): the Daily Cash Position is the record of
+// money that reached the banks. Client payments are recorded there AND in
+// Billing, and the old sum added both, so since 1 Sep at least ₱6.55M was
+// counted twice. A day with a cash sheet now counts only the sheet's
+// collections; Billing payments fill in only days with no sheet (before the
+// sheet started on 11 Aug 2026).
+// Loans: a row is loan money when it is linked to a loan on the Loans tab, or
+// its text names bank-loan proceeds / amortisation / credit-line interest. The
+// old rule (any text containing "loan") caught a surname (Baloloan) and SSS /
+// Pag-IBIG salary-loan remittances, which are payroll.
+const CF_LOAN_IN=/(proceeds?\s*(from\s*)?(the\s*)?loan|loan\s*proceeds?|loan\s*(release|drawdown|availment)|credit\s*line\s*(draw|availment))/i;
+const CF_LOAN_OUT=/((bpi|bdo|metrobank|chinabank|china\s*bank|security\s*bank|secbank|unionbank|bank)\b.*\b(loan|amorti[sz]ation|credit\s*line)|amorti[sz]ation|interest\s*(on\s*)?(bpi|bdo|metrobank|bank|credit\s*line)|credit\s*line\s*(interest|repayment|payment))/i;
+const CF_NOT_LOAN=/(sss|pag-?ibig|hdmf|philhealth|salary\s*loan|employee)/i;
+
+function WeeklyCashFlow({cashPositions={},billings=[],loans=[],setPage,mode="weekly"}){
   const monthly=mode==="monthly";
   const label=monthly?"Monthly":"Weekly";
   const per=monthly?"Month":"Week";       // period noun (capitalised)
@@ -57,12 +71,18 @@ function WeeklyCashFlow({cashPositions={},billings=[],setPage,mode="weekly"}){
   const disbFor=(date)=>(cashPositions[date]?.disbursements?.manual||[]);
   const disbLabel=(r)=>payeeOf(r)||particularsOf(r)||"Uncategorized";
   const disbText=(r)=>`${payeeOf(r)} ${particularsOf(r)}`;
-  const collectionsFor=(date)=>{
+  const billingCashFor=(date)=>{
     let s=0;
     (billings||[]).forEach(b=>{if(b.status==="Cancelled")return;(b.payments||[]).forEach(p=>{if(isCashPayment(p)&&paymentClearDate(p)===date)s+=Number(p.amount||0);});});
-    (cashPositions[date]?.collections?.manualCollections||[]).forEach(r=>s+=n(r.amount));
     return s;
   };
+  const hasSheet=(date)=>!!cashPositions[date];
+  const collectionsFor=(date)=>{
+    if(!hasSheet(date)) return billingCashFor(date);
+    return (cashPositions[date]?.collections?.manualCollections||[]).reduce((s,r)=>s+n(r.amount),0);
+  };
+  // Cash-sheet rows linked to a loan on the Loans tab (key = cashMovements' key).
+  const loanKeys=useMemo(()=>{const k=new Set();(loans||[]).forEach(l=>[...(l.draws||[]),...(l.payments||[])].forEach(x=>x.cashKey&&k.add(x.cashKey)));return k;},[loans]);
 
   // ── Daily trend ──
   const daily=useMemo(()=>dates.map(d=>{
@@ -88,15 +108,26 @@ function WeeklyCashFlow({cashPositions={},billings=[],setPage,mode="weekly"}){
 
   // ── Loan memos ──
   const loanProceeds=useMemo(()=>{let s=0;
-    dates.forEach(d=>(cashPositions[d]?.collections?.manualCollections||[]).forEach(r=>{if(/loan/i.test(r.particulars??r.note??""))s+=n(r.amount);}));
+    dates.forEach(d=>(cashPositions[d]?.collections?.manualCollections||[]).forEach((r,i)=>{
+      const t=String(r.particulars??r.note??"");
+      if(loanKeys.has(`${d}#in#${r.id||i}`)||(CF_LOAN_IN.test(t)&&!CF_NOT_LOAN.test(t)))s+=n(r.amount);}));
     return s;
     // eslint-disable-next-line
-  },[dates,cashPositions]);
+  },[dates,cashPositions,loanKeys]);
   const loanRepayment=useMemo(()=>{let s=0;
-    dates.forEach(d=>disbFor(d).forEach(r=>{if(/loan|repay/i.test(disbText(r)))s+=n(r.amount);}));
+    dates.forEach(d=>disbFor(d).forEach((r,i)=>{
+      const t=disbText(r);
+      if(loanKeys.has(`${d}#out#${r.id||i}`)||/^loan/i.test(String(r.noBill||""))||(CF_LOAN_OUT.test(t)&&!CF_NOT_LOAN.test(t)))s+=n(r.amount);}));
     return s;
     // eslint-disable-next-line
-  },[dates,cashPositions]);
+  },[dates,cashPositions,loanKeys]);
+  // Reconciliation memo: client payments recorded in Billing for days that have a
+  // cash sheet. Not added to collections (the sheet already has them); shown so
+  // Finance can spot a payment that is in Billing but missing from the sheet.
+  const billingOnSheetDays=useMemo(()=>dates.filter(hasSheet).reduce((s,d)=>s+billingCashFor(d),0),
+    // eslint-disable-next-line
+    [dates,billings,cashPositions]);
+  const noSheetDays=dates.filter(d=>!hasSheet(d)&&billingCashFor(d)>0).length;
   const netOperating=netChange-loanProceeds+loanRepayment;
 
   // ── Expenses by category (Chart of Account) ──
@@ -134,7 +165,8 @@ function WeeklyCashFlow({cashPositions={},billings=[],setPage,mode="weekly"}){
       [`Ending Balance (End of ${per})`,endingBalance.toFixed(2)],
       ["Memo: Loan Proceeds Included Above",loanProceeds.toFixed(2)],
       ["Memo: Loan Repayment Included Above",loanRepayment.toFixed(2)],
-      ["Net Operating Cash Flow (excl. loan proceeds & repayment)",netOperating.toFixed(2)],[],
+      ["Net Operating Cash Flow (excl. loan proceeds & repayment)",netOperating.toFixed(2)],
+      ["Memo: Client payments in Billing on these days (already in the cash sheet, not added)",billingOnSheetDays.toFixed(2)],[],
       ["DAILY CASH FLOW TREND"],["Date","Collections","Expenses","Net"]];
     daily.forEach(r=>rows.push([r.date,r.coll.toFixed(2),r.exp.toFixed(2),r.net.toFixed(2)]));
     rows.push(["TOTAL",totColl.toFixed(2),totExp.toFixed(2),netChange.toFixed(2)],[],
@@ -161,6 +193,7 @@ function WeeklyCashFlow({cashPositions={},billings=[],setPage,mode="weekly"}){
     ["Memo: Loan Proceeds Included Above",loanProceeds,false,C.blue],
     ["Memo: Loan Repayment Included Above",loanRepayment,false,C.blue],
     ["Net Operating Cash Flow (excl. loan proceeds & repayment)",netOperating,true,netOperating>=0?"#047857":"#dc2626"],
+    ["Memo: Client payments in Billing on these days (already in the cash sheet, not added)",billingOnSheetDays,false,"#64748b"],
   ];
 
   // ── Bar chart (daily collections vs expenses) ──
@@ -257,6 +290,9 @@ function WeeklyCashFlow({cashPositions={},billings=[],setPage,mode="weekly"}){
                   ))}
                 </tbody>
               </table>
+              <div style={{fontSize:".68rem",color:"#64748b",marginTop:6,lineHeight:1.4}}>
+                Collections come from the Daily Cash Position (what reached the banks){noSheetDays?`; ${noSheetDays} day${noSheetDays>1?"s":""} with no cash sheet use the payments recorded in Billing`:""}. Loan rows count as loan money when linked on the Loans tab or named as bank-loan proceeds / amortisation; SSS and Pag-IBIG salary loans are payroll.
+              </div>
             </div>
           </div>
           <div style={{borderLeft:mob?"none":`1px solid ${C.grid}`}}>
