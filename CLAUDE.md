@@ -14,6 +14,8 @@ When Paulo asks for several PRs ("merge #380 then #381"), merge them one at a ti
 
 Never merge on your own initiative, because a review bot said so, or because a PR "looks done". Merging deploys to production.
 
+**Release days: Saturday or Sunday only** (Paulo, 2026-11-09). Improvements go live only on a weekend: merging to `main` and applying a database migration to production both count. On weekdays, build, test (rolled-back transactions are fine) and open PRs, but don't merge or `apply_migration`. Only Paulo can make an exception, for a specific fix, in the session ("merge it today").
+
 ## Database changes: DB before code — always
 The `DB migrations` GitHub workflow does **not** apply migrations. It has no credentials, so it skips and still shows green. Every schema change is applied by hand, in this order:
 
