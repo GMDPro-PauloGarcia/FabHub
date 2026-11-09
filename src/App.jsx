@@ -27667,6 +27667,8 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
   const[scopeForm,setScopeForm]=useState({title:"",desc:"",value:"",ceNo:""});
   const fsc=(k,v)=>setScopeForm(p=>({...p,[k]:v}));
   const[showDateEdit,setShowDateEdit]=useState(false);
+  const[hqTab,setHqTab]=useState("progress");
+  const[pctBusy,setPctBusy]=useState(null);
   const[dateForm,setDateForm]=useState({awardDate:"",targetEndDate:""});
   const fdt=(k,v)=>setDateForm(p=>({...p,[k]:v}));
   const[pmUpdateModal,setPmUpdateModal]=useState(null);
@@ -27698,14 +27700,6 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
   const card=selDeal?pcards[selDeal]:null;
   const jo=dealJo(jos,selDeal);
 
-  const PHASES=[
-    {id:"design",    label:"Design",     icon:"🎨", stgs:["06 · Kickoff","07 · Briefing"]},
-    {id:"fab",       label:"Fabrication",icon:"🔨", stgs:["08 · Fabrication"]},
-    {id:"site",      label:"Site",       icon:"🏗",  stgs:["09 · Site & Billing","10 · Installation"]},
-    {id:"punchlist", label:"Punchlist",  icon:"📋", stgs:["11 · Punchlist"]},
-    {id:"closeout",  label:"Close-Out",  icon:"✅", stgs:["12 · Close-Out","14 · Completed"]},
-  ];
-  const phaseIdx=stg=>PHASES.findIndex(p=>p.stgs.includes(stg));
 
   const fmt=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:0});
   const BUDGET_ONLY_PC=["Design","Operations","ProjectMover"];
@@ -28246,7 +28240,6 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
         (()=>{
           const pct=projPct(card,deal);
           const h=getHealth(deal,card);const[hc,hl]=HC[h];
-          const pi=phaseIdx(deal?.stage);
           const elapsed=card?.awardDate?Math.ceil((today2-new Date(card.awardDate))/86400000):0;
           const end=card?.targetEndDate?new Date(card.targetEndDate):null;
           const dLeft=end?Math.ceil((end-today2)/86400000):null;
@@ -28266,176 +28259,107 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
             return (sta[a.status]-sta[b.status])||(pri[a.priority]-pri[b.priority]);
           });
 
-          return(
-            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          const canEditTeam=role==="Manager"||role==="Operations"||role==="SalesOpsAdmin";
+          const canEditDates=role==="Manager"||role==="Operations"||role==="QS"||role==="SalesOpsAdmin";
+          const hqBtn=(bg,bd,c)=>({background:bg,border:`1px solid ${bd}`,borderRadius:6,padding:"4px 10px",fontSize:".72rem",fontWeight:700,color:c,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"});
+          // Same rule as the Progress page: PMs/Operations/Managers on any project, Coordinators on their own.
+          const pgNormHq=x=>String(x||"").replace(/\s*\([^)]*\)\s*$/,"").trim().toLowerCase();
+          const canSetPct=!!card&&(["Manager","Operations","ProjectMover"].includes(role)||(role==="Coordinator"&&!!session?.name&&pgNormHq(card.coordinator)===pgNormHq(session.name)));
+          const setPctRpc=async pctVal=>{
+            if(!isSupabaseReady()){toastEmit("Offline: progress not saved","error");return;}
+            setPctBusy(pctVal);
+            const{data,error}=await supabase.rpc("set_project_progress",{p_deal:selDeal,p_pct:pctVal});
+            setPctBusy(null);
+            if(error){toastEmit("Not saved: "+(error.message||error),"error",9000);return;}
+            upPcards(ps=>({...ps,[selDeal]:{...ps[selDeal],manualProgress:pctVal,progressSetBy:session?.name||"",progressSetAt:data||new Date().toISOString()}}));
+            toastEmit(`Progress: ${pctVal}%`,"success");
+          };
+          const updatesCount=(actLog||[]).filter(a=>a.dealId===selDeal&&a.action==="PM Update").length;
+          const clOpen=projCl.filter(c=>c.status!=="Done").length;
+          const hqTabs=[["progress","Progress",openProjB.length],["updates","Updates",updatesCount],["checklist","Checklist",clOpen],["finance","Finance",0]];
 
-              {/* ── Header card ── */}
-              <div style={{background:"#fff",borderRadius:14,border:`1.5px solid ${hc}44`,padding:isMobile?"14px":"18px 22px"}}>
-                {/* Top row: project name + stage badge */}
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10,marginBottom:10}}>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontWeight:800,color:"#0f172a",fontSize:isMobile?"1rem":"1.15rem"}}>{deal?.contact||deal?.client}</div>
-                    {deal?.contact&&<div style={{fontSize:".72rem",color:"#8b5cf6",marginTop:1}}>📁 {deal?.client}</div>}
-                    <div style={{fontSize:".75rem",color:"#64748b",marginTop:2,display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+          return(
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+
+              {/* ── Header: identity, key facts, team, dates and stage in one card ── */}
+              <div style={{background:"#fff",borderRadius:14,border:`1.5px solid ${hc}44`,padding:isMobile?"12px 14px":"14px 20px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10}}>
+                  <div style={{flex:"1 1 260px",minWidth:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                      <span style={{fontWeight:800,color:"#0f172a",fontSize:isMobile?"1rem":"1.12rem"}}>{deal?.contact||deal?.client}</span>
+                      <span style={{fontSize:".68rem",fontWeight:700,color:hc,background:hc+"18",borderRadius:20,padding:"2px 10px",border:`1px solid ${hc}44`}}>{deal?.stage?.replace(/^\d+ · /,"")||"—"}</span>
+                      {pct===100&&<span style={{fontSize:".66rem",fontWeight:700,color:"#059669",background:"#f0fdf4",borderRadius:20,padding:"2px 9px"}}>✅ Done</span>}
+                    </div>
+                    <div style={{fontSize:".72rem",color:"#64748b",marginTop:3,display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+                      {deal?.contact&&<span style={{color:"#8b5cf6"}}>📁 {deal?.client}</span>}
                       {deal?.ceNo&&<span>{deal.ceNo}</span>}
                       {jo&&<span style={{color:"#3b82f6"}}>📋 {jo.joNo}</span>}
+                      {deal?.ceType&&<span>· {deal.ceType}</span>}
                       {card?.warehouseOnly&&<span style={{background:"#fef3c7",color:"#92400e",border:"1px solid #fbbf24",borderRadius:20,padding:"1px 8px",fontSize:".65rem",fontWeight:700}}>📦 Warehouse / Procurement Only</span>}
+                      {deal?.salesRepoLink&&<a href={deal.salesRepoLink} target="_blank" rel="noreferrer" style={{color:"#3b82f6",textDecoration:"none",fontWeight:700}}>📁 Sales Repo</a>}
+                      {(card?.commsLink||jo?.commsLink)&&<a href={card?.commsLink||jo?.commsLink} target="_blank" rel="noreferrer" style={{color:"#059669",textDecoration:"none",fontWeight:700}}>📱 Comms Group</a>}
                     </div>
                   </div>
-                  <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0}}>
-                    <span style={{fontSize:".72rem",fontWeight:700,color:hc,background:hc+"18",borderRadius:20,padding:"4px 12px",border:`1px solid ${hc}44`}}>{deal?.stage?.replace(/^\d+ · /,"")||"—"}</span>
-                    {pct===100&&<span style={{fontSize:".68rem",fontWeight:700,color:"#059669",background:"#f0fdf4",borderRadius:20,padding:"2px 9px"}}>✅ Done</span>}
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+                    {canEditTeam&&!showTeamEdit&&selDeal&&(
+                      <button onClick={()=>{
+                        setTeamForm({ae:card?.aeAssigned||jo?.aeAssigned||deal?.salesOwner||"",pm1:card?.pm1||jo?.pm1||"",pm2:card?.pm2||jo?.pm2||"",pm3:card?.pm3||jo?.pm3||"",designer:card?.designer||jo?.designer||"",coordinator:card?.coordinator||jo?.coordinator||"",warehouseOnly:card?.warehouseOnly||false});
+                        setShowDateEdit(false);setShowTeamEdit(true);
+                      }} style={hqBtn("#f1f5f9","#e2e8f0","#475569")}>✏️ Team</button>
+                    )}
+                    {canEditDates&&!showDateEdit&&selDeal&&(
+                      <button onClick={()=>{setDateForm({awardDate:card?.awardDate||"",targetEndDate:card?.targetEndDate||"",location:deal?.location||"",ceType:deal?.ceType||"Fabrication / General"});setShowTeamEdit(false);setShowDateEdit(true);}}
+                        style={hqBtn("#f1f5f9","#e2e8f0","#475569")}>✏️ Dates &amp; Site</button>
+                    )}
                     {/* PRFs for this project — same roles that can read prfs (prf_can_read). */}
                     {deal&&["Manager","ProjectMover","Operations","Coordinator","Warehouse","QS","Procurement","ProcurementManager","Finance","FinanceAssistant","Accounting","SalesOpsAdmin"].includes(role)&&(
                       <button onClick={()=>{setJumpDeal(deal.id);setPage("materialreq");}} title="Purchase requests for this project"
-                        style={{background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:6,padding:"4px 10px",fontSize:".72rem",fontWeight:700,color:"#c2410c",cursor:"pointer",fontFamily:"inherit"}}>📦 PRFs</button>
+                        style={hqBtn("#fff7ed","#fed7aa","#c2410c")}>📦 PRFs</button>
                     )}
-                    {role==="Manager"&&setConfirmDel&&deal&&<button onClick={()=>setConfirmDel(deal.id)} title="Delete this project and all its records" style={{marginTop:2,background:"#fef2f2",border:"1px solid #fecaca",borderRadius:6,padding:"4px 10px",fontSize:".7rem",fontWeight:700,color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>🗑 Delete Project</button>}
+                    {role==="Manager"&&setConfirmDel&&deal&&<button onClick={()=>setConfirmDel(deal.id)} title="Delete this project and all its records" style={hqBtn("#fef2f2","#fecaca","#dc2626")}>🗑 Delete</button>}
                   </div>
                 </div>
 
-                {/* Info grid: location, team, subcons, timeline */}
-                <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:8,marginBottom:10}}>
-                  {/* Location */}
-                  <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px"}}>
-                    <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:2}}>📍 Location</div>
-                    <div style={{fontSize:".82rem",fontWeight:600,color:"#0f172a"}}>{deal?.location||jo?.location||"—"}</div>
-                  </div>
-                  {/* AE */}
-                  <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px"}}>
-                    <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:2}}>🤝 AE</div>
-                    <div style={{fontSize:".82rem",fontWeight:600,color:"#0f172a"}}>{card?.aeAssigned||jo?.aeAssigned||deal?.salesOwner||"—"}</div>
-                  </div>
-                  {/* PM */}
-                  <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px"}}>
-                    <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:2}}>👷 PM</div>
-                    <div style={{fontSize:".82rem",fontWeight:600,color:"#0f172a"}}>{[card?.pm1||jo?.pm1,card?.pm2||jo?.pm2,card?.pm3||jo?.pm3].filter(Boolean).join(", ")||"Unassigned"}</div>
-                  </div>
-                  {/* Coordinator */}
-                  <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px"}}>
-                    <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:2}}>📋 Coordinator</div>
-                    <div style={{fontSize:".82rem",fontWeight:600,color:"#0f172a"}}>{card?.coordinator||jo?.coordinator||"—"}</div>
-                  </div>
-                  {/* Subcontractors */}
-                  {(()=>{
-                    const projSwos=(swos||[]).filter(w=>w.projectId===selDeal||w.dealId===selDeal);
-                    return projSwos.length>0?(
-                      <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px",gridColumn:"1/-1"}}>
-                        <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:4}}>🔧 Subcontractors</div>
-                        <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
-                          {projSwos.map(w=>(
-                            <span key={w.id} style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:20,padding:"2px 10px",fontSize:".75rem",fontWeight:600,color:"#1d4ed8"}}>
-                              {w.subcontractor||"?"}{w.specialty?` · ${w.specialty}`:""}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ):null;
-                  })()}
-                  {/* Timeline */}
-                  <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px",gridColumn:"1/-1"}}>
-                    <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:4}}>📅 Timeline</div>
-                    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-                      <span style={{fontSize:".78rem",color:"#64748b"}}>{jo?.startDate||deal?.awardDate||"—"}</span>
-                      <span style={{color:"#94a3b8",fontSize:".7rem"}}>→</span>
-                      <span style={{fontSize:".78rem",fontWeight:700,color:isOver?"#ef4444":dLeft<=7?"#f59e0b":"#059669"}}>
-                        {card?.targetEndDate||"No turnover date set"}
-                      </span>
-                      {card?.targetDays&&(
-                        <span style={{fontSize:".7rem",fontWeight:700,color:isOver?"#ef4444":dLeft<=7?"#f59e0b":"#64748b",background:isOver?"#fef2f2":dLeft<=7?"#fffbeb":"#f1f5f9",borderRadius:20,padding:"2px 8px"}}>
-                          {isOver?`⚠ ${Math.abs(dLeft)}d overdue`:`${dLeft}d left`}
+                {/* Key facts: each shown once (location, team, dates, TAT) */}
+                <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(auto-fit,minmax(150px,1fr))",gap:6,marginTop:10}}>
+                  {[
+                    {l:"📍 Location",v:deal?.location||jo?.location||"—"},
+                    {l:"🤝 AE",v:card?.aeAssigned||jo?.aeAssigned||deal?.salesOwner||"—"},
+                    {l:"👷 PM",v:[card?.pm1||jo?.pm1,card?.pm2||jo?.pm2,card?.pm3||jo?.pm3].filter(Boolean).join(", ")||"Unassigned"},
+                    {l:"📋 Coordinator",v:card?.coordinator||jo?.coordinator||"—"},
+                    {l:"🎨 Designer",v:card?.designer||jo?.designer||"—"},
+                    {l:"📅 Start → Turnover",v:<>
+                      <span style={{color:"#64748b",fontWeight:500,whiteSpace:"nowrap"}}>{card?.awardDate||jo?.startDate||deal?.awardDate||"—"}</span>
+                      <span style={{color:"#94a3b8"}}> → </span>
+                      <span style={{color:dLeft===null?"#94a3b8":isOver?"#ef4444":dLeft<=7?"#f59e0b":"#059669",whiteSpace:"nowrap"}}>{card?.targetEndDate||"not set"}</span>
+                      {dLeft!==null&&<span style={{marginLeft:6,fontSize:".66rem",fontWeight:700,color:isOver?"#ef4444":dLeft<=7?"#f59e0b":"#64748b",background:isOver?"#fef2f2":dLeft<=7?"#fffbeb":"#f1f5f9",borderRadius:20,padding:"1px 7px",whiteSpace:"nowrap"}}>{isOver?`⚠ ${Math.abs(dLeft)}d overdue`:`${dLeft}d left`}</span>}
+                      {card?.targetDays&&card?.awardDate&&<span style={{marginLeft:6,fontSize:".64rem",color:"#94a3b8",fontWeight:500,whiteSpace:"nowrap"}}>day {elapsed}/{card.targetDays}</span>}
+                    </>,wide:true},
+                  ].map(({l,v,wide})=>(
+                    <div key={l} style={{background:"#f8fafc",borderRadius:8,padding:"6px 10px",minWidth:0,gridColumn:wide?(isMobile?"1/-1":"span 2"):undefined}}>
+                      <div style={{fontSize:".56rem",textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",marginBottom:1}}>{l}</div>
+                      <div style={{fontSize:".78rem",fontWeight:600,color:"#0f172a",overflow:"hidden",textOverflow:wide?undefined:"ellipsis",whiteSpace:wide?"normal":"nowrap"}} title={typeof v==="string"?v:undefined}>{v}</div>
+                    </div>
+                  ))}
+                </div>
+                {(()=>{
+                  const projSwos=(swos||[]).filter(w=>w.projectId===selDeal||w.dealId===selDeal);
+                  return projSwos.length>0?(
+                    <div style={{display:"flex",flexWrap:"wrap",gap:5,alignItems:"center",marginTop:8}}>
+                      <span style={{fontSize:".56rem",textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8"}}>🔧 Subcons</span>
+                      {projSwos.map(w=>(
+                        <span key={w.id} style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:20,padding:"1px 9px",fontSize:".7rem",fontWeight:600,color:"#1d4ed8"}}>
+                          {w.subcontractor||"?"}{w.specialty?` · ${w.specialty}`:""}
                         </span>
-                      )}
+                      ))}
                     </div>
-                  </div>
-                </div>
-                {/* Stage selector */}
-                {["Manager","Sales","Operations","ProjectMover","SalesOpsAdmin"].includes(role)&&deal&&changeDealStage&&canSetDealStage(role,deal.stage)&&(()=>{
-                  const changeStage=async st=>{
-                    if(!(await changeDealStage(selDeal,st))) return;
-                    if(st==="14 · Completed"){
-                      setPcFilter("completed");
-                      setSelDeal(null);
-                      toastEmit(`✅ ${deal.client} marked Completed — showing Completed tab`,"success");
-                    } else {
-                      toastEmit(`Stage → ${st}`,"success");
-                    }
-                  };
-                  const ACTIVE_STAGES=["06 · Kickoff","07 · Briefing","08 · Fabrication","09 · Site & Billing","10 · Installation","11 · Punchlist"];
-                  const isAlreadyDone=deal.stage==="12 · Close-Out"||deal.stage==="14 · Completed";
-                  return(
-                    <div style={{marginTop:12,borderTop:"1px solid #f1f5f9",paddingTop:12}}>
-                      <div style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".08em",color:"#94a3b8",marginBottom:8}}>Stage — tap to change</div>
-                      <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-                        {ACTIVE_STAGES.map(s=>{
-                          const isActive=deal.stage===s;
-                          const stageColors={"06 · Kickoff":"#8b5cf6","07 · Briefing":"#6366f1","08 · Fabrication":"#f59e0b","09 · Site & Billing":"#f97316","10 · Installation":"#3b82f6","11 · Punchlist":"#ef4444"};
-                          const sc=stageColors[s]||"#64748b";
-                          const label=s.replace(/^\d+ · /,"");
-                          return(
-                            <button key={s} onClick={()=>changeStage(s)}
-                              style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".62rem",fontWeight:600,letterSpacing:".04em",padding:"4px 11px",borderRadius:20,cursor:"pointer",transition:"all .12s",
-                                background:isActive?sc:"transparent",
-                                color:isActive?"#fff":sc,
-                                border:`1.5px solid ${isActive?sc:sc+"55"}`}}>
-                              {label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      {/* Complete project button — shown when stage is 06-11 */}
-                      {!isAlreadyDone&&(
-                        <div style={{marginTop:10,display:"flex",gap:8,flexWrap:"wrap"}}>
-                          <button onClick={async ()=>{if((await uiConfirm(`Move "${deal.contact||deal.client}" to Close-Out?\n\nUse this when the project is finishing up (final billing, punch items, handover).`))) changeStage("12 · Close-Out");}}
-                            style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".62rem",fontWeight:700,letterSpacing:".04em",padding:"5px 14px",borderRadius:20,cursor:"pointer",background:"transparent",color:"#059669",border:"1.5px solid #059669"}}>
-                            🔒 Move to Close-Out
-                          </button>
-                          {canSetDealStage(role,deal.stage,"14 · Completed")&&(
-                          <button onClick={async ()=>{if((await uiConfirm(`Mark "${deal.contact||deal.client}" as Completed?\n\nUse this only when all work is done and the project is fully closed.`))) changeStage("14 · Completed");}}
-                            style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".62rem",fontWeight:700,letterSpacing:".04em",padding:"5px 14px",borderRadius:20,cursor:"pointer",background:"#059669",color:"#fff",border:"1.5px solid #059669"}}>
-                            ✅ Mark as Completed
-                          </button>
-                          )}
-                        </div>
-                      )}
-                      {/* If already done, show badge + reopen option */}
-                      {isAlreadyDone&&(
-                        <div style={{marginTop:10,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-                          <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".62rem",fontWeight:700,padding:"4px 12px",borderRadius:20,background:"#ecfdf5",color:"#059669",border:"1px solid #a7f3d0"}}>
-                            {deal.stage==="14 · Completed"?"✅ Completed":"🔒 Close-Out"}
-                          </span>
-                          <button onClick={async ()=>{if((await uiConfirm("Reopen this project? It will be moved back to 11 · Punchlist."))) changeStage("11 · Punchlist");}}
-                            style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:600,padding:"3px 10px",borderRadius:20,cursor:"pointer",background:"transparent",color:"#94a3b8",border:"1px solid #e2e8f0"}}>
-                            ↩ Reopen
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
+                  ):null;
                 })()}
-                {/* All-depts-done celebration banner */}
-                {pct===100&&deal&&deal.stage!=="12 · Close-Out"&&deal.stage!=="14 · Completed"&&(
-                  <div style={{marginTop:10,background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:10,padding:"10px 14px"}}>
-                    <span style={{fontSize:".8rem",fontWeight:700,color:"#059669"}}>🎉 All departments complete! Use the buttons above to close out or complete this project.</span>
-                  </div>
-                )}
-                {/* Scope changes are logged by Sales as a linked deal
-                    (+ Add New Deal -> Link to Parent Deal), not from the project
-                    card, so there is no "Log Scope Change" form here. */}
-              </div>
 
-              {/* ── Project Team ── */}
-              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>👥 Project Team</div>
-                  {(role==="Manager"||role==="Operations"||role==="SalesOpsAdmin")&&!showTeamEdit&&selDeal&&(
-                    <button onClick={()=>{
-                      setTeamForm({ae:card?.aeAssigned||jo?.aeAssigned||deal?.salesOwner||"",pm1:card?.pm1||jo?.pm1||"",pm2:card?.pm2||jo?.pm2||"",pm3:card?.pm3||jo?.pm3||"",designer:card?.designer||jo?.designer||"",coordinator:card?.coordinator||jo?.coordinator||"",warehouseOnly:card?.warehouseOnly||false});
-                      setShowTeamEdit(true);
-                    }} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>✏️ Edit</button>
-                  )}
-                </div>
-                {showTeamEdit?(
+                {/* Inline editors (open one at a time) */}
+                {showTeamEdit&&(
+                  <div style={{marginTop:10,background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"12px 14px"}}>
+                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".8rem",marginBottom:8}}>👥 Project Team</div>
                   <div style={{display:"flex",flexDirection:"column",gap:8}}>
                     {[["ae","AE (Account Executive)",SALES_TEAM],["pm1","PM 1",OPS_TEAM],["pm2","PM 2",OPS_TEAM],["pm3","PM 3",OPS_TEAM],["designer","Designer",DESIGN_MEMBERS],["coordinator","Coordinator",OPS_TEAM]].map(([k,l,opts])=>{
                       const sugg=[...new Set([...opts,...customMembers])];
@@ -28484,33 +28408,10 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                       <button onClick={()=>setShowTeamEdit(false)} style={{flex:1,background:"#f1f5f9",border:"none",borderRadius:8,padding:"8px",fontFamily:"inherit",fontSize:".82rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>Cancel</button>
                     </div>
                   </div>
-                ):(
-                  <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:6}}>
-                    {[
-                      {l:"AE",v:card?.aeAssigned||jo?.aeAssigned||deal?.salesOwner||"—"},
-                      {l:"Designer",v:card?.designer||jo?.designer||"—"},
-                      {l:"PM",v:[card?.pm1||jo?.pm1,card?.pm2||jo?.pm2,card?.pm3||jo?.pm3].filter(Boolean).join(", ")||"—"},
-                      {l:"Coordinator",v:card?.coordinator||jo?.coordinator||"—"},
-                    ].map(({l,v})=>(
-                      <div key={l} style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px"}}>
-                        <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:2}}>{l}</div>
-                        <div style={{fontSize:".82rem",fontWeight:600,color:"#0f172a"}}>{v}</div>
-                      </div>
-                    ))}
                   </div>
                 )}
-              </div>
-
-              {/* ── Vitals ── */}
-              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>📌 Project Vitals</div>
-                  {(role==="Manager"||role==="Operations"||role==="QS"||role==="SalesOpsAdmin")&&selDeal&&!showDateEdit&&(
-                    <button onClick={()=>{setDateForm({awardDate:card?.awardDate||"",targetEndDate:card?.targetEndDate||"",location:deal?.location||"",ceType:deal?.ceType||"Fabrication / General"});setShowDateEdit(true);}}
-                      style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>✏️ Edit</button>
-                  )}
-                </div>
-                {showDateEdit?(
+                {showDateEdit&&(
+                  <div style={{marginTop:10}}>
                   <div style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"14px",marginBottom:10}}>
                     <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10,marginBottom:12}}>
                       <div>
@@ -28566,52 +28467,87 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                         style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"8px 14px",fontFamily:"inherit",fontSize:".82rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>Cancel</button>
                     </div>
                   </div>
-                ):(
-                  <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(3,1fr)",gap:8,marginBottom:10}}>
-                    {[{l:"Location",v:deal?.location||"—"},{l:"Award Date",v:card?.awardDate||"—"},{l:"Target Due",v:card?.targetEndDate||"Not set"},{l:"CE Type",v:deal?.ceType||"—"},{l:"Elapsed",v:card?.awardDate?elapsed+"d":"—"},{l:"TAT",v:card?.targetDays?card.targetDays+"d target":"Not set"}].map(({l,v})=>(
-                      <div key={l} style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px"}}>
-                        <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:2}}>{l}</div>
-                        <div style={{fontSize:".82rem",fontWeight:600,color:"#0f172a"}}>{v}</div>
-                      </div>
-                    ))}
                   </div>
                 )}
-                {!showDateEdit&&<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                  {deal?.salesRepoLink&&<a href={deal.salesRepoLink} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:".72rem",color:"#3b82f6",textDecoration:"none",fontWeight:700,background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 10px"}}>📁 Sales Repo</a>}
-                  {(card?.commsLink||jo?.commsLink)&&<a href={card?.commsLink||jo?.commsLink} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:".72rem",color:"#059669",textDecoration:"none",fontWeight:700,background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:6,padding:"4px 10px"}}>📱 Comms Group</a>}
-                </div>}
+
+                {/* Stage: one stepper (replaces the old Phase timeline + stage buttons).
+                    Clickable only where canSetDealStage allows the move. */}
+                {deal&&(()=>{
+                  const STEPS=[["06 · Kickoff","Kickoff","#8b5cf6"],["07 · Briefing","Briefing","#6366f1"],["08 · Fabrication","Fabrication","#f59e0b"],["09 · Site & Billing","Site & Billing","#f97316"],["10 · Installation","Installation","#3b82f6"],["11 · Punchlist","Punchlist","#ef4444"],["12 · Close-Out","Close-Out","#059669"],["14 · Completed","Completed","#047857"]];
+                  const cur=STEPS.findIndex(s=>s[0]===deal.stage);
+                  const canStage=["Manager","Sales","Operations","ProjectMover","SalesOpsAdmin"].includes(role)&&!!changeDealStage&&canSetDealStage(role,deal.stage);
+                  const isAlreadyDone=deal.stage==="12 · Close-Out"||deal.stage==="14 · Completed";
+                  const changeStage=async st=>{
+                    if(!(await changeDealStage(selDeal,st))) return;
+                    if(st==="14 · Completed"){
+                      setPcFilter("completed");
+                      setSelDeal(null);
+                      toastEmit(`✅ ${deal.client} marked Completed — showing Completed tab`,"success");
+                    } else {
+                      toastEmit(`Stage → ${st}`,"success");
+                    }
+                  };
+                  const pick=async st=>{
+                    if(st==="12 · Close-Out"&&!(await uiConfirm(`Move "${deal.contact||deal.client}" to Close-Out?\n\nUse this when the project is finishing up (final billing, punch items, handover).`))) return;
+                    if(st==="14 · Completed"&&!(await uiConfirm(`Mark "${deal.contact||deal.client}" as Completed?\n\nUse this only when all work is done and the project is fully closed.`))) return;
+                    changeStage(st);
+                  };
+                  return(
+                    <div style={{marginTop:10,borderTop:"1px solid #f1f5f9",paddingTop:10}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginBottom:6}}>
+                        <span style={{fontSize:".58rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".08em",color:"#94a3b8"}}>Stage{canStage?" — tap to change":""}</span>
+                        {isAlreadyDone&&canStage&&canSetDealStage(role,deal.stage,"11 · Punchlist")&&(
+                          <button onClick={async ()=>{if((await uiConfirm("Reopen this project? It will be moved back to 11 · Punchlist."))) changeStage("11 · Punchlist");}}
+                            style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:600,padding:"2px 10px",borderRadius:20,cursor:"pointer",background:"transparent",color:"#64748b",border:"1px solid #e2e8f0"}}>↩ Reopen</button>
+                        )}
+                      </div>
+                      <div style={{display:"flex",alignItems:"center",overflowX:"auto",paddingBottom:2}}>
+                        {STEPS.map(([s,label,sc],i)=>{
+                          const isActive=i===cur; const isPast=cur>=0&&i<cur;
+                          const clickable=canStage&&!isActive&&canSetDealStage(role,deal.stage,s);
+                          return(
+                            <React.Fragment key={s}>
+                              <button disabled={!clickable} onClick={()=>pick(s)} aria-current={isActive?"step":undefined}
+                                title={clickable?`Move to ${label}`:undefined}
+                                style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".6rem",fontWeight:isActive?800:600,letterSpacing:".03em",padding:"4px 10px",borderRadius:20,whiteSpace:"nowrap",flexShrink:0,
+                                  cursor:clickable?"pointer":"default",
+                                  background:isActive?sc:isPast?"#ecfdf5":"#fff",
+                                  color:isActive?"#fff":isPast?"#059669":clickable?sc:"#94a3b8",
+                                  border:`1.5px solid ${isActive?sc:isPast?"#a7f3d0":clickable?sc+"66":"#e2e8f0"}`}}>
+                                {isPast?"✓ ":""}{label}
+                              </button>
+                              {i<STEPS.length-1&&<div style={{flex:"1 0 6px",height:2,background:isPast?"#10b981":"#e2e8f0",minWidth:6}}/>}
+                            </React.Fragment>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+                {/* All-depts-done banner */}
+                {pct===100&&deal&&deal.stage!=="12 · Close-Out"&&deal.stage!=="14 · Completed"&&(
+                  <div style={{marginTop:8,background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:8,padding:"6px 12px",fontSize:".74rem",fontWeight:700,color:"#059669"}}>🎉 All departments complete. Move it to Close-Out or Completed on the stage bar.</div>
+                )}
+                {/* Scope changes are logged by Sales as a linked deal
+                    (+ Add New Deal -> Link to Parent Deal), not from the project
+                    card, so there is no "Log Scope Change" form here. */}
               </div>
 
-              {/* ── Phase Timeline ── */}
-              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
-                <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:12}}>🗺 Project Phases</div>
-                <div style={{display:"flex",alignItems:"center",overflowX:"auto",paddingBottom:4}}>
-                  {PHASES.map((phase,i)=>{
-                    const isActive=i===pi; const isPast=i<pi;
-                    return(
-                      <React.Fragment key={phase.id}>
-                        <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,minWidth:64}}>
-                          <div style={{width:38,height:38,borderRadius:"50%",background:isActive?"#1e293b":isPast?"#10b981":"#f1f5f9",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1rem",border:isActive?"2.5px solid #f59e0b":"2.5px solid transparent",boxShadow:isActive?"0 0 0 3px rgba(245,158,11,.2)":undefined}}>
-                            {isPast?"✓":phase.icon}
-                          </div>
-                          <div style={{fontSize:".58rem",fontWeight:isActive?800:500,color:isActive?"#f59e0b":isPast?"#10b981":"#94a3b8",textAlign:"center",whiteSpace:"nowrap"}}>{phase.label}</div>
-                        </div>
-                        {i<PHASES.length-1&&<div style={{flex:1,height:2,background:i<pi?"#10b981":"#e2e8f0",minWidth:8}}/>}
-                      </React.Fragment>
-                    );
-                  })}
-                </div>
+              {/* ── Section tabs: one section at a time so the page fits the screen ── */}
+              <div role="tablist" aria-label="Project sections" style={{display:"flex",gap:2,background:"#f1f5f9",borderRadius:10,padding:3,overflowX:"auto",alignSelf:"flex-start",maxWidth:"100%"}}>
+                {hqTabs.map(([k,l,n])=>(
+                  <button key={k} role="tab" aria-selected={hqTab===k} onClick={()=>setHqTab(k)}
+                    style={{border:"none",borderRadius:8,padding:"6px 14px",background:hqTab===k?"#1e293b":"transparent",color:hqTab===k?"#fff":"#475569",fontWeight:hqTab===k?700:600,fontSize:".78rem",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
+                    {l}{n>0&&<span style={{marginLeft:6,fontSize:".64rem",fontWeight:800,borderRadius:20,padding:"0 6px",background:hqTab===k?"rgba(255,255,255,.2)":"#e2e8f0",color:hqTab===k?"#fff":"#475569"}}>{n}</span>}
+                  </button>
+                ))}
               </div>
 
+              {hqTab==="progress"&&<>
               {/* ── Department Progress (click to toggle done / expand tasks) ── */}
               {card&&(()=>{
                 const doneDepts=DEPT_ORDER.filter(d=>card.departments?.[d]?.done).length;
                 const autoPct=Math.round(doneDepts/6*100);
-                const canEditManual=role==="Manager"||role==="Operations"||role==="SalesOpsAdmin";
-                const setManual=(val)=>{
-                  upPcards(ps=>({...ps,[selDeal]:{...ps[selDeal],manualProgress:val}}));
-                  if(isSupabaseReady()) syncProjectCard(selDeal,{manual_progress:val});
-                };
                 return(
                 <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
@@ -28622,11 +28558,11 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                     </div>
                   </div>
                   {/* progress bar */}
-                  <div style={{height:7,background:"#f1f5f9",borderRadius:4,overflow:"hidden",marginBottom:12}}>
+                  <div style={{height:7,background:"#f1f5f9",borderRadius:4,overflow:"hidden",marginBottom:10}}>
                     <div style={{height:"100%",width:pct+"%",background:pct>=100?"#059669":pct>=50?"#10b981":"#f59e0b",borderRadius:4,transition:"width .2s"}}/>
                   </div>
                   {/* department rows */}
-                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:6,alignItems:"start"}}>
                     {DEPT_ORDER.map(dept=>{
                       const dd=card.departments?.[dept]||{done:false,tasks:[]};
                       const canEditDept=editableDepts.includes(dept);
@@ -28634,7 +28570,7 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                       const tasks=dd.tasks||[];
                       const doneTasks=tasks.filter(t=>t.done).length;
                       return(
-                        <details key={dept} style={{background:dd.done?"#f0fdf4":"#f8fafc",border:`1px solid ${dd.done?"#a7f3d0":"#e2e8f0"}`,borderRadius:10,padding:"8px 12px"}}>
+                        <details key={dept} style={{background:dd.done?"#f0fdf4":"#f8fafc",border:`1px solid ${dd.done?"#a7f3d0":"#e2e8f0"}`,borderRadius:10,padding:"6px 12px"}}>
                           <summary style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer",listStyle:"none"}}>
                             <input type="checkbox" checked={!!dd.done} disabled={!canEditDept}
                               onChange={e=>{e.stopPropagation();markDeptDone(selDeal,dept,e.target.checked);}}
@@ -28663,18 +28599,23 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                       );
                     })}
                   </div>
-                  {/* manual progress override */}
-                  {canEditManual&&(
-                    <div style={{marginTop:12,paddingTop:10,borderTop:"1px solid #f1f5f9",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-                      <span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:600}}>Manual override:</span>
-                      <input type="number" min={0} max={100} value={card.manualProgress!=null?card.manualProgress:""}
-                        placeholder={`auto ${autoPct}`}
-                        onChange={e=>{const v=e.target.value===""?null:Math.max(0,Math.min(100,Number(e.target.value)));setManual(v);}}
-                        style={{width:72,border:"1.5px solid #e2e8f0",borderRadius:8,padding:"5px 8px",fontFamily:"inherit",fontSize:".8rem"}}/>
-                      <span style={{fontSize:".72rem",color:"#64748b"}}>%</span>
-                      {card.manualProgress!=null&&<button onClick={()=>setManual(null)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>↺ Use auto ({autoPct}%)</button>}
-                    </div>
-                  )}
+                  {/* PM estimate: 30 / 60 / 90 / 100 % through set_project_progress
+                      (who + when stamped, every change in audit_log). Same rule
+                      and roles as the Progress page (src/views/ProjectProgress.jsx). */}
+                  <div style={{marginTop:10,paddingTop:10,borderTop:"1px solid #f1f5f9",display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                    <span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:600}}>PM estimate:</span>
+                    {[30,60,90,100].map(s=>{
+                      const on=card.manualProgress===s;
+                      const sc={30:"#f59e0b",60:"#3b82f6",90:"#8b5cf6",100:"#059669"}[s];
+                      const dis=!canSetPct||!!pctBusy;
+                      return(
+                        <button key={s} disabled={dis} aria-pressed={on} onClick={()=>!on&&setPctRpc(s)}
+                          style={{minWidth:46,border:`1.5px solid ${on?sc:"#e2e8f0"}`,borderRadius:7,padding:"3px 8px",background:on?sc:"#fff",color:on?"#fff":"#475569",fontWeight:800,fontSize:".72rem",cursor:dis?"default":"pointer",fontFamily:"inherit",opacity:pctBusy===s?.6:1}}>{s}%</button>
+                      );
+                    })}
+                    {card.manualProgress!=null&&![30,60,90,100].includes(card.manualProgress)&&<span style={{fontSize:".68rem",color:"#8b5cf6"}}>now {card.manualProgress}% (old free entry)</span>}
+                    {card.progressSetBy&&<span style={{fontSize:".66rem",color:"#94a3b8"}}>set by {card.progressSetBy}{card.progressSetAt?` · ${String(card.progressSetAt).slice(0,10)}`:""}</span>}
+                  </div>
                 </div>
                 );
               })()}
@@ -28721,7 +28662,7 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
               {/* ── TAT (collapsible) ── */}
               {card&&(
                 <div style={{background:isOver?"#fef2f2":"#f0fdf4",borderRadius:14,border:`1.5px solid ${isOver?"#fecaca":"#6ee7b7"}`,overflow:"hidden"}}>
-                  <div onClick={()=>setTatOpen(o=>!o)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:isMobile?"12px 14px":"14px 20px",cursor:"pointer"}}>
+                  <div onClick={()=>setTatOpen(o=>!o)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:isMobile?"12px 14px":"10px 20px",cursor:"pointer"}}>
                     <div style={{fontWeight:700,color:isOver?"#dc2626":"#059669",fontSize:".82rem"}}>⏱ Turnaround Time{card.targetDays&&<span style={{fontWeight:400,color:isOver?"#ef4444":dLeft<=7?"#f59e0b":"#059669",marginLeft:6}}>{isOver?`— ⚠ ${Math.abs(dLeft)}d overdue`:`— ${dLeft}d remaining`}</span>}</div>
                     <span style={{color:"#94a3b8",fontSize:".8rem"}}>{tatOpen?"▲":"▼"}</span>
                   </div>
@@ -28755,7 +28696,9 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                   )}
                 </div>
               )}
+              </>}
 
+              {hqTab==="updates"&&<>
               {/* ── Team Updates (single unified feed — posts via the canonical Log Update modal) ── */}
               {(()=>{
                 const allProjUpdates=(actLog||[]).filter(a=>a.dealId===selDeal&&a.action==="PM Update").sort((a,b)=>b.date.localeCompare(a.date)||b.time?.localeCompare(a.time||""));
@@ -28768,7 +28711,7 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                     {canPost&&<button onClick={()=>setPmUpdateModal({dealId:selDeal,dealName:deal?.client||"",stage:deal?.stage||"",pct})} style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.2)",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#4ade80",cursor:"pointer",fontWeight:700}}>+ Post Update</button>}
                   </div>
                   {/* Chat messages */}
-                  <div style={{padding:"12px 16px",display:"flex",flexDirection:"column",gap:10,maxHeight:400,overflowY:"auto"}}>
+                  <div style={{padding:"12px 16px",display:"flex",flexDirection:"column",gap:10,maxHeight:isMobile?420:"max(240px, calc(100vh - 530px))",overflowY:"auto"}}>
                     {allProjUpdates.length===0&&(
                       <div style={{textAlign:"center",padding:"16px 0",color:"#94a3b8",fontSize:".8rem"}}>No updates yet.{canPost&&" Tap + Post Update to add the first one."}</div>
                     )}
@@ -28807,7 +28750,9 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                 </div>
                 );
               })()}
+              </>}
 
+              {hqTab==="checklist"&&<>
               {/* ── Project Checklist ── */}
               <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
                 <div style={{padding:isMobile?"12px 14px":"14px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid #f1f5f9"}}>
@@ -28824,7 +28769,7 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                 {projCl.length===0?(
                   <div style={{padding:"14px 20px",color:"#94a3b8",fontSize:".78rem",textAlign:"center"}}>No checklist tasks yet for this project.</div>
                 ):(
-                  <div style={{display:"flex",flexDirection:"column",gap:0}}>
+                  <div style={{display:"flex",flexDirection:"column",gap:0,maxHeight:isMobile?undefined:"max(240px, calc(100vh - 530px))",overflowY:"auto"}}>
                     {projCl.map((c,i)=>(
                       <div key={c.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 16px",borderBottom:i<projCl.length-1?"1px solid #f8fafc":"none",background:"#fff"}}>
                         <select value={c.status} onChange={e=>clStatusQ&&clStatusQ(c.id,e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:6,padding:"3px 6px",fontFamily:"inherit",fontSize:".68rem",color:"#0f172a",background:"#fff",cursor:"pointer",flexShrink:0}}>
@@ -28848,37 +28793,11 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                   </div>
                 )}
               </div>
+              </>}
 
-              {/* ── Scope Changes (Total Contract roll-up) ──
-                  Finance-facing: shows Initial + Addendums = Total. Hidden from
-                  Operations/PM/Design — they maintain the single project card and
-                  don't need the contract total; scope changes are Sales-owned. */}
-              {!["Operations","ProjectMover","Design"].includes(role)&&(
-              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:projAddenda.length>0?10:0}}>
-                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>⚠️ Scope Changes{projAddenda.length>0&&<span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:400,marginLeft:5}}>({projAddenda.length})</span>}</div>
-                </div>
-                {(projAddenda.length>0||(deals||[]).some(d=>d.parentDealId===deal.id&&!isLostStage(d.stage)))&&<div style={{marginBottom:10}}><ContractBreakdown deal={deal} addenda={addenda} deals={deals}/></div>}
-                {projAddenda.length===0&&!(deals||[]).some(d=>d.parentDealId===deal.id&&!isLostStage(d.stage))&&<div style={{fontSize:".78rem",color:"#94a3b8"}}>No scope changes for this project.</div>}
-                {projAddenda.slice(0,3).map(a=>{
-                  const sc={"Discovered":"#94a3b8","Sales Notified":"#f59e0b","Client Coordinating":"#3b82f6","Approved":"#059669","Billed":"#8b5cf6","Collected":"#10b981","Rejected":"#ef4444"}[a.status]||"#94a3b8";
-                  return(
-                    <div key={a.id} style={{padding:"9px 12px",borderRadius:8,background:"#fffbeb",border:"1px solid #fde68a",marginBottom:6,display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
-                      <div>
-                        <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{a.title}</div>
-                        {Number(a.value)>0&&<div style={{fontSize:".72rem",color:"#92400e",marginTop:1}}>₱{Number(a.value).toLocaleString("en-PH")} additional</div>}
-                      </div>
-                      <span style={{fontSize:".63rem",background:sc+"22",color:sc,border:`1px solid ${sc}44`,borderRadius:20,padding:"2px 8px",fontWeight:700,flexShrink:0}}>{a.status}</span>
-                    </div>
-                  );
-                })}
-                {projAddenda.length>3&&<div style={{fontSize:".72rem",color:"#94a3b8",marginTop:4}}>+{projAddenda.length-3} more — see Scope Changes page</div>}
-              </div>
-              )}
-
-
+              {hqTab==="finance"&&<>
               {/* ── Finance Snapshot ── */}
-              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px",marginBottom:8}}>
+              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,gap:8,flexWrap:"wrap"}}>
                   <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>💰 Finance Snapshot</div>
                   {["Manager","Finance","FinanceAssistant","Accounting","Operations","Sales"].includes(role)&&(
@@ -28923,6 +28842,34 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                   </div>
                 )}
               </div>
+
+              {/* ── Scope Changes (Total Contract roll-up) ──
+                  Finance-facing: shows Initial + Addendums = Total. Hidden from
+                  Operations/PM/Design — they maintain the single project card and
+                  don't need the contract total; scope changes are Sales-owned. */}
+              {!["Operations","ProjectMover","Design"].includes(role)&&(
+              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:projAddenda.length>0?10:0}}>
+                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>⚠️ Scope Changes{projAddenda.length>0&&<span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:400,marginLeft:5}}>({projAddenda.length})</span>}</div>
+                </div>
+                {(projAddenda.length>0||(deals||[]).some(d=>d.parentDealId===deal.id&&!isLostStage(d.stage)))&&<div style={{marginBottom:10}}><ContractBreakdown deal={deal} addenda={addenda} deals={deals}/></div>}
+                {projAddenda.length===0&&!(deals||[]).some(d=>d.parentDealId===deal.id&&!isLostStage(d.stage))&&<div style={{fontSize:".78rem",color:"#94a3b8"}}>No scope changes for this project.</div>}
+                {projAddenda.slice(0,3).map(a=>{
+                  const sc={"Discovered":"#94a3b8","Sales Notified":"#f59e0b","Client Coordinating":"#3b82f6","Approved":"#059669","Billed":"#8b5cf6","Collected":"#10b981","Rejected":"#ef4444"}[a.status]||"#94a3b8";
+                  return(
+                    <div key={a.id} style={{padding:"9px 12px",borderRadius:8,background:"#fffbeb",border:"1px solid #fde68a",marginBottom:6,display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+                      <div>
+                        <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{a.title}</div>
+                        {Number(a.value)>0&&<div style={{fontSize:".72rem",color:"#92400e",marginTop:1}}>₱{Number(a.value).toLocaleString("en-PH")} additional</div>}
+                      </div>
+                      <span style={{fontSize:".63rem",background:sc+"22",color:sc,border:`1px solid ${sc}44`,borderRadius:20,padding:"2px 8px",fontWeight:700,flexShrink:0}}>{a.status}</span>
+                    </div>
+                  );
+                })}
+                {projAddenda.length>3&&<div style={{fontSize:".72rem",color:"#94a3b8",marginTop:4}}>+{projAddenda.length-3} more — see Scope Changes page</div>}
+              </div>
+              )}
+              </>}
 
             </div>
           );
