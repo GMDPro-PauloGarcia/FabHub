@@ -10,7 +10,7 @@ import {fmt,addPrintClose,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dro
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
+import {projProgressPct, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -11951,7 +11951,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     .map((d,i)=>{
                       const jo=dealJo(jos,d.id);
                       const pc=pcards[d.id];
-                      const pct=pc?Math.round(Object.values(pc.departments||{}).filter(dept=>dept.done).length/6*100):0;
+                      const pct=projProgressPct(pc,d);
                       const daysLeft=pc?.targetEndDate?Math.ceil((new Date(pc.targetEndDate)-today2)/(1000*60*60*24)):null;
                       const isOver=daysLeft!==null&&daysLeft<0;
                       const myUpdates=actLog.filter(a=>a.dealId===d.id&&a.action==="PM Update");
@@ -11973,7 +11973,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                             </div>
                             <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
                               <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                                <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:pct===100?"#059669":"#3b82f6"}}>{pct}%</span>
+                                <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:pct===100?"#059669":pct==null?"#94a3b8":"#3b82f6"}}>{pct==null?"—":`${pct}%`}</span>
                                 {daysLeft!==null&&(
                                   <span style={{fontSize:".7rem",fontWeight:700,color:isOver?"#dc2626":daysLeft<=7?"#f59e0b":"#059669",background:isOver?"#fef2f2":daysLeft<=7?"#fffbeb":"#f0fdf4",border:"1px solid",borderColor:isOver?"#fecaca":daysLeft<=7?"#fde68a":"#6ee7b7",borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap"}}>
                                     {isOver?`${Math.abs(daysLeft)}d OVER`:`${daysLeft}d left`}
@@ -12005,14 +12005,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 {otherProjects.slice(0,5).map((d,i)=>{
                   const jo=dealJo(jos,d.id);
                   const pc=pcards[d.id];
-                  const pct=pc?Math.round(Object.values(pc.departments||{}).filter(dept=>dept.done).length/6*100):0;
+                  const pct=projProgressPct(pc,d);
                   return(
                     <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:i<4?"1px solid #f8fafc":""}}>
                       <div>
                         <div style={{fontWeight:600,color:"#475569",fontSize:".85rem"}}>{d.client}</div>
                         <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d.ceNo} · PM: {pc?.pm1||jo?.pm1||"—"}</div>
                       </div>
-                      <span style={{fontSize:".8rem",fontWeight:700,color:"#94a3b8"}}>{pct}%</span>
+                      <span style={{fontSize:".8rem",fontWeight:700,color:"#94a3b8"}}>{pct==null?"—":`${pct}%`}</span>
                     </div>
                   );
                 })}
@@ -17524,14 +17524,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               {myProjects.map(d=>{
                 const jo=dealJo(jos,d.id);
                 const pc=pcards[d.id];
-                const pct=pc?Math.round(Object.values(pc.departments||{}).filter(dept=>dept.done).length/6*100):0;
+                const pct=projProgressPct(pc,d);
                 const myUpdates=actLog.filter(a=>a.dealId===d.id&&a.action==="PM Update").slice(0,3);
                 return(
                   <div key={d.id} style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
                     <div style={{background:"#0ea5e9",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                       <div>
                         <div style={{fontWeight:700,color:"#fff",fontSize:".92rem"}}>{d.client}</div>
-                        <div style={{fontSize:".72rem",color:"rgba(255,255,255,.7)",marginTop:1}}>{d.ceNo} · PM: {pc?.pm1||jo?.pm1||"—"} · {pct}% complete</div>
+                        <div style={{fontSize:".72rem",color:"rgba(255,255,255,.7)",marginTop:1}}>{d.ceNo} · PM: {pc?.pm1||jo?.pm1||"—"} · {pct==null?"progress not set":`${pct}% complete`}</div>
                       </div>
                       <button onClick={()=>setPmUpdateModal({dealId:d.id,dealName:d.client,ceNo:d.ceNo,ae:jo?.aeAssigned||d.salesOwner})}
                         style={{background:"rgba(255,255,255,.2)",border:"1px solid rgba(255,255,255,.3)",borderRadius:8,padding:"7px 14px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>
@@ -27710,7 +27710,7 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
     return t>0?fmt(t)+" 📊":"Budget Pending";
   };
   const editableDepts={Manager:DEPT_ORDER,Sales:["Sales"],Design:["Design"],QS:["QS"],Procurement:["Procurement"],Operations:["Operations"],Finance:["Finance"],SalesOpsAdmin:DEPT_ORDER}[role]||[];
-  const projPct=(pc,deal=null)=>{if(deal?.stage==="12 · Close-Out"||deal?.stage==="14 · Completed")return 100;return pc?(pc.manualProgress!=null?pc.manualProgress:Math.round(Object.values(pc.departments||{}).filter(d=>d.done).length/6*100)):0;};
+  const projPct=(pc,deal=null)=>projProgressPct(pc,deal);
   const getHealth=(d,pc)=>{
     if(!pc||!d)return "none";
     const end=pc.targetEndDate?new Date(pc.targetEndDate):null;
@@ -27971,7 +27971,7 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
             list=[...list].sort((a,b)=>{
               if(pcSort==="client")return a.client.localeCompare(b.client);
               if(pcSort==="project")return (a.contact||a.client).localeCompare(b.contact||b.client);
-              if(pcSort==="pct")return projPct(pcards[a.id])-projPct(pcards[b.id]);
+              if(pcSort==="pct")return (projPct(pcards[a.id],a)??-1)-(projPct(pcards[b.id],b)??-1);
               if(pcSort==="tat"){
                 const da=pcards[a.id]?.targetEndDate?Math.ceil((new Date(pcards[a.id].targetEndDate)-today2)/86400000):999;
                 const db=pcards[b.id]?.targetEndDate?Math.ceil((new Date(pcards[b.id].targetEndDate)-today2)/86400000):999;
@@ -28042,8 +28042,6 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                   const projTypeC=pc?.tatCategory||d.projType||joC?.projType||"";
                   const pctC=projPct(pc,d);
                   const gradeC=calcCardGrade(d,pc);
-                  const deptStateC=DEPT_ORDER.map(dep=>({dep,done:!!pc?.departments?.[dep]?.done}));
-                  const doneCountC=deptStateC.filter(x=>x.done).length;
                   const lastNoteC=(pc?.pmUpdates||[])[0];
                   const lastNoteTxtC=lastNoteC?(lastNoteC.note||lastNoteC.text||""):"";
                   const[,hLabelC]=HC[h];
@@ -28073,24 +28071,14 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                           <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:600,letterSpacing:".06em",textTransform:"uppercase",padding:"3px 8px",borderRadius:4,background:hc+"18",color:hc,border:`1px solid ${hc}44`,whiteSpace:"nowrap"}}>{d.stage?.replace(/^\d+ · /,"")||"—"}</span>
                         </div>
                       </div>
-                      {/* Progress + department strip */}
+                      {/* Progress: the PM's 30/60/90/100 estimate only */}
                       <div style={{padding:"10px 15px",borderBottom:"1px solid #e2e8f0",background:"#fbfcfe"}}>
                         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
-                          <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".55rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".08em",color:"#94a3b8"}}>Progress · {doneCountC}/6 depts</span>
-                          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:".95rem",color:pctC>=100?"#059669":pctC>=50?"#0f172a":"#64748b"}}>{pctC}%</span>
+                          <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".55rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".08em",color:"#94a3b8"}}>Progress{pc?.progressSetBy?` · ${pc.progressSetBy}`:""}</span>
+                          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:".95rem",color:pctC==null?"#94a3b8":pctC>=100?"#059669":pctC>=50?"#0f172a":"#64748b"}}>{pctC==null?"Not set":`${pctC}%`}</span>
                         </div>
-                        <div style={{height:6,borderRadius:20,background:"#e2e8f0",overflow:"hidden",marginBottom:8}}>
-                          <div style={{height:"100%",width:`${pctC}%`,borderRadius:20,background:pctC>=100?"#10b981":isOverC?"#ef4444":"#3b82f6",transition:"width .3s"}}/>
-                        </div>
-                        <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-                          {deptStateC.map(({dep,done})=>(
-                            <span key={dep} title={`${dep}: ${done?"done":"pending"}`}
-                              style={{fontSize:".55rem",fontWeight:700,padding:"2px 7px",borderRadius:20,whiteSpace:"nowrap",
-                                background:done?(DEPT_CLR[dep]||"#10b981"):"#fff",color:done?"#fff":"#94a3b8",
-                                border:`1px solid ${done?(DEPT_CLR[dep]||"#10b981"):"#e2e8f0"}`}}>
-                              {done?"✓ ":""}{dep.slice(0,4)}
-                            </span>
-                          ))}
+                        <div style={{height:6,borderRadius:20,background:"#e2e8f0",overflow:"hidden"}}>
+                          <div style={{height:"100%",width:`${pctC||0}%`,borderRadius:20,background:pctC>=100?"#10b981":isOverC?"#ef4444":"#3b82f6",transition:"width .3s"}}/>
                         </div>
                       </div>
                       {/* Spec table */}
@@ -28526,7 +28514,7 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                 })()}
                 {/* All-depts-done banner */}
                 {pct===100&&deal&&deal.stage!=="12 · Close-Out"&&deal.stage!=="14 · Completed"&&(
-                  <div style={{marginTop:8,background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:8,padding:"6px 12px",fontSize:".74rem",fontWeight:700,color:"#059669"}}>🎉 All departments complete. Move it to Close-Out or Completed on the stage bar.</div>
+                  <div style={{marginTop:8,background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:8,padding:"6px 12px",fontSize:".74rem",fontWeight:700,color:"#059669"}}>🎉 PM reports 100%. Move it to Close-Out or Completed on the stage bar.</div>
                 )}
                 {/* Scope changes are logged by Sales as a linked deal
                     (+ Add New Deal -> Link to Parent Deal), not from the project
@@ -28544,78 +28532,46 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
               </div>
 
               {hqTab==="progress"&&<>
-              {/* ── Department Progress (click to toggle done / expand tasks) ── */}
-              {card&&(()=>{
-                const doneDepts=DEPT_ORDER.filter(d=>card.departments?.[d]?.done).length;
-                const autoPct=Math.round(doneDepts/6*100);
+              {/* ── Progress: one number, the PM's 30 / 60 / 90 / 100 % estimate ──
+                  Saved through set_project_progress (who + when, every change in
+                  audit_log). Same roles as the Progress page. Department
+                  checkboxes are gone from this page (never used: 0 of 3,627
+                  sub-tasks ticked). */}
+              {(()=>{
+                const STEP_CLR={30:"#f59e0b",60:"#3b82f6",90:"#8b5cf6",100:"#059669"};
+                const closed=deal?.stage==="12 · Close-Out"||deal?.stage==="14 · Completed";
+                const barClr=pct==null?"#e2e8f0":pct>=100?"#059669":isOver?"#ef4444":"#3b82f6";
                 return(
                 <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
-                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>🏗 Department Progress</div>
-                    <div style={{display:"flex",alignItems:"center",gap:8}}>
-                      <span style={{fontSize:".72rem",fontWeight:700,color:pct>=100?"#059669":"#64748b"}}>{pct}%{card.manualProgress!=null&&<span style={{color:"#8b5cf6",fontWeight:600}}> (manual)</span>}</span>
-                      <span style={{fontSize:".66rem",color:"#94a3b8"}}>{doneDepts}/6 done</span>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8,flexWrap:"wrap",marginBottom:8}}>
+                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>📊 Progress</div>
+                    <div style={{fontSize:".7rem",color:"#94a3b8"}}>
+                      {closed?"Closed out: counts as 100%"
+                        :card?.progressSetBy?`Set by ${card.progressSetBy}${card.progressSetAt?` · ${String(card.progressSetAt).slice(0,10)}`:""}`
+                        :pct==null?"Not set yet":""}
                     </div>
                   </div>
-                  {/* progress bar */}
-                  <div style={{height:7,background:"#f1f5f9",borderRadius:4,overflow:"hidden",marginBottom:10}}>
-                    <div style={{height:"100%",width:pct+"%",background:pct>=100?"#059669":pct>=50?"#10b981":"#f59e0b",borderRadius:4,transition:"width .2s"}}/>
+                  <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:12}}>
+                    <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"2.2rem",lineHeight:1,color:pct==null?"#cbd5e1":pct>=100?"#059669":"#0f172a",minWidth:84}}>{pct==null?"—":`${pct}%`}</span>
+                    <div style={{flex:1,height:10,background:"#f1f5f9",borderRadius:6,overflow:"hidden"}}>
+                      <div style={{height:"100%",width:(pct||0)+"%",background:barClr,borderRadius:6,transition:"width .2s"}}/>
+                    </div>
                   </div>
-                  {/* department rows */}
-                  <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:6,alignItems:"start"}}>
-                    {DEPT_ORDER.map(dept=>{
-                      const dd=card.departments?.[dept]||{done:false,tasks:[]};
-                      const canEditDept=editableDepts.includes(dept);
-                      const clr=DEPT_CLR[dept]||"#64748b";
-                      const tasks=dd.tasks||[];
-                      const doneTasks=tasks.filter(t=>t.done).length;
-                      return(
-                        <details key={dept} style={{background:dd.done?"#f0fdf4":"#f8fafc",border:`1px solid ${dd.done?"#a7f3d0":"#e2e8f0"}`,borderRadius:10,padding:"6px 12px"}}>
-                          <summary style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer",listStyle:"none"}}>
-                            <input type="checkbox" checked={!!dd.done} disabled={!canEditDept}
-                              onChange={e=>{e.stopPropagation();markDeptDone(selDeal,dept,e.target.checked);}}
-                              onClick={e=>e.stopPropagation()}
-                              style={{width:17,height:17,accentColor:clr,cursor:canEditDept?"pointer":"not-allowed",flexShrink:0}}/>
-                            <span style={{width:8,height:8,borderRadius:"50%",background:clr,flexShrink:0}}/>
-                            <span style={{fontWeight:700,fontSize:".8rem",color:dd.done?"#059669":"#0f172a",flex:1}}>{dept}</span>
-                            {tasks.length>0&&<span style={{fontSize:".66rem",color:"#94a3b8"}}>{doneTasks}/{tasks.length} tasks</span>}
-                            {dd.done&&dd.doneBy&&<span style={{fontSize:".62rem",color:"#059669"}}>✓ {dd.doneBy}</span>}
-                            {tasks.length>0&&<span style={{fontSize:".7rem",color:"#94a3b8"}}>▾</span>}
-                          </summary>
-                          {tasks.length>0&&(
-                            <div style={{marginTop:8,paddingLeft:27,display:"flex",flexDirection:"column",gap:5}}>
-                              {tasks.map(t=>(
-                                <label key={t.id} style={{display:"flex",alignItems:"center",gap:8,cursor:canEditDept?"pointer":"default"}}>
-                                  <input type="checkbox" checked={!!t.done} disabled={!canEditDept}
-                                    onChange={()=>toggleDeptTask(selDeal,dept,t.id)}
-                                    style={{width:14,height:14,accentColor:clr,cursor:canEditDept?"pointer":"not-allowed",flexShrink:0}}/>
-                                  <span style={{fontSize:".76rem",color:t.done?"#94a3b8":"#334155",textDecoration:t.done?"line-through":"none"}}>{t.text}</span>
-                                </label>
-                              ))}
-                            </div>
-                          )}
-                          {tasks.length===0&&<div style={{marginTop:6,paddingLeft:27,fontSize:".72rem",color:"#94a3b8"}}>No sub-tasks — use the checkbox to mark this department done.</div>}
-                        </details>
-                      );
-                    })}
-                  </div>
-                  {/* PM estimate: 30 / 60 / 90 / 100 % through set_project_progress
-                      (who + when stamped, every change in audit_log). Same rule
-                      and roles as the Progress page (src/views/ProjectProgress.jsx). */}
-                  <div style={{marginTop:10,paddingTop:10,borderTop:"1px solid #f1f5f9",display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-                    <span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:600}}>PM estimate:</span>
-                    {[30,60,90,100].map(s=>{
-                      const on=card.manualProgress===s;
-                      const sc={30:"#f59e0b",60:"#3b82f6",90:"#8b5cf6",100:"#059669"}[s];
-                      const dis=!canSetPct||!!pctBusy;
-                      return(
-                        <button key={s} disabled={dis} aria-pressed={on} onClick={()=>!on&&setPctRpc(s)}
-                          style={{minWidth:46,border:`1.5px solid ${on?sc:"#e2e8f0"}`,borderRadius:7,padding:"3px 8px",background:on?sc:"#fff",color:on?"#fff":"#475569",fontWeight:800,fontSize:".72rem",cursor:dis?"default":"pointer",fontFamily:"inherit",opacity:pctBusy===s?.6:1}}>{s}%</button>
-                      );
-                    })}
-                    {card.manualProgress!=null&&![30,60,90,100].includes(card.manualProgress)&&<span style={{fontSize:".68rem",color:"#8b5cf6"}}>now {card.manualProgress}% (old free entry)</span>}
-                    {card.progressSetBy&&<span style={{fontSize:".66rem",color:"#94a3b8"}}>set by {card.progressSetBy}{card.progressSetAt?` · ${String(card.progressSetAt).slice(0,10)}`:""}</span>}
-                  </div>
+                  {!card&&<div style={{fontSize:".74rem",color:"#94a3b8"}}>This project has no project card yet, so progress can't be set. Assign the team (✏️ Team) to create it.</div>}
+                  {card&&!closed&&(
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,maxWidth:420}}>
+                      {[30,60,90,100].map(s=>{
+                        const on=card.manualProgress===s;
+                        const dis=!canSetPct||!!pctBusy;
+                        return(
+                          <button key={s} disabled={dis} aria-pressed={on} onClick={()=>!on&&setPctRpc(s)}
+                            style={{border:`1.5px solid ${on?STEP_CLR[s]:"#e2e8f0"}`,borderRadius:8,padding:"8px 0",background:on?STEP_CLR[s]:"#fff",color:on?"#fff":"#475569",fontWeight:800,fontSize:".86rem",cursor:dis?"default":"pointer",fontFamily:"inherit",opacity:pctBusy===s?.6:1}}>{s}%</button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {card&&!closed&&!canSetPct&&<div style={{fontSize:".68rem",color:"#94a3b8",marginTop:6}}>Set by the PM, Operations or a Manager (Coordinators on their own projects).</div>}
+                  {card&&card.manualProgress!=null&&![30,60,90,100].includes(card.manualProgress)&&<div style={{fontSize:".68rem",color:"#8b5cf6",marginTop:6}}>{card.manualProgress}% was typed in before the 30/60/90/100 rule. Pick one of the four.</div>}
                 </div>
                 );
               })()}

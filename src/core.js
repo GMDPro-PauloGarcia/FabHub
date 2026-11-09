@@ -722,6 +722,17 @@ const _joPlain=j=>/^JO-\d+$/.test(j.joNo||"")?0:1;
 const _joCmp=(a,b)=>_joPlain(a)-_joPlain(b)
   ||String(a.created_at||"").localeCompare(String(b.created_at||""))
   ||String(a.joNo||"").localeCompare(String(b.joNo||""));
+// Project progress is ONE number: the PM's 30 / 60 / 90 / 100 % estimate
+// (project_cards.manual_progress, set only through set_project_progress,
+// migration 20261107020000). Close-Out / Completed count as 100. null = not set.
+// Department checkboxes no longer count (0 of 3,627 sub-tasks were ever ticked;
+// the only ticks were Finance, auto-set when billing is fully paid).
+export const projProgressPct=(pc,deal=null)=>{
+  if(deal?.stage==="12 · Close-Out"||deal?.stage==="14 · Completed") return 100;
+  const v=pc?.manualProgress;
+  return v==null||v===""||isNaN(Number(v))?null:Number(v);
+};
+
 export const dealJo=(jos,dealId)=>{
   let best=null;
   for(const j of jos||[]) if(j.dealId===dealId&&j.status!=="Void"&&(!best||_joCmp(j,best)<0)) best=j;
