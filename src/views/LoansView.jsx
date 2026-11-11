@@ -53,6 +53,14 @@ export const fetchLoans=async()=>{
   if(e1||e2) throw (e1||e2);
   return (ls||[]).map(l=>loanFromSb(l,ps||[]));
 };
+// Which loan a cash-sheet row most likely belongs to: credit-line wording → a
+// credit line, amortisation / term-loan wording → a bank loan, same bank first.
+const lnGuessLoan=(loans,text,bank)=>{
+  const kind=/credit\s*line/i.test(text)?"credit_line":/amorti[sz]|term\s*loan|bank\s*loan/i.test(text)?"bank_loan":null;
+  const b=String(bank||"").toLowerCase();
+  const pool=kind?loans.filter(l=>l.kind===kind):loans;
+  return (pool.find(l=>b&&String(l.lender||"").toLowerCase().startsWith(b))||pool[0]||loans[0])?.id||"";
+};
 const lnErr=e=>String(e?.message||e||"").replace(/^.*?ERROR:\s*/,"");
 
 export default function LoansView({loans=[],cashPositions={},today,canEdit=false,canDelete=false,isMobile=false,sample=false,onLoans}){
@@ -148,7 +156,7 @@ export default function LoansView({loans=[],cashPositions={},today,canEdit=false
             <span style={{width:46,fontWeight:700,color:m.dir==="in"?LN.blue:LN.ink}}>{m.dir==="in"?"In":"Out"}</span>
             <span style={{width:100,fontWeight:700}}>{lnPeso(m.amount)}</span>
             <span style={{flex:1,minWidth:160,color:LN.muted}}>{m.payee}{m.particulars?` · ${m.particulars}`:""} <span style={{color:LN.faint}}>({String(m.bank).toUpperCase()})</span></span>
-            {canEdit&&<button onClick={()=>setEntryForm({loanId:(/credit\s*line/i.test(`${m.payee} ${m.particulars}`)&&loans.find(l=>l.kind==="credit_line"))?.id||loans[0]?.id||"",type:m.dir==="in"?"draw":"payment",cashKey:m.key,date:m.date,bank:m.bank,amount:m.amount,text:`${m.payee} ${m.particulars}`})} style={{border:`1px solid ${LN.line}`,borderRadius:7,padding:"4px 10px",background:"#fff",color:LN.navy,fontWeight:700,fontSize:".72rem",cursor:"pointer",fontFamily:"inherit"}}>Link to loan…</button>}
+            {canEdit&&<button onClick={()=>setEntryForm({loanId:lnGuessLoan(loans,`${m.payee} ${m.particulars}`,m.bank),type:m.dir==="in"?"draw":"payment",cashKey:m.key,date:m.date,bank:m.bank,amount:m.amount,text:`${m.payee} ${m.particulars}`})} style={{border:`1px solid ${LN.line}`,borderRadius:7,padding:"4px 10px",background:"#fff",color:LN.navy,fontWeight:700,fontSize:".72rem",cursor:"pointer",fontFamily:"inherit"}}>Link to loan…</button>}
           </div>))}
         </div>
       )}
