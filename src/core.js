@@ -113,6 +113,20 @@ export const isActivePipeline = (stage)=>!WON_STAGES.includes(stage)&&!isLostSta
 // Kickoff and Close-Out; Completed (financial gate) and reopening a Completed
 // project stay with the deal editors. Mirrors set_deal_stage() (migration
 // 20261027090000_set_deal_stage_rpc.sql) — keep them in sync.
+// Project stages as shown on Project Cards: four steps over the stored stage
+// values (agreed with Paulo 2026-11-09). The database still stores the detailed
+// values (set_deal_stage, jo_awarded_stage, PRF and coordinator rules all treat
+// 06..12 as one set), so this is display + where a click moves the project.
+// Every WON_STAGES value must be in exactly one group.
+export const PROJECT_STAGE_GROUPS=[
+  {key:"fab",     label:"Briefing / Fabrication", target:"08 · Fabrication", color:"#f59e0b", stages:["06 · Kickoff","07 · Briefing","08 · Fabrication"]},
+  {key:"install", label:"Installation",           target:"10 · Installation",color:"#3b82f6", stages:["09 · Site & Billing","10 · Installation","11 · Punchlist"]},
+  {key:"closeout",label:"Close-Out",              target:"12 · Close-Out",   color:"#059669", stages:["12 · Close-Out"]},
+  {key:"done",    label:"Completed",              target:"14 · Completed",   color:"#047857", stages:["14 · Completed"]},
+];
+export const projStageGroup=stage=>PROJECT_STAGE_GROUPS.find(g=>g.stages.includes(stage))||null;
+export const projStageLabel=stage=>projStageGroup(stage)?.label||String(stage||"").replace(/^\d+ · /,"")||"—";
+
 export const STAGE_EDITOR_ROLES = ["Manager","Sales","SalesOpsAdmin","QS"];
 export const PM_STAGE_ROLES     = ["ProjectMover","Operations"];
 export const PM_SETTABLE_STAGES = WON_STAGES.filter(s=>s!=="14 · Completed");
