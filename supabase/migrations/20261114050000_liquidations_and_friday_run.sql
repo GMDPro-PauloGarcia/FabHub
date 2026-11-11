@@ -358,7 +358,7 @@ begin
      or position(''' Payment run (Thu ''' in src) = 0 then
     raise exception 'monitoring_board_alert() is not the 20261105043929 version; update it by hand.';
   end if;
-  src := replace(src, 'thu := (date_trunc(''week'', d)::date) + 3;', 'thu := (date_trunc(''week'', d)::date) + 4;  -- Friday release (20261114040000)');
+  src := replace(src, 'thu := (date_trunc(''week'', d)::date) + 3;', 'thu := (date_trunc(''week'', d)::date) + 4;  -- Friday release (20261114050000)');
   src := replace(src, ''' Payment run (Thu ''', ''' Payment run (Fri ''');
   src := replace(src, 'Awaiting approval, due by Thursday', 'Awaiting approval, due by Friday');
   execute src;

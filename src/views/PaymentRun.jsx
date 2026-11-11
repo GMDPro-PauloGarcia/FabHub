@@ -15,7 +15,7 @@ import {chip,linkBtn,LedgerHost} from "./Ledgers";
 //   3 Pay       Friday: Finance records each supplier's payment and marks each
 //               liquidation refilled; the run is Released
 // Items: {payableId, amount} for a bill, {liquidationId, amount} for a refill
-// (migration 20261114040000_liquidations_and_friday_run.sql).
+// (migration 20261114050000_liquidations_and_friday_run.sql).
 // The database keeps the stamps and the status rules (migration
 // 20261105042842_payment_runs_and_2307.sql). A payment outside a run is still
 // possible for urgent cases; the monitoring board counts it as off-cycle.
