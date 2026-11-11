@@ -8,7 +8,7 @@ import {useSharePdf} from "./views/SharePdf";
 import SupplierDocsPanel from "./views/SupplierDocsPanel";
 import CashOutModal,{openCashOut,closeCashOut,cashOutHas,OrderPicker} from "./views/CashOutModal";
 import {buildOrders} from "./data/ledger";
-import {fmt,addPrintClose,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable,HIDDEN_NAV_IDS,AP_HIDDEN,WAREHOUSE_HIDDEN,isHiddenView,HIDDEN_FIN_TABS,HIDDEN_PIPE_TABS,pageOn,cashCanEdit} from './shared';
+import {fmt,addPrintClose,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable,HIDDEN_NAV_IDS,AP_HIDDEN,WAREHOUSE_HIDDEN,isHiddenView,HIDDEN_FIN_TABS,HIDDEN_PIPE_TABS,pageOn,cashCanEdit,ProjectSelect,setProjectSearchIndex} from './shared';
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
@@ -356,39 +356,14 @@ const Btn=({children,onClick,variant="primary",small,full,disabled,type="button"
     </button>
   );
 };
-function SearchSelect({value,onChange,options,placeholder="Search…",noneLabel="— None —",noneValue=null}){
-  const [query,setQuery]=useState("");
-  const [open,setOpen]=useState(false);
-  const ref=useRef(null);
-  const selected=options.find(o=>o.value===value);
-  const filtered=query.trim()===""?options:options.filter(o=>o.label.toLowerCase().includes(query.toLowerCase()));
-  useEffect(()=>{
-    const handler=e=>{if(ref.current&&!ref.current.contains(e.target)) setOpen(false);};
-    document.addEventListener("mousedown",handler);
-    return()=>document.removeEventListener("mousedown",handler);
-  },[]);
-  const choose=v=>{onChange(v);setOpen(false);setQuery("");};
+// Kept for its callers; it now renders the shared ProjectSelect (search by
+// name, CE no., JO no., client) so every project field searches the same way.
+function SearchSelect({value,onChange,options,placeholder,noneLabel="— None —",noneValue=null}){
   return(
-    <div ref={ref} style={{position:"relative"}}>
-      <div style={{display:"flex",alignItems:"center",border:"1.5px solid "+(open?"#6366f1":"#e2e8f0"),borderRadius:8,background:"#fff",cursor:"pointer",transition:"border-color .15s"}} onClick={()=>{setOpen(o=>!o);setQuery("");}}>
-        {open?(
-          <input autoFocus value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>{if(e.key==="Escape"){setOpen(false);setQuery("");}if(e.key==="Enter"&&filtered.length>0) choose(filtered[0].value);}} placeholder={placeholder} style={{flex:1,border:"none",outline:"none",padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"transparent",borderRadius:8}} onClick={e=>e.stopPropagation()}/>
-        ):(
-          <div style={{flex:1,padding:"10px 13px",fontSize:".87rem",color:selected?"#1e293b":"#94a3b8",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{selected?selected.label:noneLabel}</div>
-        )}
-        <span style={{padding:"0 10px",color:"#94a3b8",fontSize:".75rem",flexShrink:0}}>{open?"▲":"▼"}</span>
-      </div>
-      {open&&(
-        <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,right:0,background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:8,boxShadow:"0 8px 24px rgba(0,0,0,.12)",zIndex:999,maxHeight:240,overflowY:"auto"}}>
-          <div onClick={()=>choose(noneValue)} style={{padding:"10px 13px",fontSize:".85rem",color:"#94a3b8",cursor:"pointer",borderBottom:"1px solid #f1f5f9",fontStyle:"italic"}} onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>{noneLabel}</div>
-          {filtered.length===0?(
-            <div style={{padding:"10px 13px",fontSize:".82rem",color:"#94a3b8",textAlign:"center"}}>No projects match "{query}"</div>
-          ):filtered.map(o=>(
-            <div key={o.value} onClick={()=>choose(o.value)} style={{padding:"9px 13px",fontSize:".85rem",color:o.value===value?"#6366f1":"#1e293b",fontWeight:o.value===value?700:400,cursor:"pointer",background:o.value===value?"#f0f0ff":"transparent",borderBottom:"1px solid #f8fafc"}} onMouseEnter={e=>{if(o.value!==value)e.currentTarget.style.background="#f8fafc";}} onMouseLeave={e=>{e.currentTarget.style.background=o.value===value?"#f0f0ff":"transparent";}}>{o.label}</div>
-          ))}
-        </div>
-      )}
-    </div>
+    <ProjectSelect value={value==null?"":value} placeholder={placeholder} onChange={e=>{const v=e.target.value;onChange(v===""?noneValue:v);}}>
+      <option value="">{noneLabel}</option>
+      {(options||[]).map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
+    </ProjectSelect>
   );
 }
 // Focus-safe raw input — use this instead of bare <input> inside forms
@@ -1571,12 +1546,12 @@ function CollectionsPanel({wonDeals,infs,onUpdatePayment,onLogPayment,readonly=f
       {/* Log Payment Modal */}
       <Modal open={logModal} onClose={()=>setLogModal(false)} title="Log Payment Received">
         <Fld label="Client / Project" required>
-          <Sel value={logForm.dealId} onChange={e=>setLogForm(p=>({...p,dealId:e.target.value}))}>
+          <ProjectSelect value={logForm.dealId} onChange={e=>setLogForm(p=>({...p,dealId:e.target.value}))}>
             <option value="">— Select client —</option>
             {wonDeals.filter(d=>d.invoiced>0).map(d=>(
               <option key={d.id} value={d.id}>{d.client} — {fmt(dealFinancials(d).outstanding)} remaining</option>
             ))}
-          </Sel>
+          </ProjectSelect>
         </Fld>
         <Fld label="Amount Received (₱)" required>
           <Inp type="number" value={logForm.amount} onChange={e=>setLogForm(p=>({...p,amount:e.target.value}))} placeholder="e.g. 25000"/>
@@ -2987,10 +2962,10 @@ function AddendaPageContent({role,wonDeals,deals,jos,session,addenda,upAddenda,u
         <div style={{padding:"16px",display:"flex",flexDirection:"column",gap:12}}>
           <div>
             <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Project <span style={{color:"#ef4444"}}>*</span></label>
-            <select value={selDealId} onChange={e=>setSelDealId(e.target.value)}
+            <ProjectSelect value={selDealId} onChange={e=>setSelDealId(e.target.value)}
               style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem"}}>
               {(["Manager","QS"].includes(role)?wonDeals:myProjects).map(d=><option key={d.id} value={d.id}>{d.client} — {d.ceNo}</option>)}
-            </select>
+            </ProjectSelect>
           </div>
           <div>
             <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Change Type <span style={{color:"#ef4444"}}>*</span></label>
@@ -3670,7 +3645,7 @@ function DailySiteLogView({dailyLogs,wonDeals,addDailyLog,delDailyLog,session,ro
         <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:18,marginBottom:16}}>
           <div style={{fontWeight:800,color:"#0f172a",marginBottom:12}}>New Site Log Entry</div>
           <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"2fr 1fr 1fr 1fr",gap:10,marginBottom:10}}>
-            <div>{lbl("Project *")}<select value={f.dealId} onChange={e=>up("dealId",e.target.value)} style={{...inp,background:"#fff"}}><option value="">— Select —</option>{wonDeals.map(d=><option key={d.id} value={d.id}>{d.contact||d.client} · {d.ceNo||""}</option>)}</select></div>
+            <div>{lbl("Project *")}<ProjectSelect value={f.dealId} onChange={e=>up("dealId",e.target.value)} style={{...inp,background:"#fff"}}><option value="">— Select —</option>{wonDeals.map(d=><option key={d.id} value={d.id}>{d.contact||d.client} · {d.ceNo||""}</option>)}</ProjectSelect></div>
             <div>{lbl("Date")}<input type="date" value={f.date} onChange={e=>up("date",e.target.value)} style={inp}/></div>
             <div>{lbl("Weather")}<select value={f.weather} onChange={e=>up("weather",e.target.value)} style={{...inp,background:"#fff"}}>{WEATHER_OPTS.map(w=><option key={w}>{w}</option>)}</select></div>
             <div>{lbl("Manpower")}<input type="number" min="0" value={f.manpower} onChange={e=>up("manpower",e.target.value)} placeholder="0" style={inp}/></div>
@@ -4015,10 +3990,10 @@ function OfficeTVDashboard({deals=[],wonDeals=[],checklists=[],announcements=[],
             <label style={lbl}>Date</label>
             <input type="date" value={jobForm.dueDate} onChange={e=>setJobForm(f=>({...f,dueDate:e.target.value}))} style={inp}/>
             <label style={lbl}>Project (optional)</label>
-            <select value={jobForm.projectId} onChange={e=>setJobForm(f=>({...f,projectId:e.target.value}))} style={inp}>
+            <ProjectSelect value={jobForm.projectId} onChange={e=>setJobForm(f=>({...f,projectId:e.target.value}))} style={inp}>
               <option value="">— No project / other —</option>
               {wonDeals.map(d=><option key={d.id} value={d.id}>{(d.contact||d.product||d.client)}{d.client?` — ${d.client}`:""}</option>)}
-            </select>
+            </ProjectSelect>
             {!jobForm.projectId&&(<><label style={lbl}>Job Title</label><input value={jobForm.title} onChange={e=>setJobForm(f=>({...f,title:e.target.value}))} placeholder="e.g. Punchlist — SM North kiosk" style={inp}/></>)}
             <label style={lbl}>Location</label>
             <input value={jobForm.location} onChange={e=>setJobForm(f=>({...f,location:e.target.value}))} placeholder="Site / address" style={inp}/>
@@ -4535,7 +4510,7 @@ function PayableForm({opexOnly=false,initial,editId=null,onSave,onCancel,swos=[]
           {payForm.poNumber&&<div style={{fontSize:".72rem",color:"#64748b",marginTop:3}}>Payment waits for Operations to verify % complete. Retention is held at payment.</div>}
         </Fld>
       )}
-      <Fld label={ccOnly?"Charge to (cost center)":"Charge to (project or cost center)"}><Sel value={payForm.projectId||"none"} onChange={e=>setPayForm(p=>({...p,projectId:e.target.value==="none"?null:e.target.value}))}><option value="none">{ccOnly?"— Select a cost center":"— Select a project or cost center"}</option>{costCenterDeals.length>0&&<optgroup label="Cost centers">{costCenterDeals.map(d=><option key={d.id} value={d.id}>🏷 {d.contact||d.client}</option>)}</optgroup>}{!ccOnly&&<optgroup label="Projects">{wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" — "+d.contact:""}</option>)}</optgroup>}</Sel></Fld>
+      <Fld label={ccOnly?"Charge to (cost center)":"Charge to (project or cost center)"}><ProjectSelect value={payForm.projectId||"none"} onChange={e=>setPayForm(p=>({...p,projectId:e.target.value==="none"?null:e.target.value}))}><option value="none">{ccOnly?"— Select a cost center":"— Select a project or cost center"}</option>{costCenterDeals.length>0&&<optgroup label="Cost centers">{costCenterDeals.map(d=><option key={d.id} value={d.id}>🏷 {d.contact||d.client}</option>)}</optgroup>}{!ccOnly&&<optgroup label="Projects">{wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" — "+d.contact:""}</option>)}</optgroup>}</ProjectSelect></Fld>
       {/* BIR: VAT + EWT capture (restored from the legacy expense flow) */}
       {(()=>{
         const amt=Number(payForm.amount)||0;
@@ -8032,6 +8007,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const wonDeals    =useMemo(()=>deals.filter(d=>WON_STAGES.includes(d.stage)&&!d.isCostCenter),[deals]);
   const completedDeals=useMemo(()=>deals.filter(d=>d.stage==="14 · Completed"&&!d.isCostCenter),[deals]);
   const costCenterDeals=useMemo(()=>deals.filter(d=>d.isCostCenter&&!isLostStage(d.stage)).sort((a,b)=>(a.contact||"").localeCompare(b.contact||"")),[deals]);
+  // Search index for every project picker (ProjectSelect): CE no., JO no., client, location.
+  useMemo(()=>setProjectSearchIndex(deals,jos),[deals,jos]);
   const closedDeals=useMemo(()=>deals.filter(d=>d.stage==="12 · Close-Out"),[deals]);
   // Auto-create project entries for any won deal that doesn't have one yet
   // Depends on both wonDeals.length AND projs key count so it re-runs after Supabase loads projs
@@ -10864,7 +10841,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           <Fld label="Supplier"><Inp value={swForm.supplier} onChange={e=>setSwForm(p=>({...p,supplier:e.target.value}))} placeholder="e.g. Casa Hardware"/></Fld>
           <Fld label="Est. Cost (₱)"><Inp type="number" value={swForm.estCost} onChange={e=>setSwForm(p=>({...p,estCost:e.target.value}))}/></Fld>
           <Fld label="Status"><Sel value={swForm.status} onChange={e=>setSwForm(p=>({...p,status:e.target.value}))}>{SWATCH_STATUS.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
-          <div style={{gridColumn:"1/-1"}}><Fld label="Project"><Sel value={swForm.projectId||"none"} onChange={e=>setSwForm(p=>({...p,projectId:e.target.value==="none"?null:e.target.value}))}><option value="none">— Not linked —</option>{projList.map(d=><option key={d.id} value={d.id}>{d.client}</option>)}</Sel></Fld></div>
+          <div style={{gridColumn:"1/-1"}}><Fld label="Project"><ProjectSelect value={swForm.projectId||"none"} onChange={e=>setSwForm(p=>({...p,projectId:e.target.value==="none"?null:e.target.value}))}><option value="none">— Not linked —</option>{projList.map(d=><option key={d.id} value={d.id}>{d.client}</option>)}</ProjectSelect></Fld></div>
           <div style={{gridColumn:"1/-1"}}><Fld label="Swatch / Reference Link"><Inp type="url" value={swForm.swatchLink||""} onChange={e=>setSwForm(p=>({...p,swatchLink:e.target.value}))} placeholder="https://… (optional)"/></Fld></div>
           <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp rows={2} value={swForm.notes||""} onChange={e=>setSwForm(p=>({...p,notes:e.target.value}))}/></Fld></div>
         </div>
@@ -10925,10 +10902,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           <Inp value={infForm?.source||""} onChange={e=>setInfForm(p=>({...p,source:e.target.value}))} placeholder="e.g. Metro Retail Co."/>
         </Fld>
         <Fld label="Link to Project">
-          <Sel value={infForm?.projectId||"none"} onChange={e=>setInfForm(p=>({...p,projectId:e.target.value==="none"?null:e.target.value}))}>
+          <ProjectSelect value={infForm?.projectId||"none"} onChange={e=>setInfForm(p=>({...p,projectId:e.target.value==="none"?null:e.target.value}))}>
             <option value="none">— Not linked to a project —</option>
             {projList.map(d=><option key={d.id} value={d.id}>{d.client}</option>)}
-          </Sel>
+          </ProjectSelect>
         </Fld>
         <Fld label="Note" hint="e.g. Full payment, 50% deposit, partial">
           <Inp value={infForm?.note||""} onChange={e=>setInfForm(p=>({...p,note:e.target.value}))} placeholder="Payment note"/>
@@ -13916,14 +13893,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 </button>
               ))}
             </div>
-            <select value={aeUpdateDealId} onChange={e=>setAeUpdateDealId(e.target.value)}
+            <ProjectSelect value={aeUpdateDealId} onChange={e=>setAeUpdateDealId(e.target.value)}
               style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 9px",fontFamily:"inherit",fontSize:".8rem",background:"#f8fafc",color:aeUpdateDealId?"#1d4ed8":"#94a3b8",fontWeight:aeUpdateDealId?700:400,marginBottom:12,boxSizing:"border-box"}}>
               <option value="">— No project tag —</option>
               {aeUpdateDealType==="active"
                 ? wonDeals.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed").map(d=><option key={d.id} value={d.id}>{d.contact||d.client}{d.ceNo?" · "+d.ceNo:""}</option>)
                 : deals.filter(d=>isActivePipeline(d.stage)).map(d=><option key={d.id} value={d.id}>{d.contact||d.client}{d.ceNo?" · "+d.ceNo:""}</option>)
               }
-            </select>
+            </ProjectSelect>
             <textarea value={aeUpdateText} onChange={e=>setAeUpdateText(e.target.value)}
               onKeyDown={e=>{if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){e.preventDefault();if(aeUpdateText.trim())addAeUpdate(aeUpdateText,aeUpdateDealId);}}}
               rows={isMobile?3:4}
@@ -17333,13 +17310,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 <div style={{display:"flex",flexDirection:"column",gap:12}}>
                   <div>
                     <label style={{fontSize:".75rem",fontWeight:700,color:"#475569",display:"block",marginBottom:5}}>Project / Site <span style={{color:"#ef4444"}}>*</span></label>
-                    <select value={issueForm.projectId} onChange={e=>setIssueForm(f=>({...f,projectId:e.target.value}))}
+                    <ProjectSelect value={issueForm.projectId} onChange={e=>setIssueForm(f=>({...f,projectId:e.target.value}))}
                       style={{width:"100%",border:`1.5px solid ${issueForm.projectId?"#f97316":"#e2e8f0"}`,borderRadius:8,padding:"9px 12px",fontFamily:"inherit",fontSize:".87rem",color:"#0f172a"}}>
                       <option value="">— Select project —</option>
                       {wonDeals.filter(d=>d.stage!=="14 · Completed").map(d=>(
                         <option key={d.id} value={d.id}>{d.client}{d.ceNo?` (${d.ceNo})`:""}</option>
                       ))}
-                    </select>
+                    </ProjectSelect>
                   </div>
                   <div>
                     <label style={{fontSize:".75rem",fontWeight:700,color:"#475569",display:"block",marginBottom:5}}>Item <span style={{color:"#ef4444"}}>*</span></label>
@@ -17440,13 +17417,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   </div>
                   <div>
                     <label style={{fontSize:".75rem",fontWeight:700,color:"#475569",display:"block",marginBottom:5}}>Project</label>
-                    <select value={fabForm.projectId} onChange={e=>setFabForm(f=>({...f,projectId:e.target.value}))}
+                    <ProjectSelect value={fabForm.projectId} onChange={e=>setFabForm(f=>({...f,projectId:e.target.value}))}
                       style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"9px 12px",fontFamily:"inherit",fontSize:".87rem",color:"#0f172a"}}>
                       <option value="">— Optional —</option>
                       {wonDeals.filter(d=>d.stage!=="14 · Completed").map(d=>(
                         <option key={d.id} value={d.id}>{d.client}{d.ceNo?` (${d.ceNo})`:""}</option>
                       ))}
-                    </select>
+                    </ProjectSelect>
                   </div>
                   <div>
                     <label style={{fontSize:".75rem",fontWeight:700,color:"#475569",display:"block",marginBottom:5}}>Requested by</label>
@@ -18641,11 +18618,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             </div>
             <div style={{marginBottom:12}}>
               <label style={{fontSize:".72rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Project (optional)</label>
-              <select value={cvForm.projectId||""} onChange={e=>setCvForm(f=>({...f,projectId:e.target.value||null}))} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",background:"#fff",boxSizing:"border-box"}}>
+              <ProjectSelect value={cvForm.projectId||""} onChange={e=>setCvForm(f=>({...f,projectId:e.target.value||null}))} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",background:"#fff",boxSizing:"border-box"}}>
                 <option value="">— Company-wide / No project —</option>
                 {wonDeals.map(d=><option key={d.id} value={d.id}>{projDisplayName(d)}</option>)}
                 {costCenterDeals.length>0&&<optgroup label="Cost centers">{costCenterDeals.map(d=><option key={d.id} value={d.id}>🏷 {d.contact||d.client}</option>)}</optgroup>}
-              </select>
+              </ProjectSelect>
             </div>
             <div style={{marginBottom:16}}>
               <label style={{fontSize:".72rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Notes</label>
@@ -20437,7 +20414,7 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
               :<Fld label="Assigned Designer"><div style={{padding:"8px 12px",borderRadius:8,background:"#f1f5f9",fontSize:".85rem",color:"#94a3b8"}}>{form.designer||"— Design lead will assign —"}</div></Fld>
             }
             <Fld label="Design Deadline"><Inp type="date" value={form.designDeadline} onChange={e=>f("designDeadline",e.target.value)}/></Fld>
-            <Fld label="Linked Deal / Project"><Sel value={form.dealId} onChange={e=>{const d=wonDeals.find(x=>x.id===e.target.value);f("dealId",e.target.value);if(d&&!form.client)f("client",d.client);}}><option value="">— Link to deal (optional) —</option>{[...wonDeals].sort((a,b)=>(a.client||"").localeCompare(b.client||"")).map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?` — ${d.contact}`:""} ({d.stage?.replace(/^\d+ · /,"")||d.stage})</option>)}</Sel></Fld>
+            <Fld label="Linked Deal / Project"><ProjectSelect value={form.dealId} onChange={e=>{const d=wonDeals.find(x=>x.id===e.target.value);f("dealId",e.target.value);if(d&&!form.client)f("client",d.client);}}><option value="">— Link to deal (optional) —</option>{[...wonDeals].sort((a,b)=>(a.client||"").localeCompare(b.client||"")).map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?` — ${d.contact}`:""} ({d.stage?.replace(/^\d+ · /,"")||d.stage})</option>)}</ProjectSelect></Fld>
             <div style={{gridColumn:"1/-1"}}><Fld label="Description / Details" hint="What needs to be designed? Include dimensions, function, and key specs."><Inp rows={5} value={form.description} onChange={e=>f("description",e.target.value)} placeholder="RE-CREATE: Golf bag organizer rack with shelving&#10;SIZE: Must fit two large golf bags&#10;FUNCTION: Store 2 bags + shoe shelf (3-4 pairs) + drawer cabinet"/></Fld></div>
             {/* Accessories / Components */}
             <div style={{gridColumn:"1/-1"}}>
@@ -20932,10 +20909,10 @@ function ChecklistView({checklist,projList,deals,clientName,openAddCl,openEditCl
       <Modal open={clModal} onClose={()=>setClModal(false)} title={editCl?"Edit Task":"Add Task"} wide>
         {/* Project */}
         <Fld label="Project" hint="Which project is this task for?">
-          <select value={clForm.projectId||"none"} onChange={e=>f("projectId",e.target.value==="none"?null:e.target.value)} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box",cursor:"pointer"}}>
+          <ProjectSelect value={clForm.projectId||"none"} onChange={e=>f("projectId",e.target.value==="none"?null:e.target.value)} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box",cursor:"pointer"}}>
             <option value="none">— No specific project —</option>
             {deals.map(d=><option key={d.id} value={d.id}>{d.client} — {d.product}</option>)}
-          </select>
+          </ProjectSelect>
         </Fld>
 
         {/* Task Type — standard presets + custom */}
@@ -23427,11 +23404,11 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
                         <td style={{padding:"6px 9px",color:"#64748b",whiteSpace:"nowrap"}}>{r.woNumber||"auto"}</td>
                         <td style={{padding:"6px 9px",fontWeight:600,color:"#1e293b"}}>{r.subcontractor||"—"}</td>
                         <td style={{padding:"6px 9px",minWidth:200}}>
-                          <select value={r.projectId||""} onChange={e=>setBatchProject(i,e.target.value)} title={r.projectCell?`File said: ${r.projectCell}`:""}
+                          <ProjectSelect value={r.projectId||""} onChange={e=>setBatchProject(i,e.target.value)} title={r.projectCell?`File said: ${r.projectCell}`:""}
                             style={{width:"100%",maxWidth:230,border:`1.5px solid ${r.projectId?"#e2e8f0":"#fca5a5"}`,borderRadius:7,padding:"5px 7px",fontFamily:"inherit",fontSize:".74rem",color:r.projectId?"#1e293b":"#dc2626",background:"#fff"}}>
                             <option value="">{r.projectCell?`⚠ "${r.projectCell}" — pick…`:"— pick project —"}</option>
                             {projOpts.map(o=><option key={o.id} value={o.id}>{o.label}</option>)}
-                          </select>
+                          </ProjectSelect>
                         </td>
                         <td style={{padding:"6px 9px",color:"#64748b",maxWidth:220,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={r.scopeOfWork}>{r.scopeOfWork||"—"}</td>
                         <td style={{padding:"6px 9px",fontWeight:700,color:"#1e293b",whiteSpace:"nowrap"}}>{fmt(r.contractAmount)}</td>
@@ -24367,11 +24344,11 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
           <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem",marginBottom:16}}>Edit Purchase Request</div>
           <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
             <Fld label="Project" required>
-              <Sel value={editForm.projectId} onChange={e=>{const v=e.target.value;if(v==="__gmd_stocks__"){ef("projectId","__gmd_stocks__");ef("projectName","GMD Stocks");return;}const d=activeDeals.find(x=>x.id===v);ef("projectId",v);ef("projectName",projDisplayName(d));}}>
+              <ProjectSelect value={editForm.projectId} onChange={e=>{const v=e.target.value;if(v==="__gmd_stocks__"){ef("projectId","__gmd_stocks__");ef("projectName","GMD Stocks");return;}const d=activeDeals.find(x=>x.id===v);ef("projectId",v);ef("projectName",projDisplayName(d));}}>
                 <option value="">— Select Project —</option>
                 <option value="__gmd_stocks__">GMD Stocks</option>
                 {activeDeals.map(d=><option key={d.id} value={d.id}>{projDisplayName(d)}</option>)}
-              </Sel>
+              </ProjectSelect>
             </Fld>
             <Fld label="Budget Category">
               <Sel value={editForm.budgetCategory||"Materials"} onChange={e=>ef("budgetCategory",e.target.value)}>
@@ -24495,26 +24472,23 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
                   </div>
                   <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(2,1fr) 1fr 1fr",gap:10}}>
                     <Fld label="Project" required>
-                      <input
-                        list={`proj-list-${item._id}`}
-                        value={item.projectName}
+                      {/* Pick from the list only: a typed name that matched no project used
+                          to save the line with no project link (34 POs, ₱1.18M, 2026-11-11). */}
+                      <ProjectSelect value={item.projectId&&(item.projectId==="__gmd_stocks__"||activeDeals.some(d=>d.id===item.projectId))?item.projectId:""}
                         onChange={e=>{
-                          const name=e.target.value;
-                          if(name==="GMD Stocks"){updatePoItem(item._id,"projectName","GMD Stocks");updatePoItem(item._id,"projectId","__gmd_stocks__");return;}
-                          const deal=activeDeals.find(d=>projDisplayName(d)===name);
-                          updatePoItem(item._id,"projectName",name);
-                          updatePoItem(item._id,"projectId",deal?deal.id:name||"");
-                        }}
-                        placeholder="Search or type project name…"
-                        style={{width:"100%",border:`1.5px solid ${item.projectName&&item.projectId&&!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.projectId)&&item.projectId!=="__gmd_stocks__"?"#f97316":"#e2e8f0"}`,borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box"}}
-                      />
+                          const v=e.target.value;
+                          if(v==="__gmd_stocks__"){updatePoItem(item._id,"projectName","GMD Stocks");updatePoItem(item._id,"projectId","__gmd_stocks__");return;}
+                          const deal=activeDeals.find(d=>d.id===v);
+                          updatePoItem(item._id,"projectName",deal?projDisplayName(deal):"");
+                          updatePoItem(item._id,"projectId",deal?deal.id:"");
+                        }}>
+                        <option value="">— Select project —</option>
+                        <option value="__gmd_stocks__">GMD Stocks</option>
+                        {activeDeals.map(d=><option key={d.id} value={d.id}>{projDisplayName(d)}</option>)}
+                      </ProjectSelect>
                       {item.projectName&&item.projectId&&!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.projectId)&&item.projectId!=="__gmd_stocks__"&&(
-                        <div style={{fontSize:".67rem",color:"#c2410c",marginTop:3}}>⚠ Project not found in FabHub — PO will save without project link. Select from the list to link properly.</div>
+                        <div style={{fontSize:".67rem",color:"#c2410c",marginTop:3}}>⚠ “{item.projectName}” isn't linked to a project in FabHub. Pick the project from the list.</div>
                       )}
-                      <datalist id={`proj-list-${item._id}`}>
-                        <option value="GMD Stocks"/>
-                        {activeDeals.map(d=><option key={d.id} value={projDisplayName(d)}/>)}
-                      </datalist>
                     </Fld>
                     <Fld label="Item Name / Description" required><Inp value={item.itemName} onChange={e=>updatePoItem(item._id,"itemName",e.target.value)} placeholder="e.g. 18mm Melamine Board White"/></Fld>
                     <Fld label="Category"><Sel value={item.category} onChange={e=>updatePoItem(item._id,"category",e.target.value)}>{PR_CATS.map(c=><option key={c}>{c}</option>)}</Sel></Fld>
@@ -25459,10 +25433,10 @@ function BudgetRequestView({sendTelegramNotification,breqs,addBR,updateBR,delete
           <div style={{fontWeight:800,color:"#0f172a",marginBottom:16}}>New Budget Request</div>
           <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
             <Fld label="Project" required>
-              <Sel value={form.projectId} onChange={e=>f("projectId",e.target.value)}>
+              <ProjectSelect value={form.projectId} onChange={e=>f("projectId",e.target.value)}>
                 <option value="">— Select Project —</option>
                 {wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?` — ${d.contact}`:""}</option>)}
-              </Sel>
+              </ProjectSelect>
             </Fld>
             <Fld label="Purpose" required>
               <Sel value={form.purpose} onChange={e=>f("purpose",e.target.value)}>

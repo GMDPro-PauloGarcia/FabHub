@@ -1,5 +1,5 @@
 import React from "react";
-import {fmt,addPrintClose,today,BANKS,KPI,Modal,uiConfirm} from "../shared";
+import {fmt,addPrintClose,today,BANKS,KPI,Modal,uiConfirm,ProjectSelect} from "../shared";
 // ─── LIQUIDATION VIEW ─────────────────────────────────────────────────────────
 function LiquidationView({evouchers,addEV,updateEV,deleteEV,addEVItem,updateEVItem,deleteEVItem,submitEV,markEVPaid,wonDeals,session,role,today,fmt,BANKS,isMobile}){
   const[collapsed,setCollapsed]=React.useState(new Set());
@@ -319,10 +319,10 @@ tr:nth-child(even) td{background:#f9f9f9;}
                                   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:5,marginBottom:6}}>
                                     <input type="date" value={newItem.itemDate} onChange={e=>ni("itemDate",e.target.value)} style={{padding:"6px 8px",border:"1.5px solid #e2e8f0",borderRadius:6,fontSize:".78rem",fontFamily:"inherit"}}/>
                                     <input value={newItem.supplier} onChange={e=>ni("supplier",e.target.value)} placeholder="Supplier" style={{padding:"6px 8px",border:"1.5px solid #e2e8f0",borderRadius:6,fontSize:".78rem",fontFamily:"inherit"}}/>
-                                    <select value={newItem.project} onChange={e=>ni("project",e.target.value)} style={{padding:"6px 8px",border:"1.5px solid #e2e8f0",borderRadius:6,fontSize:".78rem",fontFamily:"inherit",background:"#fff"}}>
+                                    <ProjectSelect value={newItem.project} onChange={e=>ni("project",e.target.value)} style={{padding:"6px 8px",border:"1.5px solid #e2e8f0",borderRadius:6,fontSize:".78rem",fontFamily:"inherit",background:"#fff"}}>
                                       <option value="">Project</option>
                                       {projList.map((p,i)=><option key={i} value={p}>{p}</option>)}
-                                    </select>
+                                    </ProjectSelect>
                                     <input value={newItem.description} onChange={e=>ni("description",e.target.value)} placeholder="Particulars *" style={{padding:"6px 8px",border:"1.5px solid #e2e8f0",borderRadius:6,fontSize:".78rem",fontFamily:"inherit",gridColumn:"span 2"}}/>
                                     <input type="number" value={newItem.qty} onChange={e=>ni("qty",e.target.value)} placeholder="Qty" style={{padding:"6px 8px",border:"1.5px solid #e2e8f0",borderRadius:6,fontSize:".78rem",fontFamily:"inherit"}}/>
                                     <input type="number" value={newItem.pricePerQty} onChange={e=>ni("pricePerQty",e.target.value)} placeholder="Price/Qty *" style={{padding:"6px 8px",border:"1.5px solid #e2e8f0",borderRadius:6,fontSize:".78rem",fontFamily:"inherit"}}/>

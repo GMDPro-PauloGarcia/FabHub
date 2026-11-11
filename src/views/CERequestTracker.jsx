@@ -1,5 +1,5 @@
 import React,{useState,useMemo} from "react";
-import {today as TODAY,Modal,Fld,Inp,Sel} from "../shared";
+import {today as TODAY,Modal,Fld,Inp,Sel,ProjectSelect} from "../shared";
 
 // ─── CE REQUEST TRACKER (Sales Pipeline tab) ───────────────────────────────
 // A small list of the cost estimates Sales has asked QS for, kept while the
@@ -99,10 +99,10 @@ export default function CERequestTracker({ceReqs=[],deals=[],addCEReq,updateCERe
         <Fld label="Client" required><Inp value={form.clientName} onChange={e=>f("clientName",e.target.value)} placeholder="e.g. Diageo"/></Fld>
         <Fld label="Project"><Inp value={form.projectName} onChange={e=>f("projectName",e.target.value)} placeholder="What and where"/></Fld>
         <Fld label="Linked deal" hint="Optional: the pipeline deal this estimate is for.">
-          <Sel value={form.dealId} onChange={e=>f("dealId",e.target.value)}>
+          <ProjectSelect value={form.dealId} onChange={e=>f("dealId",e.target.value)}>
             <option value="">— None —</option>
             {dealOpts.map(d=><option key={d.id} value={d.id}>{dealLabel(d)}</option>)}
-          </Sel>
+          </ProjectSelect>
         </Fld>
         <Fld label="Needed from QS by"><Inp type="date" value={form.targetDeadline} onChange={e=>f("targetDeadline",e.target.value)}/></Fld>
         <Fld label="Priority"><Sel value={form.priority} onChange={e=>f("priority",e.target.value)}>{["High","Normal","Low"].map(p=><option key={p}>{p}</option>)}</Sel></Fld>

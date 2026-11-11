@@ -154,6 +154,11 @@ For the smoke test locally, run `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers
 - Database: `*_ins` / `*_sel` / `*_upd` policies on those three tables (migration `20261111100000_orders_and_bills_entry_procurement_only.sql`). App mirror: `PERMISSIONS` (`src/core.js`), `INSERT_ROLES`, `canBillPo` / `canBillOpex`, the checks at the top of `savePayable`, and `PayableForm`'s `opexOnly` (`src/App.jsx`). Keep them in sync.
 - Postgres checks the INSERT policy on an upsert even when the row exists, so an edit of an existing bill by a role that couldn't create it must be a plain update: use `sbUpdatePayable` (`src/App.jsx`), never `sbUpsert("payables", …)`.
 
+## Project links are a search box (Paulo, 2026-11-11)
+- Every field that links a record to a project uses `ProjectSelect` (`src/shared.jsx`), never a plain `<select>` or a free-text input. It's a drop-in for `<Sel>`: same `value`, `onChange(e)` with `e.target.value`, and the same `<option>` / `<optgroup>` children. Typing matches the option text plus the deal's CE no., JO no., client, store and location, from the index App registers with `setProjectSearchIndex(deals, jos)`. `SearchSelect` (`src/App.jsx`) is a wrapper over it.
+- Pick-from-list only. The PO line's old free-text project field saved a typed name that matched no project as an unlinked line: 34 POs (₱1.18M, mostly Makerlab) had no `deal_id` on 2026-11-11.
+- List filters ("show project X") may stay plain dropdowns.
+
 ## Cash Out (one modal for money leaving GMD)
 - `src/views/CashOutModal.jsx`, added 2026-11-11: the gold "💸 Cash Out" button (sidebar, phone header) opens one modal with Purchase Order, Subcon Work Order, Supplier bill (AP, picked from an issued PO with no bill or entered with no PO), Subcon progress billing (picked from an issued WO), Payment request (PRV) and Pay bills. Options are listed in `cashOutKinds` (`src/App.jsx`) and filtered by `roleCanInsert`, so access still follows the permissions maps.
 - It is only the door. PO / WO open `ProcurementView2` / `SubconWOView` with `embedded` (straight into the new form; leaving the form closes Cash Out); bills use `PayableForm` → `savePayable(form, editId)`; Pay bills is `CashPositionPayables`. Never put money rules in the modal.
