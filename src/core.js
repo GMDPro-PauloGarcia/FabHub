@@ -1301,7 +1301,7 @@ export const PO_TIERS_ON=false;
 // requested by her team (not by her) up to ₱50,000, as long as everything ordered from
 // that supplier on the PO's date is ₱50,000 or less (poSplitTotal), so one order can't
 // be cut into small POs. The database also checks the requester is in Procurement.
-// Mirrors po_split_total() / po_line_approver_name() (migration 20261114020000).
+// Mirrors po_split_total() / po_line_approver_name() (migration 20261114030000).
 export const PO_PROC_MGR_LIMIT=50000;
 // Same key as ap_vendor_key() in the database: first 8 letters/digits, lower case.
 export const poVendorKey=v=>String(v||"").replace(/[^a-zA-Z0-9]/g,"").toLowerCase().slice(0,8);
