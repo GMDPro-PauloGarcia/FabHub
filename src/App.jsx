@@ -6,6 +6,8 @@ import {deductionFromSb,supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpse
 import{idbGetMany,idbSetMany}from'./idb.js';
 import {useSharePdf} from "./views/SharePdf";
 import SupplierDocsPanel from "./views/SupplierDocsPanel";
+import CashOutModal,{openCashOut,closeCashOut,cashOutHas,OrderPicker} from "./views/CashOutModal";
+import {buildOrders} from "./data/ledger";
 import {fmt,addPrintClose,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable,HIDDEN_NAV_IDS,AP_HIDDEN,WAREHOUSE_HIDDEN,isHiddenView,HIDDEN_FIN_TABS,HIDDEN_PIPE_TABS,pageOn,cashCanEdit} from './shared';
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
@@ -4457,6 +4459,115 @@ function PayHistoryList({rows,onCancel,canCancel}){
   );
 }
 
+// Supplier bill (AP) / payment request (PRV) form, shown inside Cash Out
+// (src/views/CashOutModal.jsx). It keeps the draft in its own state, so typing
+// re-renders only this form, not the whole App (the old page-level Payables
+// modal kept payForm in App and rebuilt everything on every keystroke).
+// onSave(form, editId) is App's savePayable: every rule stays there.
+function PayableForm({initial,editId=null,onSave,onCancel,swos=[],payables=[],chartOfAccounts=[],costCenterDeals=[],wonDeals=[],deals=[],today,role,sendTelegramNotification,prs,drs,suppliers,upPayables}){
+  const[payForm,setPayForm]=useState(()=>({...initial}));
+  const[busy,setBusy]=useState(false);
+  const accounts=useMemo(()=>[...chartOfAccounts].filter(a=>a.active!==false&&(a.type==="COGS"||a.type==="Expense"||a.type==="Asset")).sort((a,b)=>String(a.code).localeCompare(String(b.code))),[chartOfAccounts]);
+  const woOptions=useMemo(()=>(swos||[]).filter(w=>w.woNumber&&w.status!=="Cancelled").slice().sort((a,b)=>String(b.woNumber).localeCompare(String(a.woNumber))),[swos]);
+  const chargeDeal=deals.find(d=>d.id===payForm.projectId);
+  const save=async()=>{
+    if(busy) return;
+    setBusy(true);
+    try{ if(await onSave(payForm,editId)) onCancel&&onCancel(); }
+    finally{ setBusy(false); }
+  };
+  return(
+    <div>
+      {editId&&payForm.apNumber&&<div style={{fontSize:".72rem",color:"#6366f1",fontWeight:700,fontFamily:"monospace",marginBottom:8}}>{payForm.apNumber}{payForm.poNumber?` · PO ${payForm.poNumber}`:""}</div>}
+      {!editId&&payForm.poNumber&&!isSubconPayable(payForm)&&(
+        <div style={{background:"#eef2ff",border:"1px solid #c7d2fe",borderRadius:8,padding:"8px 10px",fontSize:".76rem",color:"#3730a3",marginBottom:10}}>
+          Supplier bill for <b style={{fontFamily:"monospace"}}>{payForm.poNumber}</b>. Enter the supplier's invoice no. and amount.
+        </div>)}
+      {!editId&&isSubconPayable(payForm)&&payForm.poNumber&&(()=>{const wo=swos.find(w=>w.woNumber===payForm.poNumber);const billed=payables.filter(p=>isSubconPayable(p)&&p.poNumber===payForm.poNumber&&!["Cancelled","Void"].includes(p.status)).reduce((t,p)=>t+(Number(p.amount)||0),0);return(
+        <div style={{background:"#eef2ff",border:"1px solid #c7d2fe",borderRadius:8,padding:"8px 10px",fontSize:".76rem",color:"#3730a3",marginBottom:10}}>
+          Subcon billing against <b style={{fontFamily:"monospace"}}>{payForm.poNumber}</b>{wo?` · contract ₱${(Number(wo.contractAmount)||0).toLocaleString("en-PH")} · billed so far ₱${billed.toLocaleString("en-PH")} · left to bill ₱${Math.max(0,(Number(wo.contractAmount)||0)-billed).toLocaleString("en-PH")}`:""}.
+          Enter the subcontractor's billing no. and this billing's amount. It's paid only up to the % the PM certifies, or the WO's down payment % once the WO is issued.
+        </div>);})()}
+      <Fld label="Type">
+        <Sel value={payForm.docType==="PRV"?"PRV":"AP"} onChange={e=>setPayForm(p=>({...p,docType:e.target.value}))} disabled={!!(editId&&payForm.apNumber)}>
+          <option value="AP">Supplier bill (AP)</option>
+          <option value="PRV">Payment request, no PO (PRV)</option>
+        </Sel>
+        {!editId&&<div style={{fontSize:".72rem",color:"#64748b",marginTop:3}}>The {payForm.docType==="PRV"?"PRV":"AP"} number is assigned by the server when it saves, so two people can never get the same number.</div>}
+      </Fld>
+      <Fld label="Vendor / Payee"><Inp value={payForm.vendor||""} onChange={e=>setPayForm(p=>({...p,vendor:e.target.value}))} placeholder="e.g. ABC Steel Supply"/></Fld>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+        <Fld label={isSubconPayable(payForm)&&payForm.poNumber?"Subcon billing no.":"Invoice No."}><Inp value={payForm.invoiceNumber||""} onChange={e=>setPayForm(p=>({...p,invoiceNumber:e.target.value}))} placeholder="Vendor invoice #"/></Fld>
+        <Fld label="Invoice Date"><Inp type="date" value={payForm.invoiceDate||""} onChange={e=>setPayForm(p=>({...p,invoiceDate:e.target.value}))}/></Fld>
+      </div>
+      {editId&&<SupplierDocsPanel role={role} sendTelegramNotification={sendTelegramNotification} ctx={{prs,drs,suppliers}}
+        bill={{...(payables.find(x=>x.id===editId)||{}),...payForm,id:editId}}
+        onChanged={patch=>{upPayables(ps=>ps.map(x=>x.id===editId?{...x,...patch}:x));setPayForm(f=>({...f,...patch}));}}/>}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+        <Fld label="Amount (₱)" required><Inp type="number" value={payForm.amount} onChange={e=>setPayForm(p=>({...p,amount:e.target.value}))} placeholder="0"/></Fld>
+        <Fld label="Already Paid (₱)"><Inp type="number" value={payForm.paidAmount} onChange={e=>setPayForm(p=>({...p,paidAmount:e.target.value}))} placeholder="0"/></Fld>
+      </div>
+      <Fld label="Due Date" required>
+        <Inp type="date" value={payForm.dueDate||""} onChange={e=>setPayForm(p=>({...p,dueDate:e.target.value}))}/>
+        {payForm.dueDate&&payForm.dueDate<today&&<div style={{fontSize:".72rem",color:"#ef4444",marginTop:3,fontWeight:600}}>⚠ Due date is in the past — this payable is already overdue.</div>}
+        {!payForm.dueDate&&<div style={{fontSize:".72rem",color:"#b45309",marginTop:3,fontWeight:600}}>Recommended — drives the cash-flow forecast.</div>}
+      </Fld>
+      <Fld label="Category"><Sel value={payForm.category} onChange={e=>setPayForm(p=>({...p,category:e.target.value}))}>{["Supplier","Subcontractor","Utility","Rent","Labor","Government","Other"].map(c=><option key={c}>{c}</option>)}</Sel></Fld>
+      <Fld label="Account (Chart of Accounts)" required>
+        <Sel value={payForm.accountCode||""} onChange={e=>setPayForm(p=>({...p,accountCode:e.target.value}))}>
+          <option value="">— Select account —</option>
+          {accounts.map(a=><option key={a.id||a.code} value={a.code}>{a.code} · {a.name}</option>)}
+        </Sel>
+        {!payForm.accountCode&&<div style={{fontSize:".72rem",color:"#b45309",marginTop:3,fontWeight:600}}>Required — this drives the account-code financial statements.</div>}
+      </Fld>
+      {payForm.docType==="PRV"&&isSubconPayable(payForm)&&(
+        <Fld label="Work order">
+          <Sel value={payForm.poNumber||""} onChange={e=>setPayForm(p=>({...p,poNumber:e.target.value,poId:e.target.value||null}))}>
+            <option value="">— None —</option>
+            {woOptions.map(w=><option key={w.id||w.woNumber} value={w.woNumber}>{w.woNumber} · {w.subcontractor||"—"} · {"₱"+(Number(w.contractAmount)||0).toLocaleString("en-PH",{maximumFractionDigits:0})}</option>)}
+          </Sel>
+          {subconNeedsWo(payForm)&&<div style={{fontSize:".72rem",color:"#b91c1c",marginTop:3,fontWeight:600}}>Required: subcontractor payment requests of ₱{AP_RULES.subconNoWoLimit.toLocaleString("en-PH")} or more need a Work Order.</div>}
+          {payForm.poNumber&&<div style={{fontSize:".72rem",color:"#64748b",marginTop:3}}>Payment waits for Operations to verify % complete. Retention is held at payment.</div>}
+        </Fld>
+      )}
+      <Fld label="Charge to (project or cost center)"><Sel value={payForm.projectId||"none"} onChange={e=>setPayForm(p=>({...p,projectId:e.target.value==="none"?null:e.target.value}))}><option value="none">— Select a project or cost center</option>{costCenterDeals.length>0&&<optgroup label="Cost centers">{costCenterDeals.map(d=><option key={d.id} value={d.id}>🏷 {d.contact||d.client}</option>)}</optgroup>}<optgroup label="Projects">{wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" — "+d.contact:""}</option>)}</optgroup></Sel></Fld>
+      {/* BIR: VAT + EWT capture (restored from the legacy expense flow) */}
+      {(()=>{
+        const amt=Number(payForm.amount)||0;
+        const net=payForm.vatable?Math.round(amt/1.12*100)/100:amt;
+        const iv=payForm.vatable?Math.round((amt-net)*100)/100:0;
+        const er=Number(payForm.ewtRate)||0;
+        const ewt=er>0?Math.round(net*er/100*100)/100:0;
+        const peso=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+        return(
+          <div style={{border:`1px solid ${ERP.line}`,borderRadius:8,padding:"10px 12px",marginBottom:12,background:"#FAFBFD"}}>
+            <div style={{fontSize:".7rem",fontWeight:800,color:ERP.navy,textTransform:"uppercase",letterSpacing:".5px",marginBottom:8}}>BIR — VAT / Withholding</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              <label style={{display:"flex",alignItems:"center",gap:8,fontSize:".8rem",color:"#334155",fontWeight:600,cursor:"pointer"}}>
+                <input type="checkbox" checked={!!payForm.vatable} onChange={e=>setPayForm(p=>({...p,vatable:e.target.checked}))} style={{width:16,height:16}}/>
+                VAT-inclusive (12%)
+              </label>
+              <Fld label="EWT Rate"><Sel value={String(payForm.ewtRate||0)} onChange={e=>setPayForm(p=>({...p,ewtRate:Number(e.target.value)}))}>{[["0","None"],["1","1%"],["2","2% (services/goods)"],["5","5%"],["10","10% (rental/pro.)"],["15","15%"]].map(([v,l])=><option key={v} value={v}>{l}</option>)}</Sel></Fld>
+            </div>
+            <Fld label="Supplier TIN"><Inp value={payForm.tin||""} onChange={e=>setPayForm(p=>({...p,tin:e.target.value}))} placeholder="000-000-000-000"/></Fld>
+            <div style={{display:"flex",gap:16,flexWrap:"wrap",fontSize:".74rem",color:ERP.muted,marginTop:4}}>
+              <span>Net: <strong style={{color:ERP.ink}}>{peso(net)}</strong></span>
+              {payForm.vatable&&<span>Input VAT: <strong style={{color:ERP.navy}}>{peso(iv)}</strong></span>}
+              {er>0&&<span>EWT ({er}%): <strong style={{color:ERP.danger}}>−{peso(ewt)}</strong></span>}
+              {er>0&&<span>Net of EWT: <strong style={{color:ERP.ink}}>{peso(amt-ewt)}</strong></span>}
+            </div>
+          </div>
+        );
+      })()}
+      <Fld label={chargeDeal?.isCostCenter?"What was it used for? (required for cost centers)":"Notes"}><Inp value={payForm.notes||""} onChange={e=>setPayForm(p=>({...p,notes:e.target.value}))} placeholder={chargeDeal?.isCostCenter?"e.g. Warehouse racking, bay 2":"Optional details"}/></Fld>
+      <div style={{display:"flex",gap:10,marginTop:18}}>
+        <Btn full variant="green" disabled={busy} onClick={save}>{busy?"Saving…":editId?"Save changes":"Save bill"}</Btn>
+        <Btn variant="ghost" onClick={onCancel}>Cancel</Btn>
+      </div>
+    </div>
+  );
+}
+
 export default function App(){
   const[users,      setUsers]     = useState(DEFAULT_USERS);
   const[cashPositions,setCashPos]  = useState({});
@@ -8130,9 +8241,24 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const costTot   =useMemo(()=>costSummary(exps,payables,prs,swos),[exps,payables,prs,swos]);
   const totExp    =costTot.net;
   const[payouts,   setPayouts]  =useState([]);
-  const[payModal,  setPayModal] =useState(false);
   const emptyPayForm=()=>({vendor:"",amount:"",paidAmount:"",dueDate:"",invoiceNumber:"",invoiceDate:"",projectId:null,category:"Supplier",accountCode:"",notes:"",invoiceRef:""});
-  const[payForm,   setPayForm]  =useState(emptyPayForm());
+  // Cash Out (src/views/CashOutModal.jsx) is the one form for new and edited
+  // bills; it keeps its own state, so opening it doesn't re-render App.
+  const openBillForm=(form,id=null)=>openCashOut("bill",{form,id});
+  // A subcon progress billing on a Work Order: one bill per billing (2026-11-05).
+  const subconBillForm=wo=>{
+    const pid=(wo.dealId&&isUUID(wo.dealId))?wo.dealId:((wo.projectId&&isUUID(wo.projectId))?wo.projectId:null);
+    return {...emptyPayForm(),docType:"AP",vendor:wo.subcontractor||"",category:"Subcontractor",accountCode:wo.accountCode||"5070",
+      projectId:pid,poNumber:wo.woNumber,poId:wo.woNumber,invoiceRef:wo.woNumber,retentionPct:Number(wo.retentionPct)||0,
+      notes:`Progress billing on Work Order ${wo.woNumber}`};
+  };
+  // A supplier bill for an issued PO that has no bill on file yet (buildOrders row).
+  const poBillForm=r=>{
+    const line=(r.items||[]).find(l=>l.accountCode)||{};
+    const pid=(r.projectIds||[]).find(x=>isUUID(x))||null;
+    return {...emptyPayForm(),docType:"AP",vendor:r.vendor||"",category:"Supplier",accountCode:line.accountCode||"",
+      projectId:pid,poNumber:r.no,poId:r.no,invoiceRef:r.no,notes:`Supplier invoice for PO ${r.no} (PO total ₱${(Number(r.amount)||0).toLocaleString("en-PH")})`};
+  };
   const[payFilter, setPayFilter]=useState("All");
   const[poViewFilter,setPoViewFilter]=useState("all"); // unified PO view: all | po | wo
   const[poViewSearch,setPoViewSearch]=useState("");
@@ -8150,7 +8276,6 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[payPayKind,  setPayPayKind]  =useState("Payment"); // "Payment" | "Retention release"
   const[multiPay,    setMultiPay]    =useState(null);  // one check / transfer paying several bills: {vendor, sel:{id:amount}, date, method, bank, ref}
   const[payHistId,   setPayHistId]   =useState(null);  // payable whose payment history is open
-  const[editPayId, setEditPayId]=useState(null);
   const[loans,     setLoans]    =useState([]);
   const[loanModal, setLoanModal]=useState(false);
   const[editLoanId,setEditLoanId]=useState(null);
@@ -9038,11 +9163,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // Other Payable form instead. Editing legacy expenses (openEditExp) is
     // unaffected. Guard against being wired directly as an event handler.
     const pid=(projId&&typeof projId==="object")?null:projId;
-    setPayForm({...emptyPayForm(),projectId:(pid&&isUUID(pid))?pid:null});
-    setEditPayId(null);
-    setFinTab("payables");
-    setPage("finance");
-    setPayModal(true);
+    openBillForm({...emptyPayForm(),docType:"AP",projectId:(pid&&isUUID(pid))?pid:null});
   };
   const openEditExp=e=>{setExpForm({...e});setEditExpId(e.id);setExpModal(true);};
   const saveExp=(overrideData)=>{
@@ -9404,8 +9525,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     await uiAlert({title:res.duplicate==="block"?"Not saved: duplicate":"Not saved: needs a Manager",message:text});
     return null;
   };
-  const savePayable=async(data)=>{
-    if(!data.vendor||!data.amount) return;
+  const savePayable=async(data,editPayId=null)=>{
+    if(!String(data.vendor||"").trim()||!(Number(data.amount)>0)){toastEmit("Enter the vendor / payee and the amount before saving.","error");return;}
     if(!String(data.accountCode||"").trim()){toastEmit("Select a Chart-of-Accounts code before saving — it drives the financial statements.","error");return;}
     // Every peso is charged to a project or a cost center (GMD OPEX / Tools / Stocks).
     if(!data.projectId){toastEmit("Charge this bill to a project or a cost center (GMD OPEX, GMD Tools, GMD Stocks) before saving.","error");return;}
@@ -9530,7 +9651,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       toastEmit("⚠️ Payable saved locally only — no server connection. Do not close this tab!","warning",9000);
     }
     upPayables(ps=>editPayId?ps.map(p=>p.id===editPayId?rec:p):[rec,...ps]);
-    setPayModal(false);setEditPayId(null);setPayForm(emptyPayForm());
+    return true;
   };
   // Verification gate: a PO/WO-sourced payable is locked from payment until the
   // receiving side signs off — Warehouse for Materials, Operations (% complete)
@@ -9791,14 +9912,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const pid=r.dealId&&isUUID(r.dealId)?r.dealId:null;
         const line=(r.lines||[]).find(l=>l.accountCode)||{};
         const wo=r.wo||{};
-        setPage("finance");setFinTab(billsTab);
-        setPayForm({...emptyPayForm(),docType:"AP",vendor:r.vendor==="—"?"":r.vendor,
+        openBillForm({...emptyPayForm(),docType:"AP",vendor:r.vendor==="—"?"":r.vendor,
           category:r.isWO?"Subcontractor":"Supplier",
           accountCode:r.isWO?(wo.accountCode||"5070"):(line.accountCode||""),
           projectId:pid,poNumber:r.no,poId:r.no,invoiceRef:r.no,
           retentionPct:r.isWO?(Number(wo.retentionPct)||0):0,
           notes:r.isWO?`Progress billing on Work Order ${r.no}`:`Supplier invoice for PO ${r.no}`});
-        setEditPayId(null);setPayModal(true);
       }:null}/>
   );
   const openRetentionRelease=(p)=>{
@@ -10134,6 +10253,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             {navCollapsed?"→":"←"}
           </button>
         </div>
+        {cashOutKinds.length>0&&(
+          <div style={{padding:navCollapsed?"10px 0 2px":"10px 12px 2px",display:"flex",justifyContent:"center",flexShrink:0}}>
+            <button onClick={()=>openCashOut()} title="Cash Out: order, bill or pay" aria-label="Cash Out"
+              style={{width:navCollapsed?40:"100%",height:36,border:"none",borderRadius:9,background:"#C9A24B",color:"#0B2545",fontFamily:"inherit",fontWeight:800,fontSize:".84rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+              <span>💸</span>{!navCollapsed&&<span>Cash Out</span>}
+            </button>
+          </div>
+        )}
         {/* Nav items */}
         <div style={{flex:1,overflowY:"auto",padding:"8px 0"}}>
           {navCollapsed ? (
@@ -10227,6 +10354,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           <span style={{fontSize:".65rem",fontWeight:700,color:roleColor,background:roleColor+"22",borderRadius:20,padding:"2px 8px"}}>
             {session?.name?.split(" ")[0]} · {roleLabel(session?.title||role)}
           </span>
+          {cashOutKinds.length>0&&<button onClick={()=>openCashOut()} aria-label="Cash Out" style={{background:"#C9A24B",border:"none",borderRadius:6,padding:"9px 10px",color:"#0B2545",cursor:"pointer",fontSize:".72rem",fontWeight:800,fontFamily:"inherit",minHeight:36}}>💸</button>}
           <a href="/handbook.html" target="_blank" rel="noopener noreferrer" style={{background:"rgba(245,158,11,.2)",border:"none",borderRadius:6,padding:"9px 12px",color:"#f59e0b",fontSize:".72rem",fontWeight:700,textDecoration:"none",display:"inline-flex",alignItems:"center",minHeight:36}}>📘</a>
           <button onClick={logout} style={{background:"rgba(239,68,68,.2)",border:"none",borderRadius:6,padding:"9px 12px",color:"#ef4444",cursor:"pointer",fontSize:".72rem",fontFamily:"inherit",minHeight:36,minWidth:36,display:"inline-flex",alignItems:"center",justifyContent:"center"}}>↩</button>
         </div>
@@ -10428,6 +10556,38 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     </div>
   ):null;
 
+  // ── CASH OUT ── the one modal for money leaving GMD (src/views/CashOutModal.jsx).
+  // Each option renders the existing form; saves go through the same guarded
+  // functions (PO / WO approval and DP gates, savePayable, recordPayments).
+  const billFormProps={onSave:savePayable,onCancel:closeCashOut,swos,payables,chartOfAccounts,costCenterDeals,wonDeals,deals,today,role,sendTelegramNotification,prs,drs,suppliers,upPayables};
+  const cashOutKinds=[
+    roleCanInsert("purchase_requests")&&pageOn("procurement")&&{id:"po",group:"order",icon:"📦",label:"Purchase Order",wide:true,
+      desc:"Order materials from a supplier. Cost Control or a Manager approves it before it's issued; no down payment, no issue.",
+      render:(_,close)=><ProcurementView2 embedded onEmbeddedDone={close} onPoFromPrf={linkPrfLines} payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/>},
+    roleCanInsert("subcon_work_orders")&&pageOn("subconwo")&&{id:"wo",group:"order",icon:"🔨",label:"Subcon Work Order",wide:true,
+      desc:"Engage a subcontractor for a contract amount. Needs an approver and the client's down payment to issue.",
+      render:(_,close)=><SubconWOView embedded onEmbeddedDone={close} deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/>},
+    roleCanInsert("payables")&&{id:"bill",group:"bill",icon:"🧾",label:"Supplier bill (AP)",editLabel:"Edit bill",
+      desc:"A supplier's invoice. Pick its PO to fill in the details, or enter a bill with no PO (rent, utilities, OPEX).",
+      render:(p,close)=>p?.form
+        ?<PayableForm {...billFormProps} onCancel={close} initial={p.form} editId={p.id||null}/>
+        :<OrderPicker rows={buildOrders({prs,swos,payables}).filter(r=>r.kind==="PO"&&r.payStatus==="No bill on file")}
+            onPick={r=>openBillForm(poBillForm(r))} onManual={()=>openBillForm({...emptyPayForm(),docType:"AP"})}
+            manualLabel="Bill with no PO" empty="Every issued PO already has a bill. Use “Bill with no PO” for anything else."/>},
+    roleCanInsert("payables")&&{id:"subcon",group:"bill",icon:"👷",label:"Subcon progress billing",
+      desc:"The subcontractor's next billing against a Work Order. Paid only up to the % the PM certifies.",
+      render:()=><OrderPicker rows={buildOrders({prs,swos,payables}).filter(r=>r.kind==="WO"&&r.issued&&(Number(r.amount)||0)-(Number(r.billed)||0)>1)}
+            onPick={r=>openBillForm(subconBillForm(r.items[0]))} empty="No issued Work Order has anything left to bill."/>},
+    roleCanInsert("payables")&&{id:"prv",group:"bill",icon:"📝",label:"Payment request, no PO (PRV)",
+      desc:"Money out with no PO or supplier invoice. Subcon work of ₱50,000+ still needs a Work Order.",
+      render:(_,close)=><PayableForm {...billFormProps} onCancel={close} initial={{...emptyPayForm(),docType:"PRV"}}/>},
+    roleCanInsert("payable_payments")&&role!=="Accounting"&&{id:"pay",group:"pay",icon:"💸",label:"Pay bills",wide:true,
+      desc:"Approve and pay bills that are due, one at a time or several in one check or transfer.",
+      render:()=><CashPositionPayables payables={payables} payPays={payPays} prs={prs} swos={swos} exps={exps} deals={deals} today={today}
+            canApprove={canApprovePayables} enteredByMe={enteredByMe} canPay={roleCanInsert("payable_payments")}
+            onApprove={approvePayable} onPay={(id,amt,o)=>recordPayablePayment(id,amt,o)} onPayMany={recordPayments} onCancelPay={cancelPayablePayment}/>},
+  ].filter(Boolean);
+
   // Wrap is the shared page shell (side nav + global modals + fade-in content).
   // It closes over ~15 modal-open states (confirmDel, dealModal, expModal,
   // swModal, infModal, …) that live in the Global Modals block below and must be
@@ -10581,6 +10741,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         </div>
       )}
       {/* Global Modals */}
+      <CashOutModal kinds={cashOutKinds}/>
       <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal} deals={deals} addenda={addenda} role={role}/>
       <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={spendProjList} clientName={clientName} chartOfAccounts={chartOfAccounts} suppliers={suppliers} exps={exps} poRefOptions={[...new Set([...prs.map(p=>p.poNumber),...swos.map(w=>w.woNumber)].filter(Boolean))]}/>
       <Modal open={confirmDel!==null} onClose={()=>{setConfirmDel(null);setDelAck(false);}} title="Delete this deal?">
@@ -15728,8 +15889,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         {finTab==="expmon"&&(
           <ExpenseMonitoring cashPositions={cashPositions} saveDayPos={saveDayPos} cashDayIsCurrent={cashDayIsCurrent} payables={payables} payPays={payPays} prs={prs} swos={swos} exps={exps} deals={deals} today={today}
             role={role} username={session?.username||""} userName={session?.name||""} canPay={roleCanInsert("payable_payments")} onPayMany={recordPayments}
-            onNewPayable={roleCanInsert("payables")?()=>{setPayForm(emptyPayForm());setEditPayId(null);setPayModal(true);}:null}
-            onEditPayable={roleCanInsert("payables")?p=>{setPayForm({...p});setEditPayId(p.id);setPayModal(true);}:null}/>
+            onNewPayable={roleCanInsert("payables")?()=>openBillForm({...emptyPayForm(),docType:"AP"}):null}
+            onEditPayable={roleCanInsert("payables")?p=>openBillForm({...p},p.id):null}/>
         )}
 
         {/* ── PAYMENT RUN ── weekly: list Mon, propose Tue, Manager approves Wed, release Thu. */}
@@ -15754,102 +15915,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         {/* ── SUBCON PAYMENT MONITORING ── one row per WO, payments as columns (read-only). */}
         {finTab==="subconmon"&&(
           <SubconPaymentMonitor swos={swos} payables={payables} payPays={payPays} deals={deals} prs={prs} exps={exps} today={today}
-            onNewBilling={roleCanInsert("payables")?wo=>{
-              const pid=(wo.dealId&&isUUID(wo.dealId))?wo.dealId:((wo.projectId&&isUUID(wo.projectId))?wo.projectId:null);
-              setPayForm({...emptyPayForm(),docType:"AP",vendor:wo.subcontractor||"",category:"Subcontractor",accountCode:wo.accountCode||"5070",
-                projectId:pid,poNumber:wo.woNumber,poId:wo.woNumber,invoiceRef:wo.woNumber,retentionPct:Number(wo.retentionPct)||0,
-                notes:`Progress billing on Work Order ${wo.woNumber}`});
-              setEditPayId(null);setPayModal(true);
-            }:null}/>
+            onNewBilling={roleCanInsert("payables")?wo=>openBillForm(subconBillForm(wo)):null}/>
         )}
 
-        {/* Add/Edit Payable modal: page-level so Expense Monitoring (and the
-            hidden Accounts Payable tab) can both open it. */}
-{/* Add/Edit Payable Modal */}
-        <Modal open={payModal} onClose={()=>{setPayModal(false);setEditPayId(null);}} title={editPayId?(payForm.docType==="PRV"?"Edit Payment Request":"Edit Other Payable"):(payForm.docType==="PRV"?"New Payment Request (PRV)":"New Other Payable")}>
-          {editPayId&&payForm.apNumber&&<div style={{fontSize:".72rem",color:"#6366f1",fontWeight:700,fontFamily:"monospace",marginBottom:8}}>{payForm.apNumber}{payForm.poNumber?` · PO ${payForm.poNumber}`:""}</div>}
-          {!editPayId&&isSubconPayable(payForm)&&payForm.poNumber&&(()=>{const wo=swos.find(w=>w.woNumber===payForm.poNumber);const billed=payables.filter(p=>isSubconPayable(p)&&p.poNumber===payForm.poNumber&&!["Cancelled","Void"].includes(p.status)).reduce((t,p)=>t+(Number(p.amount)||0),0);return(
-            <div style={{background:"#eef2ff",border:"1px solid #c7d2fe",borderRadius:8,padding:"8px 10px",fontSize:".76rem",color:"#3730a3",marginBottom:10}}>
-              Subcon billing against <b style={{fontFamily:"monospace"}}>{payForm.poNumber}</b>{wo?` · contract ₱${(Number(wo.contractAmount)||0).toLocaleString("en-PH")} · billed so far ₱${billed.toLocaleString("en-PH")} · left to bill ₱${Math.max(0,(Number(wo.contractAmount)||0)-billed).toLocaleString("en-PH")}`:""}.
-              Enter the subcontractor's billing no. and this billing's amount. It's paid only up to the % the PM certifies, or the WO's down payment % once the WO is issued.
-            </div>);})()}
-          <Fld label="Type">
-            <Sel value={payForm.docType==="PRV"?"PRV":"AP"} onChange={e=>setPayForm(p=>({...p,docType:e.target.value}))} disabled={!!(editPayId&&payForm.apNumber)}>
-              <option value="AP">Supplier bill (AP)</option>
-              <option value="PRV">Payment request, no PO (PRV)</option>
-            </Sel>
-            {!editPayId&&<div style={{fontSize:".72rem",color:"#64748b",marginTop:3}}>The {payForm.docType==="PRV"?"PRV":"AP"} number is assigned by the server when it saves, so two people can never get the same number.</div>}
-          </Fld>
-          <Fld label="Vendor / Payee"><Inp value={payForm.vendor||""} onChange={e=>setPayForm(p=>({...p,vendor:e.target.value}))} placeholder="e.g. ABC Steel Supply"/></Fld>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-            <Fld label="Invoice No."><Inp value={payForm.invoiceNumber||""} onChange={e=>setPayForm(p=>({...p,invoiceNumber:e.target.value}))} placeholder="Vendor invoice #"/></Fld>
-            <Fld label="Invoice Date"><Inp type="date" value={payForm.invoiceDate||""} onChange={e=>setPayForm(p=>({...p,invoiceDate:e.target.value}))}/></Fld>
-          </div>
-          {editPayId&&<SupplierDocsPanel role={role} sendTelegramNotification={sendTelegramNotification} ctx={{prs,drs,suppliers}}
-            bill={{...(payables.find(x=>x.id===editPayId)||{}),...payForm,id:editPayId}}
-            onChanged={patch=>{upPayables(ps=>ps.map(x=>x.id===editPayId?{...x,...patch}:x));setPayForm(f=>({...f,...patch}));}}/>}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-            <Fld label="Amount (₱)" required><Inp type="number" value={payForm.amount} onChange={e=>setPayForm(p=>({...p,amount:e.target.value}))} placeholder="0"/></Fld>
-            <Fld label="Already Paid (₱)"><Inp type="number" value={payForm.paidAmount} onChange={e=>setPayForm(p=>({...p,paidAmount:e.target.value}))} placeholder="0"/></Fld>
-          </div>
-          <Fld label="Due Date" required>
-            <Inp type="date" value={payForm.dueDate||""} onChange={e=>setPayForm(p=>({...p,dueDate:e.target.value}))}/>
-            {payForm.dueDate&&payForm.dueDate<today&&<div style={{fontSize:".72rem",color:"#ef4444",marginTop:3,fontWeight:600}}>⚠ Due date is in the past — this payable is already overdue.</div>}
-            {!payForm.dueDate&&<div style={{fontSize:".72rem",color:"#b45309",marginTop:3,fontWeight:600}}>Recommended — drives the cash-flow forecast.</div>}
-          </Fld>
-          <Fld label="Category"><Sel value={payForm.category} onChange={e=>setPayForm(p=>({...p,category:e.target.value}))}>{["Supplier","Subcontractor","Utility","Rent","Labor","Government","Other"].map(c=><option key={c}>{c}</option>)}</Sel></Fld>
-          <Fld label="Account (Chart of Accounts)" required>
-            <Sel value={payForm.accountCode||""} onChange={e=>setPayForm(p=>({...p,accountCode:e.target.value}))}>
-              <option value="">— Select account —</option>
-              {[...chartOfAccounts].filter(a=>a.active!==false&&(a.type==="COGS"||a.type==="Expense"||a.type==="Asset")).sort((a,b)=>String(a.code).localeCompare(String(b.code))).map(a=><option key={a.id||a.code} value={a.code}>{a.code} · {a.name}</option>)}
-            </Sel>
-            {!payForm.accountCode&&<div style={{fontSize:".72rem",color:"#b45309",marginTop:3,fontWeight:600}}>Required — this drives the account-code financial statements.</div>}
-          </Fld>
-          {payForm.docType==="PRV"&&isSubconPayable(payForm)&&(
-            <Fld label="Work order">
-              <Sel value={payForm.poNumber||""} onChange={e=>setPayForm(p=>({...p,poNumber:e.target.value,poId:e.target.value||null}))}>
-                <option value="">— None —</option>
-                {(swos||[]).filter(w=>w.woNumber&&w.status!=="Cancelled").slice().sort((a,b)=>String(b.woNumber).localeCompare(String(a.woNumber))).map(w=><option key={w.id||w.woNumber} value={w.woNumber}>{w.woNumber} · {w.subcontractor||"—"} · {"₱"+(Number(w.contractAmount)||0).toLocaleString("en-PH",{maximumFractionDigits:0})}</option>)}
-              </Sel>
-              {subconNeedsWo(payForm)&&<div style={{fontSize:".72rem",color:"#b91c1c",marginTop:3,fontWeight:600}}>Required: subcontractor payment requests of ₱{AP_RULES.subconNoWoLimit.toLocaleString("en-PH")} or more need a Work Order.</div>}
-              {payForm.poNumber&&<div style={{fontSize:".72rem",color:"#64748b",marginTop:3}}>Payment waits for Operations to verify % complete. Retention is held at payment.</div>}
-            </Fld>
-          )}
-          <Fld label="Charge to (project or cost center)"><Sel value={payForm.projectId||"none"} onChange={e=>setPayForm(p=>({...p,projectId:e.target.value==="none"?null:e.target.value}))}><option value="none">— Select a project or cost center</option>{costCenterDeals.length>0&&<optgroup label="Cost centers">{costCenterDeals.map(d=><option key={d.id} value={d.id}>🏷 {d.contact||d.client}</option>)}</optgroup>}<optgroup label="Projects">{wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" — "+d.contact:""}</option>)}</optgroup></Sel></Fld>
-          {/* BIR: VAT + EWT capture (restored from the legacy expense flow) */}
-          {(()=>{
-            const amt=Number(payForm.amount)||0;
-            const net=payForm.vatable?Math.round(amt/1.12*100)/100:amt;
-            const iv=payForm.vatable?Math.round((amt-net)*100)/100:0;
-            const er=Number(payForm.ewtRate)||0;
-            const ewt=er>0?Math.round(net*er/100*100)/100:0;
-            const peso=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
-            return(
-              <div style={{border:`1px solid ${ERP.line}`,borderRadius:8,padding:"10px 12px",marginBottom:12,background:"#FAFBFD"}}>
-                <div style={{fontSize:".7rem",fontWeight:800,color:ERP.navy,textTransform:"uppercase",letterSpacing:".5px",marginBottom:8}}>BIR — VAT / Withholding</div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                  <label style={{display:"flex",alignItems:"center",gap:8,fontSize:".8rem",color:"#334155",fontWeight:600,cursor:"pointer"}}>
-                    <input type="checkbox" checked={!!payForm.vatable} onChange={e=>setPayForm(p=>({...p,vatable:e.target.checked}))} style={{width:16,height:16}}/>
-                    VAT-inclusive (12%)
-                  </label>
-                  <Fld label="EWT Rate"><Sel value={String(payForm.ewtRate||0)} onChange={e=>setPayForm(p=>({...p,ewtRate:Number(e.target.value)}))}>{[["0","None"],["1","1%"],["2","2% (services/goods)"],["5","5%"],["10","10% (rental/pro.)"],["15","15%"]].map(([v,l])=><option key={v} value={v}>{l}</option>)}</Sel></Fld>
-                </div>
-                <Fld label="Supplier TIN"><Inp value={payForm.tin||""} onChange={e=>setPayForm(p=>({...p,tin:e.target.value}))} placeholder="000-000-000-000"/></Fld>
-                <div style={{display:"flex",gap:16,flexWrap:"wrap",fontSize:".74rem",color:ERP.muted,marginTop:4}}>
-                  <span>Net: <strong style={{color:ERP.ink}}>{peso(net)}</strong></span>
-                  {payForm.vatable&&<span>Input VAT: <strong style={{color:ERP.navy}}>{peso(iv)}</strong></span>}
-                  {er>0&&<span>EWT ({er}%): <strong style={{color:ERP.danger}}>−{peso(ewt)}</strong></span>}
-                  {er>0&&<span>Net of EWT: <strong style={{color:ERP.ink}}>{peso(amt-ewt)}</strong></span>}
-                </div>
-              </div>
-            );
-          })()}
-          <Fld label={deals.find(d=>d.id===payForm.projectId)?.isCostCenter?"What was it used for? (required for cost centers)":"Notes"}><Inp value={payForm.notes||""} onChange={e=>setPayForm(p=>({...p,notes:e.target.value}))} placeholder={deals.find(d=>d.id===payForm.projectId)?.isCostCenter?"e.g. Warehouse racking, bay 2":"Optional details"}/></Fld>
-          <div style={{display:"flex",gap:10,marginTop:18}}>
-            <Btn full variant="green" onClick={()=>savePayable(payForm)}>Save Payable</Btn>
-            <Btn variant="ghost" onClick={()=>{setPayModal(false);setEditPayId(null);}}>Cancel</Btn>
-          </div>
-        </Modal>
 
         {/* ── P&L TAB ── */}
         {finTab==="pl"&&role!=="Accounting"&&(
@@ -15995,7 +16063,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
                   {(()=>{const miss=payables.filter(p=>p.status!=="Paid"&&p.status!=="Cancelled"&&Number(p.amount)>0&&!p.dueDate).length;
                     return miss>0?<button onClick={()=>setDueDateFixOpen(true)} style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:7,padding:"9px 14px",fontFamily:"inherit",fontSize:13,color:"#b45309",cursor:"pointer",fontWeight:700}}>📅 Set due dates ({miss})</button>:null;})()}
-                  <button onClick={()=>{setPayForm(emptyPayForm());setEditPayId(null);setPayModal(true);}}
+                  <button onClick={()=>openBillForm({...emptyPayForm(),docType:"AP"})}
                     style={{background:ERP.gold,border:"none",borderRadius:7,padding:"9px 16px",fontFamily:"inherit",fontSize:13,color:ERP.navy,cursor:"pointer",fontWeight:600}}>+ Other Payable</button>
                 </div>
               </div>
@@ -16088,7 +16156,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                                   {(Number(p.retentionHeld)||0)>0&&payApproved(p)&&(!payNeedsVerify(p)||(Number(p.verificationPct)||0)>=100)&&<button onClick={()=>openRetentionRelease(p)} title="Release the retention held on this subcontractor bill" style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#b45309",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>Release ret.</button>}
                                   {(paysOf(p.id).length>0||paidAmt>0)&&<button onClick={()=>setPayHistId(p.id)} title="Payment history" style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>History</button>}
                                   {pageOn("checkvouchers")&&!settled&&payApproved(p)&&(!payNeedsVerify(p)||p.verified)&&!(p.cvId||p.status==="Check Issued")&&<button onClick={()=>payableToCheck(p.id)} title="Route to Check Voucher" style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#2563eb",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🖊 CV</button>}
-                                  <button onClick={()=>{setPayForm({...p});setEditPayId(p.id);setPayModal(true);}} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
+                                  <button onClick={()=>openBillForm({...p},p.id)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
                                   <button onClick={()=>delPayable(p.id)} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
                                 </div>
                               </td>
@@ -18780,9 +18848,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const handleConfirm=async()=>{
           if(poPayType==="daily"){
             // "Other Payable" — an AP-ledger entry (was the retired Daily Payables expense).
-            setPayForm({...emptyPayForm(),vendor:pr.supplier||"",amount:amt||"",dueDate:today,category:"Supplier",projectId:pr.projectId||null,notes:`${pr.itemName}${pr.poNumber?" — "+pr.poNumber:""}`,poNumber:pr.poNumber||"",invoiceNumber:pr.deliveryNote||""});
-            setEditPayId(null);setPayModal(true);
-            setPage("finance");setFinTab("payables");
+            openBillForm({...emptyPayForm(),vendor:pr.supplier||"",amount:amt||"",dueDate:today,category:"Supplier",projectId:pr.projectId||null,notes:`${pr.itemName}${pr.poNumber?" — "+pr.poNumber:""}`,poNumber:pr.poNumber||"",invoiceNumber:pr.deliveryNote||""});
           } else {
             const nextNo=await claimDocNumber("CV",vouchers.map(v=>v.cvNo),4,true);
             setCvForm({date:today,cvNo:nextNo,payee:pr.supplier||"",description:`${pr.itemName}${pr.poNumber?" — "+pr.poNumber:""}`,amount:amt||"",bank:"",notes:"",status:"Draft",poRef:pr.poNumber||"",payableId:null,checkNo:"",clearedDate:"",isCleared:false,projectId:pr.projectId||null});
@@ -22677,7 +22743,7 @@ function CEQSView({ceReqs,addCEReq,updateCEReq,session,role,toastEmit,deals}){
 // ─── BOQ MODAL (opened from pipeline 📋 button) ──────────────────────────────
 
 // ─── SUBCON WORK ORDERS VIEW ───────────────────────────────────────────────────
-function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,deals,subcons,session,role,toastEmit,sendTelegramNotification,chartOfAccounts=[],onWaiveDp,onCreditTerms}){
+function SubconWOView({embedded=false,onEmbeddedDone,swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,deals,subcons,session,role,toastEmit,sendTelegramNotification,chartOfAccounts=[],onWaiveDp,onCreditTerms}){
   const today=new Date().toISOString().split("T")[0];
   const[mode,setMode]=useState("list");
   const[editingId,setEditingId]=useState(null);
@@ -22752,6 +22818,15 @@ function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,deal
     setSuggestedNo(sug); setEditingId(null); setMode("form");
   };
   const openEdit=w=>{setForm({...w});setSuggestedNo(w.woNumber||"");setEditingId(w.id);setMode("form");};
+  // Inside Cash Out (embedded): open straight into a new Work Order, and close
+  // Cash Out when the form is left (saved or cancelled).
+  const embedSeenForm=useRef(false);
+  useEffect(()=>{if(embedded) openNew();},[]);
+  useEffect(()=>{
+    if(!embedded) return;
+    if(mode!=="list") embedSeenForm.current=true;
+    else if(embedSeenForm.current) onEmbeddedDone&&onEmbeddedDone();
+  },[mode]);
 
   // Picking a master-list subcon auto-fills their commercial terms
   const pickSubcon=name=>setForm(p=>{
@@ -23197,12 +23272,13 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
   const totalValue=filtered.filter(w=>w.status!=="Cancelled").reduce((s,w)=>s+n(w.contractAmount),0);
 
   // ── Form (new / edit) ──────────────────────────────────────────────────────
+  if(embedded&&mode!=="form") return null;
   if(mode==="form"){
     const canSubmit=form.subcontractor.trim()&&form.projectId&&form.scopeOfWork.trim()&&n(form.contractAmount)>0&&!submitting;
     const retAmt=woRetentionAmt({retentionPct:form.retentionPct,contractAmount:n(form.contractAmount)});
     return(
       <div>
-        <button onClick={()=>{setMode("list");setEditingId(null);}} style={{background:"none",border:"none",color:"#3b82f6",cursor:"pointer",fontFamily:"inherit",fontSize:".84rem",fontWeight:700,marginBottom:14,padding:0}}>← Back to Work Orders</button>
+        {!embedded&&<button onClick={()=>{setMode("list");setEditingId(null);}} style={{background:"none",border:"none",color:"#3b82f6",cursor:"pointer",fontFamily:"inherit",fontSize:".84rem",fontWeight:700,marginBottom:14,padding:0}}>← Back to Work Orders</button>}
         <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:20}}>
           <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem",marginBottom:16}}>🛠️ {editingId?"Edit Work Order":"New Subcon Work Order"}</div>
           <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
@@ -23292,7 +23368,7 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
             <input ref={batchInputRef} type="file" accept=".csv,.xlsx,.xls" style={{display:"none"}} onChange={onBatchFile}/>
             <button onClick={downloadBatchTemplate} title="Download a CSV template with the expected columns" style={{background:"none",border:"none",color:"#3b82f6",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer",alignSelf:"center",padding:0}}>⬇ Template</button>
             <button onClick={()=>{if(!window.XLSX){toastEmit&&toastEmit("Excel library still loading — try again in a second.","warning");return;}batchInputRef.current&&batchInputRef.current.click();}} disabled={batchBusy} style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"9px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#475569",cursor:batchBusy?"wait":"pointer"}}>{batchBusy?"Reading…":"⬆️ Batch Upload"}</button>
-            <button onClick={openNew} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>+ New Work Order</button>
+            <button onClick={()=>cashOutHas("wo")?openCashOut("wo"):openNew()} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>+ New Work Order</button>
           </div>
         )}
       </div>
@@ -23843,7 +23919,7 @@ function DpGate({deal,deals,role,onWaiveDp,onCreditTerms,what="POs"}){
 }
 
 // ─── PROCUREMENT VIEW 2 (Full PO → Multi-item → Delivery) ───────────────────
-function ProcurementView2({poDraft=null,clearPoDraft,onPoFromPrf,payPays=[],prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allDeals,budgets,exps,swos,session,role,toastEmit,suppliers,addSupplier,upPayables,payables,sendTelegramNotification,isSupabaseReady,sbUpsert,payableToSb,syncPoPayable,approvePOs,chartOfAccounts=[],onWaiveDp,onCreditTerms,costCenterDeals=[],onCreateCostCenter}){
+function ProcurementView2({embedded=false,onEmbeddedDone,poDraft=null,clearPoDraft,onPoFromPrf,payPays=[],prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allDeals,budgets,exps,swos,session,role,toastEmit,suppliers,addSupplier,upPayables,payables,sendTelegramNotification,isSupabaseReady,sbUpsert,payableToSb,syncPoPayable,approvePOs,chartOfAccounts=[],onWaiveDp,onCreditTerms,costCenterDeals=[],onCreateCostCenter}){
   // Internal cost centers (HR, GMD Tools, warehouse stock…): deals flagged
   // is_cost_center, bought against like a project but kept out of project
   // lists. Only a Manager adds one (create_cost_center RPC).
@@ -23946,6 +24022,15 @@ function ProcurementView2({poDraft=null,clearPoDraft,onPoFromPrf,payPays=[],prs,
     setPoTermsText(PO_TERMS_DEFAULT);
     setEditingPrIds(null); setMode("newpo");
   };
+  // Inside Cash Out (embedded): open straight into a new PO, and close Cash Out
+  // when the form is left (saved or cancelled).
+  const embedSeenForm=useRef(false);
+  useEffect(()=>{if(embedded) openNewPO();},[]);
+  useEffect(()=>{
+    if(!embedded) return;
+    if(mode!=="list") embedSeenForm.current=true;
+    else if(embedSeenForm.current) onEmbeddedDone&&onEmbeddedDone();
+  },[mode]);
   // Order Board → "Create PO": open the new-PO form pre-filled with those lines.
   useEffect(()=>{
     if(!poDraft) return;
@@ -24240,6 +24325,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
   };
 
   // Edit single PR inline
+  if(embedded&&mode!=="newpo") return null;
   if(mode==="editpr"&&editingId){
     const ef=(k,v)=>setEditForm(p=>({...p,[k]:v}));
     return(
@@ -24328,7 +24414,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
     const grandTotal=subtotalGross-poLevelDiscAmt;
     return(
       <div>
-        <button onClick={()=>setMode("list")} style={{background:"none",border:"none",color:"#3b82f6",cursor:"pointer",fontFamily:"inherit",fontSize:".84rem",fontWeight:700,marginBottom:14,padding:0}}>← Back to Purchase Orders</button>
+        {!embedded&&<button onClick={()=>setMode("list")} style={{background:"none",border:"none",color:"#3b82f6",cursor:"pointer",fontFamily:"inherit",fontSize:".84rem",fontWeight:700,marginBottom:14,padding:0}}>← Back to Purchase Orders</button>}
         <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:20}}>
           <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem",marginBottom:16}}>{editingPrIds?"✏ Edit Purchase Order":"📦 New Purchase Order"}</div>
           <datalist id="po-units-dl">{PO_UNITS.map(u=><option key={u} value={u}/>)}</datalist>
@@ -24598,7 +24684,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
               e.target.value="";
             }}/>
           </label>
-          <button onClick={openNewPO} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>+ New Purchase Order</button>
+          <button onClick={()=>cashOutHas("po")?openCashOut("po"):openNewPO()} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>+ New Purchase Order</button>
         </div>
       </div>
 
