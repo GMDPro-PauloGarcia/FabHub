@@ -45,7 +45,11 @@ const MGR_HUB_OF={pipeline:"sales",boq:"sales",clients:"sales","sales-reports":"
   executive:"executive",exectxns:"executive",execpl:"executive",execloans:"executive",monboard:"executive","finance-reports":"executive",projectmargins:"executive",costanalysis:"executive",
   billing:"money",cashposition:"money",cashflow:"money",finance:"accounting",
   accounts:"admin",audit:"admin",syshealth:"admin",botsettings:"admin",tvboard:"admin",activity:"admin"};
-const hubOf=(r,id)=>(r==="Manager"&&MGR_HUB_OF[id])||NAV_HUB_OF[id];
+// Finance roles (2026-11-11, Paulo): Purchasing is the first tab of Payables, so
+// Finance and Procurement work from the same per-supplier view of POs / WOs and payments.
+const FIN_HUB_ROLES=["Finance","FinanceAssistant","Accounting"];
+const FIN_HUB_OF={purchasing:"payables"};
+const hubOf=(r,id)=>(r==="Manager"&&MGR_HUB_OF[id])||(FIN_HUB_ROLES.includes(r)&&FIN_HUB_OF[id])||NAV_HUB_OF[id];
 // Manager: Executive's own sub-tabs (Transactions, P&L, Loans) are tabs of the
 // Executive hub strip, so the page shows one tab row instead of two.
 const MGR_FIN_TAB_NAV={txns:"exectxns",pl:"execpl",loans:"execloans"};
@@ -9976,10 +9980,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     Finance:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"boq",l:"BOQ"},{id:"clients",l:"Clients"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"payables",l:"Supplier Bills"},{id:"aplog",l:"AP Log"},{id:"payments",l:"Payments"},{id:"payrun",l:"Payment Run"},{id:"checkvouchers",l:"Check Vouchers"},{id:"subconmon",l:"Subcon Payments"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills (old)"}]:[]),{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"monboard",l:"Monitoring Board"},{id:"finance-reports",l:"Reports"},{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"purchasing",l:"Purchasing"},{id:"payables",l:"Supplier Bills"},{id:"aplog",l:"AP Log"},{id:"payments",l:"Payments"},{id:"payrun",l:"Payment Run"},{id:"checkvouchers",l:"Check Vouchers"},{id:"subconmon",l:"Subcon Payments"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills (old)"}]:[]),{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"monboard",l:"Monitoring Board"},{id:"finance-reports",l:"Reports"},{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"},{id:"subconcert",l:"Subcon Billing"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
-      {group:"Procurement", items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"purchasing",l:"Purchasing"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Suppliers"}]},
+      {group:"Procurement", items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Suppliers"}]},
       {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"}]},
       {group:"Admin",       items:[{id:"audit",l:"Audit"},{id:"botsettings",l:"Bot Settings"},{id:"activity",l:"Team Activity"}]},
     ],
@@ -9995,8 +9999,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     Accounting:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"payables",l:"Supplier Bills"},{id:"aplog",l:"AP Log"},{id:"payments",l:"Payments"},{id:"checkvouchers",l:"Check Vouchers"},{id:"subconmon",l:"Subcon Payments"},{id:"purchaseorders",l:"Purchase Orders"},{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
-      {group:"Procurement", items:[{id:"purchasing",l:"Purchasing"},{id:"subconwo",l:"SWO For Accounting"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"purchasing",l:"Purchasing"},{id:"payables",l:"Supplier Bills"},{id:"aplog",l:"AP Log"},{id:"payments",l:"Payments"},{id:"checkvouchers",l:"Check Vouchers"},{id:"subconmon",l:"Subcon Payments"},{id:"purchaseorders",l:"Purchase Orders"},{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
+      {group:"Procurement", items:[{id:"subconwo",l:"SWO For Accounting"}]},
     ],
     Procurement:[
       {group:"Overview",   items:[{id:"home",l:"Overview"}]},
@@ -10051,8 +10055,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     FinanceAssistant:[
       {group:"Overview",   items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
-      {group:"Finance",    items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"payables",l:"Supplier Bills"},{id:"aplog",l:"AP Log"},{id:"payments",l:"Payments"},{id:"payrun",l:"Payment Run"},{id:"checkvouchers",l:"Check Vouchers"},{id:"subconmon",l:"Subcon Payments"},{id:"purchaseorders",l:"Purchase Orders"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills (old)"}]:[]),{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"monboard",l:"Monitoring Board"},{id:"finance-reports",l:"Reports"},{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
-      {group:"Procurement", items:[{id:"purchasing",l:"Purchasing"}]},
+      {group:"Finance",    items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"purchasing",l:"Purchasing"},{id:"payables",l:"Supplier Bills"},{id:"aplog",l:"AP Log"},{id:"payments",l:"Payments"},{id:"payrun",l:"Payment Run"},{id:"checkvouchers",l:"Check Vouchers"},{id:"subconmon",l:"Subcon Payments"},{id:"purchaseorders",l:"Purchase Orders"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills (old)"}]:[]),{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"monboard",l:"Monitoring Board"},{id:"finance-reports",l:"Reports"},{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
     ],
     // Procurement Manager sees the same workspace as Procurement — the only
     // difference is authority (they approve POs), not navigation.

@@ -91,17 +91,26 @@ const PH_STATUS={"Blocked":["#fee2e2","#991b1b"],"Not issued":["#f1f5f9","#33415
 const phChip=t=>{const c=PH_STATUS[t]||PH_STATUS.Open;return <span style={{fontSize:".68rem",fontWeight:700,padding:"2px 8px",borderRadius:999,background:c[0],color:c[1],whiteSpace:"nowrap"}}>{t}</span>;};
 const phTag=t=><span style={{fontSize:".64rem",fontWeight:800,padding:"2px 6px",borderRadius:5,background:t==="PO"?"#e0e7ff":"#fef3c7",color:t==="PO"?"#3730a3":"#92400e"}}>{t}</span>;
 const phPeso=v=>"₱"+num(v).toLocaleString("en-PH",{maximumFractionDigits:0});
+// Supplier key for grouping: the same rule as ap_vendor_key() in the database
+// (first 8 letters/digits), so "FCI" spellings of one supplier land together.
+const phVendorKey=v=>String(v||"").replace(/[^a-zA-Z0-9]/g,"").toLowerCase().slice(0,8)||"—";
 
 export default function PurchasingHub({prs=[],swos=[],payables=[],payPays=[],deals=[],exps=[],role="",today=TODAY,
   onNewBilling=null,onPayBill=null,onGo=null}){
   const mob=useIsMobile();
   const myKeys=PH_ROLE_KEYS[role]||PH_ROLE_KEYS[canonRole(role)]||[];
   const[kind,setKind]=useState("all");
-  const[view,setView]=useState(myKeys.length?"mine":"open");
+  // Opens on Open (every unpaid order), so each supplier line shows its full balance; "Needs me" is one click away.
+  const[view,setView]=useState("open");
   const[q,setQ]=useState("");
   const[openKey,setOpenKey]=useState(null);
   const[limit,setLimit]=useState(80);
   const[ledger,setLedger]=useState(null);
+  // By supplier (default, 2026-11-11): one line per supplier / subcontractor with
+  // what was ordered, received, billed, paid, unpaid (ordered − paid) and payable now; its POs and WOs
+  // open underneath. Finance and Procurement see the same lines.
+  const[groupBy,setGroupBy]=useState("supplier");
+  const[openSup,setOpenSup]=useState(()=>new Set());
   const all=useMemo(()=>purchasingRows({prs,swos,payables,deals}),[prs,swos,payables,deals]);
 
   const mine=r=>!!r.owner&&myKeys.includes(r.owner);
@@ -110,6 +119,19 @@ export default function PurchasingHub({prs=[],swos=[],payables=[],payPays=[],dea
   const rows=byKind.filter(r=>view==="all"||(view==="open"?!r.done:mine(r)))
     .filter(r=>!needle||[r.no,r.vendor,r.project].some(v=>String(v).toLowerCase().includes(needle)));
   const shown=rows.slice(0,limit);
+  const groups=(()=>{
+    const m=new Map();
+    rows.forEach(r=>{const k=phVendorKey(r.vendor);if(!m.has(k))m.set(k,{key:k,name:r.vendor,rows:[]});m.get(k).rows.push(r);});
+    return [...m.values()].map(g=>{
+      const t=k=>r2(g.rows.reduce((s,r)=>s+num(r[k]),0));
+      const ordered=t("ordered"),paid=t("paid");
+      return {...g,ordered,received:t("received"),billed:t("billed"),paid,payNow:t("payNow"),owed:Math.max(0,r2(ordered-paid)),
+        nPO:g.rows.filter(r=>!r.isWO).length,nWO:g.rows.filter(r=>r.isWO).length,mine:g.rows.filter(mine).length,
+        toApprove:g.rows.filter(r=>r.status==="Bill to approve").length};
+    }).sort((a,b)=>b.payNow-a.payNow||b.owed-a.owed||String(a.name).localeCompare(String(b.name)));
+  })();
+  const supOpen=k=>!!needle||openSup.has(k);
+  const toggleSup=k=>setOpenSup(s=>{const n=new Set(s);n.has(k)?n.delete(k):n.add(k);return n;});
   const open=byKind.filter(r=>!r.done);
   const sum=k=>r2(open.reduce((s,r)=>s+num(r[k]),0));
   const kpis=[
@@ -156,42 +178,7 @@ export default function PurchasingHub({prs=[],swos=[],payables=[],payPays=[],dea
     </div>
   );
 
-  const inp={border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".8rem",background:"#fff",minHeight:36,boxSizing:"border-box"};
-  return(
-    <div style={{display:"flex",flexDirection:"column",gap:14}}>
-      <div>
-        <h2 style={{margin:0,fontWeight:800,color:PHC.navy,fontSize:"1.2rem"}}>Purchasing</h2>
-        <div style={{fontSize:".78rem",color:PHC.muted,marginTop:2}}>Every supplier PO and subcon Work Order from order to last payment. A PO is received by Warehouse; a WO is certified by the PM.</div>
-      </div>
-
-      <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(5,minmax(0,1fr))",gap:8}}>
-        {kpis.map(([k,v,s])=>(
-          <div key={k} style={{background:"#fff",border:`1px solid ${PHC.line}`,borderRadius:10,padding:"10px 12px"}}>
-            <div style={{fontSize:".66rem",fontWeight:700,color:PHC.muted}}>{k}</div>
-            <div style={{fontWeight:800,color:PHC.navy,fontSize:"1.05rem",fontVariantNumeric:"tabular-nums"}}>{v}</div>
-            <div style={{fontSize:".66rem",color:PHC.faint}}>{s}</div>
-          </div>))}
-      </div>
-
-      <div style={{display:"flex",flexWrap:"wrap",gap:6,alignItems:"center"}}>
-        <div role="group" aria-label="Order type" style={{display:"flex",gap:6}}>
-          {[["all","All"],["po","Supplier POs"],["wo","Subcon WOs"]].map(([id,l])=><button key={id} onClick={()=>{setKind(id);setLimit(80);}} style={pill(kind===id)}>{l}</button>)}
-        </div>
-        <span style={{width:1,height:24,background:PHC.line,margin:"0 4px"}} aria-hidden="true"/>
-        <div role="group" aria-label="Show" style={{display:"flex",gap:6}}>
-          {myKeys.length>0&&<button onClick={()=>{setView("mine");setLimit(80);}} style={{...pill(view==="mine"),...(view==="mine"?{}:{background:"#fff7ed",borderColor:"#fed7aa",color:"#9a3412"})}}>Needs me · {mineCount}</button>}
-          <button onClick={()=>{setView("open");setLimit(80);}} style={pill(view==="open")}>Open</button>
-          <button onClick={()=>{setView("all");setLimit(80);}} style={pill(view==="all")}>All</button>
-        </div>
-        <input value={q} onChange={e=>setQ(e.target.value)} aria-label="Search orders" placeholder="Search PO/WO no., supplier, project…" style={{...inp,marginLeft:mob?0:"auto",flex:mob?"1 1 100%":"0 1 280px"}}/>
-      </div>
-
-      {rows.length===0?<div style={{background:"#fff",border:`1px solid ${PHC.line}`,borderRadius:12,padding:20,color:PHC.muted,fontSize:".85rem"}}>{view==="mine"?"Nothing is waiting on you.":"No orders match."}</div>
-      :<div style={{background:"#fff",border:`1px solid ${PHC.line}`,borderRadius:12,overflow:"hidden"}}>
-        {!mob&&<div style={{display:"grid",gridTemplateColumns:"2.4fr repeat(5,1fr) 1.9fr",gap:12,padding:"10px 16px",background:"#f8fafc",borderBottom:`1px solid ${PHC.line}`,fontSize:".64rem",fontWeight:700,color:PHC.muted,textTransform:"uppercase",letterSpacing:".04em"}}>
-          <div>Order</div><div style={{textAlign:"right"}}>Ordered</div><div style={{textAlign:"right"}}>Received / certified</div><div style={{textAlign:"right"}}>Billed</div><div style={{textAlign:"right"}}>Paid</div><div style={{textAlign:"right"}}>Payable now</div><div>Next step</div>
-        </div>}
-        {shown.map(r=>{
+  const orderRow=r=>{
           const isOpen=openKey===r.key, me=mine(r);
           const head=(
             <div style={{display:"flex",flexDirection:"column",gap:2,minWidth:0}}>
@@ -232,8 +219,80 @@ export default function PurchasingHub({prs=[],swos=[],payables=[],payPays=[],dea
               )}
               {isOpen&&detail(r)}
             </div>);
-        })}
-        {rows.length>shown.length&&<div style={{padding:12,textAlign:"center"}}><button onClick={()=>setLimit(l=>l+200)} style={btn(false)}>Show more ({rows.length-shown.length} more)</button></div>}
+  };
+  const inp={border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".8rem",background:"#fff",minHeight:36,boxSizing:"border-box"};
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+      <div>
+        <h2 style={{margin:0,fontWeight:800,color:PHC.navy,fontSize:"1.2rem"}}>Purchasing</h2>
+        <div style={{fontSize:".78rem",color:PHC.muted,marginTop:2}}>Every supplier PO and subcon Work Order from order to last payment, the same view for Procurement and Finance. A PO is received by Warehouse; a WO is certified by the PM.</div>
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(5,minmax(0,1fr))",gap:8}}>
+        {kpis.map(([k,v,s])=>(
+          <div key={k} style={{background:"#fff",border:`1px solid ${PHC.line}`,borderRadius:10,padding:"10px 12px"}}>
+            <div style={{fontSize:".66rem",fontWeight:700,color:PHC.muted}}>{k}</div>
+            <div style={{fontWeight:800,color:PHC.navy,fontSize:"1.05rem",fontVariantNumeric:"tabular-nums"}}>{v}</div>
+            <div style={{fontSize:".66rem",color:PHC.faint}}>{s}</div>
+          </div>))}
+      </div>
+
+      <div style={{display:"flex",flexWrap:"wrap",gap:6,alignItems:"center"}}>
+        <div role="group" aria-label="Group by" style={{display:"flex",gap:6}}>
+          {[["supplier","By supplier"],["order","By order"]].map(([id,l])=><button key={id} onClick={()=>{setGroupBy(id);setLimit(80);}} style={pill(groupBy===id)}>{l}</button>)}
+        </div>
+        <span style={{width:1,height:24,background:PHC.line,margin:"0 4px"}} aria-hidden="true"/>
+        <div role="group" aria-label="Order type" style={{display:"flex",gap:6}}>
+          {[["all","All"],["po","Supplier POs"],["wo","Subcon WOs"]].map(([id,l])=><button key={id} onClick={()=>{setKind(id);setLimit(80);}} style={pill(kind===id)}>{l}</button>)}
+        </div>
+        <span style={{width:1,height:24,background:PHC.line,margin:"0 4px"}} aria-hidden="true"/>
+        <div role="group" aria-label="Show" style={{display:"flex",gap:6}}>
+          {myKeys.length>0&&<button onClick={()=>{setView("mine");setLimit(80);}} style={{...pill(view==="mine"),...(view==="mine"?{}:{background:"#fff7ed",borderColor:"#fed7aa",color:"#9a3412"})}}>Needs me · {mineCount}</button>}
+          <button onClick={()=>{setView("open");setLimit(80);}} style={pill(view==="open")}>Open</button>
+          <button onClick={()=>{setView("all");setLimit(80);}} style={pill(view==="all")}>All</button>
+        </div>
+        <input value={q} onChange={e=>setQ(e.target.value)} aria-label="Search orders" placeholder="Search PO/WO no., supplier, project…" style={{...inp,marginLeft:mob?0:"auto",flex:mob?"1 1 100%":"0 1 280px"}}/>
+      </div>
+
+      {rows.length===0?<div style={{background:"#fff",border:`1px solid ${PHC.line}`,borderRadius:12,padding:20,color:PHC.muted,fontSize:".85rem"}}>{view==="mine"?"Nothing is waiting on you.":"No orders match."}</div>
+      :<div style={{background:"#fff",border:`1px solid ${PHC.line}`,borderRadius:12,overflow:"hidden"}}>
+        {!mob&&<div style={{display:"grid",gridTemplateColumns:"2.4fr repeat(5,1fr) 1.9fr",gap:12,padding:"10px 16px",background:"#f8fafc",borderBottom:`1px solid ${PHC.line}`,fontSize:".64rem",fontWeight:700,color:PHC.muted,textTransform:"uppercase",letterSpacing:".04em"}}>
+          <div>{groupBy==="supplier"?"Supplier / subcontractor":"Order"}</div><div style={{textAlign:"right"}}>Ordered</div><div style={{textAlign:"right"}}>Received / certified</div><div style={{textAlign:"right"}}>Billed</div><div style={{textAlign:"right"}}>Paid</div><div style={{textAlign:"right"}}>Payable now</div><div>Next step</div>
+        </div>}
+        {groupBy==="supplier"?groups.slice(0,limit).map(g=>{
+          const op=supOpen(g.key);
+          return(
+            <div key={g.key} style={{borderBottom:`1px solid ${PHC.line}`}}>
+              <div role="button" tabIndex={0} aria-expanded={op} onClick={()=>toggleSup(g.key)} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();toggleSup(g.key);}}}
+                style={mob?{padding:"10px 12px",display:"flex",flexDirection:"column",gap:6,cursor:"pointer",background:"#f8fafc"}
+                  :{display:"grid",gridTemplateColumns:"2.4fr repeat(5,1fr) 1.9fr",gap:12,padding:"11px 16px",alignItems:"center",fontSize:".8rem",fontVariantNumeric:"tabular-nums",cursor:"pointer",background:"#f8fafc"}}>
+                <div style={{minWidth:0}}>
+                  <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+                    <span aria-hidden="true" style={{color:PHC.muted,fontSize:".75rem"}}>{op?"▾":"▸"}</span>
+                    <span style={{fontWeight:800,color:PHC.navy,fontSize:".86rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{g.name}</span>
+                  </div>
+                  <div style={{fontSize:".7rem",color:PHC.muted,marginLeft:16}}>{[g.nPO?`${g.nPO} PO${g.nPO===1?"":"s"}`:"",g.nWO?`${g.nWO} WO${g.nWO===1?"":"s"}`:""].filter(Boolean).join(" · ")}
+                    {g.toApprove>0&&<span style={{marginLeft:6}}>{phChip("Bill to approve")}</span>}
+                    {g.mine>0&&<span style={{marginLeft:6,color:"#9a3412",fontWeight:700}}>{g.mine} need{g.mine===1?"s":""} you</span>}</div>
+                </div>
+                {mob?(
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:6,fontSize:".72rem"}}>
+                    {[["Ordered",phPeso(g.ordered)],["Paid",phPeso(g.paid)],["Unpaid",phPeso(g.owed)],["Billed",phPeso(g.billed)],["Payable now",phPeso(g.payNow)]].map(([k,v])=>(
+                      <div key={k} style={{background:"#fff",borderRadius:6,padding:"4px 6px"}}><div style={{fontSize:".58rem",color:PHC.muted,textTransform:"uppercase"}}>{k}</div><div style={{fontWeight:700}}>{v}</div></div>))}
+                  </div>
+                ):(<>
+                  <div style={{textAlign:"right",fontWeight:800}}>{phPeso(g.ordered)}</div>
+                  <div style={{textAlign:"right"}}>{g.received>0?phPeso(g.received):"—"}</div>
+                  <div style={{textAlign:"right"}}>{g.billed>0?phPeso(g.billed):"—"}</div>
+                  <div style={{textAlign:"right",fontWeight:700}}>{g.paid>0?phPeso(g.paid):"—"}<div style={{fontSize:".66rem",fontWeight:500,color:g.owed>1?PHC.bad:PHC.ok}}>{g.owed>1?`${phPeso(g.owed)} unpaid`:"fully paid"}</div></div>
+                  <div style={{textAlign:"right",fontWeight:800,color:g.payNow>1?PHC.warn:PHC.faint}}>{g.payNow>1?phPeso(g.payNow):"—"}</div>
+                  <div><button onClick={e=>{e.stopPropagation();setLedger({kind:"supplier",id:g.name});}} style={{...linkBtn,fontSize:".74rem",fontWeight:700}}>Payment history</button></div>
+                </>)}
+              </div>
+              {op&&<div style={{borderTop:`1px solid ${PHC.line}`,paddingLeft:mob?0:12}}>{g.rows.map(orderRow)}</div>}
+            </div>);
+        }):shown.map(orderRow)}
+        {(groupBy==="supplier"?groups.length>limit:rows.length>shown.length)&&<div style={{padding:12,textAlign:"center"}}><button onClick={()=>setLimit(l=>l+200)} style={btn(false)}>Show more ({groupBy==="supplier"?`${groups.length-limit} more suppliers`:`${rows.length-shown.length} more`})</button></div>}
       </div>}
       <div style={{fontSize:".7rem",color:PHC.faint}}>Payable now: subcon WOs up to the higher of PM-certified % and down payment %, never past what was billed; supplier POs once fully received and the bill is approved. A Manager can still pay a partly received PO from Supplier Bills.</div>
       <LedgerHost open={ledger} setOpen={setLedger} prs={prs} swos={swos} payables={payables} payPays={payPays} deals={deals} exps={exps} today={today}/>
