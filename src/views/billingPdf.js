@@ -144,7 +144,9 @@ export function buildSoaPdf(m){
   field("BILLING ADDRESS:",m.address,L+half,half);
   y+=7;
 
-  // Summary boxes
+  // Summary boxes (outstanding projects only; skipped when nothing is
+  // outstanding, where every box would read 0.00 next to a paid client)
+  if(m.rows.length){
   const boxes=[[`TOTAL ${m.amtLbl}`,m.totals.vatable],["TOTAL VAT",m.totals.vat],["TOTAL PAYMENTS MADE",m.totals.payments],["TOTAL BALANCE",m.totals.balance],["TOTAL AMOUNT DUE",m.totals.due]];
   const bw=(R-L)/boxes.length;
   boxes.forEach(([k,v],i)=>{
@@ -154,10 +156,25 @@ export function buildSoaPdf(m){
     doc.setFontSize(12);doc.setTextColor(last?ORANGE:INK);doc.text(pdfNum(v),x+bw/2,y+11.5,{align:"center"});
   });
   y+=20;
+  }
 
+  const projText=r=>r.project+(r.ref?`\n${r.ref}`:"")+(r.awaiting2307?"\nAwaiting BIR Form 2307":"");
+  const fd=ds=>ds?new Date(ds+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):"—";
+  const tableTitle=t=>{doc.setFont(F,"bold");doc.setFontSize(8.5);doc.setTextColor(INK);doc.text(t.toUpperCase(),L,y);y+=2.5;};
+
+  // Nothing outstanding: say so plainly instead of an orange 0.00.
+  if(!m.rows.length){
+    doc.setFillColor("#ecfdf5");doc.setDrawColor(GREEN);doc.setLineWidth(0.6);doc.rect(L,y,R-L,11,"FD");
+    doc.setFont(F,"bold");doc.setFontSize(11);doc.setTextColor(GREEN);
+    doc.text(`PAID IN FULL — no outstanding balance as of ${m.dateStr||""}`,W/2,y+7.2,{align:"center"});
+    y+=17;
+  }
+
+  if(m.rows.length){
+  tableTitle("Outstanding");
   const body=m.rows.map((r,i)=>[
     String(i+1),r.client,
-    {content:r.project+(r.ref?`\n${r.ref}`:""),styles:{}},
+    {content:projText(r),styles:{}},
     pdfNum(r.vatable),pdfNum(r.vat),pdfNum(r.gross),pdfNum(r.payments),pdfNum(r.ewt),pdfNum(r.due),pdfNum(r.balance),
   ]);
   autoTable(doc,{
@@ -175,7 +192,34 @@ export function buildSoaPdf(m){
       if(d.section==="body"&&d.column.index===2){d.cell.styles.textColor=BLUE;d.cell.styles.fontStyle="bold";}
     },
   });
-  y=doc.lastAutoTable.finalY+6;
+  y=doc.lastAutoTable.finalY+8;
+  }
+
+  // Settled projects: fully paid within the last few months, for reference only.
+  if(y>170){doc.addPage();y=20;}
+  tableTitle(`Settled — fully paid since ${fd(m.settledSince)}`);
+  if(m.settledRows&&m.settledRows.length){
+    autoTable(doc,{
+      startY:y,margin:{left:L,right:W-R,bottom:18},theme:"plain",
+      head:[["#","PROJECT NAME","SALES AMOUNT","PAYMENT MADE","LAST PAYMENT","STATUS"]],
+      body:m.settledRows.map((r,i)=>[String(i+1),projText(r),pdfNum(r.gross),pdfNum(r.payments),fd(r.lastPaid),"PAID"]),
+      foot:[["","TOTAL SETTLED",pdfNum(m.settledTotals.gross),pdfNum(m.settledTotals.payments),"",""]],
+      styles:{font:F,fontSize:8,textColor:INK,cellPadding:2,valign:"top",lineColor:"#f1f5f9",lineWidth:{bottom:0.2}},
+      headStyles:{font:F,fontStyle:"bold",fillColor:"#475569",textColor:255,fontSize:6.5},
+      footStyles:{font:F,fontStyle:"bold",fillColor:"#475569",textColor:255,fontSize:8.5,halign:"right"},
+      columnStyles:{0:{cellWidth:8,halign:"center",textColor:SLATE},2:{halign:"right",cellWidth:34},3:{halign:"right",textColor:BLUE,cellWidth:34},4:{halign:"right",cellWidth:30},5:{halign:"right",cellWidth:20,textColor:GREEN,fontStyle:"bold"}},
+      didParseCell:d=>{
+        if((d.section==="head"||d.section==="foot")&&d.column.index>=2)d.cell.styles.halign="right";
+        if(d.section==="foot"&&d.column.index===1)d.cell.styles.halign="left";
+        if(d.section==="body"&&d.column.index===1){d.cell.styles.textColor=BLUE;d.cell.styles.fontStyle="bold";}
+      },
+    });
+    y=doc.lastAutoTable.finalY+6;
+  } else {
+    doc.setFont(F,"italic");doc.setFontSize(8);doc.setTextColor(SLATE);
+    doc.text(`No projects fully paid in the last ${m.settledMonths||3} months.`,L,y+3);
+    y+=9;
+  }
 
   if(y>150){doc.addPage();y=20;}
   const notesH=36;
