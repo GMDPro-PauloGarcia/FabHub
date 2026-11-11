@@ -34,7 +34,7 @@ const NAV_HUBS={orders:{l:"Orders",icon:"📦"},warehouse:{l:"Warehouse",icon:"�
   payables:{l:"Payables",icon:"📤"},cash:{l:"Cash",icon:"🏦"},monitoring:{l:"Monitoring",icon:"🚦"},accounting:{l:"Accounting",icon:"📒"},
   sales:{l:"Sales",icon:"📊"},projects:{l:"Projects",icon:"📋"},design:{l:"Design",icon:"🖌️"},executive:{l:"Executive",icon:"🎯"},money:{l:"Cash & Billing",icon:"🏦"},admin:{l:"Admin",icon:"⚙️"}};
 const NAV_HUB_OF={orderboard:"orders",purchasing:"orders",procurement:"orders",subconwo:"orders",inventory:"warehouse",deliveries:"warehouse",stockmove:"warehouse",
-  payables:"payables",payments:"payables",payrun:"payables",checkvouchers:"payables",subconmon:"payables",purchaseorders:"payables",
+  payables:"payables",payments:"payables",payrun:"payables",liquidations:"payables",checkvouchers:"payables",subconmon:"payables",purchaseorders:"payables",
   cashposition:"cash",cashflow:"cash",monboard:"monitoring","finance-reports":"monitoring",
   expmon:"accounting",bir2307:"accounting",coa:"accounting"};
 // Manager-only hubs (2026-11-07): the Manager sidebar went from 29 items to 11.
@@ -87,6 +87,7 @@ const CashPositionPayables=_lazyView(()=>import('./views/CashPositionPayables'))
 const TransactionHistory=_lazyView(()=>import('./views/TransactionHistory'));
 const ExpenseMonitoring=_lazyView(()=>import('./views/ExpenseMonitoring'));
 const PaymentRun=_lazyView(()=>import('./views/PaymentRun'));
+const Liquidations=_lazyView(()=>import('./views/Liquidations'));
 const Bir2307=_lazyView(()=>import('./views/Bir2307'));
 const MonitoringBoard=_lazyView(()=>import('./views/MonitoringBoard'));
 const SubconPaymentMonitor=_lazyView(()=>import('./views/SubconPaymentMonitor'));
@@ -10061,6 +10062,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Projects",   items:[{id:"projects",l:"Projects"},{id:"clients",l:"Clients"}]},
     ],
   };
+  // Liquidations (2026-11-11): Finance roles get it next to Payment Run (Payables
+  // hub); Accounting reads it there; every other role gets "My Liquidations".
+  Object.keys(navMap).forEach(r=>{
+    const fin=["Manager","Finance","FinanceAssistant","Accounting"].includes(r);
+    const item={id:"liquidations",l:fin?"Liquidations":"My Liquidations"};
+    if(fin){
+      const g=navMap[r].find(x=>(x.items||[]).some(it=>it.id==="payrun"||it.id==="payables"));
+      if(g){const i=g.items.findIndex(it=>it.id==="payrun");g.items.splice(i>=0?i+1:g.items.length,0,item);return;}
+    }
+    navMap[r].push({group:"Money",items:[item]});
+  });
   // Hidden modules drop out of every role's nav; a group left empty goes too.
   const visibleNav=r=>(navMap[r]||[]).map(g=>({...g,items:(g.items||[]).filter(it=>!HIDDEN_NAV_IDS.has(it.id))})).filter(g=>g.items.length);
   // Nav hubs (2026-11-05): pages that belong together share one sidebar item,
@@ -10093,7 +10105,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const Nav=useStableComponent(()=>{
     const NAV_ICONS={
       home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   cashposition:"🏦",   supplierbills:"📦",   cashflow:"📈",   payables:"📤",   billing:"🧾",
-      reports:"📈", "sales-reports":"📈", "finance-reports":"📈", projectmargins:"🪙", acctdash:"📒", executive:"🎯", expmon:"🧾", payrun:"💸", bir2307:"📑", monboard:"🚦", subconmon:"🔨", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
+      reports:"📈", "sales-reports":"📈", "finance-reports":"📈", projectmargins:"🪙", acctdash:"📒", executive:"🎯", expmon:"🧾", payrun:"💸", liquidations:"🧾", bir2307:"📑", monboard:"🚦", subconmon:"🔨", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅", financecal:"📅",
       drf:"🖌️",    procurement:"📦", purchasing:"🛒", orderboard:"📋", progress:"📶", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
       masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆", audit:"🔎", syshealth:"🩺", tvboard:"📺",
@@ -10242,7 +10254,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const favPool=visibleNav(role).flatMap(g=>g.items||[]);
     const NAV_ICONS={
       home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   cashposition:"🏦",   supplierbills:"📦",   cashflow:"📈",   payables:"📤",   billing:"🧾",
-      reports:"📈", "sales-reports":"📈", "finance-reports":"📈", projectmargins:"🪙", acctdash:"📒", executive:"🎯", expmon:"🧾", payrun:"💸", bir2307:"📑", monboard:"🚦", subconmon:"🔨", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
+      reports:"📈", "sales-reports":"📈", "finance-reports":"📈", projectmargins:"🪙", acctdash:"📒", executive:"🎯", expmon:"🧾", payrun:"💸", liquidations:"🧾", bir2307:"📑", monboard:"🚦", subconmon:"🔨", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅", financecal:"📅",
       drf:"🖌️",    procurement:"📦", purchasing:"🛒", orderboard:"📋", progress:"📶", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
       masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆", audit:"🔎", syshealth:"🩺", tvboard:"📺",
@@ -16596,6 +16608,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   // ─── SALES ────────────────────────────────────────────────────────────────
   // Progress (30/60/90/100), replaces PM Updates / Scope Changes (2026-11-07).
+  if(page==="liquidations") return(
+    <Wrap><Liquidations deals={wonDeals} role={canonRole(role)} session={session} today={today}/></Wrap>
+  );
   if(page==="progress"&&["Manager","Operations","ProjectMover","Coordinator"].includes(role)) return(
     <Wrap><ProjectProgress deals={wonDeals} pcards={pcards} role={role} session={session} upPcards={upPcards}/></Wrap>
   );
