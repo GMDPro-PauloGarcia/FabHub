@@ -119,11 +119,15 @@ export const isActivePipeline = (stage)=>!WON_STAGES.includes(stage)&&!isLostSta
 // 06..12 as one set), so this is display + where a click moves the project.
 // Every WON_STAGES value must be in exactly one group.
 export const PROJECT_STAGE_GROUPS=[
-  {key:"fab",     label:"Briefing / Fabrication", target:"08 · Fabrication", color:"#f59e0b", stages:["06 · Kickoff","07 · Briefing","08 · Fabrication"]},
-  {key:"install", label:"Installation",           target:"10 · Installation",color:"#3b82f6", stages:["09 · Site & Billing","10 · Installation","11 · Punchlist"]},
+  {key:"kickoff", label:"Kickoff",                target:"06 · Kickoff",     color:"#8b5cf6", stages:["06 · Kickoff"]},
+  {key:"fab",     label:"Briefing / Fabrication", target:"08 · Fabrication", color:"#f59e0b", stages:["07 · Briefing","08 · Fabrication"]},
+  {key:"install", label:"Installation",           target:"10 · Installation",color:"#3b82f6", stages:["09 · Site & Billing","10 · Installation"]},
+  {key:"punch",   label:"Punchlist",              target:"11 · Punchlist",   color:"#ef4444", stages:["11 · Punchlist"]},
   {key:"closeout",label:"Close-Out",              target:"12 · Close-Out",   color:"#059669", stages:["12 · Close-Out"]},
   {key:"done",    label:"Completed",              target:"14 · Completed",   color:"#047857", stages:["14 · Completed"]},
 ];
+// Punchlist is the sign a project has reached 90 % (agreed with Paulo 2026-11-11).
+export const PUNCHLIST_MIN_PCT=90;
 export const projStageGroup=stage=>PROJECT_STAGE_GROUPS.find(g=>g.stages.includes(stage))||null;
 export const projStageLabel=stage=>projStageGroup(stage)?.label||String(stage||"").replace(/^\d+ · /,"")||"—";
 
@@ -744,7 +748,10 @@ const _joCmp=(a,b)=>_joPlain(a)-_joPlain(b)
 export const projProgressPct=(pc,deal=null)=>{
   if(deal?.stage==="12 · Close-Out"||deal?.stage==="14 · Completed") return 100;
   const v=pc?.manualProgress;
-  return v==null||v===""||isNaN(Number(v))?null:Number(v);
+  const n=v==null||v===""||isNaN(Number(v))?null:Number(v);
+  // A project at Punchlist is at least 90 %, even before the PM picks it.
+  if(deal?.stage==="11 · Punchlist") return Math.max(n||0,PUNCHLIST_MIN_PCT);
+  return n;
 };
 
 export const dealJo=(jos,dealId)=>{
