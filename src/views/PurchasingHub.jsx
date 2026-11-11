@@ -22,7 +22,7 @@ import {LedgerHost,linkBtn} from "./Ledgers";
 // receipt was never proven.
 
 const PHC={ink:"#0f172a",muted:"#475569",faint:"#64748b",line:"#e2e8f0",navy:"#0B2545",blue:"#1d4ed8",ok:"#047857",warn:"#b45309",bad:"#b91c1c"};
-const PH_WAIT={approve:"Manager / Procurement Manager",approveBill:"a bill approver",warehouse:"Warehouse",pm:"the PM",finance:"Finance",subcon:"the subcontractor",supplier:"the supplier"};
+const PH_WAIT={approve:"Cost Control / a Manager (Marian: her team's POs up to ₱50K)",approveBill:"a bill approver",warehouse:"Warehouse",pm:"the PM",finance:"Finance",subcon:"the subcontractor",supplier:"the supplier"};
 // What each FabHub role acts on. Approving / issuing a PO or WO: a Manager or the
 // Procurement Manager. Approving a bill: a Manager or Finance (not Mark).
 const PH_ROLE_KEYS={Manager:["approve","approveBill","pm"],ProcurementManager:["approve","procurement"],Procurement:["procurement"],
