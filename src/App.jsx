@@ -16379,7 +16379,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         })()}
         {finTab==="loans"&&role!=="Accounting"&&LOANS_V2&&(
           <LoansView loans={loans} cashPositions={cashPositions} today={today} isMobile={isMobile}
-            canEdit={cashCanEdit(role,session?.username)} sample={loans.some(l=>l.sample)}/>
+            canEdit={["Manager","Finance","FinanceAssistant"].includes(role)} canDelete={role==="Manager"}
+            sample={loans.some(l=>l.sample)} onLoans={ls=>upLoans(()=>ls)}/>
         )}
         {finTab==="loans"&&role!=="Accounting"&&!LOANS_V2&&(()=>{
           const fmtM=v=>"₱"+Number(v).toLocaleString("en-PH",{maximumFractionDigits:0});

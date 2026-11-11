@@ -1,5 +1,7 @@
 import React,{useMemo,useState} from "react";
 import {cashMovements} from "../data/ledger";
+import {Modal,uid,toastEmit,uiConfirm,BANKS} from "../shared";
+import {supabase,isSupabaseReady,loanFromSb,loanToSb,loanEntryToSb} from "../supabaseClient";
 
 // ─── LOANS (Executive › Loans) — PREVIEW, 2026-11-08 ───────────────────────
 // Two kinds of borrowing, as Paulo described them:
@@ -43,19 +45,35 @@ export const creditLineStatus=l=>{
   return{drawn,limit,available:Math.max(0,limit-drawn),util:limit>0?drawn/limit:0,interest};
 };
 
-export default function LoansView({loans=[],cashPositions={},today,canEdit=false,isMobile=false,sample=false}){
+// Reload loans + entries from the server after any save (the database decides).
+export const fetchLoans=async()=>{
+  const[{data:ls,error:e1},{data:ps,error:e2}]=await Promise.all([
+    supabase.from("loans").select("*").order("created_at"),
+    supabase.from("loan_payments").select("*").order("date")]);
+  if(e1||e2) throw (e1||e2);
+  return (ls||[]).map(l=>loanFromSb(l,ps||[]));
+};
+const lnErr=e=>String(e?.message||e||"").replace(/^.*?ERROR:\s*/,"");
+
+export default function LoansView({loans=[],cashPositions={},today,canEdit=false,canDelete=false,isMobile=false,sample=false,onLoans}){
   const[open,setOpen]=useState(null);
+  const[loanForm,setLoanForm]=useState(null);   // {kind, ...} add / edit a loan
+  const[entryForm,setEntryForm]=useState(null); // {loanId, type, cashKey, ...} record a draw / payment
+  const reload=async()=>{try{onLoans&&onLoans(await fetchLoans());}catch(e){toastEmit("Could not reload loans: "+lnErr(e),"error");}};
+  const delEntry=async(x)=>{
+    if(!(await uiConfirm({title:"Delete this entry?",message:`${x.type==="draw"?"Draw":"Payment"} of ₱${Math.round(x.amount).toLocaleString("en-PH")} on ${x.date}. It is kept in the audit log.`,confirmLabel:"Delete",tone:"danger"}))) return;
+    const{error}=await supabase.from("loan_payments").delete().eq("id",x.id);
+    if(error){toastEmit("Not deleted: "+lnErr(error),"error",9000);return;}
+    toastEmit("Entry deleted","success");reload();
+  };
   const lines=loans.filter(l=>l.kind==="credit_line");
   const bankLoans=loans.filter(l=>l.kind!=="credit_line");
   const lineStats=lines.map(l=>({l,s:creditLineStatus(l)}));
   const loanStats=bankLoans.map(l=>({l,s:bankLoanStatus(l,today)}));
 
   // Cash-sheet rows that look like loan activity and are not linked to a loan yet.
-  const unlinked=useMemo(()=>{
-    const linked=new Set();
-    loans.forEach(l=>[...(l.draws||[]),...(l.payments||[])].forEach(x=>x.cashKey&&linked.add(x.cashKey)));
-    return cashMovements(cashPositions).filter(m=>LOAN_TEXT.test(`${m.payee} ${m.particulars}`)&&!linked.has(m.key));
-  },[loans,cashPositions]);
+  const linkedKeys=useMemo(()=>{const k=new Set();loans.forEach(l=>[...(l.draws||[]),...(l.payments||[])].forEach(x=>x.cashKey&&k.add(x.cashKey)));return k;},[loans]);
+  const unlinked=useMemo(()=>cashMovements(cashPositions).filter(m=>LOAN_TEXT.test(`${m.payee} ${m.particulars}`)&&!linkedKeys.has(m.key)),[cashPositions,linkedKeys]);
 
   const owedLines=lineStats.reduce((s,x)=>s+x.s.drawn,0);
   const owedLoans=loanStats.reduce((s,x)=>s+x.s.balance,0);
@@ -65,6 +83,7 @@ export default function LoansView({loans=[],cashPositions={},today,canEdit=false
   const available=lineStats.reduce((s,x)=>s+x.s.available,0);
 
   const box={background:"#fff",border:`1px solid ${LN.line}`,borderRadius:12};
+  const lnBtn={border:`1px solid ${LN.line}`,borderRadius:7,padding:"5px 11px",background:"#fff",color:LN.navy,fontWeight:700,fontSize:".74rem",cursor:"pointer",fontFamily:"inherit"};
   const th={textAlign:"left",fontSize:".64rem",fontWeight:800,color:LN.faint,textTransform:"uppercase",letterSpacing:".4px",padding:"8px 10px",borderBottom:`1px solid ${LN.line}`,whiteSpace:"nowrap"};
   const td={padding:"10px",fontSize:".8rem",color:LN.ink,borderBottom:"1px solid #f1f5f9",verticalAlign:"top"};
   const Bar=({p,c})=><div style={{height:6,background:"#f1f5f9",borderRadius:3,overflow:"hidden",minWidth:80}}><div style={{width:`${Math.min(100,Math.round(p*100))}%`,height:"100%",background:c}}/></div>;
@@ -72,15 +91,23 @@ export default function LoansView({loans=[],cashPositions={},today,canEdit=false
     return <span style={{background:m[1],color:m[2],borderRadius:20,padding:"2px 9px",fontSize:".68rem",fontWeight:800,whiteSpace:"nowrap"}}>{m[0]}</span>;};
   const CashChip=({x})=>x.cashKey?<span title="Linked to the Daily Cash Position" style={{fontSize:".66rem",color:LN.green,fontWeight:700,whiteSpace:"nowrap"}}>✓ Cash sheet {x.date} · {String(x.bank||"").toUpperCase()}</span>:<span style={{fontSize:".66rem",color:LN.red,fontWeight:700}}>Not on cash sheet</span>;
   const Activity=({l})=>{
+    const actions=canEdit&&!sample&&(<div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
+      {l.kind==="credit_line"&&<button onClick={()=>setEntryForm({loanId:l.id,type:"draw",date:today})} style={lnBtn}>+ Draw</button>}
+      <button onClick={()=>setEntryForm({loanId:l.id,type:"payment",date:today})} style={lnBtn}>+ Payment</button>
+      <button onClick={()=>setLoanForm({...l})} style={lnBtn}>Edit loan</button>
+    </div>);
     const rows=[...(l.draws||[]).map(d=>({...d,t:"Draw",amt:lnNum(d.amount),inn:true})),...(l.payments||[]).map(p=>({...p,t:"Payment",amt:lnNum(p.principal)+lnNum(p.interest)}))].sort((a,b)=>String(b.date).localeCompare(String(a.date)));
     return(<div style={{background:"#f8fafc",borderTop:`1px solid ${LN.line}`,padding:"8px 14px"}}>
+      {actions}
       {rows.length===0&&<div style={{fontSize:".75rem",color:LN.faint}}>No activity yet.</div>}
       {rows.map((r,i)=>(<div key={i} style={{display:"flex",gap:12,alignItems:"center",flexWrap:"wrap",padding:"5px 0",borderBottom:i<rows.length-1?"1px solid #eef2f7":"none",fontSize:".76rem"}}>
         <span style={{width:84,color:LN.faint}}>{r.date}</span>
         <span style={{width:70,fontWeight:700,color:r.inn?LN.blue:LN.ink}}>{r.t}</span>
         <span style={{width:110,fontWeight:700}}>{r.inn?"+":"−"}{lnPeso(r.amt)}</span>
         {!r.inn&&<span style={{color:LN.faint}}>principal {lnPeso(r.principal)} · interest {lnPeso(r.interest)}</span>}
+        {r.note&&<span style={{color:LN.faint,fontStyle:"italic"}}>{r.note}</span>}
         <span style={{marginLeft:"auto"}}><CashChip x={r}/></span>
+        {canDelete&&!sample&&r.id&&<button onClick={()=>delEntry(r)} title="Delete (Manager)" style={{border:"none",background:"none",color:LN.red,cursor:"pointer",fontSize:".8rem"}}>✕</button>}
       </div>))}
     </div>);
   };
@@ -100,8 +127,8 @@ export default function LoansView({loans=[],cashPositions={},today,canEdit=false
           <div style={{fontSize:".78rem",color:LN.muted,marginTop:2}}>What GMD owes the banks. Every draw and payment comes from a row on the Daily Cash Position.</div>
         </div>
         {canEdit&&<div style={{display:"flex",gap:6}}>
-          <button style={{border:"none",borderRadius:8,padding:"8px 14px",background:LN.navy,color:"#fff",fontWeight:700,fontSize:".78rem",cursor:"pointer",fontFamily:"inherit"}}>+ Credit line</button>
-          <button style={{border:"none",borderRadius:8,padding:"8px 14px",background:LN.navy,color:"#fff",fontWeight:700,fontSize:".78rem",cursor:"pointer",fontFamily:"inherit"}}>+ Bank loan</button>
+          <button onClick={()=>setLoanForm({kind:"credit_line",lender:"BPI"})} style={{border:"none",borderRadius:8,padding:"8px 14px",background:LN.navy,color:"#fff",fontWeight:700,fontSize:".78rem",cursor:"pointer",fontFamily:"inherit"}}>+ Credit line</button>
+          <button onClick={()=>setLoanForm({kind:"bank_loan",lender:"BPI"})} style={{border:"none",borderRadius:8,padding:"8px 14px",background:LN.navy,color:"#fff",fontWeight:700,fontSize:".78rem",cursor:"pointer",fontFamily:"inherit"}}>+ Bank loan</button>
         </div>}
       </div>
 
@@ -121,7 +148,7 @@ export default function LoansView({loans=[],cashPositions={},today,canEdit=false
             <span style={{width:46,fontWeight:700,color:m.dir==="in"?LN.blue:LN.ink}}>{m.dir==="in"?"In":"Out"}</span>
             <span style={{width:100,fontWeight:700}}>{lnPeso(m.amount)}</span>
             <span style={{flex:1,minWidth:160,color:LN.muted}}>{m.payee}{m.particulars?` · ${m.particulars}`:""} <span style={{color:LN.faint}}>({String(m.bank).toUpperCase()})</span></span>
-            {canEdit&&<button style={{border:`1px solid ${LN.line}`,borderRadius:7,padding:"4px 10px",background:"#fff",color:LN.navy,fontWeight:700,fontSize:".72rem",cursor:"pointer",fontFamily:"inherit"}}>Link to loan…</button>}
+            {canEdit&&<button onClick={()=>setEntryForm({loanId:(/credit\s*line/i.test(`${m.payee} ${m.particulars}`)&&loans.find(l=>l.kind==="credit_line"))?.id||loans[0]?.id||"",type:m.dir==="in"?"draw":"payment",cashKey:m.key,date:m.date,bank:m.bank,amount:m.amount,text:`${m.payee} ${m.particulars}`})} style={{border:`1px solid ${LN.line}`,borderRadius:7,padding:"4px 10px",background:"#fff",color:LN.navy,fontWeight:700,fontSize:".72rem",cursor:"pointer",fontFamily:"inherit"}}>Link to loan…</button>}
           </div>))}
         </div>
       )}
@@ -170,7 +197,128 @@ export default function LoansView({loans=[],cashPositions={},today,canEdit=false
           </tbody>
         </table>
       </div>
+      {loanForm&&<LoanForm init={loanForm} onClose={()=>setLoanForm(null)} onSaved={()=>{setLoanForm(null);reload();}}/>}
+      {entryForm&&<EntryForm init={entryForm} loans={loans} cashPositions={cashPositions} linkedKeys={linkedKeys} today={today} onClose={()=>setEntryForm(null)} onSaved={()=>{setEntryForm(null);reload();}}/>}
       <div style={{fontSize:".7rem",color:LN.faint,marginTop:10}}>Only principal lowers a balance. Interest is a finance cost in the P&L. Employee advances and SSS / Pag-IBIG loan remittances are not GMD loans and are kept out of this page.</div>
     </div>
   );
+}
+
+// ─── Forms ──────────────────────────────────────────────────────────────────
+const lnLbl={display:"block",fontSize:".7rem",fontWeight:700,color:"#475569",marginBottom:3};
+const lnInp={width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem"};
+const LnField=({label,children,hint})=>(<div style={{marginBottom:10}}><label style={lnLbl}>{label}</label>{children}{hint&&<div style={{fontSize:".66rem",color:"#64748b",marginTop:2}}>{hint}</div>}</div>);
+const lnSave={border:"none",borderRadius:8,padding:"9px 18px",background:"#0B2545",color:"#fff",fontWeight:800,fontSize:".82rem",cursor:"pointer",fontFamily:"inherit"};
+const LENDERS=["BPI","Metrobank","BDO","Chinabank","Security Bank","Unionbank","Other"];
+
+function LoanForm({init,onClose,onSaved}){
+  const[f,setF]=useState({status:"Active",...init});
+  const[busy,setBusy]=useState(false);
+  const cl=f.kind==="credit_line";
+  const set=(k,v)=>setF(x=>({...x,[k]:v}));
+  const save=async()=>{
+    if(!isSupabaseReady()){toastEmit("Offline: not saved","error");return;}
+    if(!String(f.lender||"").trim()){toastEmit("Enter the bank","error");return;}
+    if(cl&&!(Number(f.limit)>0)){toastEmit("Enter the credit limit","error");return;}
+    if(!cl&&!(Number(f.principal)>0)){toastEmit("Enter the amount borrowed","error");return;}
+    setBusy(true);
+    const{error}=await supabase.from("loans").upsert(loanToSb({...f,id:f.id||uid()}),{onConflict:"id"});
+    setBusy(false);
+    if(error){toastEmit("Not saved: "+lnErr(error),"error",9000);return;}
+    toastEmit(cl?"Credit line saved":"Bank loan saved","success");onSaved();
+  };
+  return(<Modal open onClose={onClose} title={(f.id?"Edit ":"New ")+(cl?"credit line":"bank loan")}>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}>
+      <LnField label="Bank"><select value={LENDERS.includes(f.lender)?f.lender:"Other"} onChange={e=>set("lender",e.target.value==="Other"?"":e.target.value)} style={lnInp}>{LENDERS.map(b=><option key={b}>{b}</option>)}</select>
+        {!LENDERS.slice(0,-1).includes(f.lender)&&<input value={f.lender||""} onChange={e=>set("lender",e.target.value)} placeholder="Bank / lender name" style={{...lnInp,marginTop:6}}/>}</LnField>
+      <LnField label="Name (optional)"><input value={f.name||""} onChange={e=>set("name",e.target.value)} placeholder={cl?"e.g. Revolving credit line":"e.g. Term loan 2026"} style={lnInp}/></LnField>
+      {cl?<LnField label="Credit limit (₱)"><input type="number" value={f.limit||""} onChange={e=>set("limit",e.target.value)} style={lnInp}/></LnField>
+         :<LnField label="Amount borrowed (₱)"><input type="number" value={f.principal||""} onChange={e=>set("principal",e.target.value)} style={lnInp}/></LnField>}
+      <LnField label="Interest rate (% a year)"><input type="number" step="0.01" value={f.interestRate||""} onChange={e=>set("interestRate",e.target.value)} style={lnInp}/></LnField>
+      {!cl&&<>
+        <LnField label="Released on"><input type="date" value={f.disbursedDate||""} onChange={e=>set("disbursedDate",e.target.value)} style={lnInp}/></LnField>
+        <LnField label="Term (months)"><input type="number" value={f.termMonths||""} onChange={e=>set("termMonths",e.target.value)} style={lnInp}/></LnField>
+        <LnField label="Monthly payment (₱)"><input type="number" value={f.monthlyPayment||""} onChange={e=>set("monthlyPayment",e.target.value)} style={lnInp}/></LnField>
+        <LnField label="First payment due" hint="Next due dates follow monthly from this date"><input type="date" value={f.firstDue||""} onChange={e=>set("firstDue",e.target.value)} style={lnInp}/></LnField>
+      </>}
+    </div>
+    <LnField label="Notes"><input value={f.notes||""} onChange={e=>set("notes",e.target.value)} placeholder="Account / reference no., terms" style={lnInp}/></LnField>
+    <div style={{display:"flex",justifyContent:"flex-end",gap:8}}><button onClick={onClose} style={{...lnSave,background:"#f1f5f9",color:"#475569"}}>Cancel</button><button disabled={busy} onClick={save} style={lnSave}>{busy?"Saving…":"Save"}</button></div>
+  </Modal>);
+}
+
+// Suggested split of a cash-sheet payment: a row that says "interest" is all
+// interest; otherwise one month's interest on the outstanding balance, the rest
+// principal. Mark can change both before saving.
+const lnSplit=(loan,amt,text,today)=>{
+  if(!loan) return{principal:amt,interest:0};
+  if(/interest/i.test(text||"")) return{principal:0,interest:amt};
+  const st=loan.kind==="credit_line"?creditLineStatus(loan):bankLoanStatus(loan,today);
+  const out=loan.kind==="credit_line"?st.drawn:st.balance;
+  const int=Math.min(amt,Math.round(out*(Number(loan.interestRate)||0)/100/12*100)/100);
+  return{principal:Math.round((amt-int)*100)/100,interest:int};
+};
+
+function EntryForm({init,loans,cashPositions,linkedKeys,today,onClose,onSaved}){
+  const[f,setF]=useState(()=>{
+    const base={onSheet:true,...init};
+    if(init.cashKey&&init.type==="payment"&&init.amount) Object.assign(base,lnSplit(loans.find(l=>l.id===init.loanId),Number(init.amount)||0,init.text,today));
+    return base;
+  });
+  const[q,setQ]=useState("");
+  const[busy,setBusy]=useState(false);
+  const set=(k,v)=>setF(x=>({...x,[k]:v}));
+  const loan=loans.find(l=>l.id===f.loanId);
+  const draw=f.type==="draw";
+  const st=loan?(loan.kind==="credit_line"?creditLineStatus(loan):bankLoanStatus(loan,today)):null;
+  const outstanding=st?(loan.kind==="credit_line"?st.drawn:st.balance):0;
+  // Cash-sheet rows in the right direction, not linked yet (newest first).
+  const rows=useMemo(()=>{const qq=q.trim().toLowerCase();
+    return cashMovements(cashPositions).filter(m=>m.dir===(draw?"in":"out")&&(!linkedKeys.has(m.key)||m.key===f.cashKey))
+      .filter(m=>!qq||`${m.payee} ${m.particulars} ${m.amount} ${m.date}`.toLowerCase().includes(qq)).slice(0,60);},[cashPositions,draw,linkedKeys,q,f.cashKey]);
+  const pick=m=>{const amt=m.amount;
+    const sp=draw?{principal:amt,interest:0}:lnSplit(loan,amt,`${m.payee} ${m.particulars}`,today);
+    setF(x=>({...x,cashKey:m.key,date:m.date,bank:m.bank,amount:amt,text:`${m.payee} ${m.particulars}`,...sp}));};
+  // Changing the loan re-suggests the split for the row already picked.
+  const setLoan=id=>setF(x=>{const l=loans.find(z=>z.id===id);
+    return x.cashKey&&x.type==="payment"?{...x,loanId:id,...lnSplit(l,Number(x.amount)||0,x.text,today)}:{...x,loanId:id};});
+  const save=async()=>{
+    if(!isSupabaseReady()){toastEmit("Offline: not saved","error");return;}
+    if(!loan){toastEmit("Pick the loan","error");return;}
+    if(f.onSheet&&!f.cashKey){toastEmit("Pick the cash-sheet row, or untick \"On the cash sheet\" and add a note","error");return;}
+    if(!f.onSheet&&!String(f.note||"").trim()){toastEmit("An entry not on the cash sheet needs a note","error");return;}
+    if(!f.date){toastEmit("Enter the date","error");return;}
+    setBusy(true);
+    const row=loanEntryToSb({...f,id:uid(),cashKey:f.onSheet?f.cashKey:"",cashDate:f.onSheet?f.date:null});
+    const{error}=await supabase.from("loan_payments").insert(row);
+    setBusy(false);
+    if(error){toastEmit("Not saved: "+lnErr(error),"error",9000);return;}
+    toastEmit(draw?"Draw recorded":"Payment recorded","success");onSaved();
+  };
+  return(<Modal open onClose={onClose} title={draw?"Record a draw (money borrowed)":"Record a loan payment"} wide>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}>
+      <LnField label="Loan"><select value={f.loanId||""} onChange={e=>setLoan(e.target.value)} style={lnInp}><option value="">Choose…</option>{loans.map(l=><option key={l.id} value={l.id}>{l.lender} · {l.name||(l.kind==="credit_line"?"Credit line":"Bank loan")}</option>)}</select></LnField>
+      <LnField label="Type"><select value={f.type} onChange={e=>setF(x=>({...x,type:e.target.value,cashKey:""}))} style={lnInp}><option value="payment">Payment (principal + interest)</option>{loan?.kind==="credit_line"&&<option value="draw">Draw (money in)</option>}</select></LnField>
+    </div>
+    {st&&<div style={{fontSize:".72rem",color:"#475569",marginBottom:8}}>Outstanding now: <b>₱{Math.round(outstanding).toLocaleString("en-PH")}</b>{loan.interestRate?` · ${loan.interestRate}% a year`:""}</div>}
+    <label style={{display:"flex",alignItems:"center",gap:6,fontSize:".78rem",fontWeight:700,color:"#0f172a",marginBottom:6}}><input type="checkbox" checked={!!f.onSheet} onChange={e=>set("onSheet",e.target.checked)}/> On the cash sheet (pick the row)</label>
+    {f.onSheet&&<div style={{border:"1px solid #e2e8f0",borderRadius:8,marginBottom:10}}>
+      <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search the cash sheet: bank, text, amount, date" style={{...lnInp,border:"none",borderBottom:"1px solid #e2e8f0",borderRadius:"8px 8px 0 0"}}/>
+      <div style={{maxHeight:200,overflowY:"auto"}}>
+        {rows.length===0&&<div style={{padding:10,fontSize:".74rem",color:"#64748b"}}>No unlinked {draw?"money-in":"money-out"} row found.</div>}
+        {rows.map(m=>(<button key={m.key} onClick={()=>pick(m)} style={{display:"flex",gap:10,width:"100%",textAlign:"left",border:"none",borderBottom:"1px solid #f1f5f9",background:f.cashKey===m.key?"#eff6ff":"#fff",padding:"6px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:".74rem"}}>
+          <span style={{width:78,color:"#64748b"}}>{m.date}</span><span style={{width:90,fontWeight:700}}>₱{Math.round(m.amount).toLocaleString("en-PH")}</span>
+          <span style={{flex:1,color:"#334155",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.payee}{m.particulars?` · ${m.particulars}`:""}</span><span style={{color:"#64748b"}}>{String(m.bank).toUpperCase()}</span>
+        </button>))}
+      </div></div>}
+    <div style={{display:"grid",gridTemplateColumns:draw?"1fr 1fr":"1fr 1fr 1fr",gap:"0 12px"}}>
+      <LnField label="Date"><input type="date" value={f.date||""} onChange={e=>set("date",e.target.value)} disabled={f.onSheet&&!!f.cashKey} style={lnInp}/></LnField>
+      {draw?<LnField label="Amount drawn (₱)"><input type="number" value={f.amount||""} onChange={e=>set("amount",e.target.value)} disabled={f.onSheet&&!!f.cashKey} style={lnInp}/></LnField>:<>
+        <LnField label="Principal (₱)" hint="Lowers the balance"><input type="number" value={f.principal??""} onChange={e=>set("principal",e.target.value)} style={lnInp}/></LnField>
+        <LnField label="Interest (₱)" hint="Finance cost in the P&L"><input type="number" value={f.interest??""} onChange={e=>set("interest",e.target.value)} style={lnInp}/></LnField></>}
+    </div>
+    {!draw&&f.onSheet&&f.cashKey&&Math.abs((Number(f.principal)||0)+(Number(f.interest)||0)-(Number(f.amount)||0))>0.009&&<div style={{fontSize:".72rem",color:"#b91c1c",fontWeight:700,marginBottom:8}}>Principal + interest (₱{((Number(f.principal)||0)+(Number(f.interest)||0)).toLocaleString("en-PH")}) is not the cash-sheet amount (₱{Number(f.amount).toLocaleString("en-PH")}).</div>}
+    <LnField label={f.onSheet?"Note (optional)":"Note (required)"}><input value={f.note||""} onChange={e=>set("note",e.target.value)} placeholder={f.onSheet?"":"e.g. Balance as of 11 Aug per BPI statement / paid before FabHub"} style={lnInp}/></LnField>
+    <div style={{display:"flex",justifyContent:"flex-end",gap:8}}><button onClick={onClose} style={{...lnSave,background:"#f1f5f9",color:"#475569"}}>Cancel</button><button disabled={busy} onClick={save} style={lnSave}>{busy?"Saving…":"Save"}</button></div>
+  </Modal>);
 }
