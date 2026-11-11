@@ -1287,13 +1287,24 @@ export const emptyPR = () => ({
 export const PO_COST_CONTROL_LIMIT=150000;
 export const poLinesTotal=lines=>(lines||[]).filter(l=>l.status!=="Cancelled")
   .reduce((s,l)=>s+(Number(l.qty)||0)*(Number(l.estUnitCost??l.estimatedCost)||0),0);
+// Tiers (Paulo, 2026-11-09): Cost Control up to ₱150,000; a Manager below
+// ₱250,000 (Paolo Gomez); ₱250,000 and above only Paulo, Mar or Arrius, who also
+// check Paolo Gomez's approvals. Mirrors po_top_approver() / po_line_approver_name()
+// (migration 20261114010000).
+export const PO_MANAGER_LIMIT=250000;
+export const PO_TOP_APPROVERS=["paulo garcia","mar mungcal","arrius catubay"];
+export const isTopApprover=name=>PO_TOP_APPROVERS.includes(String(name||"").trim().toLowerCase());
+// Switched on with migration 20261114010000 (weekend release). Until then any
+// Manager approves any amount, as the database still does.
+export const PO_TIERS_ON=false;
 export const canApprovePOLine=(role,sessionName,requestedBy,total)=>{
-  if(role==="Manager") return true;
-  if(role==="QS") return (Number(total)||0)<=PO_COST_CONTROL_LIMIT
+  const t=Number(total)||0;
+  if(role==="Manager") return !PO_TIERS_ON||t<PO_MANAGER_LIMIT||isTopApprover(sessionName);
+  if(role==="QS") return t<=PO_COST_CONTROL_LIMIT
     &&(!requestedBy||!sessionName||sessionName.trim().toLowerCase()!==requestedBy.trim().toLowerCase());
   return false;
 };
-export const PO_APPROVER_MSG="Needs Cost Control (POs up to ₱150,000) or a Manager (above ₱150,000: Paolo Gomez)";
+export const PO_APPROVER_MSG=PO_TIERS_ON?"Cost Control approves POs up to ₱150,000, Paolo Gomez up to ₱250,000, and Paulo, Mar or Arrius from ₱250,000":"Needs Cost Control (POs up to ₱150,000) or a Manager (above ₱150,000: Paolo Gomez)";
 
 export const canApprovePO=(role,sessionName,requestedBy)=>{
   // Only a Manager or a Procurement Manager may approve (issue) a PO or subcon
