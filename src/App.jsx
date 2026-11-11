@@ -10560,28 +10560,31 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // Each option renders the existing form; saves go through the same guarded
   // functions (PO / WO approval and DP gates, savePayable, recordPayments).
   const billFormProps={onSave:savePayable,onCancel:closeCashOut,swos,payables,chartOfAccounts,costCenterDeals,wonDeals,deals,today,role,sendTelegramNotification,prs,drs,suppliers,upPayables};
+  // roleCanInsert maps Cost Control to Finance, but Cost Control (QS) only reads
+  // payables and approves POs through approve_po; it writes none of these.
+  const coCan=t=>role!=="Cost Control"&&roleCanInsert(t);
   const cashOutKinds=[
-    roleCanInsert("purchase_requests")&&pageOn("procurement")&&{id:"po",group:"order",icon:"📦",label:"Purchase Order",wide:true,
+    coCan("purchase_requests")&&pageOn("procurement")&&{id:"po",group:"order",icon:"📦",label:"Purchase Order",wide:true,
       desc:"Order materials from a supplier. Cost Control or a Manager approves it before it's issued; no down payment, no issue.",
       render:(_,close)=><ProcurementView2 embedded onEmbeddedDone={close} onPoFromPrf={linkPrfLines} payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/>},
-    roleCanInsert("subcon_work_orders")&&pageOn("subconwo")&&{id:"wo",group:"order",icon:"🔨",label:"Subcon Work Order",wide:true,
+    coCan("subcon_work_orders")&&pageOn("subconwo")&&{id:"wo",group:"order",icon:"🔨",label:"Subcon Work Order",wide:true,
       desc:"Engage a subcontractor for a contract amount. Needs an approver and the client's down payment to issue.",
       render:(_,close)=><SubconWOView embedded onEmbeddedDone={close} deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/>},
-    roleCanInsert("payables")&&{id:"bill",group:"bill",icon:"🧾",label:"Supplier bill (AP)",editLabel:"Edit bill",
+    coCan("payables")&&{id:"bill",group:"bill",icon:"🧾",label:"Supplier bill (AP)",editLabel:"Edit bill",
       desc:"A supplier's invoice. Pick its PO to fill in the details, or enter a bill with no PO (rent, utilities, OPEX).",
       render:(p,close)=>p?.form
         ?<PayableForm {...billFormProps} onCancel={close} initial={p.form} editId={p.id||null}/>
         :<OrderPicker rows={buildOrders({prs,swos,payables}).filter(r=>r.kind==="PO"&&r.payStatus==="No bill on file")}
             onPick={r=>openBillForm(poBillForm(r))} onManual={()=>openBillForm({...emptyPayForm(),docType:"AP"})}
             manualLabel="Bill with no PO" empty="Every issued PO already has a bill. Use “Bill with no PO” for anything else."/>},
-    roleCanInsert("payables")&&{id:"subcon",group:"bill",icon:"👷",label:"Subcon progress billing",
+    coCan("payables")&&{id:"subcon",group:"bill",icon:"👷",label:"Subcon progress billing",
       desc:"The subcontractor's next billing against a Work Order. Paid only up to the % the PM certifies.",
       render:()=><OrderPicker rows={buildOrders({prs,swos,payables}).filter(r=>r.kind==="WO"&&r.issued&&(Number(r.amount)||0)-(Number(r.billed)||0)>1)}
             onPick={r=>openBillForm(subconBillForm(r.items[0]))} empty="No issued Work Order has anything left to bill."/>},
-    roleCanInsert("payables")&&{id:"prv",group:"bill",icon:"📝",label:"Payment request, no PO (PRV)",
+    coCan("payables")&&{id:"prv",group:"bill",icon:"📝",label:"Payment request, no PO (PRV)",
       desc:"Money out with no PO or supplier invoice. Subcon work of ₱50,000+ still needs a Work Order.",
       render:(_,close)=><PayableForm {...billFormProps} onCancel={close} initial={{...emptyPayForm(),docType:"PRV"}}/>},
-    roleCanInsert("payable_payments")&&role!=="Accounting"&&{id:"pay",group:"pay",icon:"💸",label:"Pay bills",wide:true,
+    coCan("payable_payments")&&role!=="Accounting"&&{id:"pay",group:"pay",icon:"💸",label:"Pay bills",wide:true,
       desc:"Approve and pay bills that are due, one at a time or several in one check or transfer.",
       render:()=><CashPositionPayables payables={payables} payPays={payPays} prs={prs} swos={swos} exps={exps} deals={deals} today={today}
             canApprove={canApprovePayables} enteredByMe={enteredByMe} canPay={roleCanInsert("payable_payments")}
