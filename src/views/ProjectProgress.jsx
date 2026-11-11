@@ -1,6 +1,6 @@
 import React,{useState,useMemo} from "react";
 import {supabase,isSupabaseReady} from "../supabaseClient";
-import {toastEmit,useIsMobile} from "../shared";
+import {toastEmit,useIsMobile,uiPrompt} from "../shared";
 import {projDisplayName,isConstructionDeal,PUNCHLIST_MIN_PCT} from "../core";
 
 // ─── PROGRESS (Operations › Progress) ───────────────────────────────────────
@@ -14,11 +14,11 @@ import {projDisplayName,isConstructionDeal,PUNCHLIST_MIN_PCT} from "../core";
 const STEPS=[30,60,90,100];
 // Construction projects (CE type Construction / Retail Fit-Out) take any whole
 // % from 0 to 100 (migration 20261111150000); everything else 30/60/90/100.
-function PctInput({pct,min,disabled,onSave}){
+function PctInput({pct,min,disabled,onSave,lowerBlocked}){
   const[v,setV]=useState("");
   const n=v===""?null:Math.round(Number(v));
-  const ok=n!=null&&!isNaN(n)&&n>=min&&n<=100&&n!==pct;
-  const save=()=>{if(ok){onSave(n);setV("");}};
+  const ok=n!=null&&!isNaN(n)&&n>=min&&n<=100&&n!==pct&&!(lowerBlocked&&pct!=null&&n<pct);
+  const save=async()=>{if(ok&&(await onSave(n))) setV("");};
   return(
     <div style={{display:"flex",gap:4,alignItems:"center"}}>
       <input type="number" inputMode="numeric" min={min} max={100} step={1} value={v} disabled={disabled}
@@ -54,14 +54,23 @@ export default function ProjectProgress({deals=[],pcards={},role,session,upPcard
       .sort((a,b)=>(a.pct??-1)-(b.pct??-1)||projDisplayName(a.d).localeCompare(projDisplayName(b.d)));
   },[deals,pcards,scope,q,me]);
 
+  // Every change needs a note (what happened, why); only a Manager lowers it
+  // (set_project_progress, migration 20261111170000). The server posts the
+  // note to the project's Team Updates and the audit log.
   const set=async(d,pct)=>{
-    if(!isSupabaseReady()){toastEmit("Offline: progress not saved","error");return;}
+    if(!isSupabaseReady()){toastEmit("Offline: progress not saved","error");return false;}
+    const old=pcards[d.id]?.manualProgress;
+    if(old!=null&&pct<old&&role!=="Manager"){toastEmit(`Only a Manager can lower progress (it is ${old}% now).`,"warning",7000);return false;}
+    const note=await uiPrompt({title:`${projDisplayName(d)}: ${old!=null?old+"%":"not set"} → ${pct}%`,message:"What happened on the project, and why is the % changing? This goes to Team Updates and the audit log.",placeholder:"e.g. Ceiling framing done, painting starts Monday"},"");
+    if(note==null) return false;
+    if(String(note).trim().length<5){toastEmit("Say what happened and why the progress changed.","warning");return false;}
     setBusy(d.id+":"+pct);
-    const{data,error}=await supabase.rpc("set_project_progress",{p_deal:d.id,p_pct:pct});
+    const{data,error}=await supabase.rpc("set_project_progress",{p_deal:d.id,p_pct:pct,p_note:String(note).trim()});
     setBusy(null);
-    if(error){toastEmit("Not saved: "+(error.message||error),"error",9000);return;}
+    if(error){toastEmit("Not saved: "+(error.message||error),"error",9000);return false;}
     upPcards&&upPcards(ps=>({...ps,[d.id]:{...ps[d.id],manualProgress:pct,progressSetBy:session?.name||"",progressSetAt:data||new Date().toISOString()}}));
     toastEmit(`${projDisplayName(d)}: ${pct}%`,"success");
+    return true;
   };
 
   // Bands, so a construction project at e.g. 45 % counts in 31–60 %.
@@ -73,7 +82,7 @@ export default function ProjectProgress({deals=[],pcards={},role,session,upPcard
     <div>
       <div style={{marginBottom:12}}>
         <div style={{fontWeight:800,color:C.navy,fontSize:"1.15rem"}}>Progress</div>
-        <div style={{fontSize:".78rem",color:C.muted,marginTop:2}}>One estimate per active project: 30, 60, 90 or 100 % done (construction projects: the actual % on site, 0–100). Pick it when it changes; Managers see it on Project Cards and the dashboard.</div>
+        <div style={{fontSize:".78rem",color:C.muted,marginTop:2}}>One estimate per active project: 30, 60, 90 or 100 % done (construction projects: the actual % on site, 0–100). Each change asks what happened (it goes to Team Updates); only a Manager can lower it.</div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:mob?"repeat(3,1fr)":"repeat(5,1fr)",gap:8,marginBottom:12}}>
         {[["Not set",notSet,C.faint],...BANDS.map(([a,b],i)=>[`${a}–${b}%`,counts[i],STEP_CLR[STEPS[i]]])].map(([l,v,c])=>(
@@ -95,10 +104,10 @@ export default function ProjectProgress({deals=[],pcards={},role,session,upPcard
               <div style={{fontSize:".7rem",color:C.faint}}>{[pc.pm1,pc.pm2,pc.pm3].filter(Boolean).join(", ")||"No PM"}{pc.targetEndDate?` · due ${pc.targetEndDate}`:""}{pc.progressSetBy?` · set by ${pc.progressSetBy} ${pgAgo(pc.progressSetAt)}`:""}</div>
             </div>
             {isConstructionDeal(d)?(
-              <PctInput key={pct??"none"} pct={pct} min={d.stage==="11 · Punchlist"?PUNCHLIST_MIN_PCT:0} disabled={!canSet(pc)||!!busy} onSave={v=>set(d,v)}/>
+              <PctInput key={pct??"none"} pct={pct} lowerBlocked={role!=="Manager"} min={d.stage==="11 · Punchlist"?PUNCHLIST_MIN_PCT:0} disabled={!canSet(pc)||!!busy} onSave={v=>set(d,v)}/>
             ):(
             <div role="group" aria-label="Progress" style={{display:"flex",gap:4}}>
-              {STEPS.map(s=>{const on=pct===s;const dis=!canSet(pc)||!!busy;return(
+              {STEPS.map(s=>{const on=pct===s;const dis=!canSet(pc)||!!busy||(pct!=null&&s<pct&&role!=="Manager");return(
                 <button key={s} disabled={dis} onClick={()=>!on&&set(d,s)} aria-pressed={on}
                   style={{minWidth:52,border:`1.5px solid ${on?STEP_CLR[s]:C.line}`,borderRadius:8,padding:"6px 8px",background:on?STEP_CLR[s]:"#fff",color:on?"#fff":C.muted,fontWeight:800,fontSize:".78rem",cursor:dis?"default":"pointer",fontFamily:"inherit",opacity:busy===d.id+":"+s?.6:1}}>{s}%</button>);})}
             </div>
