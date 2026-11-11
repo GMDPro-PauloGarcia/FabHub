@@ -10,7 +10,7 @@ import {fmt,addPrintClose,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dro
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {projProgressPct, PROJECT_STAGE_GROUPS, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
+import {projProgressPct, projStageFlow, projStepIndex, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -28068,7 +28068,7 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                             <span title={`Card health: ${hLabelC}`} style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:".92rem",lineHeight:1,minWidth:26,height:26,display:"inline-flex",alignItems:"center",justifyContent:"center",borderRadius:6,background:gradeC.gcolor,color:gradeC.color,border:`1px solid ${gradeC.color}55`,padding:"0 5px"}}>{gradeC.grade}</span>
                             {role==="Manager"&&setConfirmDel&&<button onClick={e=>{e.stopPropagation();setConfirmDel(d.id);}} title="Delete project" style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:5,padding:"3px 6px",fontSize:".72rem",lineHeight:1,color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>🗑</button>}
                           </div>
-                          <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:600,letterSpacing:".06em",textTransform:"uppercase",padding:"3px 8px",borderRadius:4,background:hc+"18",color:hc,border:`1px solid ${hc}44`,whiteSpace:"nowrap"}}>{projStageLabel(d.stage)}</span>
+                          <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:600,letterSpacing:".06em",textTransform:"uppercase",padding:"3px 8px",borderRadius:4,background:hc+"18",color:hc,border:`1px solid ${hc}44`,whiteSpace:"nowrap"}}>{projStageLabel(d,pc)}</span>
                         </div>
                       </div>
                       {/* Progress: the PM's 30/60/90/100 estimate only */}
@@ -28157,7 +28157,7 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                         const pm2L=pcL?.pm2||joL?.pm2||"";
                         const coordL=pcL?.coordinator||joL?.coordinator||"—";
                         const projSwosL=(swos||[]).filter(w=>w.projectId===d.id||w.dealId===d.id);
-                        const stageLabel=projStageLabel(d.stage);
+                        const stageLabel=projStageLabel(d,pcL);
                         return(
                           <tr key={d.id} style={{borderBottom:"1px solid #e2e8f0",cursor:"pointer"}}
                             onClick={()=>{setSelDeal(d.id);setShowTeamEdit(false);}}
@@ -28275,7 +28275,7 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                   <div style={{flex:"1 1 260px",minWidth:0}}>
                     <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                       <span style={{fontWeight:800,color:"#0f172a",fontSize:isMobile?"1rem":"1.12rem"}}>{deal?.contact||deal?.client}</span>
-                      <span style={{fontSize:".68rem",fontWeight:700,color:hc,background:hc+"18",borderRadius:20,padding:"2px 10px",border:`1px solid ${hc}44`}}>{projStageLabel(deal?.stage)}</span>
+                      <span style={{fontSize:".68rem",fontWeight:700,color:hc,background:hc+"18",borderRadius:20,padding:"2px 10px",border:`1px solid ${hc}44`}}>{projStageLabel(deal,card)}</span>
                       {pct===100&&<span style={{fontSize:".66rem",fontWeight:700,color:"#059669",background:"#f0fdf4",borderRadius:20,padding:"2px 9px"}}>✅ Done</span>}
                     </div>
                     <div style={{fontSize:".72rem",color:"#64748b",marginTop:3,display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
@@ -28461,7 +28461,8 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                 {/* Stage: one stepper (replaces the old Phase timeline + stage buttons).
                     Clickable only where canSetDealStage allows the move. */}
                 {deal&&(()=>{
-                  const cur=PROJECT_STAGE_GROUPS.findIndex(g=>g.stages.includes(deal.stage));
+                  const FLOW=projStageFlow(deal);
+                  const cur=projStepIndex(deal,card);
                   const canStage=["Manager","Sales","Operations","ProjectMover","SalesOpsAdmin"].includes(role)&&!!changeDealStage&&canSetDealStage(role,deal.stage);
                   const isAlreadyDone=deal.stage==="12 · Close-Out"||deal.stage==="14 · Completed";
                   const changeStage=async st=>{
@@ -28471,7 +28472,7 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                       setSelDeal(null);
                       toastEmit(`✅ ${deal.client} marked Completed — showing Completed tab`,"success");
                     } else {
-                      toastEmit(`Stage → ${projStageLabel(st)}`,"success");
+                      toastEmit(`Stage → ${projStageLabel({...deal,stage:st},card)}`,"success");
                     }
                     return true;
                   };
@@ -28484,6 +28485,12 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                     // through set_project_progress) when the user may set progress.
                     if(moved&&st==="11 · Punchlist"&&card&&canSetPct&&(card.manualProgress==null||card.manualProgress<PUNCHLIST_MIN_PCT)) setPctRpc(PUNCHLIST_MIN_PCT);
                   };
+                  // Construction 30 / 60 / 90 % steps: the works stage (10 · Installation)
+                  // plus the PM's progress %, saved through set_project_progress.
+                  const goPct=async step=>{
+                    if(deal.stage!==step.target&&!(await changeStage(step.target))) return;
+                    setPctRpc(step.pct);
+                  };
                   return(
                     <div style={{marginTop:10,borderTop:"1px solid #f1f5f9",paddingTop:10}}>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginBottom:6}}>
@@ -28494,21 +28501,25 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                         )}
                       </div>
                       <div style={{display:"flex",alignItems:"center",overflowX:"auto",paddingBottom:2}}>
-                        {PROJECT_STAGE_GROUPS.map(({key,label,target:s,color:sc},i)=>{
+                        {FLOW.map((step,i)=>{
+                          const {key,label,target:s,color:sc}=step;
                           const isActive=i===cur; const isPast=cur>=0&&i<cur;
-                          const clickable=canStage&&!isActive&&canSetDealStage(role,deal.stage,s);
+                          const clickable=!isActive&&(step.pct!=null
+                            ?!!card&&canSetPct&&!pctBusy&&(deal.stage===s||(canStage&&canSetDealStage(role,deal.stage,s)))
+                            :canStage&&canSetDealStage(role,deal.stage,s));
+                          const many=FLOW.length>6;
                           return(
                             <React.Fragment key={key}>
-                              <button disabled={!clickable} onClick={()=>pick(s)} aria-current={isActive?"step":undefined}
-                                title={clickable?`Move to ${label}`:undefined}
-                                style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".64rem",fontWeight:isActive?800:600,letterSpacing:".03em",padding:"5px 14px",borderRadius:20,whiteSpace:"nowrap",flexShrink:0,
+                              <button disabled={!clickable} onClick={()=>step.pct!=null?goPct(step):pick(s)} aria-current={isActive?"step":undefined}
+                                title={clickable?`Move to ${step.pill||label}`:undefined}
+                                style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:many?".6rem":".64rem",fontWeight:isActive?800:600,letterSpacing:".03em",padding:many?"5px 9px":"5px 14px",borderRadius:20,whiteSpace:"nowrap",flexShrink:0,
                                   cursor:clickable?"pointer":"default",
                                   background:isActive?sc:isPast?"#ecfdf5":"#fff",
                                   color:isActive?"#fff":isPast?"#059669":clickable?sc:"#94a3b8",
                                   border:`1.5px solid ${isActive?sc:isPast?"#a7f3d0":clickable?sc+"66":"#e2e8f0"}`}}>
                                 {isPast?"✓ ":""}{i+1}. {label}
                               </button>
-                              {i<PROJECT_STAGE_GROUPS.length-1&&<div style={{flex:"1 0 8px",height:2,background:isPast?"#10b981":"#e2e8f0",minWidth:8}}/>}
+                              {i<FLOW.length-1&&<div style={{flex:"1 0 6px",height:2,background:isPast?"#10b981":"#e2e8f0",minWidth:6}}/>}
                             </React.Fragment>
                           );
                         })}
