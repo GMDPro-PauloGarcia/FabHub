@@ -1,6 +1,6 @@
 import React,{useState,useEffect,useMemo,useCallback} from "react";
 import {today as TODAY,BANKS,Modal,Fld,Inp,Sel,uiAlert,uiConfirm,uiPrompt,addDaysLocalISO,useIsMobile} from "../shared";
-import {projDisplayName} from "../core";
+import {projDisplayName,milestonePaid,clientOnCreditTerms} from "../core";
 import {supabase,isSupabaseReady} from "../supabaseClient";
 import {num,r2,php2,vendorKey,payBalance,payIsOpen,deliveryOf} from "../data/ledger";
 import {chip,linkBtn,LedgerHost} from "./Ledgers";
@@ -40,7 +40,43 @@ export const latestCash=(cashPositions={},today=TODAY)=>{
 };
 const fromSb=r=>({...r,releaseDate:r.release_date,items:Array.isArray(r.items)?r.items:[]});
 
-export default function PaymentRun({payables=[],payPays=[],prs=[],swos=[],exps=[],deals=[],cashPositions={},today=TODAY,role="",session,canPay=false,onPayMany,onBillsApproved,sendTelegramNotification}){
+// Client cash vs supplier cash per project (Paulo, 2026-11-11): a prompt, never a
+// block. For each project this run pays, compare what the client has paid
+// (deal_dp_paid: the larger of deals.amount_paid and its non-bounced billing
+// payments) with what suppliers have been paid on it plus what this run still
+// pays. `fronted` > 0 means GMD would be paying suppliers with its own cash.
+// Internal GMD jobs and clients on credit terms are skipped: fronting is their
+// normal terms. Bills with no project (stock, cost centres) are not counted.
+// Pure: returns Map(projectId -> {deal, clientPaid, supplierPaid, thisRun, fronted}).
+export const clientCashCover=({items=[],byId=new Map(),deals=[],billings=[],payables=[],payPays=[],paidOnRun=()=>0})=>{
+  const out=new Map();
+  const runByProj=new Map();
+  items.forEach(it=>{
+    const b=byId.get(it.payableId);const pid=b?.projectId;if(!pid) return;
+    const left=Math.max(0,num(it.amount)-num(paidOnRun(it)));
+    runByProj.set(pid,(runByProj.get(pid)||0)+left);
+  });
+  if(!runByProj.size) return out;
+  const projOfBill=new Map(payables.map(p=>[p.id,p.projectId]));
+  const supPaid=new Map();
+  (payPays||[]).forEach(x=>{
+    if(x.status==="Cancelled") return;
+    const pid=projOfBill.get(x.payableId);
+    if(pid&&runByProj.has(pid)) supPaid.set(pid,(supPaid.get(pid)||0)+num(x.amount));
+  });
+  runByProj.forEach((thisRun,pid)=>{
+    const deal=deals.find(d=>d.id===pid);
+    if(!deal||/^GMD Production/i.test(deal.client||"")||clientOnCreditTerms(deal.client)) return;
+    const viaBilling=billings.filter(m=>m.dealId===pid).reduce((t,m)=>t+milestonePaid(m),0);
+    const clientPaid=r2(Math.max(num(deal.amountPaid),viaBilling));
+    const supplierPaid=r2(supPaid.get(pid)||0);
+    const fronted=r2(supplierPaid+thisRun-clientPaid);
+    out.set(pid,{deal,clientPaid,supplierPaid,thisRun:r2(thisRun),fronted});
+  });
+  return out;
+};
+
+export default function PaymentRun({payables=[],payPays=[],prs=[],swos=[],exps=[],deals=[],billings=[],cashPositions={},today=TODAY,role="",session,canPay=false,onPayMany,onBillsApproved,sendTelegramNotification}){
   const mob=useIsMobile();
   const isMgr=role==="Manager";
   const canEdit=["Manager","Finance","FinanceAssistant"].includes(role);
@@ -100,6 +136,13 @@ export default function PaymentRun({payables=[],payPays=[],prs=[],swos=[],exps=[
     const since=String(run?.approved_at||run?.approvedAt||"").slice(0,10)||release;
     return r2(payPays.filter(x=>x.payableId===it.payableId&&x.status!=="Cancelled"&&String(x.payDate||"")>=addDaysLocalISO(since,-1)).reduce((s,x)=>s+num(x.amount),0));
   };
+  const cliCover=useMemo(()=>clientCashCover({items,byId,deals,billings,payables,payPays,paidOnRun}),
+    // paidOnRun reads run + payPays, both listed
+    [items,byId,deals,billings,payables,payPays,run]);
+  const fronting=[...cliCover.values()].filter(c=>c.fronted>0.5).sort((a,b)=>b.fronted-a.fronted);
+  const frontChip=pid=>{const c=pid&&cliCover.get(pid);if(!c||c.fronted<=0.5) return null;
+    return <span title={`Client paid ${php2(c.clientPaid)} · suppliers paid ${php2(c.supplierPaid)} · this run ${php2(c.thisRun)}`}>{chip(c.clientPaid>0?`GMD fronts ${php2(c.fronted)}`:"Client hasn't paid",C.bad)}</span>;};
+  const frontLines=()=>fronting.map(c=>`• ${projDisplayName(c.deal)}: client paid ${php2(c.clientPaid)}, suppliers ${php2(c.supplierPaid)} + this run ${php2(c.thisRun)} → GMD fronts ${php2(c.fronted)}`).join("\n");
   const allPaid=run?.status==="Approved"&&groups.every(g=>g.rows.every(it=>!it.b||paidOnRun(it)>=Math.min(num(it.amount),num(it.b.amount))-0.01||!payIsOpen(it.b)));
 
   const update=async(patch,okMsg)=>{
@@ -135,7 +178,7 @@ export default function PaymentRun({payables=[],payPays=[],prs=[],swos=[],exps=[
     const t=r2(its.reduce((s,i)=>s+num(i.amount),0));
     if(!(await uiConfirm({title:"Propose this run to Management",confirmLabel:"Propose",message:`${its.length} bill(s), ${php2(t)}, for release on ${release}.\n\nCash on the ${cash.date||"latest"} cash position: ${cash.amount==null?"not saved yet":php2(cash.amount)}.`}))) return;
     if(await update({status:"Proposed",cash_available:cash.amount,cash_as_of:cash.date})){
-      sendTelegramNotification&&sendTelegramNotification("management",`💸 <b>Payment run proposed</b>\nRelease: ${release}\n${its.length} bill(s) · ₱${t.toLocaleString("en-PH",{minimumFractionDigits:2})}\nCash (${cash.date||"—"}): ${cash.amount==null?"—":"₱"+cash.amount.toLocaleString("en-PH",{minimumFractionDigits:2})}${cover?` · ${cover==="Fully"?"covered":cover==="Partly"?"PARTLY covered":"NOT covered"}`:""}\nBy: ${me}\nApprove in FabHub › Finance › Payment Run.`);
+      sendTelegramNotification&&sendTelegramNotification("management",`💸 <b>Payment run proposed</b>\nRelease: ${release}\n${its.length} bill(s) · ₱${t.toLocaleString("en-PH",{minimumFractionDigits:2})}\nCash (${cash.date||"—"}): ${cash.amount==null?"—":"₱"+cash.amount.toLocaleString("en-PH",{minimumFractionDigits:2})}${cover?` · ${cover==="Fully"?"covered":cover==="Partly"?"PARTLY covered":"NOT covered"}`:""}\nBy: ${me}${fronting.length?`\n💸 Suppliers paid ahead of the client on ${fronting.length} project(s): GMD fronts ₱${fronting.reduce((t,c)=>t+c.fronted,0).toLocaleString("en-PH",{minimumFractionDigits:2})}`:""}\nApprove in FabHub › Finance › Payment Run.`);
     }
   };
   const sendBack=async()=>{
@@ -146,7 +189,8 @@ export default function PaymentRun({payables=[],payPays=[],prs=[],swos=[],exps=[
   const approve=async()=>{
     const notRecv=items.map(i=>byId.get(i.payableId)).filter(b=>b&&notReceived(b));
     if(!(await uiConfirm({title:`Approve payment run · ${release}`,confirmLabel:"Approve run",tone:notRecv.length?"danger":undefined,
-      message:`${items.length} bill(s), ${php2(total)}. Every pending bill in it is approved for payment.`+(notRecv.length?`\n\n⚠️ ${notRecv.length} of them ${notRecv.length>1?"are POs":"is a PO"} not fully delivered: ${notRecv.map(b=>`${b.vendor} ${billLabel(b)}`).join(", ")}.`:"")}))) return;
+      message:`${items.length} bill(s), ${php2(total)}. Every pending bill in it is approved for payment.`+(notRecv.length?`\n\n⚠️ ${notRecv.length} of them ${notRecv.length>1?"are POs":"is a PO"} not fully delivered: ${notRecv.map(b=>`${b.vendor} ${billLabel(b)}`).join(", ")}.`:"")
+      +(fronting.length?`\n\n💸 Suppliers paid ahead of the client on ${fronting.length} project${fronting.length>1?"s":""} (GMD fronts ${php2(fronting.reduce((t,c)=>t+c.fronted,0))}):\n${frontLines()}`:"")}))) return;
     setBusy(true);
     const{data,error}=await supabase.rpc("approve_payment_run",{p_id:run.id});
     setBusy(false);
@@ -256,6 +300,7 @@ export default function PaymentRun({payables=[],payPays=[],prs=[],swos=[],exps=[
                   <div style={{fontSize:".68rem",color:C.muted,display:"flex",gap:5,flexWrap:"wrap",marginTop:2}}>
                     <span style={{color:b.dueDate&&b.dueDate<today?C.bad:C.muted}}>{b.dueDate?`due ${b.dueDate}`:"no due date"}</span>
                     {projName(b.projectId)&&<span>· {projName(b.projectId)}</span>}
+                    {on&&frontChip(b.projectId)}
                     {!approvedBill(b)&&chip("Pending approval",C.warn)}
                     {rc&&chip(rc,rc==="Delivered"?C.ok:notReceived(b)?C.bad:C.muted)}
                   </div>
@@ -266,6 +311,21 @@ export default function PaymentRun({payables=[],payPays=[],prs=[],swos=[],exps=[
             );
           })}
           {candidates.length===0&&<div style={{padding:16,textAlign:"center",color:C.faint,fontSize:".8rem"}}>No open bills due by {release}.</div>}
+        </div>
+      )}
+
+      {/* Client cash vs supplier cash: a prompt for whoever approves, never a block */}
+      {fronting.length>0&&st!=="Released"&&(
+        <div style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:12,padding:"10px 12px",marginBottom:12,fontSize:".76rem",color:"#991b1b"}}>
+          <div style={{fontWeight:800,marginBottom:4}}>💸 Paying suppliers ahead of the client on {fronting.length} project{fronting.length>1?"s":""}: GMD fronts {php2(fronting.reduce((t,c)=>t+c.fronted,0))}</div>
+          {fronting.slice(0,8).map(c=>(
+            <div key={c.deal.id} style={{display:"flex",justifyContent:"space-between",gap:10,flexWrap:"wrap",padding:"2px 0"}}>
+              <span style={{fontWeight:600}}>{projDisplayName(c.deal)}</span>
+              <span style={{whiteSpace:"nowrap"}}>client paid {php2(c.clientPaid)} · suppliers {php2(c.supplierPaid)} + this run {php2(c.thisRun)} · <b>fronts {php2(c.fronted)}</b></span>
+            </div>
+          ))}
+          {fronting.length>8&&<div style={{color:C.muted}}>+{fronting.length-8} more</div>}
+          <div style={{color:C.muted,marginTop:4}}>Not a block: suppliers on COD or advance terms may need paying first. The Manager approving the run decides. Internal GMD jobs and credit-terms clients aren't counted.</div>
         </div>
       )}
 
@@ -289,7 +349,7 @@ export default function PaymentRun({payables=[],payPays=[],prs=[],swos=[],exps=[
                   const b=it.b;const rc=b&&receiptOf(b);
                   return(
                     <div key={it.payableId} style={{display:"flex",justifyContent:"space-between",gap:10,fontSize:".74rem",color:C.muted,marginTop:5,flexWrap:"wrap"}}>
-                      <span>{b?billLabel(b):"bill not loaded"}{b?.dueDate?` · due ${b.dueDate}`:""}{b&&projName(b.projectId)?` · ${projName(b.projectId)}`:""} {b&&!approvedBill(b)&&chip("Pending approval",C.warn)} {rc&&notReceived(b)&&chip(rc,C.bad)}</span>
+                      <span>{b?billLabel(b):"bill not loaded"}{b?.dueDate?` · due ${b.dueDate}`:""}{b&&projName(b.projectId)?` · ${projName(b.projectId)}`:""} {b&&frontChip(b.projectId)} {b&&!approvedBill(b)&&chip("Pending approval",C.warn)} {rc&&notReceived(b)&&chip(rc,C.bad)}</span>
                       <span style={{whiteSpace:"nowrap"}}>{php2(it.amount)}{st==="Approved"&&paidOnRun(it)>0?` · paid ${php2(paidOnRun(it))}`:""}</span>
                     </div>
                   );

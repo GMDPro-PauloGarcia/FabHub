@@ -15734,7 +15734,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
         {/* ── PAYMENT RUN ── weekly: list Mon, propose Tue, Manager approves Wed, release Thu. */}
         {finTab==="payrun"&&role!=="Accounting"&&(
-          <PaymentRun payables={payables} payPays={payPays} prs={prs} swos={swos} exps={exps} deals={deals} cashPositions={cashPositions} today={today}
+          <PaymentRun payables={payables} payPays={payPays} prs={prs} swos={swos} exps={exps} deals={deals} billings={billings} cashPositions={cashPositions} today={today}
             role={canonRole(role)} session={session} canPay={roleCanInsert("payable_payments")} onPayMany={recordPayments} sendTelegramNotification={sendTelegramNotification}
             onBillsApproved={ids=>upPayables(ps=>ps.map(p=>ids.includes(p.id)&&(p.approvalStatus||"Approved")==="Pending"?{...p,approvalStatus:"Approved",approvedBy:session?.name||"",approvedAt:new Date().toISOString()}:p))}/>
         )}
