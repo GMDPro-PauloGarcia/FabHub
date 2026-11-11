@@ -4464,12 +4464,14 @@ function PayHistoryList({rows,onCancel,canCancel}){
 // re-renders only this form, not the whole App (the old page-level Payables
 // modal kept payForm in App and rebuilt everything on every keystroke).
 // onSave(form, editId) is App's savePayable: every rule stays there.
-function PayableForm({initial,editId=null,onSave,onCancel,swos=[],payables=[],chartOfAccounts=[],costCenterDeals=[],wonDeals=[],deals=[],today,role,sendTelegramNotification,prs,drs,suppliers,upPayables}){
+function PayableForm({opexOnly=false,initial,editId=null,onSave,onCancel,swos=[],payables=[],chartOfAccounts=[],costCenterDeals=[],wonDeals=[],deals=[],today,role,sendTelegramNotification,prs,drs,suppliers,upPayables}){
   const[payForm,setPayForm]=useState(()=>({...initial}));
   const[busy,setBusy]=useState(false);
   const accounts=useMemo(()=>[...chartOfAccounts].filter(a=>a.active!==false&&(a.type==="COGS"||a.type==="Expense"||a.type==="Asset")).sort((a,b)=>String(a.code).localeCompare(String(b.code))),[chartOfAccounts]);
   const woOptions=useMemo(()=>(swos||[]).filter(w=>w.woNumber&&w.status!=="Cancelled").slice().sort((a,b)=>String(b.woNumber).localeCompare(String(a.woNumber))),[swos]);
   const chargeDeal=deals.find(d=>d.id===payForm.projectId);
+  // Finance enters only no-PO bills charged to a cost center (canBillOpex in App).
+  const ccOnly=opexOnly&&!editId;
   const save=async()=>{
     if(busy) return;
     setBusy(true);
@@ -4488,6 +4490,9 @@ function PayableForm({initial,editId=null,onSave,onCancel,swos=[],payables=[],ch
           Subcon billing against <b style={{fontFamily:"monospace"}}>{payForm.poNumber}</b>{wo?` · contract ₱${(Number(wo.contractAmount)||0).toLocaleString("en-PH")} · billed so far ₱${billed.toLocaleString("en-PH")} · left to bill ₱${Math.max(0,(Number(wo.contractAmount)||0)-billed).toLocaleString("en-PH")}`:""}.
           Enter the subcontractor's billing no. and this billing's amount. It's paid only up to the % the PM certifies, or the WO's down payment % once the WO is issued.
         </div>);})()}
+      {ccOnly&&<div style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontSize:".76rem",color:"#475569",marginBottom:10}}>
+        OPEX bill with no PO, charged to a cost center. Bills on a PO or Work Order are entered by Procurement.
+      </div>}
       <Fld label="Type">
         <Sel value={payForm.docType==="PRV"?"PRV":"AP"} onChange={e=>setPayForm(p=>({...p,docType:e.target.value}))} disabled={!!(editId&&payForm.apNumber)}>
           <option value="AP">Supplier bill (AP)</option>
@@ -4520,7 +4525,7 @@ function PayableForm({initial,editId=null,onSave,onCancel,swos=[],payables=[],ch
         </Sel>
         {!payForm.accountCode&&<div style={{fontSize:".72rem",color:"#b45309",marginTop:3,fontWeight:600}}>Required — this drives the account-code financial statements.</div>}
       </Fld>
-      {payForm.docType==="PRV"&&isSubconPayable(payForm)&&(
+      {!ccOnly&&payForm.docType==="PRV"&&isSubconPayable(payForm)&&(
         <Fld label="Work order">
           <Sel value={payForm.poNumber||""} onChange={e=>setPayForm(p=>({...p,poNumber:e.target.value,poId:e.target.value||null}))}>
             <option value="">— None —</option>
@@ -4530,7 +4535,7 @@ function PayableForm({initial,editId=null,onSave,onCancel,swos=[],payables=[],ch
           {payForm.poNumber&&<div style={{fontSize:".72rem",color:"#64748b",marginTop:3}}>Payment waits for Operations to verify % complete. Retention is held at payment.</div>}
         </Fld>
       )}
-      <Fld label="Charge to (project or cost center)"><Sel value={payForm.projectId||"none"} onChange={e=>setPayForm(p=>({...p,projectId:e.target.value==="none"?null:e.target.value}))}><option value="none">— Select a project or cost center</option>{costCenterDeals.length>0&&<optgroup label="Cost centers">{costCenterDeals.map(d=><option key={d.id} value={d.id}>🏷 {d.contact||d.client}</option>)}</optgroup>}<optgroup label="Projects">{wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" — "+d.contact:""}</option>)}</optgroup></Sel></Fld>
+      <Fld label={ccOnly?"Charge to (cost center)":"Charge to (project or cost center)"}><Sel value={payForm.projectId||"none"} onChange={e=>setPayForm(p=>({...p,projectId:e.target.value==="none"?null:e.target.value}))}><option value="none">{ccOnly?"— Select a cost center":"— Select a project or cost center"}</option>{costCenterDeals.length>0&&<optgroup label="Cost centers">{costCenterDeals.map(d=><option key={d.id} value={d.id}>🏷 {d.contact||d.client}</option>)}</optgroup>}{!ccOnly&&<optgroup label="Projects">{wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" — "+d.contact:""}</option>)}</optgroup>}</Sel></Fld>
       {/* BIR: VAT + EWT capture (restored from the legacy expense flow) */}
       {(()=>{
         const amt=Number(payForm.amount)||0;
@@ -5549,6 +5554,13 @@ export default function App(){
     const canon=ROLE_ALIASES[role]||role;
     return allowed.includes(canon);
   };
+  // Who enters bills (Paulo, 2026-11-11; migration 20261111100000): Procurement
+  // (and the Procurement Manager, aliased to it) and Managers enter any bill;
+  // Finance, Finance Assistant and Accounting enter only bills with no PO,
+  // charged to a cost center (OPEX). Cost Control is aliased to Finance but
+  // writes no bills.
+  const canBillPo=["Manager","Procurement"].includes(ROLE_ALIASES[role]||role);
+  const canBillOpex=role!=="Cost Control"&&["Finance","FinanceAssistant","Accounting"].includes(ROLE_ALIASES[role]||role);
   // ── Permission guard for user-initiated writes ──────────────────────────────
   // Checks the PERMISSIONS map (client mirror of RLS) BEFORE a role-gated write
   // and, if the current role isn't allowed, shows a clear dialog and returns
@@ -8252,6 +8264,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       projectId:pid,poNumber:wo.woNumber,poId:wo.woNumber,invoiceRef:wo.woNumber,retentionPct:Number(wo.retentionPct)||0,
       notes:`Progress billing on Work Order ${wo.woNumber}`};
   };
+  // A Finance bill with no PO: starts charged to GMD OPEX (a cost center).
+  const opexBillForm=docType=>{const opex=costCenterDeals.find(d=>/opex/i.test(d.contact||d.client||""));return {...emptyPayForm(),docType,category:"Utility",projectId:opex?opex.id:null};};
   // A supplier bill for an issued PO that has no bill on file yet (buildOrders row).
   const poBillForm=r=>{
     const line=(r.items||[]).find(l=>l.accountCode)||{};
@@ -9532,6 +9546,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   };
   const savePayable=async(data,editPayId=null)=>{
     if(!String(data.vendor||"").trim()||!(Number(data.amount)>0)){toastEmit("Enter the vendor / payee and the amount before saving.","error");return;}
+    // Bills on a PO / WO are entered by Procurement; Finance enters only bills with
+    // no PO, charged to a cost center (OPEX). Mirrors payables_ins (migration 20261111100000).
+    if(!editPayId&&!canBillPo){
+      if(String(data.poNumber||data.poId||"").trim()){toastEmit("Bills on a PO or Work Order are entered by Procurement. Ask them to log this one.","error",9000);return;}
+      if(!deals.find(d=>d.id===data.projectId)?.isCostCenter){toastEmit("A bill with no PO is charged to a cost center (GMD OPEX, GMD Tools, GMD Warehouse Stocks). Project bills are entered by Procurement against the PO.","error",10000);return;}
+    }
     if(!String(data.accountCode||"").trim()){toastEmit("Select a Chart-of-Accounts code before saving — it drives the financial statements.","error");return;}
     // Every peso is charged to a project or a cost center (GMD OPEX / Tools / Stocks).
     if(!data.projectId){toastEmit("Charge this bill to a project or a cost center (GMD OPEX, GMD Tools, GMD Stocks) before saving.","error");return;}
@@ -9643,7 +9663,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       paidDate:derived==="Paid"?(data.paidDate||today):(data.paidDate||""),
       createdAt:editPayId?data.createdAt:today,createdBy:editPayId?(data.createdBy||session?.name||""):session?.name||""};
     if(isSupabaseReady()){
-      let res=await sbUpsertDetailed("payables",payableToSb(rec),"id");
+      // A role that can't create this bill saves an edit as a plain update: Postgres
+      // checks the INSERT policy on an upsert even when the row exists.
+      let res=(editPayId&&!canBillPo)?{ok:await sbUpdatePayable(rec)}:await sbUpsertDetailed("payables",payableToSb(rec),"id");
       if(res.duplicate){
         const reason=await askDupOverride(res);
         if(!reason) return;
@@ -10575,20 +10597,22 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     coCan("subcon_work_orders")&&pageOn("subconwo")&&{id:"wo",group:"order",icon:"🔨",label:"Subcon Work Order",wide:true,
       desc:"Engage a subcontractor for a contract amount. Needs an approver and the client's down payment to issue.",
       render:(_,close)=><SubconWOView embedded onEmbeddedDone={close} deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/>},
-    coCan("payables")&&{id:"bill",group:"bill",icon:"🧾",label:"Supplier bill (AP)",editLabel:"Edit bill",
-      desc:"A supplier's invoice. Pick its PO to fill in the details, or enter a bill with no PO (rent, utilities, OPEX).",
+    (canBillPo||canBillOpex)&&{id:"bill",group:"bill",icon:"🧾",label:canBillPo?"Supplier bill (AP)":"OPEX bill (no PO)",editLabel:"Edit bill",
+      desc:canBillPo?"A supplier's invoice. Pick its PO to fill in the details, or enter a bill with no PO (rent, utilities, OPEX).":"Rent, utilities, permits and other bills with no PO, charged to GMD OPEX or another cost center. Bills on a PO are entered by Procurement.",
       render:(p,close)=>p?.form
-        ?<PayableForm {...billFormProps} onCancel={close} initial={p.form} editId={p.id||null}/>
-        :<OrderPicker rows={buildOrders({prs,swos,payables}).filter(r=>r.kind==="PO"&&r.payStatus==="No bill on file")}
-            onPick={r=>openBillForm(poBillForm(r))} onManual={()=>openBillForm({...emptyPayForm(),docType:"AP"})}
-            manualLabel="Bill with no PO" empty="Every issued PO already has a bill. Use “Bill with no PO” for anything else."/>},
-    coCan("payables")&&{id:"subcon",group:"bill",icon:"👷",label:"Subcon progress billing",
+        ?<PayableForm {...billFormProps} onCancel={close} initial={p.form} editId={p.id||null} opexOnly={!canBillPo}/>
+        :canBillPo
+          ?<OrderPicker rows={buildOrders({prs,swos,payables}).filter(r=>r.kind==="PO"&&r.payStatus==="No bill on file")}
+              onPick={r=>openBillForm(poBillForm(r))} onManual={()=>openBillForm({...emptyPayForm(),docType:"AP"})}
+              manualLabel="Bill with no PO" empty="Every issued PO already has a bill. Use “Bill with no PO” for anything else."/>
+          :<PayableForm {...billFormProps} onCancel={close} initial={opexBillForm("AP")} opexOnly/>},
+    canBillPo&&{id:"subcon",group:"bill",icon:"👷",label:"Subcon progress billing",
       desc:"The subcontractor's next billing against a Work Order. Paid only up to the % the PM certifies.",
       render:()=><OrderPicker rows={buildOrders({prs,swos,payables}).filter(r=>r.kind==="WO"&&r.issued&&(Number(r.amount)||0)-(Number(r.billed)||0)>1)}
             onPick={r=>openBillForm(subconBillForm(r.items[0]))} empty="No issued Work Order has anything left to bill."/>},
-    coCan("payables")&&{id:"prv",group:"bill",icon:"📝",label:"Payment request, no PO (PRV)",
-      desc:"Money out with no PO or supplier invoice. Subcon work of ₱50,000+ still needs a Work Order.",
-      render:(_,close)=><PayableForm {...billFormProps} onCancel={close} initial={{...emptyPayForm(),docType:"PRV"}}/>},
+    (canBillPo||canBillOpex)&&{id:"prv",group:"bill",icon:"📝",label:"Payment request, no PO (PRV)",
+      desc:canBillPo?"Money out with no PO or supplier invoice. Subcon work of ₱50,000+ still needs a Work Order.":"Money out with no PO or supplier invoice, charged to GMD OPEX or another cost center.",
+      render:(_,close)=><PayableForm {...billFormProps} onCancel={close} initial={canBillPo?{...emptyPayForm(),docType:"PRV"}:opexBillForm("PRV")} opexOnly={!canBillPo}/>},
     coCan("payable_payments")&&role!=="Accounting"&&{id:"pay",group:"pay",icon:"💸",label:"Pay bills",wide:true,
       desc:"Approve and pay bills that are due, one at a time or several in one check or transfer.",
       render:()=><CashPositionPayables payables={payables} payPays={payPays} prs={prs} swos={swos} exps={exps} deals={deals} today={today}
