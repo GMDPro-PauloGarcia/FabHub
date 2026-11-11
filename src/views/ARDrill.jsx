@@ -1,6 +1,6 @@
 import React,{useState,useMemo} from "react";
 import {Modal} from "../shared";
-import {milestoneBalanceParts} from "../core";
+import {milestoneBalanceParts, arAgeBucket, arDaysPastDue, arCallOrder} from "../core";
 
 // ─── AR AGING DRILL-DOWN (Billing page) ────────────────────────────────────
 // Clicking an AR Aging card lists the projects with money still to collect in
@@ -9,8 +9,7 @@ import {milestoneBalanceParts} from "../core";
 // opens the project's normal Billing window on that invoice with the usual
 // Log Payment form (same checks: balance, duplicates, offsets, mother POs).
 
-const BUCKETS={all:"All outstanding",current:"Current (not yet due)",d30:"1–30 days overdue",d60:"31–60 days overdue",d90:"61–90 days overdue",over90:"90+ days overdue"};
-export const arBucketOf=days=>days<=0?"current":days<=30?"d30":days<=60?"d60":days<=90?"d90":"over90";
+const BUCKETS={all:"All outstanding",unbilled:"Not yet sent to the client",current:"Current (not yet due)",d30:"1–30 days overdue",d60:"31–60 days overdue",d90:"61–90 days overdue",over90:"90+ days overdue"};
 const arPeso=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
 
 export default function ARDrill({bucket,billings=[],dealOf,canPay=false,onReceive,onClose}){
@@ -25,14 +24,16 @@ export default function ARDrill({bucket,billings=[],dealOf,canPay=false,onReceiv
       const d=dealOf(b.dealId);
       const p=milestoneBalanceParts(b,d);
       if(p.bal<=0.005) return;
-      const days=b.dueDate?Math.floor((now-new Date(b.dueDate))/864e5):0;
-      if(bucket!=="all"&&arBucketOf(days)!==bucket) return;
+      // A Draft hasn't been sent, so it is never "overdue" here (arAgeBucket).
+      const unsent=b.status==="Draft";
+      const days=unsent?0:arDaysPastDue(b,now);
+      if(bucket!=="all"&&arAgeBucket(b,now)!==bucket) return;
       const g=by[b.dealId]||(by[b.dealId]={dealId:b.dealId,deal:d,base:0,vat:0,ewt:0,bal:0,maxDays:0,inv:[]});
       g.base+=p.base;g.vat+=p.vat;g.ewt+=p.ewt;g.bal+=p.bal;g.maxDays=Math.max(g.maxDays,days);
-      g.inv.push({ms:b,days,...p});
+      g.inv.push({ms:b,days,unsent,...p});
     });
     return Object.values(by).map(g=>({...g,inv:g.inv.sort((a,b)=>b.days-a.days)}))
-      .sort((a,b)=>(b.maxDays-a.maxDays)||(b.bal-a.bal));
+      .sort((a,b)=>arCallOrder({days:a.maxDays,amount:a.bal},{days:b.maxDays,amount:b.bal}));
   },[billings,bucket]);
 
   const qq=q.trim().toLowerCase();
@@ -82,7 +83,7 @@ export default function ARDrill({bucket,billings=[],dealOf,canPay=false,onReceiv
               <div key={i.ms.id} style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center",justifyContent:"space-between",padding:"9px 12px",borderTop:"1px solid #f1f5f9",background:"#fcfcfd"}}>
                 <div style={{flex:"1 1 200px",minWidth:0}}>
                   <div style={{fontWeight:600,color:"#0f172a",fontSize:".8rem"}}>{i.ms.invoiceNo||"No invoice no."} · {i.ms.name||"Billing"}</div>
-                  <div style={{fontSize:".68rem",color:"#94a3b8",marginBottom:2}}>Due {i.ms.dueDate||"—"} · {i.ms.status||"—"} {late(i.days)}</div>
+                  <div style={{fontSize:".68rem",color:"#94a3b8",marginBottom:2}}>Due {i.ms.dueDate||"—"} · {i.ms.status||"—"} {i.unsent?<span style={{fontSize:".66rem",fontWeight:700,color:"#475569",background:"#f1f5f9",borderRadius:20,padding:"1px 8px",whiteSpace:"nowrap"}}>not sent yet</span>:late(i.days)}</div>
                   {split(i,true)}
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:10,marginLeft:mob?0:"auto"}}>

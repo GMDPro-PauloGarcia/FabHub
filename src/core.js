@@ -578,6 +578,30 @@ export const isBillingOverdue = (b={}, today) =>
   !!b.dueDate && b.dueDate < today && !["Draft","Fully Paid","Cancelled"].includes(b.status);
 export const isBillingUnsentLate = (b={}, today) =>
   !!b.dueDate && b.dueDate < today && b.status === "Draft";
+// ── Collections: aging bucket and call order, one rule for every AR screen ──
+// A Draft milestone has not been sent to the client, so it is never aged as
+// overdue: it sits in "unbilled" (Finance still has to send it). Everything
+// else is aged by days past its due date. Before 2026-11-11 Drafts were aged
+// with the sent invoices, which put ₱6.7M of unsent billings in the overdue
+// buckets for collectors to call about.
+export const AR_SMALL_BALANCE = 5000; // below this, a balance goes to the bottom of the call order
+export const arDaysPastDue = (b={}, now=new Date()) =>
+  b.dueDate ? Math.floor((now - new Date(b.dueDate)) / 864e5) : 0;
+export const arAgeBucket = (b={}, now=new Date()) => {
+  if (b.status === "Draft") return "unbilled";
+  const d = arDaysPastDue(b, now);
+  return d<=0 ? "current" : d<=30 ? "d30" : d<=60 ? "d60" : d<=90 ? "d90" : "over90";
+};
+const arRankOfDays = d => d>90 ? 4 : d>60 ? 3 : d>30 ? 2 : d>0 ? 1 : 0;
+// Who to call first: oldest aging bucket first, then the biggest amount within
+// that bucket, with balances under AR_SMALL_BALANCE last. So a ₱939K invoice 53
+// days late comes before a ₱358 one 54 days late (same 31–60 bucket).
+// `a` / `b` are {days, amount}: days = oldest past-due days, amount = what is owed.
+export const arCallOrder = (a, b) => {
+  const sa = a.amount < AR_SMALL_BALANCE, sb = b.amount < AR_SMALL_BALANCE;
+  if (sa !== sb) return sa ? 1 : -1;
+  return (arRankOfDays(b.days) - arRankOfDays(a.days)) || (b.amount - a.amount) || (b.days - a.days);
+};
 // Portfolio totals over a list of milestones. `dealOf(dealId)` returns the deal (or
 // undefined) so receipt type / EWT can fall back to it.
 export const arSummary = (billings=[], dealOf=()=>undefined) => {
