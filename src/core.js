@@ -114,40 +114,39 @@ export const isActivePipeline = (stage)=>!WON_STAGES.includes(stage)&&!isLostSta
 // project stay with the deal editors. Mirrors set_deal_stage() (migration
 // 20261027090000_set_deal_stage_rpc.sql) — keep them in sync.
 // Project stages as shown on Project Cards (agreed with Paulo 2026-11-11).
-// Two flows, picked by the deal's CE type: construction projects track
-// mobilization and 30 / 60 / 90 % works; fabrication projects don't.
-// The database keeps the detailed stage values (set_deal_stage,
-// jo_awarded_stage, PRF and coordinator rules treat 06..12 as one set), so a
-// step is a stored stage, plus a progress % for the construction % steps
-// (project_cards.manual_progress via set_project_progress).
+// Two flows, picked by the deal's CE type. Each step is one stored stage
+// value (or two), so the database keeps its detailed stages (set_deal_stage,
+// jo_awarded_stage, PRF and coordinator rules treat 06..12 as one set).
+// Construction tracks progress as the PM's % (Progress tab), not as steps.
 // Every WON_STAGES value must be in one step of each flow.
 export const CONSTRUCTION_CE_TYPES=["Construction","Retail Fit-Out"];
 export const isConstructionDeal=d=>CONSTRUCTION_CE_TYPES.includes(d?.ceType);
-const _K={key:"kickoff", label:"Kickoff",  target:"06 · Kickoff",   color:"#8b5cf6",stages:["06 · Kickoff"]};
-const _B={key:"briefing",label:"Briefing", target:"07 · Briefing",  color:"#6366f1",stages:["07 · Briefing","08 · Fabrication"]};
-const _P={key:"punch",   label:"Punchlist",target:"11 · Punchlist", color:"#ef4444",stages:["11 · Punchlist"]};
-const _D={key:"done",    label:"Done",     target:"12 · Close-Out", color:"#059669",stages:["12 · Close-Out"]};
-const _C={key:"complete",label:"Completed",target:"14 · Completed", color:"#047857",stages:["14 · Completed"]};
+const _K={key:"kickoff", label:"Kickoff",     target:"06 · Kickoff",     color:"#8b5cf6",stages:["06 · Kickoff"]};
+const _P={key:"punch",   label:"Punchlist",   target:"11 · Punchlist",   color:"#ef4444",stages:["11 · Punchlist"]};
+const _D={key:"done",    label:"Done",        target:"12 · Close-Out",   color:"#059669",stages:["12 · Close-Out"],
+  hint:"All punchlist items completed; ready to receive retention"};
+const _C={key:"complete",label:"Completed",   target:"14 · Completed",   color:"#047857",stages:["14 · Completed"]};
 export const PROJECT_STAGE_FLOWS={
-  fabrication:[_K,_B,
-    {key:"install",label:"Installation",target:"10 · Installation",color:"#3b82f6",stages:["09 · Site & Billing","10 · Installation"]},
+  fabrication:[_K,
+    {key:"briefing",label:"Briefing",    target:"07 · Briefing",    color:"#6366f1",stages:["07 · Briefing"]},
+    {key:"fab",     label:"Fabrication", target:"08 · Fabrication", color:"#f59e0b",stages:["08 · Fabrication"]},
+    {key:"install", label:"Installation",target:"10 · Installation",color:"#3b82f6",stages:["09 · Site & Billing","10 · Installation"]},
     _P,_D,_C],
-  construction:[_K,_B,
-    {key:"mob",label:"Mobilization",target:"09 · Site & Billing",color:"#f97316",stages:["09 · Site & Billing"]},
-    {key:"p30",label:"30%",pill:"Works 30%",target:"10 · Installation",pct:30,pctMin:0, pctMax:30, color:"#f59e0b",stages:["10 · Installation"]},
-    {key:"p60",label:"60%",pill:"Works 60%",target:"10 · Installation",pct:60,pctMin:31,pctMax:89, color:"#3b82f6",stages:["10 · Installation"]},
-    {key:"p90",label:"90%",pill:"Works 90%",target:"10 · Installation",pct:90,pctMin:90,pctMax:100,color:"#8b5cf6",stages:["10 · Installation"]},
+  construction:[_K,
+    {key:"briefing",label:"Briefing",    target:"07 · Briefing",    color:"#6366f1",stages:["07 · Briefing","08 · Fabrication"]},
+    {key:"mob",     label:"Mobilization",target:"09 · Site & Billing",color:"#f97316",stages:["09 · Site & Billing"]},
+    {key:"works",   label:"Works",       target:"10 · Installation",color:"#3b82f6",stages:["10 · Installation"],showPct:true,
+      hint:"Construction under way: the PM updates the % on the Progress tab"},
     _P,_D,_C],
 };
 export const projStageFlow=deal=>PROJECT_STAGE_FLOWS[isConstructionDeal(deal)?"construction":"fabrication"];
 // Index of the deal's current step in its flow (-1 if its stage isn't a project stage).
-export const projStepIndex=(deal,pc)=>{
-  const st=deal?.stage; const v=pc?.manualProgress; const n=v==null||v===""?null:Number(v);
-  return projStageFlow(deal).findIndex(s=>s.stages.includes(st)&&(s.pct==null||(n==null?s.pctMin===0:n>=s.pctMin&&n<=s.pctMax)));
-};
+export const projStepIndex=deal=>projStageFlow(deal).findIndex(s=>s.stages.includes(deal?.stage));
+// "Works · 45%" for a construction project under way; otherwise the step name.
+export const projStepLabel=(step,pc)=>step.showPct&&pc?.manualProgress!=null?`${step.label} · ${pc.manualProgress}%`:step.label;
 export const projStageLabel=(deal,pc)=>{
-  const f=projStageFlow(deal)[projStepIndex(deal,pc)];
-  return f?(f.pill||f.label):(String(deal?.stage||"").replace(/^\d+ · /,"")||"—");
+  const f=projStageFlow(deal)[projStepIndex(deal)];
+  return f?projStepLabel(f,pc):(String(deal?.stage||"").replace(/^\d+ · /,"")||"—");
 };
 // Punchlist is the sign a project has reached 90 %.
 export const PUNCHLIST_MIN_PCT=90;
