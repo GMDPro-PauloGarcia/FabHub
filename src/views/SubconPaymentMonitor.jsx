@@ -75,7 +75,9 @@ export function subconMonitorRows({swos=[],payables=[],payPays=[],deals=[]}){
     const dpPct=subconDpAllowPct(w);
     const allowPct=Math.max(certPct,dpPct);
     // …and never more than the subcon has actually billed.
-    const dueNow=allowPct>0&&balance>1?Math.max(0,r2(Math.min(allowPct/100*contract,billed)-gross)):0;
+    // Only approved bills can be paid (2026-11-11: unapproved billings no longer count).
+    const approvedBilled=r2(bills.filter(b=>(b.approvalStatus||"Approved")==="Approved").reduce((s,b)=>s+num(b.amount),0));
+    const dueNow=allowPct>0&&balance>1?Math.max(0,r2(Math.min(allowPct/100*contract,approvedBilled)-gross)):0;
     const status=balance<=1?"Fully paid":woOnlyPaid?"Paid outside AP":!bills.length?"No bill":certBill?"Certified":dpPct>0?"Down payment":"Not certified";
     const d=dealById.get(w.dealId);
     return {id:w.id,wo:w,woNumber:w.woNumber||"—",subcon:w.subcontractor||bills[0]?.vendor||"—",dealId:w.dealId||null,
@@ -132,7 +134,7 @@ export default function SubconPaymentMonitor({swos=[],payables=[],payPays=[],dea
     ["Paid to date",php2(sum(all,"cash")),`${all.filter(r=>r.cash>0).length} WOs with a payment`,C.ok],
     ["Billed by subcons",php2(sum(all,"billed")),`${php2(sum(all,"toBill"))} not billed yet`,C.purple],
     ["Balance owed",php2(sum(all,"balance")),"contract − paid − EWT",C.bad],
-    ["Payable now",php2(sum(all,"dueNow")),"within PM certification or the WO down payment",C.blue],
+    ["Payable now",php2(sum(all,"dueNow")),"approved, within PM certification or the WO down payment",C.blue],
     ["Retention held",php2(sum(all,"retHeld")),`released at 100% · ${all.filter(r=>r.status==="No bill").length} WOs with no billing`,C.warn],
   ];
   const ewtMissing=all.filter(r=>r.cash>0&&r.ewt<=0).length;

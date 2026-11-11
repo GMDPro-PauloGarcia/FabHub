@@ -9798,6 +9798,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       onNewWO={canRaiseOrders?sub=>{setWoDraft({subcontractor:sub||""});setPage("subconwo");}:null}
       onGo={id=>{if(id==="bills"){setPage("finance");setFinTab(billsTab);}else setPage(id);}}
       onPayBill={roleCanInsert("payable_payments")?b=>{setPage("finance");setFinTab(billsTab);openPayModal(b);}:null}
+      // "Pay" on a supplier line: supplier bills open "Pay several bills" for that supplier;
+      // a subcontractor bill opens the single-payment form (retention is per bill).
+      onPaySupplier={roleCanInsert("payable_payments")?bills=>{
+        const sup=bills.filter(b=>!payIsSubcon(b));
+        setPage("finance");setFinTab(billsTab);
+        if(sup.length) setMultiPay({vendor:sup[0].vendor||"",sel:Object.fromEntries(sup.filter(b=>(b.vendor||"")===(sup[0].vendor||"")).map(b=>[b.id,String(Math.round(((Number(b.amount)||0)-(Number(b.paidAmount)||0))*100)/100)])),date:today,method:"Check",bank:"",ref:""});
+        else openPayModal(bills[0]);
+      }:null}
       onNewBilling={roleCanInsert("payables")?r=>{
         const pid=r.dealId&&isUUID(r.dealId)?r.dealId:null;
         const line=(r.lines||[]).find(l=>l.accountCode)||{};

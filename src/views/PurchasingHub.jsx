@@ -59,7 +59,10 @@ export function purchasingRows({prs=[],swos=[],payables=[],deals=[]}){
     let payNow=0;
     if(isWO){
       const allow=Math.max(certPct,subconDpAllowPct(wo));
-      payNow=Math.max(0,r2(Math.min(allow/100*ordered,billed)-paid));
+      // Only approved bills can be paid (the footnote's "billed, approved"); until
+      // 2026-11-11 a WO's unapproved bills counted as payable now.
+      const approvedBilled=bills.filter(b=>(b.approvalStatus||"Approved")==="Approved").reduce((s,b)=>s+num(b.amount),0);
+      payNow=Math.max(0,r2(Math.min(allow/100*ordered,approvedBilled)-paid));
     }else if(o.delivery==="Delivered"){
       payNow=r2(bills.filter(b=>(b.approvalStatus||"Approved")==="Approved").reduce((s,b)=>s+payBalance(b),0));
     }
@@ -96,7 +99,7 @@ const phPeso=v=>"₱"+num(v).toLocaleString("en-PH",{maximumFractionDigits:0});
 const phVendorKey=v=>String(v||"").replace(/[^a-zA-Z0-9]/g,"").toLowerCase().slice(0,8)||"—";
 
 export default function PurchasingHub({prs=[],swos=[],payables=[],payPays=[],deals=[],exps=[],role="",today=TODAY,
-  onNewBilling=null,onPayBill=null,onGo=null,onNewPO=null,onNewWO=null}){
+  onNewBilling=null,onPayBill=null,onGo=null,onNewPO=null,onNewWO=null,onPaySupplier=null}){
   const mob=useIsMobile();
   const myKeys=PH_ROLE_KEYS[role]||PH_ROLE_KEYS[canonRole(role)]||[];
   const[kind,setKind]=useState("all");
@@ -116,7 +119,9 @@ export default function PurchasingHub({prs=[],swos=[],payables=[],payPays=[],dea
   const mine=r=>!!r.owner&&myKeys.includes(r.owner);
   const needle=q.trim().toLowerCase();
   const byKind=all.filter(r=>kind==="all"||(kind==="po"?!r.isWO:r.isWO));
-  const rows=byKind.filter(r=>view==="all"||(view==="open"?!r.done:mine(r)))
+  // "To pay" (2026-11-11): a bill waiting for approval, or money payable now.
+  const toPay=r=>!r.done&&(r.payNow>1||r.status==="Bill to approve");
+  const rows=byKind.filter(r=>view==="all"||(view==="open"?!r.done:view==="topay"?toPay(r):mine(r)))
     .filter(r=>!needle||[r.no,r.vendor,r.project].some(v=>String(v).toLowerCase().includes(needle)));
   const shown=rows.slice(0,limit);
   const groups=(()=>{
@@ -180,6 +185,21 @@ export default function PurchasingHub({prs=[],swos=[],payables=[],payPays=[],dea
 
   // "+ PO" for a supplier, "+ WO" for a subcontractor (both when it has both), opening
   // the existing form with the name filled in. Only passed for Procurement / Managers.
+  // Pay this supplier: opens the existing payment form (Supplier Bills) for its approved,
+  // payable bills, so every payment rule still runs there. Finance / Managers only.
+  const payBtn=g=>{
+    if(!onPaySupplier||!(g.payNow>1)) return null;
+    const bills=g.rows.filter(r=>r.payNow>1).flatMap(r=>r.bills).filter(b=>(b.approvalStatus||"Approved")==="Approved"&&payBalance(b)>0);
+    if(!bills.length) return null;
+    return <button onClick={e=>{e.stopPropagation();onPaySupplier(bills);}} title={`Pay ${g.name}`}
+      style={{border:"none",background:"#f59e0b",color:"#fff",borderRadius:6,padding:"3px 10px",fontFamily:"inherit",fontSize:".72rem",fontWeight:800,cursor:"pointer",whiteSpace:"nowrap"}}>Pay</button>;
+  };
+  // Bills waiting for approval: approvers jump to Supplier Bills, where approving happens.
+  const approveBtn=g=>{
+    if(!onGo||!myKeys.includes("approveBill")||!g.toApprove) return null;
+    return <button onClick={e=>{e.stopPropagation();onGo("bills");}} title="Approve in Supplier Bills"
+      style={{border:"1.5px solid #7c3aed",background:"#fff",color:"#5b21b6",borderRadius:6,padding:"2px 8px",fontFamily:"inherit",fontSize:".7rem",fontWeight:800,cursor:"pointer",whiteSpace:"nowrap"}}>Approve</button>;
+  };
   const raiseBtns=g=>{
     const small={border:`1.5px solid ${PHC.navy}`,background:"#fff",color:PHC.navy,borderRadius:6,padding:"2px 8px",fontFamily:"inherit",fontSize:".7rem",fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"};
     const name=g.name==="—"?"":g.name;
@@ -264,6 +284,7 @@ export default function PurchasingHub({prs=[],swos=[],payables=[],payPays=[],dea
         <span style={{width:1,height:24,background:PHC.line,margin:"0 4px"}} aria-hidden="true"/>
         <div role="group" aria-label="Show" style={{display:"flex",gap:6}}>
           {myKeys.length>0&&<button onClick={()=>{setView("mine");setLimit(80);}} style={{...pill(view==="mine"),...(view==="mine"?{}:{background:"#fff7ed",borderColor:"#fed7aa",color:"#9a3412"})}}>Needs me · {mineCount}</button>}
+          <button onClick={()=>{setView("topay");setLimit(80);}} style={pill(view==="topay")}>To pay · {byKind.filter(toPay).length}</button>
           <button onClick={()=>{setView("open");setLimit(80);}} style={pill(view==="open")}>Open</button>
           <button onClick={()=>{setView("all");setLimit(80);}} style={pill(view==="all")}>All</button>
         </div>
@@ -296,7 +317,7 @@ export default function PurchasingHub({prs=[],swos=[],payables=[],payPays=[],dea
                     {[["Ordered",phPeso(g.ordered)],["Paid",phPeso(g.paid)],["Unpaid",phPeso(g.owed)],["Billed",phPeso(g.billed)],["Payable now",phPeso(g.payNow)]].map(([k,v])=>(
                       <div key={k} style={{background:"#fff",borderRadius:6,padding:"4px 6px"}}><div style={{fontSize:".58rem",color:PHC.muted,textTransform:"uppercase"}}>{k}</div><div style={{fontWeight:700}}>{v}</div></div>))}
                   </div>
-                  {(onNewPO||onNewWO)&&<div style={{display:"flex",gap:8}}>{raiseBtns(g)}</div>}
+                  {(onNewPO||onNewWO||payBtn(g)||approveBtn(g))&&<div style={{display:"flex",gap:8}}>{payBtn(g)}{approveBtn(g)}{raiseBtns(g)}</div>}
                 </>):(<>
                   <div style={{textAlign:"right",fontWeight:800}}>{phPeso(g.ordered)}</div>
                   <div style={{textAlign:"right"}}>{g.received>0?phPeso(g.received):"—"}</div>
@@ -304,6 +325,7 @@ export default function PurchasingHub({prs=[],swos=[],payables=[],payPays=[],dea
                   <div style={{textAlign:"right",fontWeight:700}}>{g.paid>0?phPeso(g.paid):"—"}<div style={{fontSize:".66rem",fontWeight:500,color:g.owed>1?PHC.bad:PHC.ok}}>{g.owed>1?`${phPeso(g.owed)} unpaid`:"fully paid"}</div></div>
                   <div style={{textAlign:"right",fontWeight:800,color:g.payNow>1?PHC.warn:PHC.faint}}>{g.payNow>1?phPeso(g.payNow):"—"}</div>
                   <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+                    {payBtn(g)}{approveBtn(g)}
                     <button onClick={e=>{e.stopPropagation();setLedger({kind:"supplier",id:g.name});}} style={{...linkBtn,fontSize:".74rem",fontWeight:700}}>Payment history</button>
                     {raiseBtns(g)}
                   </div>
