@@ -9371,7 +9371,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const syncPoPayable=(poNo,lines)=>{
     if(!poNo) return null;
     const active=(lines||[]).filter(p=>p.poNumber===poNo&&p.status!=="Cancelled");
-    const existing=payables.find(p=>p.poId===poNo);
+    // A Cancelled / Void bill is not the PO's bill: approving the PO later must
+    // raise a live one, not quietly update the cancelled copy (AP-2026-0941/0942).
+    const liveBill=p=>!["Cancelled","Void"].includes(p.status);
+    const existing=payables.find(p=>p.poId===poNo&&liveBill(p));
     const issued=active.some(p=>["PO Issued","Partially Delivered","Delivered"].includes(p.status));
     if(!issued) return existing||null; // still Draft/Pending — no payable yet
     // True amount owed: gross − PO-level discount (+ VAT), the shared poTotals
@@ -9410,7 +9413,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const{data,error}=await supabase.from("purchase_requests").select("status").eq("po_number",poNo);
         if(error) continue;
         if((data||[]).some(r=>["PO Issued","Partially Delivered","Delivered"].includes(r.status))){
-          upPayables(ps=>ps.some(p=>p.poId===poNo)?ps:[rec,...ps]);
+          upPayables(ps=>ps.some(p=>p.poId===poNo&&liveBill(p))?ps:[rec,...ps]);
           sbUpsert("payables",payableToSb(rec),"id").catch(()=>{});
           return;
         }
@@ -17204,7 +17207,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     // receipt and link this receipt's expense to it. Only fall back to a fresh
                     // per-line payable when the PO has none yet — legacy POs issued before the
                     // auto-payable, or solo requests with no PO number.
-                    const existingPoPay=receivingPr.poNumber?payables.find(p=>p.poId===receivingPr.poNumber):null;
+                    const existingPoPay=receivingPr.poNumber?payables.find(p=>p.poId===receivingPr.poNumber&&!["Cancelled","Void"].includes(p.status)):null;
                     let payId;
                     if(existingPoPay){
                       payId=existingPoPay.id;
@@ -24229,7 +24232,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
     const delQty=items.reduce((s,i)=>s+n(i.qtyDelivered),0);
     const anyDelivered=delQty>0||items.some(i=>["Delivered","Partially Delivered"].includes(i.status));
     const fullyDelivered=(totQty>0&&delQty>=totQty)||(items.length>0&&items.every(i=>i.status==="Delivered"));
-    const linkedAP=(payables||[]).filter(p=>p.poId===poNo||p.poNumber===poNo);
+    const linkedAP=(payables||[]).filter(p=>(p.poId===poNo||p.poNumber===poNo)&&!["Cancelled","Void"].includes(p.status));
     const apNos=[...new Set(linkedAP.map(p=>p.apNumber).filter(Boolean))];
     const isPaid=v=>v.status==="Paid"||v.acctStatus==="Paid"||(n(v.amount)>0&&n(v.paidAmount)>=n(v.amount));
     const paid=linkedAP.length>0&&linkedAP.every(isPaid);
