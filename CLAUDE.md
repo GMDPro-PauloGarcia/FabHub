@@ -150,7 +150,8 @@ For the smoke test locally, run `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers
 ## Who enters orders and bills (Paulo, 2026-11-11)
 - Purchase Orders and Subcon Work Orders: only Procurement, the Procurement Manager (Marian) and Managers create them; they then go through Cost Control or a Manager for approval. Finance Assistant (Mark, Jerwin) and Finance don't create orders.
 - Bills on a PO / WO: Procurement, the Procurement Manager and Managers. Bills with no PO and PRVs (rent, utilities, permits, OPEX): Finance, Finance Assistant and Accounting, and only charged to a cost center (GMD OPEX, GMD Tools, GMD Warehouse Stocks). SalesOpsAdmin (Jessica) enters no bills. Mark still pays bills.
-- The Procurement Manager now has the same read / create / edit (not delete) as Procurement on `purchase_requests`, `subcon_work_orders` and `payables`; before, `has_role` (exact role match) gave it none, so it couldn't see a PO.
+- The Procurement Manager now has the same read / create / edit as Procurement on `purchase_requests`, `subcon_work_orders` and `payables`, and may delete POs and Work Orders like Procurement (bills stay Manager-only to delete); before, `has_role` (exact role match) gave it none, so it couldn't see a PO.
+- Work Order edits and deletes go to `audit_log` (`trg_audit_subcon_work_order`, same migration; restore steps in it). Before, a deleted WO left no trace.
 - Database: `*_ins` / `*_sel` / `*_upd` policies on those three tables (migration `20261111100000_orders_and_bills_entry_procurement_only.sql`). App mirror: `PERMISSIONS` (`src/core.js`), `INSERT_ROLES`, `canBillPo` / `canBillOpex`, the checks at the top of `savePayable`, and `PayableForm`'s `opexOnly` (`src/App.jsx`). Keep them in sync.
 - Postgres checks the INSERT policy on an upsert even when the row exists, so an edit of an existing bill by a role that couldn't create it must be a plain update: use `sbUpdatePayable` (`src/App.jsx`), never `sbUpsert("payables", …)`.
 

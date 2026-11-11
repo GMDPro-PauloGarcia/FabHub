@@ -54,6 +54,44 @@ alter policy payables_upd on public.payables
   using (public.has_role('Manager','Finance','Accounting','FinanceAssistant','Procurement','ProcurementManager','SalesOpsAdmin'))
   with check (public.has_role('Manager','Finance','Accounting','FinanceAssistant','Procurement','ProcurementManager','SalesOpsAdmin'));
 
+-- Marian (ProcurementManager) may also delete POs and Work Orders, like
+-- Procurement. Supplier bills stay Manager-only to delete.
+alter policy purchase_requests_del on public.purchase_requests
+  using (public.has_role('Manager','Procurement','ProcurementManager'));
+alter policy subcon_work_orders_del on public.subcon_work_orders
+  using (public.has_role('Manager','Procurement','ProcurementManager'));
+
+-- Work Order edits and deletes go to audit_log, like PO lines
+-- (trg_audit_purchase_request, 20261020010000). Before this, a deleted WO
+-- left no trace. A delete's snapshot holds the whole row, so it can be
+-- restored with: insert into subcon_work_orders select * from
+-- jsonb_populate_record(null::subcon_work_orders, (select snapshot from
+-- audit_log where table_name = 'subcon_work_orders' and record_id = '<id>'
+-- and action = 'delete' order by performed_at desc limit 1));
+create or replace function public.audit_subcon_work_order_change()
+returns trigger language plpgsql security definer set search_path = public as $f$
+declare
+  actor   text := coalesce(nullif(public.app_username(), ''), 'unknown');
+  changed text[];
+begin
+  if tg_op = 'UPDATE' then
+    if to_jsonb(new) = to_jsonb(old) then return new; end if;
+    select array_agg(key) into changed from jsonb_each(to_jsonb(new)) n
+      where n.value is distinct from (to_jsonb(old) -> n.key);
+    insert into public.audit_log (table_name, record_id, action, old_snapshot, snapshot, changed_fields, performed_by, reason)
+      values (tg_table_name, new.id::text, 'update', to_jsonb(old), to_jsonb(new), changed, actor, 'field edit');
+    return new;
+  end if;
+  insert into public.audit_log (table_name, record_id, action, snapshot, performed_by, reason)
+    values (tg_table_name, old.id::text, 'delete', to_jsonb(old), actor,
+            'deleted' || coalesce(' ' || nullif(old.wo_number, ''), ''));
+  return old;
+end $f$;
+revoke execute on function public.audit_subcon_work_order_change() from public, anon, authenticated;
+create or replace trigger trg_audit_subcon_work_order
+  after update or delete on public.subcon_work_orders
+  for each row execute function public.audit_subcon_work_order_change();
+
 -- ROLLBACK (restores the policies as they were on 2026-11-11):
 -- alter policy purchase_requests_ins on public.purchase_requests
 --   with check (public.has_role('Manager','Finance','FinanceAssistant','Procurement'));
@@ -76,3 +114,8 @@ alter policy payables_upd on public.payables
 -- alter policy payables_upd on public.payables
 --   using (public.has_role('Manager','Finance','Accounting','FinanceAssistant','Procurement','SalesOpsAdmin'))
 --   with check (public.has_role('Manager','Finance','Accounting','FinanceAssistant','Procurement','SalesOpsAdmin'));
+-- alter policy purchase_requests_del on public.purchase_requests using (public.has_role('Manager','Procurement'));
+-- alter policy subcon_work_orders_del on public.subcon_work_orders using (public.has_role('Manager','Procurement'));
+-- The WO audit trigger is safe to keep; to remove it, drop trigger trg_audit_subcon_work_order
+-- on public.subcon_work_orders and drop function public.audit_subcon_work_order_change()
+-- (run these by hand: the Supabase MCP tools hang on DROP).
