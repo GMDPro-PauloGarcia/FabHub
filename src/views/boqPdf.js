@@ -94,14 +94,20 @@ export function buildBoqPdf(m){
   noteLines.forEach(ls=>{doc.text("•",L+6,ny);doc.text(ls,L+10,ny);ny+=ls.length*3.8;});
   y+=notesH+6;
 
-  need(30);
+  doc.setFontSize(8);
+  // Payment terms come from the BOQ (editable per quotation); long lines wrap.
+  const terms=(Array.isArray(m.payTerms)&&m.payTerms.length?m.payTerms:["50% Down Payment to start project","Billing of 40% up until installation","Retention of 10% upon certificate of completion"])
+    .map(t=>doc.splitTextToSize(t,half-6));
+  const termsH=terms.reduce((s,l)=>s+l.length*4,0);
+  need(Math.max(30,termsH+10));
   const colX=[L,L+half+3];
   doc.setFont(F,"bold");doc.setFontSize(7.5);doc.setTextColor(NAVY);
   doc.text("BANK DETAILS",colX[0],y);doc.text("PAYMENT TERMS",colX[1],y);
   doc.setFont(F,"normal");doc.setFontSize(8);doc.setTextColor("#475569");
   ["Account Name: GMD PRODUCTIONS INC","BDO CHECKING — 012758000370","BPI CHECKING — 6011 04 82 03","METROBANK — 382-7-38202059-2"].forEach((t,i)=>doc.text(t,colX[0],y+5+i*4));
-  ["50% Down Payment to start project","Billing of 40% up until installation","Retention of 10% upon certificate of completion"].forEach((t,i)=>doc.text(t,colX[1],y+5+i*4));
-  y+=28;
+  let ty=y+5;
+  terms.forEach(ls=>{doc.text(ls,colX[1],ty);ty+=ls.length*4;});
+  y=Math.max(y+28,ty+4);
 
   need(26);
   const sw=(R-L-12)/3;
