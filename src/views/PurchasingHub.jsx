@@ -96,7 +96,7 @@ const phPeso=v=>"₱"+num(v).toLocaleString("en-PH",{maximumFractionDigits:0});
 const phVendorKey=v=>String(v||"").replace(/[^a-zA-Z0-9]/g,"").toLowerCase().slice(0,8)||"—";
 
 export default function PurchasingHub({prs=[],swos=[],payables=[],payPays=[],deals=[],exps=[],role="",today=TODAY,
-  onNewBilling=null,onPayBill=null,onGo=null}){
+  onNewBilling=null,onPayBill=null,onGo=null,onNewPO=null,onNewWO=null}){
   const mob=useIsMobile();
   const myKeys=PH_ROLE_KEYS[role]||PH_ROLE_KEYS[canonRole(role)]||[];
   const[kind,setKind]=useState("all");
@@ -178,6 +178,16 @@ export default function PurchasingHub({prs=[],swos=[],payables=[],payPays=[],dea
     </div>
   );
 
+  // "+ PO" for a supplier, "+ WO" for a subcontractor (both when it has both), opening
+  // the existing form with the name filled in. Only passed for Procurement / Managers.
+  const raiseBtns=g=>{
+    const small={border:`1.5px solid ${PHC.navy}`,background:"#fff",color:PHC.navy,borderRadius:6,padding:"2px 8px",fontFamily:"inherit",fontSize:".7rem",fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"};
+    const name=g.name==="—"?"":g.name;
+    return <>
+      {onNewPO&&(g.nPO>0||!g.nWO)&&<button onClick={e=>{e.stopPropagation();onNewPO(name);}} title={`New PO to ${name}`} style={small}>+ PO</button>}
+      {onNewWO&&g.nWO>0&&<button onClick={e=>{e.stopPropagation();onNewWO(name);}} title={`New Work Order for ${name}`} style={small}>+ WO</button>}
+    </>;
+  };
   const orderRow=r=>{
           const isOpen=openKey===r.key, me=mine(r);
           const head=(
@@ -223,9 +233,15 @@ export default function PurchasingHub({prs=[],swos=[],payables=[],payPays=[],dea
   const inp={border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".8rem",background:"#fff",minHeight:36,boxSizing:"border-box"};
   return(
     <div style={{display:"flex",flexDirection:"column",gap:14}}>
-      <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,flexWrap:"wrap"}}>
+      <div style={{flex:"1 1 320px"}}>
         <h2 style={{margin:0,fontWeight:800,color:PHC.navy,fontSize:"1.2rem"}}>Purchasing</h2>
         <div style={{fontSize:".78rem",color:PHC.muted,marginTop:2}}>Every supplier PO and subcon Work Order from order to last payment, the same view for Procurement and Finance. A PO is received by Warehouse; a WO is certified by the PM.</div>
+      </div>
+      {(onNewPO||onNewWO)&&<div style={{display:"flex",gap:8}}>
+        {onNewPO&&<button onClick={()=>onNewPO("")} style={btn(true)}>+ New PO</button>}
+        {onNewWO&&<button onClick={()=>onNewWO("")} style={btn(true)}>+ New WO</button>}
+      </div>}
       </div>
 
       <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(5,minmax(0,1fr))",gap:8}}>
@@ -275,18 +291,22 @@ export default function PurchasingHub({prs=[],swos=[],payables=[],payPays=[],dea
                     {g.toApprove>0&&<span style={{marginLeft:6}}>{phChip("Bill to approve")}</span>}
                     {g.mine>0&&<span style={{marginLeft:6,color:"#9a3412",fontWeight:700}}>{g.mine} need{g.mine===1?"s":""} you</span>}</div>
                 </div>
-                {mob?(
+                {mob?(<>
                   <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:6,fontSize:".72rem"}}>
                     {[["Ordered",phPeso(g.ordered)],["Paid",phPeso(g.paid)],["Unpaid",phPeso(g.owed)],["Billed",phPeso(g.billed)],["Payable now",phPeso(g.payNow)]].map(([k,v])=>(
                       <div key={k} style={{background:"#fff",borderRadius:6,padding:"4px 6px"}}><div style={{fontSize:".58rem",color:PHC.muted,textTransform:"uppercase"}}>{k}</div><div style={{fontWeight:700}}>{v}</div></div>))}
                   </div>
-                ):(<>
+                  {(onNewPO||onNewWO)&&<div style={{display:"flex",gap:8}}>{raiseBtns(g)}</div>}
+                </>):(<>
                   <div style={{textAlign:"right",fontWeight:800}}>{phPeso(g.ordered)}</div>
                   <div style={{textAlign:"right"}}>{g.received>0?phPeso(g.received):"—"}</div>
                   <div style={{textAlign:"right"}}>{g.billed>0?phPeso(g.billed):"—"}</div>
                   <div style={{textAlign:"right",fontWeight:700}}>{g.paid>0?phPeso(g.paid):"—"}<div style={{fontSize:".66rem",fontWeight:500,color:g.owed>1?PHC.bad:PHC.ok}}>{g.owed>1?`${phPeso(g.owed)} unpaid`:"fully paid"}</div></div>
                   <div style={{textAlign:"right",fontWeight:800,color:g.payNow>1?PHC.warn:PHC.faint}}>{g.payNow>1?phPeso(g.payNow):"—"}</div>
-                  <div><button onClick={e=>{e.stopPropagation();setLedger({kind:"supplier",id:g.name});}} style={{...linkBtn,fontSize:".74rem",fontWeight:700}}>Payment history</button></div>
+                  <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+                    <button onClick={e=>{e.stopPropagation();setLedger({kind:"supplier",id:g.name});}} style={{...linkBtn,fontSize:".74rem",fontWeight:700}}>Payment history</button>
+                    {raiseBtns(g)}
+                  </div>
                 </>)}
               </div>
               {op&&<div style={{borderTop:`1px solid ${PHC.line}`,paddingLeft:mob?0:12}}>{g.rows.map(orderRow)}</div>}

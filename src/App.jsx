@@ -9742,6 +9742,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // Open the Record-Payment modal for a payable, pre-filled with its open balance.
   // Navigation + badge counts for the Aerwin-styled Finance module tab bar.
   const[poDraft,setPoDraft]=useState(null); // PRF lines handed from the Order Board to the PO form
+  const[woDraft,setWoDraft]=useState(null); // supplier handed from Purchasing to the new-WO form
   const financeErpCounts=()=>({
     po:new Set(prs.filter(p=>["PO Issued","Partially Delivered"].includes(p.status)&&p.poNumber).map(p=>p.poNumber)).size,
     ap:payables.filter(p=>p.status!=="Paid").length,
@@ -9788,8 +9789,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(fail.length) toastEmit(`PO ${poNo} saved, but ${fail.length} PRF link(s) failed: ${fail[0]}. Link it from the PRF page.`,"error",12000);
     if(ordered) sendTelegramNotification("ops",`✅ <b>PO ${poNo}</b> issued for ${ordered} PRF${ordered>1?"s":""} (all items ordered).`);
   };
+  // "+ PO" / "+ WO" on Purchasing open the existing forms with the supplier filled in.
+  // Procurement and Managers only: Finance pays, so it doesn't raise orders from here.
+  const canRaiseOrders=role==="Manager"||isProcurementRole(role);
   const purchasingPage=()=>(
     <PurchasingHub prs={prs} swos={swos} payables={payables} payPays={payPays} deals={deals} exps={exps} role={role} today={today}
+      onNewPO={canRaiseOrders?sup=>{setPoDraft({supplier:sup||"",lines:[]});setPage("procurement");}:null}
+      onNewWO={canRaiseOrders?sub=>{setWoDraft({subcontractor:sub||""});setPage("subconwo");}:null}
       onGo={id=>{if(id==="bills"){setPage("finance");setFinTab(billsTab);}else setPage(id);}}
       onPayBill={roleCanInsert("payable_payments")?b=>{setPage("finance");setFinTab(billsTab);openPayModal(b);}:null}
       onNewBilling={roleCanInsert("payables")?r=>{
@@ -16561,7 +16567,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(page==="procurement") return(<Wrap><ProcurementView2 poDraft={poDraft} clearPoDraft={()=>setPoDraft(null)} onPoFromPrf={linkPrfLines} payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="purchasing") return(<Wrap>{purchasingPage()}</Wrap>);
     if(page==="orderboard") return(<Wrap>{orderBoardPage()}</Wrap>);
-    if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="subconwo") return(<Wrap><SubconWOView woDraft={woDraft} clearWoDraft={()=>setWoDraft(null)} deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="costing") return(<Wrap><CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView sendTelegramNotification={sendTelegramNotification} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
@@ -16907,7 +16913,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(page==="procurement") return(<Wrap><ProcurementView2 poDraft={poDraft} clearPoDraft={()=>setPoDraft(null)} onPoFromPrf={linkPrfLines} payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="purchasing") return(<Wrap>{purchasingPage()}</Wrap>);
     if(page==="orderboard") return(<Wrap>{orderBoardPage()}</Wrap>);
-    if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="subconwo") return(<Wrap><SubconWOView woDraft={woDraft} clearWoDraft={()=>setWoDraft(null)} deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap} addMR={addMR} wonDeals={wonDeals} session={session}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView sendTelegramNotification={sendTelegramNotification} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="requests") return(<Wrap><RequestsView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
@@ -17407,7 +17413,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(page==="procurement") return(<Wrap><ProcurementView2 poDraft={poDraft} clearPoDraft={()=>setPoDraft(null)} onPoFromPrf={linkPrfLines} payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="purchasing") return(<Wrap>{purchasingPage()}</Wrap>);
     if(page==="orderboard") return(<Wrap>{orderBoardPage()}</Wrap>);
-    if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="subconwo") return(<Wrap><SubconWOView woDraft={woDraft} clearWoDraft={()=>setWoDraft(null)} deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView sendTelegramNotification={sendTelegramNotification} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="requests") return(<Wrap><RequestsView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
@@ -22697,7 +22703,7 @@ function CEQSView({ceReqs,addCEReq,updateCEReq,session,role,toastEmit,deals}){
 // ─── BOQ MODAL (opened from pipeline 📋 button) ──────────────────────────────
 
 // ─── SUBCON WORK ORDERS VIEW ───────────────────────────────────────────────────
-function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,deals,subcons,session,role,toastEmit,sendTelegramNotification,chartOfAccounts=[],onWaiveDp,onCreditTerms}){
+function SubconWOView({woDraft=null,clearWoDraft,swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,deals,subcons,session,role,toastEmit,sendTelegramNotification,chartOfAccounts=[],onWaiveDp,onCreditTerms}){
   const today=new Date().toISOString().split("T")[0];
   const[mode,setMode]=useState("list");
   const[editingId,setEditingId]=useState(null);
@@ -22782,6 +22788,13 @@ function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,deal
       paymentStructure:m.payment_structure||m.paymentStructure||p.paymentStructure||"",
       paymentTerms:m.payment_terms||m.paymentTerms||p.paymentTerms||""};
   });
+  // Purchasing → "+ WO": open the new-WO form with that subcontractor picked.
+  useEffect(()=>{
+    if(!woDraft) return;
+    openNew();
+    if(woDraft.subcontractor) pickSubcon(woDraft.subcontractor);
+    clearWoDraft&&clearWoDraft();
+  },[woDraft]);
 
   // ── Batch upload ────────────────────────────────────────────────────────────
   const batchInputRef=useRef(null);
@@ -23971,6 +23984,8 @@ function ProcurementView2({poDraft=null,clearPoDraft,onPoFromPrf,payPays=[],prs,
     if(!poDraft) return;
     openNewPO();
     setPoSupplier(poDraft.supplier||"");
+    // Purchasing → "+ PO" sends only the supplier: keep the blank line openNewPO made.
+    if(!(poDraft.lines||[]).length){clearPoDraft&&clearPoDraft();return;}
     setPoItems(poDraft.lines.map(l=>({...emptyPoItem(),projectId:l.dealId||"",projectName:(()=>{const d=activeDeals.find(x=>x.id===l.dealId)||(allDeals||[]).find(x=>x.id===l.dealId);return d?projDisplayName(d):"";})(),itemName:l.itemName,category:l.category||"Materials",budgetCategory:"Materials",
       qty:Number(l.qty)||1,unit:l.unit||"pcs",estUnitCost:Number(l.estUnitCost)||0,_prfId:l.prfId,_prfLineId:l.lineId,_prfNo:l.prfNo})));
     prfDraftRef.current=true;
