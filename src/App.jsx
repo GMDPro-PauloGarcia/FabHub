@@ -23860,6 +23860,11 @@ function ProcurementView2({poDraft=null,clearPoDraft,onPoFromPrf,payPays=[],prs,
     finally{setCcBusy(false);}
   };
   const activeDeals=React.useMemo(()=>(allDeals||wonDeals||[]).filter(d=>!isLostStage(d.stage)),[allDeals,wonDeals]);
+  // A PO line's project label comes from its deal (store name · CE no.), not the
+  // stored project_name: 93% of lines carry only the client name, so a client's
+  // projects (Yobo SM North Edsa, Yobo SM Nuvali) merged into one unsearchable row.
+  const poDealById=React.useMemo(()=>{const m=new Map();(allDeals||wonDeals||[]).forEach(d=>m.set(d.id,d));return m;},[allDeals,wonDeals]);
+  const prProjLabel=p=>{const d=p&&poDealById.get(p.projectId);return d?projDisplayName(d):(p?.projectName||"");};
   const today=new Date().toISOString().split("T")[0];
   // ── PO approval gate ────────────────────────────────────────────────────────
   // Segregation of duties: a PO may only be moved to "PO Issued" by a Manager or
@@ -24108,7 +24113,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
         discType:"none",discValue:0,
         poDiscType:poLevelDiscType,poDiscValue:poLevelDiscValue,withVat:poWithVat,
         accountCode:poAccountCode,paymentTerms:poTerms,termsText:poTermsText,
-        projectId:item.projectId,projectName:deal?.client||item.projectName||"",
+        projectId:item.projectId,projectName:(deal?projDisplayName(deal):"")||item.projectName||"",
         supplier:poSupplier,poNumber:poNo,poDate:poDate,
         status:effStatus,deliveryDate:poExpectedDelivery||""};
     };
@@ -24614,7 +24619,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
       <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
         <select value={filterProj} onChange={e=>setFilterProj(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
           <option value="all">All Projects</option>
-          {activeDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?` — ${d.contact}`:""}</option>)}
+          {[...activeDeals].sort((a,b)=>projDisplayName(a).localeCompare(projDisplayName(b))).map(d=><option key={d.id} value={d.id}>{projDisplayName(d)}{d.client&&d.contact?` (${d.client})`:""}</option>)}
         </select>
         <select value={filterStat} onChange={e=>setFilterStat(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
           <option value="all">All Statuses</option>
@@ -24652,7 +24657,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
               const sup=p.supplier||"(No supplier)";
               if(!bySupplier[sup])bySupplier[sup]={count:0,total:0,items:[]};
               bySupplier[sup].count++;bySupplier[sup].total+=(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty);bySupplier[sup].items.push(p);
-              const proj=p.projectName||p.projectId||"GMD Stocks";
+              const proj=prProjLabel(p)||p.projectId||"GMD Stocks";
               if(!byProject[proj])byProject[proj]={count:0,total:0,id:(p.projectId&&p.projectId!=="__gmd_stocks__")?p.projectId:null};
               byProject[proj].count++;byProject[proj].total+=(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty);
               const st=p.status||"Draft";
@@ -24719,7 +24724,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
           if(g.type==="po"){
             const {poNo,groupKey,items,supplier,status,poDate:poD,total}=g;
             const lc=poLifecycle(items,poNo);
-            const projects=[...new Set(items.map(i=>i.projectName||"").filter(Boolean))].join(", ")||"—";
+            const projects=[...new Set(items.map(i=>prProjLabel(i)).filter(Boolean))].join(", ")||"—";
             // Keyed by groupKey (poNumber+supplier), not bare poNo — two different
             // suppliers can share the same PO number (dupPoColors below exists
             // specifically to flag that), and keying by poNo alone made both
@@ -24739,7 +24744,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
                   <div style={{fontSize:".75rem",color:"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{(()=>{
                     const ids=[...new Set(items.map(i=>i.projectId).filter(id=>id&&id!=="__gmd_stocks__"))];
                     if(!ids.length) return projects;
-                    return ids.map((id,k)=>{const nm=items.find(i=>i.projectId===id)?.projectName||projDisplayName((allDeals||wonDeals||[]).find(d=>d.id===id))||"Project";
+                    return ids.map((id,k)=>{const nm=projDisplayName((allDeals||wonDeals||[]).find(d=>d.id===id))||items.find(i=>i.projectId===id)?.projectName||"Project";
                       return <span key={id}>{k>0&&", "}<button style={ledgerLink} title={`All POs and expenses for ${nm}`} onClick={e=>{e.stopPropagation();setLedger({kind:"project",id});}}>{nm}</button></span>;});
                   })()}</div>
                   <div style={{textAlign:"right",fontWeight:800,color:"#10b981",fontSize:".85rem"}}>{fmt(total)}</div>
@@ -24788,7 +24793,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
           } else {
             const {pr}=g;
             const actTotal=(n(pr.actUnitCost)||n(pr.estUnitCost))*n(pr.qty);
-            const projName=pr.projectName||activeDeals.find(d=>d.id===pr.projectId)?.contact||activeDeals.find(d=>d.id===pr.projectId)?.client||"—";
+            const projName=prProjLabel(pr)||"—";
             return(
               <div key={pr.id} style={{display:"grid",gridTemplateColumns:"90px 1fr 1fr 110px 100px 90px",padding:"9px 14px",gap:8,alignItems:"center",borderBottom:gi<grouped.length-1?"1px solid #f1f5f9":"none",background:"#fff"}}
                 onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
