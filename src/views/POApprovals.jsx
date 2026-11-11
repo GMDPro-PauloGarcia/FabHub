@@ -1,6 +1,6 @@
 import React,{useState,useMemo} from "react";
 import {uiConfirm} from "../shared";
-import {canApprovePOLine,poLinesTotal,dealDpClear} from "../core";
+import {canApprovePOLine,poLinesTotal,poSplitTotal,dealDpClear} from "../core";
 
 // ─── PO APPROVALS (Purchase Orders page) ───────────────────────────────────
 // Cost Control (QS) up to ₱150,000 or a Manager (any amount) may move a PO to
@@ -31,7 +31,7 @@ export default function POApprovals({prs=[],deals=[],role,session,approvePOs}){
     const by={};
     prs.filter(p=>p.status==="Pending Approval"&&p.poNumber).forEach(p=>{(by[p.poNumber]=by[p.poNumber]||[]).push(p);});
     return Object.entries(by)
-      .filter(([no,ls])=>{const tot=poLinesTotal(prs.filter(p=>p.poNumber===no));return ls.every(l=>canApprovePOLine(role,me,l.requestedBy,tot));})
+      .filter(([no,ls])=>{const tot=poLinesTotal(prs.filter(p=>p.poNumber===no));const split=poSplitTotal(prs,no);return ls.every(l=>canApprovePOLine(role,me,l.requestedBy,tot,split));})
       .map(([no,ls])=>{
         const f=ls[0];
         const gross=ls.reduce((s,i)=>s+(num(i.actUnitCost)||num(i.estUnitCost))*num(i.qty),0);

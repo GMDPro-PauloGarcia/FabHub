@@ -1297,14 +1297,32 @@ export const isTopApprover=name=>PO_TOP_APPROVERS.includes(String(name||"").trim
 // Switched on with migration 20261114010000 (weekend release). Until then any
 // Manager approves any amount, as the database still does.
 export const PO_TIERS_ON=false;
-export const canApprovePOLine=(role,sessionName,requestedBy,total)=>{
+// Procurement Manager (Paulo, 2026-11-09; on with PO_TIERS_ON): Marian approves a PO
+// requested by her team (not by her) up to ₱50,000, as long as everything ordered from
+// that supplier on the PO's date is ₱50,000 or less (poSplitTotal), so one order can't
+// be cut into small POs. The database also checks the requester is in Procurement.
+// Mirrors po_split_total() / po_line_approver_name() (migration 20261114020000).
+export const PO_PROC_MGR_LIMIT=50000;
+// Same key as ap_vendor_key() in the database: first 8 letters/digits, lower case.
+export const poVendorKey=v=>String(v||"").replace(/[^a-zA-Z0-9]/g,"").toLowerCase().slice(0,8);
+const poLineDate=l=>l.poDate||String(l.createdAt||l.createdDate||"").slice(0,10);
+// What was ordered from PO poNo's supplier on its date, across all POs (non-cancelled
+// lines). null when the PO has no supplier: the Procurement Manager can't approve it.
+export const poSplitTotal=(prs,poNo)=>{
+  const f=(prs||[]).find(p=>p.poNumber===poNo); if(!f) return null;
+  const k=poVendorKey(f.supplier), d=poLineDate(f); if(!k) return null;
+  return poLinesTotal((prs||[]).filter(p=>p.poNumber&&poVendorKey(p.supplier)===k&&poLineDate(p)===d));
+};
+export const canApprovePOLine=(role,sessionName,requestedBy,total,split=null)=>{
   const t=Number(total)||0;
+  const notMine=!requestedBy||!sessionName||sessionName.trim().toLowerCase()!==requestedBy.trim().toLowerCase();
   if(role==="Manager") return !PO_TIERS_ON||t<PO_MANAGER_LIMIT||isTopApprover(sessionName);
-  if(role==="QS") return t<=PO_COST_CONTROL_LIMIT
-    &&(!requestedBy||!sessionName||sessionName.trim().toLowerCase()!==requestedBy.trim().toLowerCase());
+  if(role==="QS") return t<=PO_COST_CONTROL_LIMIT&&notMine;
+  if(role==="ProcurementManager") return PO_TIERS_ON&&!!requestedBy&&notMine
+    &&split!=null&&t<=PO_PROC_MGR_LIMIT&&Number(split)<=PO_PROC_MGR_LIMIT;
   return false;
 };
-export const PO_APPROVER_MSG=PO_TIERS_ON?"Cost Control approves POs up to ₱150,000, Paolo Gomez up to ₱250,000, and Paulo, Mar or Arrius from ₱250,000":"Needs Cost Control (POs up to ₱150,000) or a Manager (above ₱150,000: Paolo Gomez)";
+export const PO_APPROVER_MSG=PO_TIERS_ON?"Marian approves her team's POs up to ₱50,000 (all of that supplier's POs that day), Cost Control up to ₱150,000, Paolo Gomez up to ₱250,000, and Paulo, Mar or Arrius from ₱250,000":"Needs Cost Control (POs up to ₱150,000) or a Manager (above ₱150,000: Paolo Gomez)";
 
 export const canApprovePO=(role,sessionName,requestedBy)=>{
   // Only a Manager or a Procurement Manager may approve (issue) a PO or subcon
