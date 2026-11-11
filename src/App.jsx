@@ -5515,10 +5515,10 @@ export default function App(){
   const INSERT_ROLES={
     deals:["Manager","Sales","SalesOpsAdmin"],
     job_orders:["Manager","ProjectMover"],
-    purchase_requests:["Manager","Finance","FinanceAssistant","Procurement"],
+    purchase_requests:["Manager","Procurement"], // orders: Procurement only (migration 20261111100000)
     material_requests:["Manager","Sales","Procurement","SalesOpsAdmin"],
     budget_requests:["Manager","Sales","Procurement","SalesOpsAdmin"],
-    subcon_work_orders:["Manager","Finance","FinanceAssistant","Procurement"],
+    subcon_work_orders:["Manager","Procurement"],
     addenda:["Manager","ProjectMover","Procurement","Design"],
     swatches:["Manager","Procurement","Design"],
     // checklists: intentionally UNMAPPED. Migration 049 opened checklists
@@ -9278,11 +9278,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   };
 
   const upPayables=fn=>{const next=fn(payables);setPayables(next);persist(KEYS.payables,next);};
+  // Save changes to a bill that already exists as a plain UPDATE, never an upsert:
+  // Postgres checks the INSERT policy on an upsert even when the row exists, and
+  // since 2026-11-11 only Procurement and Managers may create bills (migration
+  // 20261111100000), so an upsert from Finance / Accounting would be refused.
+  const sbUpdatePayable=rec=>{const{id,...rest}=payableToSb(rec);return sbUpdate("payables",rec.id,rest);};
   // Set just the due date on a payable (used by the due-date backfill dialog) and sync it.
   const setPayableDueDate=(id,dueDate)=>{
     let updated=null;
     upPayables(ps=>ps.map(p=>{if(p.id!==id)return p;updated={...p,dueDate};return updated;}));
-    if(updated&&isSupabaseReady()) sbUpsert("payables",payableToSb(updated),"id").catch(()=>{});
+    if(updated&&isSupabaseReady()) sbUpdatePayable(updated).catch(()=>{});
   };
 
   // ── Commission payouts (what Finance has disbursed to each rep) ─────────────
@@ -9490,7 +9495,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       if(existing.status==="Paid") return existing; // never disturb a settled payable
       const upd={...existing,amount,vendor:supplier||existing.vendor,projectId:linkedProjectId||existing.projectId};
       upPayables(ps=>ps.map(p=>p.id===existing.id?upd:p));
-      if(isSupabaseReady()&&isUUID(existing.id)) sbUpsert("payables",payableToSb(upd),"id").catch(()=>{});
+      if(isSupabaseReady()&&isUUID(existing.id)) sbUpdatePayable(upd).catch(()=>{});
       return upd;
     }
     const rec={id:uid(),apNumber:"",vendor:supplier, /* AP no. assigned by the server on insert (migration 20260930140000) */amount,paidAmount:0,dueDate:"",category:"Supplier",
@@ -9669,7 +9674,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(!(await uiConfirm(`Confirm Warehouse received the items for ${p.vendor||"this vendor"}${p.apNumber?` (${p.apNumber})`:""}? This unlocks it for payment.`))) return;
     const upd={...p,verified:true,verificationPct:pct,verifiedBy:session?.name||"",verifiedAt:today};
     upPayables(ps=>ps.map(x=>x.id===id?upd:x));
-    if(isSupabaseReady()&&isUUID(id)) sbUpsert("payables",payableToSb(upd),"id").catch(()=>{});
+    if(isSupabaseReady()&&isUUID(id)) sbUpdatePayable(upd).catch(()=>{});
     toastEmit("Warehouse receipt verified — now payable.","success");
   };
   // ── Expense/payable approval gate ────────────────────────────────────────
@@ -17242,7 +17247,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       if(!existingPoPay.dueDate&&existingPoPay.status!=="Paid"){
                         const upd={...existingPoPay,dueDate:due};
                         upPayables(ps=>ps.map(p=>p.id===existingPoPay.id?upd:p));
-                        if(isSupabaseReady()&&isUUID(existingPoPay.id)) sbUpsert("payables",payableToSb(upd),"id").catch(()=>{});
+                        if(isSupabaseReady()&&isUUID(existingPoPay.id)) sbUpdatePayable(upd).catch(()=>{});
                       }
                     } else {
                       payId=uid();

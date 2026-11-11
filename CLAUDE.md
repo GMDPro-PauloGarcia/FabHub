@@ -109,7 +109,7 @@ For the smoke test locally, run `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers
 - On 2026-11-04, 118 bills that shared a number were renumbered to AP-2026-0737…0854. The old number is in each bill's notes ("Formerly …") and in `audit_log` (`action = 'ap_renumber'`).
 
 ## Supplier bill approval (database-kept)
-- Managers approve bills (Paolo Gomez, with Paulo and Mar as back-up); the Finance role may too. Mark (FinanceAssistant) enters and pays bills and keeps the cash sheet, so he is **not** an approver. Migration `20261105042430_payables_approval_controls.sql`, applied 2026-11-05.
+- Managers approve bills (Paolo Gomez, with Paulo and Mar as back-up); the Finance role may too. Mark (FinanceAssistant) pays bills and keeps the cash sheet, so he is **not** an approver. Migration `20261105042430_payables_approval_controls.sql`, applied 2026-11-05.
 - Nobody approves a bill they entered. Every new bill starts Pending. A non-approver's change to `approval_status` / `approved_by` / `approved_at` is silently ignored (stale saves still work). Approving from a copy whose amount or supplier differs from the server is refused. Changing the amount or supplier of an approved bill puts it back to Pending (`audit_log` action `approval_reset`). The server stamps who approved and when.
 - The app mirrors this in `canApprovePayables` / `enteredByMe` / `setPayableDecision` (`src/App.jsx`). Approvals go to the server first (`update` of the decision + amount + vendor), never as a full-row upsert.
 - A materials PO bill whose PO isn't fully delivered can be paid only by a Manager or from an approved payment run (`recordPayments`, app-side; delivery lives on the PO lines).
@@ -146,6 +146,12 @@ For the smoke test locally, run `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers
 - Finance (2026-11-06): Payables = Supplier Bills, Payments, Payment Run, Check Vouchers, Subcon Payments (+ Purchase Orders for FinanceAssistant / Accounting); Cash = Cash Position, Cash Flow; Monitoring = Monitoring Board, Reports; Accounting = Expense Monitoring, BIR 2307, Chart of Accounts. Executive keeps its own tabs (Overview, Transactions, P&L). The old Finance ERP tab bar is gone; the hub strip replaces it and carries its counts.
 - Finance tabs are nav items too: `NAV_FIN_TAB` (item → Finance tab) and `FIN_TAB_NAV` (tab → item). `navLoc` is the item for where the user is; `navGo(id)` opens any item. `navIsActive` is the one active-item rule for the desktop sidebar, the phone nav and the hub strip. Use these for any new item.
 - Hidden modules: `RETIRED_PAGES` in `src/shared.jsx` (hidden, not deleted). Check Vouchers and Stock Movements were added 2026-11-06 (0 vouchers / 1 movement ever). Any button or tile that opens a page must be gated with `pageOn(id)`, or it bounces to Home.
+
+## Who enters orders and bills (Paulo, 2026-11-11)
+- Only Procurement (and a Manager) creates Purchase Orders, Subcon Work Orders and supplier bills / PRVs. Orders then go through Cost Control or a Manager for approval. Finance Assistant (Mark, Jerwin), Finance, Accounting and SalesOpsAdmin (Jessica) don't create any of them; Mark still pays bills.
+- Database: the INSERT policies `purchase_requests_ins`, `subcon_work_orders_ins`, `payables_ins` (migration `20261111100000_orders_and_bills_entry_procurement_only.sql`). App mirror: `PERMISSIONS.*.insert` (`src/core.js`) and `INSERT_ROLES` (`src/App.jsx`). Keep them in sync.
+- Postgres checks the INSERT policy on an upsert even when the row exists, so a change to an existing bill from any other role must be a plain update: use `sbUpdatePayable` (`src/App.jsx`), never `sbUpsert("payables", …)`.
+- The Procurement Manager role (Marian) is not in these policies (`has_role` matches the exact role), though the app treats it as Procurement.
 
 ## Cash Out (one modal for money leaving GMD)
 - `src/views/CashOutModal.jsx`, added 2026-11-11: the gold "💸 Cash Out" button (sidebar, phone header) opens one modal with Purchase Order, Subcon Work Order, Supplier bill (AP, picked from an issued PO with no bill or entered with no PO), Subcon progress billing (picked from an issued WO), Payment request (PRV) and Pay bills. Options are listed in `cashOutKinds` (`src/App.jsx`) and filtered by `roleCanInsert`, so access still follows the permissions maps.
