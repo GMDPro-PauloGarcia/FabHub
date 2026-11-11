@@ -47,7 +47,7 @@ const RFQ_NOTES=[
   "Quantities are from GMD's bill of quantities. Verify against drawings before quoting.",
 ];
 
-export function buildBoqWorkbook(ExcelJS,{mode="client",sections=[],items=[],groupSection,meta={},discount=0,vatEnabled=null,notes=[],payTerms=null,sectionIds=null}){
+export function buildBoqWorkbook(ExcelJS,{mode="client",sections=[],items=[],groupSection,meta={},discount=0,vatEnabled=null,notes=[],sectionIds=null}){
   const internal=mode==="internal",rfq=mode==="rfq";
   const L=LAYOUT[internal?"internal":rfq?"rfq":"client"];
   // RFQ lines keep their BOQ numbers even when lines around them are left
@@ -314,7 +314,7 @@ export function buildBoqWorkbook(ExcelJS,{mode="client",sections=[],items=[],gro
     ["Account Name: GMD PRODUCTIONS INC","BDO CHECKING — 012758000370","BPI CHECKING — 6011 04 82 03","METROBANK — 382-7-38202059-2"].forEach(line);
     r++;
     head("Payment Terms");
-    (Array.isArray(payTerms)&&payTerms.length?payTerms:["50% Down Payment to start project","Billing of 40% up until installation","Retention of 10% upon certificate of completion"]).forEach(line);
+    ["50% Down Payment to start project","Billing of 40% up until installation","Retention of 10% upon certificate of completion"].forEach(line);
     r+=2;
     const sig=[["Prepared by","Rodney Erpe","Quantity Surveyor","A"],["Approved & Submitted by","Paulo Miguel Garcia","President","C"],["Accepted by",meta.client||"Client Name / Representative","Signature over Printed Name","F"]];
     sig.forEach(([l,,,col])=>{ws.getCell(`${col}${r}`).value=l;ws.getCell(`${col}${r}`).font={size:9,color:{argb:MUTED}};});

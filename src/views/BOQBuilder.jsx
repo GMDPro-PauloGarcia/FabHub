@@ -46,8 +46,8 @@ const fmtQty=q=>{const n=Number(q);return Number.isFinite(n)?n.toLocaleString("e
 // a treatment is chosen (vatEnabled==null) we keep the inclusive wording as the
 // long-standing default so an un-decided draft reads the same as before.
 //
-// Notes and Payment Terms can be edited per quotation (boqData.notes /
-// boqData.payTerms, string arrays; null = the standard wording below). The VAT
+// General Notes can be edited per quotation (boqData.notes, a string array;
+// null = the standard wording below). The VAT
 // line is never editable: it always follows the VAT toggle and is inserted at
 // BOQ_VAT_NOTE_AT, so a VAT-exempt quote can't say "Inclusive of VAT".
 // Bank details are fixed on purpose (no editable bank account on a quote).
@@ -63,11 +63,6 @@ const BOQ_DEFAULT_NOTES=[
   "Cost is based on specified requirements; additional requirements other than stated above shall be billed separately.",
 ];
 const BOQ_VAT_NOTE_AT=3;
-const BOQ_DEFAULT_PAY_TERMS=[
-  "50% Down Payment to start project",
-  "Billing of 40% up until installation",
-  "Retention of 10% upon certificate of completion",
-];
 // Edited text is kept exactly as typed (one line per note); blank lines are
 // dropped and lines trimmed only here, for display / print / export.
 const cleanLines=a=>(Array.isArray(a)?a:[]).map(x=>String(x??"").trim()).filter(Boolean);
@@ -79,10 +74,7 @@ const boqGeneralNotes=(vatEnabled,custom)=>{
   const at=Math.min(BOQ_VAT_NOTE_AT,base.length);
   return [...base.slice(0,at),vatNote,...base.slice(at)];
 };
-const boqPayTerms=custom=>{
-  const t=Array.isArray(custom)?cleanLines(custom):BOQ_DEFAULT_PAY_TERMS;
-  return t.length?t:BOQ_DEFAULT_PAY_TERMS;
-};
+
 
 const GMD_DEFAULT_LIBRARY=[
   // A. General Requirements
@@ -211,9 +203,8 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   // pre-fills the linked deal's receipt type via onBoqVat.
   const[vatEnabled,setVatEnabled]=useState(null);
   const[discount,setDiscount]=useState("");   // peso amount subtracted from subtotal before VAT
-  // Per-quotation General Notes / Payment Terms (null = standard wording).
+  // Per-quotation General Notes (null = standard wording).
   const[customNotes,setCustomNotes]=useState(null);
-  const[customPayTerms,setCustomPayTerms]=useState(null);
   const[notesEditing,setNotesEditing]=useState(false);
   const[suggest,setSuggest]=useState({id:null,matches:[]});
   const[draftSaved,setDraftSaved]=useState(false);
@@ -576,7 +567,6 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
     }
     if(src.markupPct!==undefined) setMarkupPct(src.markupPct);
     setCustomNotes(Array.isArray(src.notes)?src.notes:null);
-    setCustomPayTerms(Array.isArray(src.payTerms)?src.payTerms:null);
     setNotesEditing(false);
   };
 
@@ -588,7 +578,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
         applyBoqSrc(bd);
       }else{
         // First time building this CO's BOQ — seed the header from the CO/parent.
-        setItems(BLANK_ITEMS());setSections([]);setDiscount("");setCustomNotes(null);setCustomPayTerms(null);
+        setItems(BLANK_ITEMS());setSections([]);setDiscount("");setCustomNotes(null);
         setBoqTitle(coRecord?.title?`CO — ${coRecord.title}`:"Change Order");
         setLocation(coParentDeal?.location||"");
         if(coParentDeal?.ceNo) setQuotationNo(coParentDeal.ceNo);
@@ -657,7 +647,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   // Cheap identity of a saved BOQ — enough to tell two versions apart.
   function boqSig(src){
     if(!src) return "";
-    try{return JSON.stringify([src.lastEditedAt||"",src.items||[],src.sections||[],src.discount??"",src.markupPct??"",src.vatEnabled??null,src.notes??null,src.payTerms??null]);}
+    try{return JSON.stringify([src.lastEditedAt||"",src.items||[],src.sections||[],src.discount??"",src.markupPct??"",src.vatEnabled??null,src.notes??null]);}
     catch{return String(Math.random());}
   }
 
@@ -684,7 +674,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
         setItems(BLANK_ITEMS());
         setSections([]);
         setDiscount("");
-        setCustomNotes(null);setCustomPayTerms(null);setNotesEditing(false);
+        setCustomNotes(null);setNotesEditing(false);
         const d=deal;
         if(d){
           setLocation(d.location||"");
@@ -734,7 +724,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       setDraftSaved(false);
       clearTimeout(draftTimerRef.current);
       draftTimerRef.current=setTimeout(()=>{
-        saveCoBoq&&saveCoBoq(coId,{items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount,markupPct,notes:customNotes,payTerms:customPayTerms,...buildStamp()});
+        saveCoBoq&&saveCoBoq(coId,{items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount,markupPct,notes:customNotes,...buildStamp()});
         setDraftSaved(true);
       },1200);
       return()=>clearTimeout(draftTimerRef.current);
@@ -774,7 +764,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       // information, and a whole-column last-write-wins push of it would overwrite a
       // teammate's newer BOQ. Only a real edit (userEditedRef) reaches deals.boq_data.
       if(selDeal&&!userEditedRef.current){ setDraftSaved(true); setSyncState(s=>s==="synced"?s:"idle"); return; }
-      const boqData={items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount,markupPct,notes:customNotes,payTerms:customPayTerms,...buildStamp()};
+      const boqData={items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount,markupPct,notes:customNotes,...buildStamp()};
       saveDraft(selDeal||BOQ_SCRATCH_KEY,boqData);
       // Reflect the saved BOQ in the shared deals state immediately so surfaces
       // that read deal.boqData (BOQ list "has BOQ", print, contract breakdown)
@@ -806,7 +796,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       }
     },1200);
     return()=>clearTimeout(draftTimerRef.current);
-  },[coId,standaloneId,selDeal,srvLoading,items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount,markupPct,customNotes,customPayTerms,boqStatus]);
+  },[coId,standaloneId,selDeal,srvLoading,items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount,markupPct,customNotes,boqStatus]);
 
 
   const updateItem=(id,key,val)=>{if(editLocked)return;markEdited();setItems(its=>its.map(it=>{
@@ -909,10 +899,10 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       // Quotation no./date reset — two deals must never carry one quote number.
       payload={items:items.map(it=>({...it,_id:uid()})),sections:sections.map(s=>({...s})),
         boqTitle:dealLabel(target),location:(xfer.location||"").trim(),quotationNo:"",boqDate:today,
-        vatEnabled,discount,markupPct,notes:customNotes,payTerms:customPayTerms,status:"Draft",lastEditedBy:session?.name||"—",lastEditedAt:now,
+        vatEnabled,discount,markupPct,notes:customNotes,status:"Draft",lastEditedBy:session?.name||"—",lastEditedAt:now,
         duplicatedFrom:{dealId:selDeal||null,standaloneId:standaloneId||null,title:(boqTitle||"").trim()||dealLabel(deal),by:session?.name||"",at:now}};
     } else {
-      payload={items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount,markupPct,notes:customNotes,payTerms:customPayTerms,status:boqStatus,lastEditedBy:session?.name||"—",lastEditedAt:now};
+      payload={items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount,markupPct,notes:customNotes,status:boqStatus,lastEditedBy:session?.name||"—",lastEditedAt:now};
     }
     setXfer(x=>({...x,busy:true}));
     const fn=xfer.mode==="duplicate"?onDuplicateToDeal:onLinkToDeal;
@@ -1026,7 +1016,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
     </div>
     <div>
       <h3>Payment Terms</h3>
-      <p>${boqPayTerms(customPayTerms).map(esc).join("<br>")}</p>
+      <p>50% Down Payment to start project<br>Billing of 40% up until installation<br>Retention of 10% upon certificate of completion</p>
     </div>
   </div>
   <div class="sig-row">
@@ -1074,7 +1064,6 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       client:deal?.client||"",
       sections:pdfSections,grandTotal,discountVal,netTotal,vatEnabled:!!vatEnabled,vatAmt:netTotal*0.12,
       notes:boqGeneralNotes(vatEnabled,customNotes),
-      payTerms:boqPayTerms(customPayTerms),
     };
   };
   const pdfFileName=()=>{
@@ -1111,7 +1100,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       const rfqRef=ref?.ceNo||quotationNo||"draft";
       const picked=sections.filter(sec=>sectionIds?.includes(sec.id));
       const rfqName=picked.length===sections.filter(sec=>rfqLines(sec.id)).length?rfqRef:`${rfqRef} ${picked.map(sec=>sec.label).join(" ")}`.slice(0,80);
-      await downloadBoqXlsx({mode,sections,items,groupSection,discount:discountVal,vatEnabled,notes:boqGeneralNotes(vatEnabled,customNotes),payTerms:boqPayTerms(customPayTerms),sectionIds,
+      await downloadBoqXlsx({mode,sections,items,groupSection,discount:discountVal,vatEnabled,notes:boqGeneralNotes(vatEnabled,customNotes),sectionIds,
         meta:{projectName,locationName:(location&&location.trim())||ref?.location||"",client:ref?.client||"",ceNo:ref?.ceNo||"",
           quotationNo,status:boqStatus,dateStr:boqDate?new Date(boqDate+"T00:00:00").toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"}):"",
           todayStr:now.toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"}),
@@ -1222,7 +1211,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
           {items.length>0&&<button onClick={()=>exportXlsx("client")} disabled={!!xlsxBusy} title="Download the quotation as an Excel file — selling prices only, safe to send to the client" style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#1d4ed8",cursor:xlsxBusy?"wait":"pointer"}}>{xlsxBusy==="client"?"Preparing…":"⬇ Excel"}</button>}
           {items.length>0&&canExportInternal&&<button onClick={()=>exportXlsx("internal")} disabled={!!xlsxBusy} title="Internal Excel: direct cost, markup and margin per line. Do not send to the client." style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#b91c1c",cursor:xlsxBusy?"wait":"pointer"}}>{xlsxBusy==="internal"?"Preparing…":"⬇ Excel (internal)"}</button>}
           {items.length>0&&canExportRfq&&<button onClick={()=>setRfqPick(sections.filter(sec=>rfqLines(sec.id)).map(sec=>sec.id))} disabled={!!xlsxBusy} title="Request for quotation to a supplier or subcon: quantities only, no prices, costs or client name" style={{background:"#f0fdfa",border:"1.5px solid #99f6e4",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#0f766e",cursor:xlsxBusy?"wait":"pointer"}}>{xlsxBusy==="rfq"?"Preparing…":"⬇ RFQ"}</button>}
-          {!ro&&!srvLoading&&(selDeal||items.length>0||sections.length>0)&&(!selDeal||canonRole(role)==="Manager")&&<button onClick={()=>{deleteDraft(selDeal||BOQ_SCRATCH_KEY);if(selDeal&&isSupabaseReady())sbUpdate('deals',selDeal,{boq_data:null}).catch(()=>{});setItems(BLANK_ITEMS());setSections([]);setBoqTitle("");setLocation(deal?.location||"");setQuotationNo(deal?.ceNo||"");setBoqDate(today);setVatEnabled(null);setDiscount("");setMarkupPct("");setCustomNotes(null);setCustomPayTerms(null);setNotesEditing(false);setDraftSaved(false);}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#c2410c",cursor:"pointer"}} title="Clear saved draft and reset">✕ Clear Draft</button>}
+          {!ro&&!srvLoading&&(selDeal||items.length>0||sections.length>0)&&(!selDeal||canonRole(role)==="Manager")&&<button onClick={()=>{deleteDraft(selDeal||BOQ_SCRATCH_KEY);if(selDeal&&isSupabaseReady())sbUpdate('deals',selDeal,{boq_data:null}).catch(()=>{});setItems(BLANK_ITEMS());setSections([]);setBoqTitle("");setLocation(deal?.location||"");setQuotationNo(deal?.ceNo||"");setBoqDate(today);setVatEnabled(null);setDiscount("");setMarkupPct("");setCustomNotes(null);setNotesEditing(false);setDraftSaved(false);}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#c2410c",cursor:"pointer"}} title="Clear saved draft and reset">✕ Clear Draft</button>}
           {!ro&&(items.length>0||sections.length>0)&&(()=>{
             // Sync badge — reflects the REAL cloud-save state, not just the local draft.
             // Amber "device only" is the important one: it tells the user the BOQ is not
@@ -1806,11 +1795,11 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
           <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:20,marginBottom:16,fontSize:".78rem",color:"#334155",lineHeight:1.75}}>
             <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:8}}>
               <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>General Notes</div>
-              {(customNotes||customPayTerms)&&<span style={{fontSize:".66rem",fontWeight:700,color:"#b45309",background:"#fef3c7",border:"1px solid #fde68a",borderRadius:6,padding:"1px 7px"}}>Edited for this quotation</span>}
+              {customNotes&&<span style={{fontSize:".66rem",fontWeight:700,color:"#b45309",background:"#fef3c7",border:"1px solid #fde68a",borderRadius:6,padding:"1px 7px"}}>Edited for this quotation</span>}
               <div style={{flex:1}}/>
-              {notesEditable&&!notesEditing&&<button type="button" onClick={()=>setNotesEditing(true)} style={notesBtn}>✎ Edit notes &amp; terms</button>}
+              {notesEditable&&!notesEditing&&<button type="button" onClick={()=>setNotesEditing(true)} style={notesBtn}>✎ Edit notes</button>}
               {notesEditing&&<>
-                <button type="button" onClick={()=>{markEdited();setCustomNotes(null);setCustomPayTerms(null);}} style={notesBtn} title="Go back to GMD's standard notes and payment terms">↺ Reset to standard</button>
+                <button type="button" onClick={()=>{markEdited();setCustomNotes(null);}} style={notesBtn} title="Go back to GMD's standard notes">↺ Reset to standard</button>
                 <button type="button" onClick={()=>setNotesEditing(false)} style={{...notesBtn,background:"#0f172a",color:"#fff",border:"1.5px solid #0f172a"}}>Done</button>
               </>}
               {!notesEditable&&!ro&&!editLocked&&standaloneId&&<span style={{fontSize:".68rem",color:"#94a3b8"}}>Link this BOQ to a project to edit its notes</span>}
@@ -1837,11 +1826,9 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
               </div>
               <div>
                 <div style={{fontWeight:700,color:"#0f172a",marginBottom:6}}>Payment Terms</div>
-                {notesEditing?(
-                  <textarea value={(customPayTerms||BOQ_DEFAULT_PAY_TERMS).join("\n")} rows={Math.max(3,(customPayTerms||BOQ_DEFAULT_PAY_TERMS).length+1)}
-                    onChange={e=>{markEdited();setCustomPayTerms(e.target.value.split("\n"));}}
-                    style={{width:"100%",boxSizing:"border-box",fontFamily:"inherit",fontSize:".78rem",lineHeight:1.6,border:"1.5px solid #cbd5e1",borderRadius:8,padding:"8px 10px",color:"#334155",resize:"vertical"}}/>
-                ):boqPayTerms(customPayTerms).map((t,i)=><div key={i}>{t}</div>)}
+                <div>50% DP to start project</div>
+                <div>Billing of 40% up until installation</div>
+                <div>Retention of 10% upon certificate of completion</div>
               </div>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:20,borderTop:"1px solid #e2e8f0",paddingTop:20}}>
