@@ -388,6 +388,10 @@ export const canonRole = r => RLS_ROLE_MAP[r] || r;
 // Use this for every UI/ability gate that should cover both; keep === checks
 // only where the manager and the buyer must be told apart (i.e. PO approval).
 export const isProcurementRole = r => r === "Procurement" || r === "ProcurementManager";
+// Who raises (creates) POs and subcon WOs: Procurement, the Procurement Manager and
+// Managers. Finance pays, so it never raises an order (Paulo, 2026-11-11). The
+// database refuses a new PO line / WO from Finance roles (migration 20261114050000).
+export const canRaiseOrder = r => r === "Manager" || isProcurementRole(r);
 
 // Human-readable labels for role codes that aren't self-explanatory when shown
 // raw (role codes are used directly in ===/object-key comparisons, so we keep
