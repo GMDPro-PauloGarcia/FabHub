@@ -6246,7 +6246,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       material_requests:["Manager","Sales","Finance","Procurement","Operations","Design","ProjectMover"],
       budget_requests:["Manager","Sales","Finance","Procurement","Operations","Design","ProjectMover"],
       expenses:["Manager","Sales","Finance","Accounting","QS","Procurement","Operations","Design","ProjectMover"],
-      subcon_work_orders:["Manager","Sales","Finance","Accounting","Procurement","Operations","Design","ProjectMover"],
+      subcon_work_orders:["Manager","Sales","Finance","Accounting","Procurement","Operations","Design","ProjectMover","QS"],
       inflows:["Manager"],
       // Calendar/field-board events live in `checklists`. Every audited role must
       // receive these live — a role left off this list only sees items it created
@@ -10005,7 +10005,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     QS:[
       {group:"Overview", items:[{id:"home",l:"Dashboard"}]},
       {group:"Sales",    items:[{id:"pipeline",l:"Sales Pipeline"},{id:"boq",l:"BOQ"}]},
-      {group:"Cost Control", items:[{id:"costanalysis",l:"Budget & Costs"},{id:"projectmargins",l:"Project Margins"},{id:"materialreq",l:"Purchase Requests (PRF)"}]},
+      {group:"Cost Control", items:[{id:"costanalysis",l:"Budget & Costs"},{id:"projectmargins",l:"Project Margins"},{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"purchaseorders",l:"Purchase Orders"}]},
       {group:"Operations", items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
     ],
     Operations:[
@@ -18907,9 +18907,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ── Unified Purchase Orders view (Aerwin-style) — Materials POs + Subcontractor
   // WOs in one clean list. Read/launch only: creation stays in the Procurement
   // and Work Order modules so each keeps its own form + features. ──────────────
-  if(page==="purchaseorders"&&(role==="Finance"||role==="Manager"||role==="FinanceAssistant"||role==="Accounting")) return(
+  // Cost Control (QS) sees it view-only (2026-11-12): no create, verify, pay or
+  // open buttons. The database already lets QS read PO lines, WOs and bills and
+  // write none of them; creating and approving stay where they are.
+  if(page==="purchaseorders"&&(role==="Finance"||role==="Manager"||role==="FinanceAssistant"||role==="Accounting"||role==="QS")) return(
     <Wrap>
       {(()=>{
+        const poViewOnly=role==="QS";
         const N=v=>Number(v)||0;
         const projName=(id,fallback)=>{const d=wonDeals.find(x=>x.id===id)||completedDeals.find(x=>x.id===id);return d?projDisplayName(d):(fallback||"—");};
         // Materials POs — group purchase_requests line items by PO number.
@@ -18946,10 +18950,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 <div style={{fontWeight:700,color:ERP.navy,fontSize:16}}>Purchase Orders</div>
                 <div style={{fontSize:12.5,color:ERP.muted,marginTop:2,maxWidth:620}}><strong>Materials POs</strong> are verified by Warehouse and billed in full. <strong>Subcontractor Work Orders</strong> are verified by Operations based on % of project completion — only the verified % reaches Accounts Payable.</div>
               </div>
-              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              {!poViewOnly&&<div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                 <button onClick={()=>setPage("procurement")} style={{background:ERP.navy,border:"none",borderRadius:7,padding:"9px 16px",fontFamily:"inherit",fontSize:13,color:"#fff",cursor:"pointer",fontWeight:600}}>+ Material PO</button>
                 <button onClick={()=>setPage("subconwo")} style={{background:ERP.gold,border:"none",borderRadius:7,padding:"9px 16px",fontFamily:"inherit",fontSize:13,color:ERP.navy,cursor:"pointer",fontWeight:600}}>+ Work Order</button>
-              </div>
+              </div>}
             </div>
             <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(auto-fit,minmax(190px,1fr))",gap:12,marginBottom:20}}>
               <ErpStat label="Total Orders" value={String(rows.length)} foot={poRows.length+" POs · "+woRows.length+" WOs"}/>
@@ -18957,7 +18961,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               <ErpStat label="Purchase Orders" value={fmt(poRows.reduce((s,r)=>s+r.amount,0))} foot="materials value"/>
               <ErpStat tone="purple" label="Work Orders" value={fmt(woRows.reduce((s,r)=>s+r.amount,0))} foot="subcontractor contracts"/>
             </div>
-            <ErpCard title="All Orders" desc="Materials Purchase Orders and Subcontractor Work Orders in one list. Click Open to view or edit in its module.">
+            <ErpCard title="All Orders" desc={poViewOnly?"Materials Purchase Orders and Subcontractor Work Orders in one list. View only.":"Materials Purchase Orders and Subcontractor Work Orders in one list. Click Open to view or edit in its module."}>
               <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
                 {[["all","All",rows.length],["po","Purchase Orders",poRows.length],["wo","Work Orders",woRows.length]].map(([k,l,n])=>{
                   const on=poViewFilter===k;
@@ -19007,13 +19011,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                               : <ErpBadge kind="unpaid">{isSub?"Pending (Ops)":"Pending (WH)"}</ErpBadge>}
                         </td>
                         <td style={{...erpTd,whiteSpace:"nowrap"}}>
-                          <div style={{display:"flex",gap:4,justifyContent:"flex-end",alignItems:"center"}}>
+                          {poViewOnly
+                            ? <div style={{display:"flex",justifyContent:"flex-end"}}>{pay&&settled?<span style={{fontSize:11,color:ERP.ok,fontWeight:700}}>Paid</span>:pay&&pay.verified&&payBal>0&&!payApproved(pay)?<span style={{fontSize:11,color:ERP.muted,fontWeight:600}}>Pending approval</span>:null}</div>
+                            : <div style={{display:"flex",gap:4,justifyContent:"flex-end",alignItems:"center"}}>
                             {pay&&!settled&&!pay.verified&&<button onClick={()=>verifyPayable(pay.id)} title={isSub?"Operations: verify % complete":"Warehouse: verify receipt"} style={{background:ERP.gold,border:"none",borderRadius:6,padding:"5px 10px",fontSize:12,color:ERP.navy,cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>✓ Verify</button>}
                             {pay&&!settled&&pay.verified&&payBal>0&&!payApproved(pay)&&<span style={{fontSize:11,color:ERP.muted,fontWeight:600}} title="Awaiting Manager / Finance approval before payment">Pending approval</span>}
                             {pay&&!settled&&pay.verified&&payBal>0&&payApproved(pay)&&<button onClick={()=>{setFinTab("payables");setPage("finance");openPayModal(pay);}} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"5px 12px",fontSize:12,color:"#fff",cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>Pay</button>}
                             {pay&&settled&&<span style={{fontSize:11,color:ERP.ok,fontWeight:700}}>Paid</span>}
                             <button onClick={()=>setPage(r.kind==="wo"?"subconwo":"procurement")} style={{background:"transparent",border:`1px solid ${ERP.line}`,borderRadius:6,padding:"5px 10px",fontSize:12,fontWeight:600,color:ERP.navy,cursor:"pointer",fontFamily:"inherit"}}>Open</button>
-                          </div>
+                          </div>}
                         </td>
                       </tr>
                       );})}
