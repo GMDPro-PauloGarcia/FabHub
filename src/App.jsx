@@ -12,7 +12,7 @@ import {fmt,addPrintClose,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dro
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {projProgressPct, isConstructionDeal, projStageFlow, projStepIndex, projStepLabel, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel, pendingCostByProject, poSplitTotal, canRaiseOrder, woSignStep, WO_SIGN_MSG, arAgeBucket, arCallOrder, dealHasBoq, MOTHER_PO_BOQ_MSG} from './core';
+import {projProgressPct, isConstructionDeal, projStageFlow, projStepIndex, projStepLabel, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel, pendingCostByProject, poSplitTotal, canRaiseOrder, woSignStep, WO_SIGN_MSG, arAgeBucket, arCallOrder, dealHasBoq, MOTHER_PO_BOQ_MSG, ledgerCosts, poVatSet, isBilledRevenue, paymentBaseFactor, projectProgressPct} from './core';
 import ProgressReportModal from './views/ProgressReportModal';
 
 // Returns a component whose function IDENTITY is stable across renders while its
@@ -4135,14 +4135,18 @@ const _poBillPending=new Set();
 // Per-project margin rows — all won deals, contract value less expenses booked
 // to date. Shared by the dashboard panel (preview) and the full Project Margins
 // page so both compute identically. Sorted worst-margin-first so problems lead.
-function projectMarginRows(wonDeals=[],exps=[],billings=[],payables=[],prs=[],swos=[]){
+// Margin on COMMITTED cost is an estimate of final margin, not profit earned:
+// a job that is 20% bought out reads ~80%. Each row carries the job's completion
+// % (projectProgressPct) and `early` (< 60% done) so screens can flag it.
+const MARGIN_EARLY_PCT=60;
+function projectMarginRows(wonDeals=[],exps=[],billings=[],payables=[],prs=[],swos=[],pcards={}){
   // Cost committed to date on the PO basis, VAT-ex (issued POs + Work Orders +
   // other payables + unrouted expenses; see costSummary).
   const costByDeal=costSummary(exps,payables,prs,swos).byProject;
   // POs / WOs still at Pending Approval: not cost yet, but the job's margin once
   // they're approved. Shown beside the committed cost ("If approved").
   const pendByDeal=pendingCostByProject(prs,swos);
-  const billedByDeal={};(billings||[]).forEach(b=>{if(b.dealId)billedByDeal[b.dealId]=(billedByDeal[b.dealId]||0)+Number(b.amount||0);});
+  const billedByDeal={};(billings||[]).forEach(b=>{if(b.dealId&&isBilledRevenue(b))billedByDeal[b.dealId]=(billedByDeal[b.dealId]||0)+Number(b.amount||0);});
   return (wonDeals||[]).map(d=>{
     const contract=Number(d.value||0);
     const spent=costByDeal.get(d.id)||0;
@@ -4152,14 +4156,15 @@ function projectMarginRows(wonDeals=[],exps=[],billings=[],payables=[],prs=[],sw
     const projProfit=profit-pending;
     const projMargin=contract>0?Math.round(projProfit/contract*100):null;
     const billedPct=contract>0?Math.round((billedByDeal[d.id]||0)/contract*100):0;
-    return {id:d.id,name:d.contact||d.client||d.projName||"Untitled",ceNo:d.ceNo||"",contract,spent,profit,margin,pending,projProfit,projMargin,billedPct};
+    const progress=projectProgressPct((pcards||{})[d.id],d);
+    return {id:d.id,name:d.contact||d.client||d.projName||"Untitled",ceNo:d.ceNo||"",contract,spent,profit,margin,pending,projProfit,projMargin,billedPct,progress,early:progress<MARGIN_EARLY_PCT};
   }).sort((a,b)=>(a.projMargin==null?999:a.projMargin)-(b.projMargin==null?999:b.projMargin));
 }
 const _fmtM=v=>{const a=Math.abs(v);const s=v<0?"−":"";return a>=1000000?s+"₱"+(Math.round(a/100000)/10)+"M":a>=1000?s+"₱"+Math.round(a/1000)+"K":s+"₱"+Math.round(a||0);};
 const _money=v=>(v<0?"−₱":"₱")+Math.round(Math.abs(Number(v)||0)).toLocaleString("en-PH");
 const _marginClr=m=>m==null?"#94a3b8":m>=25?"#059669":m>=10?"#f59e0b":"#ef4444";
 
-function FinancialOverview({deals=[],wonDeals=[],exps=[],payables=[],prs=[],swos=[],loans=[],cashPositions={},billings=[],today,setPage,setFinTab,onOpenProject,onViewAllMargins,isMobile}){
+function FinancialOverview({deals=[],wonDeals=[],exps=[],payables=[],prs=[],swos=[],pcards={},loans=[],cashPositions={},billings=[],today,setPage,setFinTab,onOpenProject,onViewAllMargins,isMobile}){
   const cash=bankCashSummary(cashPositions,today);
   const payTotal=(payables||[]).filter(p=>p.status!=="Paid"&&p.status!=="Cancelled"&&Number(p.amount)>0).reduce((s,p)=>s+Number(p.amount||0),0);
   const payCount=(payables||[]).filter(p=>p.status!=="Paid"&&p.status!=="Cancelled"&&Number(p.amount)>0).length;
@@ -4168,7 +4173,7 @@ function FinancialOverview({deals=[],wonDeals=[],exps=[],payables=[],prs=[],swos
   const loanOutstanding=Math.max(0,loanPrincipal-loanPaid);
   const loanMonthly=(loans||[]).reduce((s,l)=>s+(Number(l.monthlyPayment)||0),0);
 
-  const allRows=projectMarginRows(wonDeals,exps,billings,payables,prs,swos);
+  const allRows=projectMarginRows(wonDeals,exps,billings,payables,prs,swos,pcards);
   const preview=allRows.slice(0,5); // just the 5 worst — full list lives on its own page
   const openProj=(id)=>onOpenProject&&onOpenProject(id);
   const card=(bg="#fff")=>({background:bg,borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 16px"});
@@ -4221,7 +4226,7 @@ function FinancialOverview({deals=[],wonDeals=[],exps=[],payables=[],prs=[],swos
       <div style={{background:"#fff",borderRadius:12,overflow:"hidden"}}>
         <div style={{padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid #f1f5f9"}}>
           <span style={{fontWeight:800,fontSize:".84rem",color:"#0f172a"}}>⚠ Lowest-Margin Projects</span>
-          <span style={{fontSize:".62rem",color:"#94a3b8"}}>Sorted by margin if pending POs/WOs are approved</span>
+          <span style={{fontSize:".62rem",color:"#94a3b8"}}>VAT-ex · sorted by margin if pending POs/WOs are approved</span>
         </div>
         {allRows.length===0
           ?<div style={{padding:"22px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No awarded projects yet.</div>
@@ -4229,7 +4234,7 @@ function FinancialOverview({deals=[],wonDeals=[],exps=[],payables=[],prs=[],swos
             <div key={r.id} onClick={()=>openProj(r.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderTop:i>0?"1px solid #f8fafc":"",cursor:"pointer"}}>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:".82rem",fontWeight:600,color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.name}{r.ceNo?<span style={{color:"#94a3b8",fontWeight:400}}> · {r.ceNo}</span>:null}</div>
-                <div style={{fontSize:".68rem",color:"#94a3b8"}}>{_money(r.contract)} contract · {r.billedPct}% billed{r.pending>0?<span style={{color:"#b45309",fontWeight:700}}> · {_money(r.pending)} pending approval → {r.projMargin}%</span>:null}</div>
+                <div style={{fontSize:".68rem",color:"#94a3b8"}}>{_money(r.contract)} contract · {r.progress}% done · {r.billedPct}% billed{r.early?" · early, margin is an estimate":""}{r.pending>0?<span style={{color:"#b45309",fontWeight:700}}> · {_money(r.pending)} pending approval → {r.projMargin}%</span>:null}</div>
               </div>
               <div style={{textAlign:"right",flexShrink:0}}>
                 <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.05rem",color:_marginClr(r.margin)}}>{r.margin==null?"—":r.margin+"%"}</div>
@@ -4250,11 +4255,11 @@ function FinancialOverview({deals=[],wonDeals=[],exps=[],payables=[],prs=[],swos
 
 // Full owner-only page: every awarded project's margin, click a row to open its
 // project card. Reached from the Financial Overview panel's "View all" button.
-function ProjectMarginsView({wonDeals=[],exps=[],billings=[],payables=[],prs=[],swos=[],today,setPage,onOpenProject,Wrap,isMobile}){
-  const [sortKey,setSortKey]=useState("projMargin"); // projMargin | margin | pending | contract | profit | billed | name
+function ProjectMarginsView({wonDeals=[],exps=[],billings=[],payables=[],prs=[],swos=[],pcards={},today,setPage,onOpenProject,Wrap,isMobile}){
+  const [sortKey,setSortKey]=useState("projMargin"); // projMargin | margin | pending | progress | contract | profit | billed | name
   const [sortDir,setSortDir]=useState("asc");         // lowest "if approved" margin first: problems lead
   const [q,setQ]=useState("");
-  let rows=projectMarginRows(wonDeals,exps,billings,payables,prs,swos);
+  let rows=projectMarginRows(wonDeals,exps,billings,payables,prs,swos,pcards);
   if(q.trim()){const t=q.trim().toLowerCase();rows=rows.filter(r=>r.name.toLowerCase().includes(t)||r.ceNo.toLowerCase().includes(t));}
   // Base comparators are ascending (small→large / A→Z); direction flips them.
   // Null margins always sink to the bottom regardless of direction.
@@ -4265,6 +4270,7 @@ function ProjectMarginsView({wonDeals=[],exps=[],billings=[],payables=[],prs=[],
     contract:(a,b)=>a.contract-b.contract,
     profit:(a,b)=>a.profit-b.profit,
     billed:(a,b)=>a.billedPct-b.billedPct,
+    progress:(a,b)=>a.progress-b.progress,
     name:(a,b)=>a.name.localeCompare(b.name),
   };
   const cmp=base[sortKey]||base.margin;
@@ -4292,7 +4298,7 @@ function ProjectMarginsView({wonDeals=[],exps=[],billings=[],payables=[],prs=[],
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
         <div>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.5rem",color:"#0f172a"}}>Profit Margin by Project</div>
-          <div style={{fontSize:".8rem",color:"#64748b",marginTop:2}}>All awarded projects · contract less issued POs, committed work orders and bills · "If approved" also takes off POs / WOs still pending approval</div>
+          <div style={{fontSize:".8rem",color:"#64748b",marginTop:2}}>All awarded projects · contract less committed cost (issued POs, Work Orders, other bills), VAT-exclusive · "If approved" also takes off POs / WOs still pending approval</div>
         </div>
         <button onClick={()=>setPage&&setPage("home")} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>← Back to Dashboard</button>
       </div>
@@ -4302,7 +4308,7 @@ function ProjectMarginsView({wonDeals=[],exps=[],billings=[],payables=[],prs=[],
         {[
           {l:"Projects",v:rows.length,c:"#0f172a"},
           {l:"Total Contract",v:_fmtM(totContract),c:"#6366f1"},
-          {l:"Profit (to date)",v:_money(totProfit),c:totProfit>=0?"#059669":"#ef4444"},
+          {l:"Profit (est. on committed cost)",v:_money(totProfit),c:totProfit>=0?"#059669":"#ef4444"},
           {l:"Blended Margin",v:totMargin==null?"—":totMargin+"%",c:_marginClr(totMargin)},
           {l:"Pending Approval",v:_fmtM(totPending),c:totPending>0?"#b45309":"#94a3b8"},
           {l:"Margin If Approved",v:totProjMargin==null?"—":totProjMargin+"%",c:_marginClr(totProjMargin)},
@@ -4322,26 +4328,28 @@ function ProjectMarginsView({wonDeals=[],exps=[],billings=[],payables=[],prs=[],
             <thead><tr style={{background:"#f8fafc"}}>
               {th("name","Project")}
               {th("contract","Contract","right")}
-              <th style={{padding:"9px 12px",fontWeight:700,textAlign:"right",color:"#64748b"}}>Expenses</th>
+              <th style={{padding:"9px 12px",fontWeight:700,textAlign:"right",color:"#64748b"}}>Committed Cost</th>
               {th("profit","Profit","right")}
               {th("margin","Margin","right")}
               {th("pending","Pending Approval","right")}
               {th("projMargin","If Approved","right")}
+              {th("progress","% Done","right")}
               {th("billed","% Billed","right")}
               <th style={{width:24}}></th>
             </tr></thead>
             <tbody>
               {rows.length===0
-                ?<tr><td colSpan={9} style={{padding:"24px",textAlign:"center",color:"#94a3b8"}}>No matching projects.</td></tr>
+                ?<tr><td colSpan={10} style={{padding:"24px",textAlign:"center",color:"#94a3b8"}}>No matching projects.</td></tr>
                 :rows.map((r,i)=>(
                   <tr key={r.id} onClick={()=>onOpenProject&&onOpenProject(r.id)} style={{borderTop:"1px solid #f1f5f9",cursor:"pointer"}}>
                     <td style={{padding:"9px 12px",fontWeight:600,color:"#0f172a",maxWidth:240,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.name}{r.ceNo?<span style={{color:"#94a3b8",fontWeight:400}}> · {r.ceNo}</span>:null}</td>
                     <td style={{padding:"9px 12px",textAlign:"right",fontVariantNumeric:"tabular-nums",color:"#475569"}}>{_money(r.contract)}</td>
                     <td style={{padding:"9px 12px",textAlign:"right",fontVariantNumeric:"tabular-nums",color:"#475569"}}>{_money(r.spent)}</td>
                     <td style={{padding:"9px 12px",textAlign:"right",fontVariantNumeric:"tabular-nums",fontWeight:700,color:r.profit>=0?"#059669":"#ef4444"}}>{_money(r.profit)}</td>
-                    <td style={{padding:"9px 12px",textAlign:"right",fontWeight:800,color:_marginClr(r.margin)}}>{r.margin==null?"—":r.margin+"%"}</td>
+                    <td style={{padding:"9px 12px",textAlign:"right",fontWeight:800,color:_marginClr(r.margin)}} title={r.early?"Under "+MARGIN_EARLY_PCT+"% done: most cost isn't committed yet, so this margin will likely fall":undefined}>{r.margin==null?"—":r.margin+"%"}{r.early&&r.margin!=null&&<span style={{fontSize:".6rem",fontWeight:700,color:"#94a3b8",marginLeft:4}}>est.</span>}</td>
                     <td style={{padding:"9px 12px",textAlign:"right",fontVariantNumeric:"tabular-nums",color:r.pending>0?"#b45309":"#cbd5e1"}}>{r.pending>0?_money(r.pending):"—"}</td>
                     <td style={{padding:"9px 12px",textAlign:"right",fontWeight:800,color:_marginClr(r.projMargin)}}>{r.projMargin==null?"—":r.projMargin+"%"}</td>
+                    <td style={{padding:"9px 12px",textAlign:"right",fontVariantNumeric:"tabular-nums",color:r.early?"#b45309":"#475569"}}>{r.progress}%</td>
                     <td style={{padding:"9px 12px",textAlign:"right",fontVariantNumeric:"tabular-nums",color:"#94a3b8"}}>{r.billedPct}%</td>
                     <td style={{padding:"9px 8px",textAlign:"right",color:"#cbd5e1"}}>→</td>
                   </tr>
@@ -4350,7 +4358,7 @@ function ProjectMarginsView({wonDeals=[],exps=[],billings=[],payables=[],prs=[],
           </table>
         </div>
         <div style={{padding:"9px 14px",fontSize:".64rem",color:"#94a3b8",background:"#fafafa",borderTop:"1px solid #f1f5f9"}}>
-          ⚠ Margin uses cost committed so far (issued POs, committed work orders, bills), not final cost. "If approved" also takes off POs and work orders still waiting for approval. Draft POs are not counted. Early-stage jobs (low % billed) will read high — cross-check against progress before treating as final profit. Tap any column header to sort; tap it again to reverse (highest ↔ lowest). Tap a row to open its project card.
+          ⚠ Margin = contract less cost committed so far (VAT-ex), not final cost and not profit earned. "If approved" also takes off POs and work orders still waiting for approval; Draft POs are not counted. Jobs under {MARGIN_EARLY_PCT}% done are marked “est.”: most of their cost isn't committed yet, so their margin will likely fall. Bills with no VAT recorded are taken as-is. Tap any column header to sort; tap it again to reverse (highest ↔ lowest). Tap a row to open its project card.
         </div>
       </div>
     </Wrap>
@@ -12324,7 +12332,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
       {/* ── FINANCIAL OVERVIEW (owners only) ─────────────────────────── */}
       {OWNER_USERS.includes(session?.username)&&(
-        <FinancialOverview deals={deals} wonDeals={wonDeals} exps={exps} payables={payables} prs={prs} swos={swos} loans={loans} cashPositions={cashPositions} billings={billings} today={today} setPage={setPage} setFinTab={setFinTab} onOpenProject={id=>{setJumpDeal(id);setPage("projects");}} onViewAllMargins={()=>setPage("projectmargins")} isMobile={isMobile}/>
+        <FinancialOverview deals={deals} wonDeals={wonDeals} exps={exps} payables={payables} prs={prs} swos={swos} pcards={pcards} loans={loans} cashPositions={cashPositions} billings={billings} today={today} setPage={setPage} setFinTab={setFinTab} onOpenProject={id=>{setJumpDeal(id);setPage("projects");}} onViewAllMargins={()=>setPage("projectmargins")} isMobile={isMobile}/>
       )}
 
       {(()=>{
@@ -12744,7 +12752,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
       {/* ── FINANCIAL OVERVIEW (owners only) ─────────────────────────── */}
       {OWNER_USERS.includes(session?.username)&&(
-        <FinancialOverview deals={deals} wonDeals={wonDeals} exps={exps} payables={payables} prs={prs} swos={swos} loans={loans} cashPositions={cashPositions} billings={billings} today={today} setPage={setPage} setFinTab={setFinTab} onOpenProject={id=>{setJumpDeal(id);setPage("projects");}} onViewAllMargins={()=>setPage("projectmargins")} isMobile={ceoMob}/>
+        <FinancialOverview deals={deals} wonDeals={wonDeals} exps={exps} payables={payables} prs={prs} swos={swos} pcards={pcards} loans={loans} cashPositions={cashPositions} billings={billings} today={today} setPage={setPage} setFinTab={setFinTab} onOpenProject={id=>{setJumpDeal(id);setPage("projects");}} onViewAllMargins={()=>setPage("projectmargins")} isMobile={ceoMob}/>
       )}
 
       {/* ── ACTION CENTER (what needs attention, promoted to the top) ── */}
@@ -13224,15 +13232,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const ownerRows=Object.values(ownerMap).sort((a,b)=>b.value-a.value);
     const ceMap={};yearDeals.forEach(d=>{const t=d.ceType||"Other";if(!ceMap[t])ceMap[t]={type:t,acquired:0,won:0,value:0};ceMap[t].acquired++;if(WON_STAGES.includes(d.stage)){ceMap[t].won++;ceMap[t].value+=dealBase(d);}});
     const ceRows=Object.values(ceMap).sort((a,b)=>b.value-a.value);
-    const revArr=Array(n).fill(0);billings.forEach(b=>{if(b.status==="Cancelled")return;const p=getFinPeriod(b.invoiceDate||b.dueDate);if(p>=0)revArr[p]+=Number(b.amount||0);});
+    const revArr=Array(n).fill(0);billings.forEach(b=>{if(!isBilledRevenue(b))return;const p=getFinPeriod(b.invoiceDate||b.dueDate);if(p>=0)revArr[p]+=Number(b.amount||0);});
     // Collections restated VAT-ex (cash × base/receivable) so Revenue, Collections and
     // Outstanding share one basis; bounced payments and offsets (no cash) excluded.
     const collArr=Array(n).fill(0);billings.forEach(b=>{if(b.status==="Cancelled")return;const rcv=milestoneReceivable(b,deals.find(x=>x.id===b.dealId));const k=rcv>0?Number(b.amount||0)/rcv:1;(b.payments||[]).forEach(pay=>{if(!isCashPayment(pay))return;const p=getFinPeriod(pay.date);if(p>=0)collArr[p]+=Number(pay.amount||0)*k;});});
     // AP-ledger accrual basis (matches the account-code Income Statement below):
     // payables + legacy expenses not routed to a payable (no double count).
-    const expArr=Array(n).fill(0);
+    const expArr=Array(n).fill(0);const _vatPos=poVatSet(prs);
     exps.forEach(e=>{if(e.payableId||e.cvId)return;const ds=e.date||(e.year!=null&&e.month!=null?`${e.year}-${String(e.month+1).padStart(2,"0")}-01`:null);const p=getFinPeriod(ds);if(p>=0)expArr[p]+=costNet(e);});
-    payables.forEach(pp=>{if(["Cancelled","Void"].includes(pp.status))return;const p=getFinPeriod(pp.invoiceDate||pp.createdAt||null);if(p>=0)expArr[p]+=costNet(pp);});
+    payables.forEach(pp=>{if(["Cancelled","Void"].includes(pp.status))return;const p=getFinPeriod(pp.invoiceDate||pp.createdAt||null);if(p>=0)expArr[p]+=costNet(pp,_vatPos);});
     const finPeriods=Array.from({length:n},(_,i)=>({label:getPLabel(i),revenue:revArr[i],collections:collArr[i],outstanding:Math.max(0,revArr[i]-collArr[i]),expenses:expArr[i],net:revArr[i]-expArr[i]}));
     const finTot={revenue:revArr.reduce((s,v)=>s+v,0),collections:collArr.reduce((s,v)=>s+v,0),expenses:expArr.reduce((s,v)=>s+v,0)};
     finTot.outstanding=Math.max(0,finTot.revenue-finTot.collections);finTot.net=finTot.revenue-finTot.expenses;
@@ -16022,79 +16030,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         {/* ── P&L TAB ── */}
         {finTab==="pl"&&role!=="Accounting"&&(
           <>
-            <SecHead title="P&L / Income Statement" sub="Revenue, collections, expenses and gross profit"/>
-            <PLStatement billings={billings} exps={exps} payables={payables} wonDeals={wonDeals}/>
+            <SecHead title="P&L / Income Statement" sub="Billed basis · VAT-exclusive · revenue invoiced, collections, expenses and gross profit"/>
+            <PLStatement billings={billings} exps={exps} payables={payables} wonDeals={wonDeals} deals={deals} prs={prs}/>
           </>
         )}
-
-        {/* ── PROJECTS P&L TAB ── */}
-        {finTab==="projects"&&role!=="Accounting"&&(()=>{
-          const allProj=wonDeals;
-          const rows=allProj.map(d=>{
-            const ms=billings.filter(b=>b.dealId===d.id&&b.status!=="Cancelled");
-            const billed=ms.reduce((s,b)=>s+Number(b.amount||0),0);
-            const _pa=arSummary(ms,()=>d);
-            const collected=_pa.collected;
-            // Direct cost on the AP-ledger basis, VAT-ex (costSummary); profit on
-            // collections restated VAT-ex so both sides exclude VAT.
-            const directExp=costTot.byProject.get(d.id)||0;
-            const grossProfit=_pa.collectedBase-directExp;
-            const margin=_pa.collectedBase>0?Math.round(grossProfit/_pa.collectedBase*100):null;
-            const contractVal=Number(d.value||0);
-            const balance=_pa.outstanding;
-            return{d,contractVal,billed,collected,directExp,grossProfit,margin,balance};
-          }).sort((a,b)=>b.contractVal-a.contractVal);
-          const totContract=rows.reduce((s,r)=>s+r.contractVal,0);
-          const totBilled=rows.reduce((s,r)=>s+r.billed,0);
-          const totCollected=rows.reduce((s,r)=>s+r.collected,0);
-          const totExp2=rows.reduce((s,r)=>s+r.directExp,0);
-          const totGP=rows.reduce((s,r)=>s+r.grossProfit,0);
-          const totMargin=totCollected>0?Math.round(totGP/totCollected*100):0;
-          const fmtM=v=>"₱"+Number(v).toLocaleString("en-PH",{maximumFractionDigits:0});
-          return(
-            <div>
-              {/* Summary strip */}
-              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(5,1fr)",gap:10,marginBottom:20}}>
-                {[{l:"Contract Value",v:fmtM(totContract),c:"#3b82f6"},{l:"Total Billed",v:fmtM(totBilled),c:"#8b5cf6"},{l:"Collected",v:fmtM(totCollected),c:"#10b981"},{l:"Direct Costs",v:fmtM(totExp2),c:"#ef4444"},{l:"Gross Profit",v:fmtM(totGP),sub:totMargin+"%",c:totGP>=0?"#059669":"#ef4444"}].map(({l,v,sub,c})=>(
-                  <div key={l} style={{background:"#fff",borderRadius:10,border:`1.5px solid ${c}33`,padding:"12px 14px",borderTop:`3px solid ${c}`}}>
-                    <div style={{fontSize:".6rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".6px"}}>{l}</div>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.2rem",color:c,marginTop:2}}>{v}</div>
-                    {sub&&<div style={{fontSize:".7rem",color:c,fontWeight:700}}>{sub} margin</div>}
-                  </div>
-                ))}
-              </div>
-              {/* Table */}
-              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-                <div style={{overflowX:"auto"}}>
-                <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 80px",background:"#1e293b",padding:"10px 16px",gap:8,minWidth:580}}>
-                  {["Project","Contract","Billed","Collected","Direct Costs","Margin"].map(h=>(
-                    <div key={h} style={{fontSize:".65rem",fontWeight:700,color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".6px"}}>{h}</div>
-                  ))}
-                </div>
-                {rows.length===0&&<div style={{padding:"24px",textAlign:"center",color:"#94a3b8"}}>No projects yet.</div>}
-                {rows.map(({d,contractVal,billed,collected,directExp,grossProfit,margin,balance},i)=>(
-                  <div key={d.id} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 80px",padding:"11px 16px",gap:8,borderBottom:"1px solid #f1f5f9",background:i%2?"#fafafa":"#fff",alignItems:"center",minWidth:580}}>
-                    <div>
-                      <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.contact||d.client}</div>
-                      {d.contact&&<div style={{fontSize:".67rem",color:"#8b5cf6",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>📁 {d.client}</div>}
-                      <div style={{fontSize:".65rem",color:"#94a3b8"}}>{d.ceNo||"—"} · {d.stage==="14 · Completed"?<span style={{color:"#059669",fontWeight:700}}>✅ Completed</span>:<span style={{color:"#3b82f6"}}>{d.stage?.replace(/^\d+ · /,"")}</span>}</div>
-                    </div>
-                    <div style={{fontSize:".82rem",fontWeight:600,color:"#0f172a"}}>{contractVal?fmtM(contractVal):"—"}</div>
-                    <div style={{fontSize:".82rem",color:"#8b5cf6"}}>{billed?fmtM(billed):"—"}</div>
-                    <div style={{fontSize:".82rem",color:"#10b981",fontWeight:600}}>{collected?fmtM(collected):"—"}</div>
-                    <div style={{fontSize:".82rem",color:"#ef4444"}}>{directExp?fmtM(directExp):"—"}</div>
-                    <div style={{textAlign:"center"}}>
-                      {margin!==null?(
-                        <span style={{fontSize:".75rem",fontWeight:800,color:margin>=25?"#059669":margin>=10?"#f59e0b":"#ef4444",background:margin>=25?"#f0fdf4":margin>=10?"#fffbeb":"#fef2f2",borderRadius:20,padding:"3px 8px"}}>{margin}%</span>
-                      ):<span style={{color:"#94a3b8",fontSize:".75rem"}}>—</span>}
-                    </div>
-                  </div>
-                ))}
-                </div>
-              </div>
-            </div>
-          );
-        })()}
 
         {/* ── PAYABLES TAB ── */}
         {(finTab==="payables"||finTab==="aplog")&&(()=>{
@@ -17770,7 +17709,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   if(page==="projects") return(
     <Wrap>
       <ProjectCards changeDealStage={changeDealStage} syncProjectCard={syncProjectCard}
-        pcards={pcards} wonDeals={wonDeals} completedDeals={completedDeals} deals={deals}
+        pcards={pcards} wonDeals={wonDeals} completedDeals={completedDeals} deals={deals} payables={payables}
         toggleDeptTask={toggleDeptTask} markDeptDone={markDeptDone}
         setProjectTAT={setProjectTAT} jos={jos}
         delDeal={delDeal} delPcard={delPcard} setConfirmDel={setConfirmDel}
@@ -18294,7 +18233,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   );
 
   if(page==="projectmargins"&&(OWNER_USERS.includes(session?.username)||role==="QS")) return(
-    <ProjectMarginsView wonDeals={wonDeals} exps={exps} billings={billings} payables={payables} prs={prs} swos={swos} today={today} setPage={setPage} onOpenProject={id=>{setJumpDeal(id);setPage("projects");}} Wrap={Wrap} isMobile={isMobile}/>
+    <ProjectMarginsView wonDeals={wonDeals} exps={exps} billings={billings} payables={payables} prs={prs} swos={swos} pcards={pcards} today={today} setPage={setPage} onOpenProject={id=>{setJumpDeal(id);setPage("projects");}} Wrap={Wrap} isMobile={isMobile}/>
   );
 
   if(page==="syshealth"&&role==="Manager") return(
@@ -19315,7 +19254,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 }
 
 // ─── P&L STATEMENT ────────────────────────────────────────────────────────────
-function PLStatement({billings,exps,payables=[],wonDeals}){
+function PLStatement({billings,exps,payables=[],wonDeals,deals=[],prs=[]}){
   const curYear=new Date().getFullYear();
   const[year,setYear]=useState(curYear);
   const[view,setView]=useState("monthly");
@@ -19323,49 +19262,54 @@ function PLStatement({billings,exps,payables=[],wonDeals}){
   const fmtSigned=v=>v===0?"—":(v<0?"-":"")+fmt(v);
   const gpColor=v=>v>0?"#059669":v<0?"#ef4444":"#94a3b8";
 
+  // Billing basis, everything VAT-exclusive (VAT is the government's money):
+  //  • Revenue = milestones INVOICED in the month (VAT-ex `amount`); Drafts are
+  //    not invoices yet, so they are not revenue (isBilledRevenue).
+  //  • Collected = cash received, restated to its VAT-ex base (paymentBaseFactor).
+  //  • Expenses = supplier bills by bill date + legacy expenses not routed to a
+  //    bill (ledgerCosts, AP-ledger basis), net of input VAT where it is known.
+  // This is NOT recognised profit: a month with a big down payment billed looks
+  // profitable and the months its costs arrive look like losses.
+  const dealById=useMemo(()=>{const m=new Map();[...(deals||[]),...(wonDeals||[])].forEach(d=>d&&d.id&&m.set(d.id,d));return m;},[deals,wonDeals]);
+  const vatPos=useMemo(()=>poVatSet(prs),[prs]);
+  const yearOf=d=>{if(!d)return null;const dt=new Date(d);return isNaN(dt)?null:dt;};
+
   const revByMonth=useMemo(()=>{
     const arr=Array(12).fill(0);
     billings.forEach(b=>{
-      if(b.status==="Cancelled") return;
-      const d=b.invoiceDate||b.dueDate;
-      if(!d) return;
-      const dt=new Date(d);
-      if(dt.getFullYear()!==year) return;
+      if(!isBilledRevenue(b)) return;
+      const dt=yearOf(b.invoiceDate||b.dueDate);
+      if(!dt||dt.getFullYear()!==year) return;
       arr[dt.getMonth()]+=Number(b.amount||0);
     });
     return arr;
   },[billings,year]);
 
+  const draftsYear=useMemo(()=>billings.filter(b=>b.status==="Draft").reduce((s,b)=>{const dt=yearOf(b.invoiceDate||b.dueDate);return dt&&dt.getFullYear()===year?s+Number(b.amount||0):s;},0),[billings,year]);
+
   const collByMonth=useMemo(()=>{
     const arr=Array(12).fill(0);
     billings.forEach(b=>{
+      if(b.status==="Cancelled") return;
+      const k=paymentBaseFactor(b,dealById.get(b.dealId));
       (b.payments||[]).forEach(p=>{
         if(!p.date||!isCashPayment(p)) return;
-        const dt=new Date(p.date);
-        if(dt.getFullYear()!==year) return;
-        arr[dt.getMonth()]+=Number(p.amount||0);
+        const dt=yearOf(p.date);
+        if(!dt||dt.getFullYear()!==year) return;
+        arr[dt.getMonth()]+=Number(p.amount||0)*k;
       });
     });
     return arr;
-  },[billings,year]);
+  },[billings,year,dealById]);
 
+  // One cost list for the monthly and the by-type views.
+  const costRows=useMemo(()=>ledgerCosts(exps,payables,null,null,vatPos).map(r=>({...r,dt:yearOf(r.date)})).filter(r=>r.dt&&r.dt.getFullYear()===year),[exps,payables,vatPos,year]);
   const expByMonth=useMemo(()=>{
     const arr=Array(12).fill(0);
-    // AP-ledger basis: legacy expenses not routed to a payable + all payables,
-    // so the P&L tab matches the account-code Income Statement.
-    exps.forEach(e=>{
-      if(e.payableId||e.cvId) return;
-      if((e.year||curYear)!==year) return;
-      arr[Number(e.month||0)]+=costNet(e);
-    });
-    (payables||[]).forEach(p=>{
-      if(["Cancelled","Void"].includes(p.status)) return;
-      const d=new Date(p.invoiceDate||p.createdAt||"");
-      if(isNaN(d)||d.getFullYear()!==year) return;
-      arr[d.getMonth()]+=costNet(p);
-    });
+    costRows.forEach(r=>{arr[r.dt.getMonth()]+=r.net;});
     return arr;
-  },[exps,payables,year,curYear]);
+  },[costRows]);
+  const vatUnknownYear=useMemo(()=>costRows.filter(r=>!r.vatTracked).reduce((s,r)=>s+r.net,0),[costRows]);
 
   const gpByMonth=revByMonth.map((r,i)=>r-expByMonth[i]);
   const ytdRev=revByMonth.reduce((s,v)=>s+v,0);
@@ -19377,41 +19321,45 @@ function PLStatement({billings,exps,payables=[],wonDeals}){
 
   const deptData=useMemo(()=>{
     const map={};
+    const row=dept=>map[dept]||(map[dept]={dept,rev:0,coll:0,exp:0});
     billings.forEach(b=>{
       if(b.status==="Cancelled") return;
-      const deal=wonDeals.find(d=>d.id===b.dealId);
-      const dept=deal?.ceType||"Other";
-      if(!map[dept]) map[dept]={dept,rev:0,coll:0,exp:0};
-      const d=b.invoiceDate||b.dueDate;
-      if(d&&new Date(d).getFullYear()===year) map[dept].rev+=Number(b.amount||0);
+      const deal=dealById.get(b.dealId);
+      const r=row(deal?.ceType||"Other");
+      const dt=yearOf(b.invoiceDate||b.dueDate);
+      if(isBilledRevenue(b)&&dt&&dt.getFullYear()===year) r.rev+=Number(b.amount||0);
+      const k=paymentBaseFactor(b,deal);
       (b.payments||[]).forEach(p=>{
-        if(p.date&&isCashPayment(p)&&new Date(p.date).getFullYear()===year) map[dept].coll+=Number(p.amount||0);
+        const pd=yearOf(p.date);
+        if(pd&&isCashPayment(p)&&pd.getFullYear()===year) r.coll+=Number(p.amount||0)*k;
       });
     });
-    exps.forEach(e=>{
-      if((e.year||curYear)!==year) return;
-      const deal=wonDeals.find(d=>d.id===(e.projectId||e.dealId));
-      const dept=deal?.ceType||"Company-wide";
-      if(!map[dept]) map[dept]={dept,rev:0,coll:0,exp:0};
-      map[dept].exp+=Number(e.amount||0);
+    costRows.forEach(c=>{
+      const deal=c.projectId?dealById.get(c.projectId):null;
+      row(deal?(deal.ceType||"Other"):"Company-wide (OPEX)").exp+=c.net;
     });
     return Object.values(map)
       .map(r=>({...r,gp:r.rev-r.exp,gpPct:r.rev>0?Math.round((r.rev-r.exp)/r.rev*100):0}))
       .sort((a,b)=>b.rev-a.rev);
-  },[billings,exps,wonDeals,year,curYear]);
+  },[billings,costRows,dealById,year]);
 
   const th={padding:"10px 10px",fontWeight:700,color:"#475569",fontSize:".78rem",borderBottom:"2px solid #e2e8f0",background:"#f8fafc",whiteSpace:"nowrap"};
   const td=(right=true)=>({padding:"9px 10px",textAlign:right?"right":"left",fontSize:".82rem",whiteSpace:"nowrap"});
 
   const rows=[
-    {label:"Revenue Billed", data:revByMonth, ytd:ytdRev, color:"#3b82f6", bold:false, isGP:false},
-    {label:"Collected",      data:collByMonth,ytd:ytdColl,color:"#10b981", bold:false, isGP:false},
-    {label:"Expenses",       data:expByMonth, ytd:ytdExp, color:"#ef4444", bold:false, isGP:false},
+    {label:"Revenue Billed (VAT-ex)", data:revByMonth, ytd:ytdRev, color:"#3b82f6", bold:false, isGP:false},
+    {label:"Collected (VAT-ex)",      data:collByMonth,ytd:ytdColl,color:"#10b981", bold:false, isGP:false},
+    {label:"Expenses (VAT-ex)",       data:expByMonth, ytd:ytdExp, color:"#ef4444", bold:false, isGP:false},
     {label:"Gross Profit",   data:gpByMonth,  ytd:ytdGP,  color:gpColor(ytdGP), bold:true, isGP:true},
   ];
 
   return(
     <div>
+      <div style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:".76rem",color:"#78350f",lineHeight:1.5}}>
+        <b>Billed basis, not recognised profit.</b> Revenue counts when a milestone is invoiced and costs when a bill is dated, so a month with a big down payment looks profitable and the months its costs arrive look like losses. Per-project margin is on Project Margins. All figures are VAT-exclusive.
+        {draftsYear>0&&<div style={{marginTop:4}}>{fmt(draftsYear)} in Draft milestones is not counted until it is invoiced.</div>}
+        {vatUnknownYear>0&&<div style={{marginTop:4}}>{fmt(vatUnknownYear)} of {year} costs has no VAT recorded and is taken as-is; if those suppliers charged VAT, expenses are overstated by up to {fmt(vatUnknownYear-vatUnknownYear/1.12)}.</div>}
+      </div>
       {/* Controls row */}
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20,flexWrap:"wrap"}}>
         <div style={{display:"flex",gap:0,background:"#f1f5f9",borderRadius:8,padding:2}}>
@@ -27978,7 +27926,7 @@ function TATSetter({deal,card,onSet,refTable,ceType}){
 }
 
 // ─── INVENTORY VIEW ───────────────────────────────────────────────────────────
-function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,prs=[],exps=[],isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,upDeals,ceReqs,toastEmit,sendTelegramNotification,initialDeal,clearJump,initialFilter,clearJumpFilter,loadChecklistTemplate,swos=[],addPmUpdate,setConfirmDel,customMembers=[],setCustomMembers=()=>{},setPage=()=>{},setJumpDeal=()=>{}}){
+function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completedDeals,deals,payables=[],toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,prs=[],exps=[],isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,upDeals,ceReqs,toastEmit,sendTelegramNotification,initialDeal,clearJump,initialFilter,clearJumpFilter,loadChecklistTemplate,swos=[],addPmUpdate,setConfirmDel,customMembers=[],setCustomMembers=()=>{},setPage=()=>{},setJumpDeal=()=>{}}){
   const todayStr=new Date().toISOString().split("T")[0];
   const[selDealRaw,setSelDeal]=useState(initialDeal||null);
   // A selection whose deal isn't loaded/won (deleted, moved to a lost stage, or a
@@ -28028,22 +27976,29 @@ function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completed
   // every keystroke into any of this component's own local forms (blocker
   // flag, PM update, team edit, scope/date edit — all local state that
   // re-renders this whole component).
+  // Committed cost per project, VAT-ex: issued POs + Work Orders + other bills +
+  // unrouted expenses. One basis with Project Margins and the Monitoring Board.
+  const costByDeal=useMemo(()=>costSummary(exps,payables,prs,swos).byProject,[exps,payables,prs,swos]);
   const projStats=useMemo(()=>{
     const projBlockers=(blockers||[]).filter(b=>b.dealId===selDeal);
     const openProjB=projBlockers.filter(b=>b.status==="Open");
     const projUpdates=(actLog||[]).filter(a=>a.dealId===selDeal&&a.action==="PM Update").sort((a,b)=>b.date.localeCompare(a.date)).slice(0,3);
     const projAddenda=(addenda||[]).filter(a=>a.dealId===selDeal);
     const projBillings=(billings||[]).filter(b=>b.dealId===selDeal);
-    const totalBilled=projBillings.filter(b=>b.status!=='Cancelled').reduce((s,b)=>s+Number(b.amount||0),0);
-    const totalColl=projBillings.reduce((s,b)=>s+(b.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
+    // Invoiced milestones only (a Draft isn't sent yet). Billed is VAT-ex; Collected
+    // and Outstanding are cash (incl. VAT, less EWT) on one basis via arSummary.
+    const _selDealRow=(deals||[]).find(d=>d.id===selDeal);
+    const _ar=arSummary(projBillings.filter(isBilledRevenue),()=>_selDealRow);
+    const totalBilled=_ar.billed;
+    const totalColl=_ar.collected;
+    const totalOutstanding=_ar.outstanding;
     const {committed:projCommitted,actual:projActual}=projectCostBreakdown(selDeal,prs,exps);
-    const totalCommitted=BUDGET_CATS.reduce((s,c)=>s+projCommitted[c],0);
-    const totalActualCost=BUDGET_CATS.reduce((s,c)=>s+projActual[c],0);
-    const totalExposure=totalCommitted+totalActualCost;
+    // Margin uses the same committed cost as Project Margins (costSummary, VAT-ex).
+    const projCost=costByDeal.get(selDeal)||0;
     const pendingMRs=(mreqs||[]).filter(m=>m.projectId===selDeal&&(m.status==="Submitted"||m.status==="Reviewed")).length;
     const pendingBRs=(breqs||[]).filter(b=>(b.projectId===selDeal||b.dealId===selDeal)&&(b.status==="Pending"||b.status==="Under Review")).length;
-    return{projBlockers,openProjB,projUpdates,projAddenda,projBillings,totalBilled,totalColl,projCommitted,projActual,totalCommitted,totalActualCost,totalExposure,pendingMRs,pendingBRs};
-  },[selDeal,blockers,actLog,addenda,billings,prs,exps,mreqs,breqs]);
+    return{projBlockers,openProjB,projUpdates,projAddenda,projBillings,totalBilled,totalColl,totalOutstanding,projCommitted,projActual,projCost,pendingMRs,pendingBRs};
+  },[selDeal,blockers,actLog,addenda,billings,prs,exps,mreqs,breqs,deals,costByDeal]);
 
   const today2=new Date();
   const card=selDeal?pcards[selDeal]:null;
@@ -28581,9 +28536,11 @@ function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completed
           const end=card?.targetEndDate?new Date(card.targetEndDate):null;
           const dLeft=end?Math.ceil((end-today2)/86400000):null;
           const isOver=dLeft!==null&&dLeft<0;
-          const {projBlockers,openProjB,projUpdates,projAddenda,projBillings,totalBilled,totalColl,totalCommitted,totalActualCost,totalExposure,pendingMRs,pendingBRs}=projStats;
+          const {projBlockers,openProjB,projUpdates,projAddenda,projBillings,totalBilled,totalColl,totalOutstanding,projCost,pendingMRs,pendingBRs}=projStats;
           const contractVal=Number(deal?.value||0);
-          const profitMargin=contractVal>0?Math.round((contractVal-totalExposure)/contractVal*100):null;
+          const projProfit=contractVal-projCost;
+          const profitMargin=contractVal>0?Math.round(projProfit/contractVal*100):null;
+          const marginEarly=pct<MARGIN_EARLY_PCT;
           const canFlagBlocker=["Manager","Operations","ProjectMover","Sales","Design","QS","Procurement","Finance","SalesOpsAdmin"].includes(role);
           const ceType=deal?.ceType||"Fabrication / General";
           const refTable=TAT_REFERENCE[ceType]||TAT_REFERENCE["Fabrication / General"];
@@ -29165,8 +29122,8 @@ function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completed
                   {[
                     {l:"Contract",v:fmtPHP(deal?.value||0),c:"#0f172a"},
                     {l:"Billed",v:totalBilled>0?fmtPHP(totalBilled):"Not yet billed",c:totalBilled>0?"#3b82f6":"#94a3b8"},
-                    {l:"Collected",v:fmtPHP(totalColl),c:totalColl>0?"#059669":"#94a3b8"},
-                    {l:"Outstanding",v:totalBilled>totalColl?fmtPHP(totalBilled-totalColl):"—",c:totalBilled>totalColl?"#f59e0b":"#94a3b8"},
+                    {l:"Collected (cash)",v:fmtPHP(totalColl),c:totalColl>0?"#059669":"#94a3b8"},
+                    {l:"Outstanding (cash)",v:totalOutstanding>0.5?fmtPHP(totalOutstanding):"—",c:totalOutstanding>0.5?"#f59e0b":"#94a3b8"},
                   ].map(({l,v,c})=>(
                     <div key={l} style={{background:"#f8fafc",borderRadius:8,padding:"10px 12px"}}>
                       <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:2}}>{l}</div>
@@ -29176,10 +29133,10 @@ function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completed
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:8,marginTop:8}}>
                   {[
-                    {l:"Committed (open POs)",v:totalCommitted>0?fmtPHP(totalCommitted):"—",c:totalCommitted>0?"#a16207":"#94a3b8"},
-                    {l:"Actual Spend",v:totalActualCost>0?fmtPHP(totalActualCost):"—",c:totalActualCost>0?"#0f172a":"#94a3b8"},
-                    {l:"Total Exposure",v:totalExposure>0?fmtPHP(totalExposure):"—",c:totalExposure>0?"#dc2626":"#94a3b8"},
-                    {l:"Profit Margin",v:profitMargin!==null?profitMargin+"%":"—",c:profitMargin===null?"#94a3b8":profitMargin>=20?"#059669":profitMargin>=10?"#f59e0b":"#ef4444"},
+                    {l:"Committed Cost (VAT-ex)",v:projCost>0?fmtPHP(projCost):"—",c:projCost>0?"#0f172a":"#94a3b8"},
+                    {l:"Profit (est.)",v:contractVal>0?fmtPHP(projProfit):"—",c:contractVal<=0?"#94a3b8":projProfit>=0?"#059669":"#dc2626"},
+                    {l:marginEarly?"Profit Margin (est.)":"Profit Margin",v:profitMargin!==null?profitMargin+"%":"—",c:profitMargin===null?"#94a3b8":profitMargin>=20?"#059669":profitMargin>=10?"#f59e0b":"#ef4444"},
+                    {l:"% Done",v:pct+"%",c:marginEarly?"#b45309":"#475569"},
                   ].map(({l,v,c})=>(
                     <div key={l} style={{background:"#f8fafc",borderRadius:8,padding:"10px 12px"}}>
                       <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:2}}>{l}</div>
