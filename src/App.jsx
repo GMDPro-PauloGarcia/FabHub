@@ -11,6 +11,7 @@ import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
 import {projProgressPct, isConstructionDeal, projStageFlow, projStepIndex, projStepLabel, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
+import ProgressReportModal from './views/ProgressReportModal';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -2710,31 +2711,26 @@ function MyAccountPage({session,users,setUsers,upUsers:upUsersExt,setSession:set
 }
 
 
-// Stage / % Complete here are the project's real status: a changed stage goes
-// through changeDealStage (set_deal_stage) and % Complete sets the project
-// card's progress. They used to be stored only as text inside the update, so
-// a PM could report "Installation" while the project still read Fabrication.
-function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logActivityProp,addPmUpdate,updateProjectTurnover,sendTelegramNotification,deals=[],role,changeDealStage,setProjectProgress}){
+// Stage here is the project's real status: a changed stage goes through
+// changeDealStage (set_deal_stage). Progress % is not set here: since
+// 2026-11-11 it needs the full Progress update (ProgressReportModal).
+function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logActivityProp,addPmUpdate,updateProjectTurnover,sendTelegramNotification,deals=[],role,changeDealStage}){
   const deal=pmUpdateModal?.dealId?deals.find(d=>d.id===pmUpdateModal.dealId):null;
   const curStage=deal?.stage||"";
   // Awarded projects only: a pre-award deal enters Kickoff through the Award
   // flow (JO, award date), never from here.
   const canStage=!!(deal&&changeDealStage&&WON_STAGES.includes(curStage)&&canSetDealStage(role,curStage));
-  // Same roles as set_project_progress (the server checks a Coordinator's own projects).
-  const canPct=!!(deal&&setProjectProgress&&["Manager","ProjectMover","Operations","Coordinator"].includes(role));
-  const pctFree=isConstructionDeal(deal);
   const[saving,setSaving]=useState(false);
   const[updateType,setUpdateType]=useState(pmUpdateModal?.initialType||"General Progress");
   const[note,setNote]=useState("");
   const[nextSteps,setNextSteps]=useState("");
   const[stage,setStage]=useState("");
-  const[pct,setPct]=useState("");
   const[revisedDate,setRevisedDate]=useState("");
   const[blockerDesc,setBlockerDesc]=useState("");
   const[decisionMaker,setDecisionMaker]=useState("");
   const[actionPlan,setActionPlan]=useState("");
   React.useEffect(()=>{
-    if(pmUpdateModal){setUpdateType(pmUpdateModal.initialType||"General Progress");setNote("");setNextSteps("");setStage(curStage);setPct("");setSaving(false);setRevisedDate("");setBlockerDesc("");setDecisionMaker("");setActionPlan("");}
+    if(pmUpdateModal){setUpdateType(pmUpdateModal.initialType||"General Progress");setNote("");setNextSteps("");setStage(curStage);setSaving(false);setRevisedDate("");setBlockerDesc("");setDecisionMaker("");setActionPlan("");}
   },[pmUpdateModal?.dealId]);
   if(!pmUpdateModal) return null;
   const typeColor=PM_TYPE_COLOR[updateType]||"#0ea5e9";
@@ -2767,15 +2763,8 @@ function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logAc
             )}
             {canStage&&stage!==curStage&&<div style={{fontSize:".72rem",color:"#f97316",marginTop:3,fontWeight:600}}>⚠ Moves the project to {stage.replace(/^\d+ · /,"")}.</div>}
           </div>
-          {canPct&&<div>
-            <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>% Complete <span style={{fontWeight:400,color:"#94a3b8"}}>(optional)</span></label>
-            {pctFree
-              ?<input type="number" min="0" max="100" step="1" value={pct} onChange={e=>setPct(e.target.value)} placeholder="e.g. 45" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box"}}/>
-              :<select value={pct} onChange={e=>setPct(e.target.value)} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box",background:"#fff"}}>
-                <option value="">No change</option>{[30,60,90,100].map(v=><option key={v} value={v}>{v}%</option>)}
-              </select>}
-            <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:3}}>"What happened" below is saved as the reason.{role!=="Manager"?" Only a Manager can lower it.":""}</div>
-          </div>}
+          {/* Progress % is not set here: it needs the full Progress update
+              (Project Cards › Progress tab, or Projects › Progress). */}
         </div>
         )}
         <div>
@@ -2814,18 +2803,8 @@ function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logAc
             if(saving) return;
             if(!note.trim()){toastEmit("Please enter what happened.","warning");return;}
             if(isBlocker&&!blockerDesc.trim()){toastEmit("Please describe the blocker.","warning");return;}
-            const pctNum=String(pct).trim()===""?null:Math.round(Number(pct));
-            if(pctNum!=null&&(!Number.isFinite(pctNum)||pctNum<0||pctNum>100)){toastEmit("% Complete must be between 0 and 100.","warning");return;}
             const dealId=pmUpdateModal.dealId;
             const stageChanged=canStage&&!!stage&&stage!==curStage;
-            // Progress first, through set_project_progress with this update as
-            // the note; if the server refuses it, nothing else is saved.
-            if(pctNum!=null&&canPct){
-              setSaving(true);
-              const okPct=await setProjectProgress(dealId,pctNum,`[${updateType}] ${note.trim()}`,{noFeed:true});
-              setSaving(false);
-              if(!okPct) return;
-            }
             // Stage first: if the server refuses it (or a gate is cancelled),
             // nothing is logged and the modal stays open to adjust.
             if(stageChanged){
@@ -2834,7 +2813,7 @@ function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logAc
               setSaving(false);
               if(!ok) return;
             }
-            const entry={id:uid(),type:updateType,date:today,time:new Date().toLocaleTimeString("en-PH",{hour:"2-digit",minute:"2-digit"}),by:session?.name||"Team",stage:deal?(stage||curStage):"",pct:pctNum!=null?String(pctNum):"",note:note.trim(),nextSteps:nextSteps.trim(),revisedDate,...(isBlocker?{blockerDesc:blockerDesc.trim(),decisionMaker:decisionMaker.trim(),actionPlan:actionPlan.trim(),blockerStatus:"Open"}:{})};
+            const entry={id:uid(),type:updateType,date:today,time:new Date().toLocaleTimeString("en-PH",{hour:"2-digit",minute:"2-digit"}),by:session?.name||"Team",stage:deal?(stage||curStage):"",pct:"",note:note.trim(),nextSteps:nextSteps.trim(),revisedDate,...(isBlocker?{blockerDesc:blockerDesc.trim(),decisionMaker:decisionMaker.trim(),actionPlan:actionPlan.trim(),blockerStatus:"Open"}:{})};
             // One Telegram per update: skip the generic ops ping when a more
             // specific message (stage change, blocker, materials) goes to ops.
             const silent=stageChanged||isBlocker||updateType==="Materials Needed";
@@ -7718,25 +7697,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   };
   // PM-reported % complete → the project card's manual progress (the same
   // override the Projects page sets). Only for a project that has a card.
-  // Progress changes only through set_project_progress(deal, pct, note)
-  // (migration 20261111170000): a note is required, only a Manager lowers it,
-  // and the server posts "[Progress] old → new: note" to Team Updates.
-  // Returns true when saved.
-  const setProjectProgress=async(dealId,val,note,opts={})=>{
-    const pc=pcards[dealId];
-    if(!pc){toastEmit("This project has no project card yet","warning");return false;}
-    const old=pc.manualProgress;
-    if(old!=null&&val<old&&role!=="Manager"){toastEmit(`Only a Manager can lower progress (it is ${old}% now).`,"warning",7000);return false;}
-    if(String(note||"").trim().length<5){toastEmit("Say what happened and why the progress changed.","warning");return false;}
-    if(!isSupabaseReady()){toastEmit("Offline: progress not saved","error");return false;}
-    const{data,error}=await supabase.rpc("set_project_progress",{p_deal:dealId,p_pct:val,p_note:String(note).trim()});
-    if(error){toastEmit("Progress not saved: "+(error.message||error),"error",9000);return false;}
-    upPcards(ps=>({...ps,[dealId]:{...ps[dealId],manualProgress:val,progressSetBy:session?.name||"",progressSetAt:data||new Date().toISOString()}}));
-    if(!opts.noFeed) logActivity(dealId,"PM Update",`[Progress] ${old!=null?old+"%":"not set"} → ${val}%: ${String(note).trim()}`,session?.name,{localOnly:true});
-    return true;
-  };
+  // Progress % changes only through the Progress update form
+  // (src/views/ProgressReportModal.jsx → set_project_progress with a report).
   // Everything the Log Update modal needs to move the real project status.
-  const pmModalExtra={deals,role,changeDealStage,setProjectProgress,sendTelegramNotification};
+  const pmModalExtra={deals,role,changeDealStage,sendTelegramNotification};
   const addAddendum=(dealId,title,desc,requestedBy)=>{
     const entry={id:uid(),dealId,title,desc,requestedBy,date:today,status:"Pending",notifiedSales:false,notifiedOps:false};
     upDeals(ds=>ds.map(d=>d.id===dealId?{...d,addenda:[entry,...(d.addenda||[])]}:d));
@@ -17599,7 +17563,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   if(page==="projects") return(
     <Wrap>
-      <ProjectCards changeDealStage={changeDealStage} setProjectProgress={setProjectProgress} syncProjectCard={syncProjectCard}
+      <ProjectCards changeDealStage={changeDealStage} syncProjectCard={syncProjectCard}
         pcards={pcards} wonDeals={wonDeals} completedDeals={completedDeals} deals={deals}
         toggleDeptTask={toggleDeptTask} markDeptDone={markDeptDone}
         setProjectTAT={setProjectTAT} jos={jos}
@@ -27657,7 +27621,7 @@ function TATSetter({deal,card,onSet,refTable,ceType}){
 }
 
 // ─── INVENTORY VIEW ───────────────────────────────────────────────────────────
-function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,prs=[],exps=[],isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,upDeals,ceReqs,toastEmit,sendTelegramNotification,initialDeal,clearJump,initialFilter,clearJumpFilter,loadChecklistTemplate,swos=[],addPmUpdate,setConfirmDel,customMembers=[],setCustomMembers=()=>{},setPage=()=>{},setJumpDeal=()=>{}}){
+function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,prs=[],exps=[],isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,upDeals,ceReqs,toastEmit,sendTelegramNotification,initialDeal,clearJump,initialFilter,clearJumpFilter,loadChecklistTemplate,swos=[],addPmUpdate,setConfirmDel,customMembers=[],setCustomMembers=()=>{},setPage=()=>{},setJumpDeal=()=>{}}){
   const todayStr=new Date().toISOString().split("T")[0];
   const[selDealRaw,setSelDeal]=useState(initialDeal||null);
   // A selection whose deal isn't loaded/won (deleted, moved to a lost stage, or a
@@ -27695,8 +27659,8 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
   const fsc=(k,v)=>setScopeForm(p=>({...p,[k]:v}));
   const[showDateEdit,setShowDateEdit]=useState(false);
   const[hqTab,setHqTab]=useState("progress");
-  const[pctBusy,setPctBusy]=useState(null);
   const[pctDraft,setPctDraft]=useState("");
+  const[reportPct,setReportPct]=useState(null); // open Progress update form at this %
   const[dateForm,setDateForm]=useState({awardDate:"",targetEndDate:""});
   const fdt=(k,v)=>setDateForm(p=>({...p,[k]:v}));
   const[pmUpdateModal,setPmUpdateModal]=useState(null);
@@ -28281,19 +28245,13 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
           // Same rule as the Progress page: PMs/Operations/Managers on any project, Coordinators on their own.
           const pgNormHq=x=>String(x||"").replace(/\s*\([^)]*\)\s*$/,"").trim().toLowerCase();
           const canSetPct=!!card&&(["Manager","Operations","ProjectMover"].includes(role)||(role==="Coordinator"&&!!session?.name&&pgNormHq(card.coordinator)===pgNormHq(session.name)));
-          // Every change needs a note (what happened, why); only a Manager lowers it.
-          // Saved through set_project_progress via the App-level setProjectProgress.
-          const setPctRpc=async(pctVal,presetNote)=>{
+          // Every % change goes through the Progress update form (work done, next
+          // step + date, issues; why, when lowering). Only a Manager lowers it.
+          const setPctRpc=pctVal=>{
             const old=card?.manualProgress;
             if(old!=null&&pctVal<old&&role!=="Manager"){toastEmit(`Only a Manager can lower progress (it is ${old}% now).`,"warning",7000);return false;}
-            const note=presetNote||(await uiPrompt({title:`Progress ${old!=null?old+"%":"not set"} → ${pctVal}%`,message:"What happened on the project, and why is the % changing? This goes to Team Updates and the audit log.",placeholder:"e.g. Ceiling framing done, painting starts Monday"},""));
-            if(note==null) return false;
-            if(String(note).trim().length<5){toastEmit("Say what happened and why the progress changed.","warning");return false;}
-            setPctBusy(pctVal);
-            const ok=await setProjectProgress(selDeal,pctVal,note);
-            setPctBusy(null);
-            if(ok) toastEmit(`Progress: ${pctVal}%`,"success");
-            return ok;
+            setReportPct(pctVal);
+            return true;
           };
           const updatesCount=(actLog||[]).filter(a=>a.dealId===selDeal&&a.action==="PM Update").length;
           const clOpen=projCl.filter(c=>c.status!=="Done").length;
@@ -28513,11 +28471,11 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                   const pick=async st=>{
                     if(st==="12 · Close-Out"&&!(await uiConfirm(`Mark "${deal.contact||deal.client}" as Done?\n\nDone means every punchlist item is completed and the project is ready to receive retention.`))) return;
                     if(st==="14 · Completed"&&!(await uiConfirm(`Mark "${deal.contact||deal.client}" as Completed?\n\nUse this only when all work is done and the project is fully closed.`))) return;
-                    if(st==="11 · Punchlist"&&!(await uiConfirm(`Move "${deal.contact||deal.client}" to Punchlist?\n\nPunchlist means the project has reached ${PUNCHLIST_MIN_PCT}%. Its progress will be set to ${PUNCHLIST_MIN_PCT}%.`))) return;
+                    if(st==="11 · Punchlist"&&!(await uiConfirm(`Move "${deal.contact||deal.client}" to Punchlist?\n\nPunchlist means the project has reached ${PUNCHLIST_MIN_PCT}%. You will be asked for a progress update at ${PUNCHLIST_MIN_PCT}%.`))) return;
                     const moved=await changeStage(st);
                     // Punchlist = 90 %: record it as the project's progress (audited
                     // through set_project_progress) when the user may set progress.
-                    if(moved&&st==="11 · Punchlist"&&card&&canSetPct&&(card.manualProgress==null||card.manualProgress<PUNCHLIST_MIN_PCT)) setPctRpc(PUNCHLIST_MIN_PCT,`Moved to Punchlist: works complete, snag items left to close (${PUNCHLIST_MIN_PCT}%).`);
+                    if(moved&&st==="11 · Punchlist"&&card&&canSetPct&&(card.manualProgress==null||card.manualProgress<PUNCHLIST_MIN_PCT)) setPctRpc(PUNCHLIST_MIN_PCT);
                   };
                   return(
                     <div style={{marginTop:10,borderTop:"1px solid #f1f5f9",paddingTop:10}}>
@@ -28621,17 +28579,17 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                     const n=pctDraft===""?null:Math.round(Number(pctDraft));
                     const lowering=n!=null&&card.manualProgress!=null&&n<card.manualProgress&&role!=="Manager";
                     const valid=n!=null&&!isNaN(n)&&n>=min&&n<=100&&n!==card.manualProgress&&!lowering;
-                    const save=async()=>{if(valid&&(await setPctRpc(n))) setPctDraft("");};
+                    const save=()=>{if(valid&&setPctRpc(n)) setPctDraft("");};
                     return(
                       <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
                         <span style={{fontSize:".74rem",color:"#475569",fontWeight:600}}>Current progress on site:</span>
-                        <input type="number" inputMode="numeric" min={min} max={100} step={1} disabled={!canSetPct||!!pctBusy}
+                        <input type="number" inputMode="numeric" min={min} max={100} step={1} disabled={!canSetPct}
                           value={pctDraft} placeholder={card.manualProgress!=null?String(card.manualProgress):(min?String(min):"e.g. 45")}
                           onChange={e=>setPctDraft(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")save();}} aria-label="Progress percent"
                           style={{width:90,border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 9px",fontFamily:"inherit",fontSize:".9rem",fontWeight:700}}/>
                         <span style={{fontSize:".8rem",color:"#64748b"}}>%</span>
-                        <button disabled={!valid||!canSetPct||!!pctBusy} onClick={save}
-                          style={{border:"none",borderRadius:8,padding:"8px 16px",background:valid&&canSetPct?"#1e293b":"#e2e8f0",color:valid&&canSetPct?"#fff":"#94a3b8",fontWeight:700,fontSize:".8rem",cursor:valid&&canSetPct?"pointer":"default",fontFamily:"inherit"}}>{pctBusy?"Saving…":"Update %"}</button>
+                        <button disabled={!valid||!canSetPct} onClick={save}
+                          style={{border:"none",borderRadius:8,padding:"8px 16px",background:valid&&canSetPct?"#1e293b":"#e2e8f0",color:valid&&canSetPct?"#fff":"#94a3b8",fontWeight:700,fontSize:".8rem",cursor:valid&&canSetPct?"pointer":"default",fontFamily:"inherit"}}>Update %</button>
                         {pctDraft!==""&&!valid&&n!==card.manualProgress&&<span style={{fontSize:".68rem",color:"#ef4444"}}>{lowering?`Only a Manager can lower progress (now ${card.manualProgress}%).`:`Enter a whole number from ${min} to 100${min?" (Punchlist is at least 90%)":""}.`}</span>}
                       </div>
                     );
@@ -28642,16 +28600,16 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                         const on=card.manualProgress===s;
                         const belowPunch=deal?.stage==="11 · Punchlist"&&s<PUNCHLIST_MIN_PCT;
                         const lowerBlocked=card.manualProgress!=null&&s<card.manualProgress&&role!=="Manager";
-                        const dis=!canSetPct||!!pctBusy||belowPunch||lowerBlocked;
+                        const dis=!canSetPct||belowPunch||lowerBlocked;
                         return(
                           <button key={s} disabled={dis} aria-pressed={on} onClick={()=>!on&&setPctRpc(s)} title={belowPunch?`A project at Punchlist is at least ${PUNCHLIST_MIN_PCT}%`:lowerBlocked?"Only a Manager can lower progress":undefined}
-                            style={{border:`1.5px solid ${on?STEP_CLR[s]:"#e2e8f0"}`,borderRadius:8,padding:"8px 0",background:on?STEP_CLR[s]:"#fff",color:on?"#fff":"#475569",fontWeight:800,fontSize:".86rem",cursor:dis?"default":"pointer",fontFamily:"inherit",opacity:pctBusy===s?.6:(belowPunch||lowerBlocked)?.35:1}}>{s}%</button>
+                            style={{border:`1.5px solid ${on?STEP_CLR[s]:"#e2e8f0"}`,borderRadius:8,padding:"8px 0",background:on?STEP_CLR[s]:"#fff",color:on?"#fff":"#475569",fontWeight:800,fontSize:".86rem",cursor:dis?"default":"pointer",fontFamily:"inherit",opacity:(belowPunch||lowerBlocked)?.35:1}}>{s}%</button>
                         );
                       })}
                     </div>
                   )}
                   {card&&!closed&&!canSetPct&&<div style={{fontSize:".68rem",color:"#94a3b8",marginTop:6}}>Set by the PM, Operations or a Manager (Coordinators on their own projects).</div>}
-                  {card&&!closed&&canSetPct&&<div style={{fontSize:".66rem",color:"#94a3b8",marginTop:6}}>Every change asks what happened; it goes to Team Updates.{role!=="Manager"?" Only a Manager can lower the %.":""}</div>}
+                  {card&&!closed&&canSetPct&&<div style={{fontSize:".66rem",color:"#94a3b8",marginTop:6}}>Every change asks for a short update (work done, next step, issues); it goes to Team Updates and the Operations chat.{role!=="Manager"?" Only a Manager can lower the %.":""}</div>}
                   {card&&!isConstructionDeal(deal)&&card.manualProgress!=null&&![30,60,90,100].includes(card.manualProgress)&&<div style={{fontSize:".68rem",color:"#8b5cf6",marginTop:6}}>{card.manualProgress}% was typed in before the 30/60/90/100 rule. Pick one of the four.</div>}
                 </div>
                 );
@@ -28913,7 +28871,15 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
         })()
       )}
     </div>
-    {pmUpdateModal&&<PmUpdateModal deals={deals} role={role} changeDealStage={changeDealStage} setProjectProgress={setProjectProgress} sendTelegramNotification={sendTelegramNotification} pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate} updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())syncProjectCard(dealId,{target_end_date:date});}}/>}
+    {reportPct!==null&&selDeal&&deals.find(d=>d.id===selDeal)&&<ProgressReportModal deal={deals.find(d=>d.id===selDeal)} pc={pcards[selDeal]} initialPct={reportPct} role={role}
+      onClose={()=>setReportPct(null)}
+      onSaved={({pct:np,at,feed})=>{
+        upPcards(ps=>({...ps,[selDeal]:{...ps[selDeal],manualProgress:np,progressSetBy:session?.name||"",progressSetAt:at}}));
+        // The server already wrote this Team Update and sent the Telegram.
+        logActivity(selDeal,"PM Update",feed,session?.name,{localOnly:true,silent:true});
+        setReportPct(null);
+      }}/>}
+    {pmUpdateModal&&<PmUpdateModal deals={deals} role={role} changeDealStage={changeDealStage} sendTelegramNotification={sendTelegramNotification} pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate} updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())syncProjectCard(dealId,{target_end_date:date});}}/>}
     </>
   );
 }
