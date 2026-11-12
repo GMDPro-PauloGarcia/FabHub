@@ -77,6 +77,8 @@ export const swoFromSb=r=>({...r,
   dpPct:Number(r.dp_pct)||0,
   paymentStructure:r.payment_structure||"", paymentTerms:r.payment_terms||"",
   requestedBy:r.requested_by||"", approvedBy:r.approved_by||"",
+  // Cost Control signature (read-only: only sign_wo sets it, 20261114070000).
+  ccApprovedBy:r.cc_approved_by||"", ccApprovedAt:r.cc_approved_at||"",
   acctStatus:r.acct_status||"", acctNotes:r.acct_notes||"",
   acctCheckedBy:r.acct_checked_by||"", acctCheckedAt:r.acct_checked_at||"",
   paymentBank:r.payment_bank||"", paymentRef:r.payment_ref||"",

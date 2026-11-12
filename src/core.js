@@ -1339,6 +1339,29 @@ export const canApprovePO=(role,sessionName,requestedBy)=>{
   return false;
 };
 
+// Work orders: two signatures, no amount limit (Paulo, 2026-11-12; on with PO_TIERS_ON).
+// 1) Cost Control: Rodney (username rodney) or the Procurement Manager (Marian);
+// 2) Finance: Paolo Gomez (paolo), with Paulo and Mar as back-up; it issues the WO.
+// Nobody signs both, nobody signs a WO they requested. Mirrors wo_signer_kind() /
+// sign_wo() / swo_require_approver() (migration 20261114070000).
+export const WO_FIN_SIGNERS=["paolo","paulo","mar"];
+export const woSignerKind=(username,role)=>{
+  const u=String(username||"").trim().toLowerCase();
+  if(WO_FIN_SIGNERS.includes(u)) return "finance";
+  if(u==="rodney"||role==="ProcurementManager") return "cc";
+  return null;
+};
+// Which signature this user can give on WO w now: "cc", "finance" or null.
+export const woSignStep=(w,username,role,name)=>{
+  if(!w||!["Draft","Pending Approval"].includes(w.status||"")) return null;
+  const nm=String(name||"").trim().toLowerCase();
+  if(nm&&nm===String(w.requestedBy||"").trim().toLowerCase()) return null;
+  const kind=woSignerKind(username,role);
+  if(!w.ccApprovedBy) return kind==="cc"?"cc":null;
+  return kind==="finance"&&nm!==String(w.ccApprovedBy).trim().toLowerCase()?"finance":null;
+};
+export const WO_SIGN_MSG="A work order needs Cost Control (Rodney or Marian), then Finance (Paolo Gomez) to sign it.";
+
 export const woRetentionAmt=w=>Math.min(Number(w.retentionPct)||0,100)/100*(Number(w.contractAmount)||0);
 
 // ── Accounts payable rules (company defaults) ─────────────────────────────────
