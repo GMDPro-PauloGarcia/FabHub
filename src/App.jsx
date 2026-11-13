@@ -12,7 +12,7 @@ import {fmt,addPrintClose,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dro
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {projProgressPct, isConstructionDeal, projStageFlow, projStepIndex, projStepLabel, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel, pendingCostByProject} from './core';
+import {projProgressPct, isConstructionDeal, projStageFlow, projStepIndex, projStepLabel, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel, pendingCostByProject, poSplitTotal, canRaiseOrder, woSignStep, WO_SIGN_MSG} from './core';
 import ProgressReportModal from './views/ProgressReportModal';
 
 // Returns a component whose function IDENTITY is stable across renders while its
@@ -37,7 +37,7 @@ const NAV_HUBS={orders:{l:"Orders",icon:"📦"},warehouse:{l:"Warehouse",icon:"�
   payables:{l:"Payables",icon:"📤"},cash:{l:"Cash",icon:"🏦"},monitoring:{l:"Monitoring",icon:"🚦"},accounting:{l:"Accounting",icon:"📒"},
   sales:{l:"Sales",icon:"📊"},projects:{l:"Projects",icon:"📋"},design:{l:"Design",icon:"🖌️"},executive:{l:"Executive",icon:"🎯"},money:{l:"Cash & Billing",icon:"🏦"},admin:{l:"Admin",icon:"⚙️"}};
 const NAV_HUB_OF={orderboard:"orders",purchasing:"orders",procurement:"orders",subconwo:"orders",inventory:"warehouse",deliveries:"warehouse",stockmove:"warehouse",
-  payables:"payables",payments:"payables",payrun:"payables",checkvouchers:"payables",subconmon:"payables",purchaseorders:"payables",
+  payables:"payables",aplog:"payables",payments:"payables",payrun:"payables",checkvouchers:"payables",subconmon:"payables",purchaseorders:"payables",
   cashposition:"cash",cashflow:"cash",monboard:"monitoring","finance-reports":"monitoring",
   expmon:"accounting",bir2307:"accounting",coa:"accounting"};
 // Manager-only hubs (2026-11-07): the Manager sidebar went from 29 items to 11.
@@ -48,7 +48,11 @@ const MGR_HUB_OF={pipeline:"sales",boq:"sales",clients:"sales","sales-reports":"
   executive:"executive",exectxns:"executive",execpl:"executive",execloans:"executive",monboard:"executive","finance-reports":"executive",projectmargins:"executive",costanalysis:"executive",
   billing:"money",cashposition:"money",cashflow:"money",finance:"accounting",
   accounts:"admin",audit:"admin",syshealth:"admin",botsettings:"admin",tvboard:"admin",activity:"admin"};
-const hubOf=(r,id)=>(r==="Manager"&&MGR_HUB_OF[id])||NAV_HUB_OF[id];
+// Finance roles (2026-11-11, Paulo): Purchasing is the first tab of Payables, so
+// Finance and Procurement work from the same per-supplier view of POs / WOs and payments.
+const FIN_HUB_ROLES=["Finance","FinanceAssistant","Accounting"];
+const FIN_HUB_OF={purchasing:"payables"};
+const hubOf=(r,id)=>(r==="Manager"&&MGR_HUB_OF[id])||(FIN_HUB_ROLES.includes(r)&&FIN_HUB_OF[id])||NAV_HUB_OF[id];
 // Manager: Executive's own sub-tabs (Transactions, P&L, Loans) are tabs of the
 // Executive hub strip, so the page shows one tab row instead of two.
 const MGR_FIN_TAB_NAV={txns:"exectxns",pl:"execpl",loans:"execloans"};
@@ -59,9 +63,9 @@ const OWNER_USERS=PO_TIERS_ON?["paulo","mar","arrius"]:["paulo","mar"];
 // Loans (preview 2026-11-08): credit lines + bank loans, linked to the cash sheet (views/LoansView.jsx).
 const LOANS_V2=false; // on for the weekend release, with migration 20261108010000
 // Nav items that are a Finance tab, not a page of their own.
-const NAV_FIN_TAB={payables:"payables",payments:"payments",cashposition:"cash",supplierbills:"bills",executive:"overview",exectxns:"txns",execpl:"pl",execloans:"loans",
+const NAV_FIN_TAB={payables:"payables",aplog:"aplog",payments:"payments",cashposition:"cash",supplierbills:"bills",executive:"overview",exectxns:"txns",execpl:"pl",execloans:"loans",
   expmon:"expmon",payrun:"payrun",bir2307:"bir2307",monboard:"monboard",subconmon:"subconmon"};
-const FIN_TAB_NAV={payables:"payables",payments:"payments",cash:"cashposition",bills:"supplierbills",overview:"executive",pl:"executive",loans:"executive",txns:"executive",
+const FIN_TAB_NAV={payables:"payables",aplog:"aplog",payments:"payments",cash:"cashposition",bills:"supplierbills",overview:"executive",pl:"executive",loans:"executive",txns:"executive",
   expmon:"expmon",payrun:"payrun",bir2307:"bir2307",monboard:"monboard",subconmon:"subconmon"};
 
 // ─── CODE-SPLIT VIEWS ────────────────────────────────────────────────────────
@@ -7372,6 +7376,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     return await sbUpsert("project_budgets",toSbBudget(dealId,saved),"deal_id");
   };
   const addPR=(pr,{silent=false}={})=>{
+    // Finance pays; it doesn't raise POs (the database refuses it too, 20261114050000).
+    if(["Finance","FinanceAssistant","Accounting"].includes(role)){toastEmit("Only Procurement or a Manager creates purchase orders.","error",7000);return;}
     const rec={...pr,id:uid(),createdDate:today};
     upPrs(ps=>[rec,...ps]);
     if(isSupabaseReady()) sbSyncOne("purchase_requests",rec,toSbPR);
@@ -7390,7 +7396,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const want=new Set(poNos||[]);
     const me=session?.name||"";
     const totOf=no=>poLinesTotal(prs.filter(p=>p.poNumber===no));
-    const pending=prs.filter(p=>want.has(p.poNumber)&&p.status==="Pending Approval"&&canApprovePOLine(role,me,p.requestedBy,totOf(p.poNumber)));
+    const pending=prs.filter(p=>want.has(p.poNumber)&&p.status==="Pending Approval"&&canApprovePOLine(role,me,p.requestedBy,totOf(p.poNumber),poSplitTotal(prs,p.poNumber)));
     // Down payment gate: a PO with any line on a deal that has no payment (and
     // no Manager waiver) is skipped whole. The database rejects those writes,
     // and one bad row would fail its entire 200-row batch below.
@@ -8259,7 +8265,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     return {...emptyPayForm(),docType:"AP",vendor:r.vendor||"",category:"Supplier",accountCode:line.accountCode||"",
       projectId:pid,poNumber:r.no,poId:r.no,invoiceRef:r.no,notes:`Supplier invoice for PO ${r.no} (PO total ₱${(Number(r.amount)||0).toLocaleString("en-PH")})`};
   };
-  const[payFilter, setPayFilter]=useState("All");
+  const[payFilter, setPayFilter]=useState("Open");
+  const[apLogShow,setApLogShow]=useState(50);     // AP Log rows shown (50 at a time)
   const[poViewFilter,setPoViewFilter]=useState("all"); // unified PO view: all | po | wo
   const[poViewSearch,setPoViewSearch]=useState("");
   const[poViewProj,setPoViewProj]=useState(null); // Purchase Orders: show only this project's orders
@@ -9897,6 +9904,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // Open the Record-Payment modal for a payable, pre-filled with its open balance.
   // Navigation + badge counts for the Aerwin-styled Finance module tab bar.
   const[poDraft,setPoDraft]=useState(null); // PRF lines handed from the Order Board to the PO form
+  const[woDraft,setWoDraft]=useState(null); // supplier handed from Purchasing to the new-WO form
   const financeErpCounts=()=>({
     po:new Set(prs.filter(p=>["PO Issued","Partially Delivered"].includes(p.status)&&p.poNumber).map(p=>p.poNumber)).size,
     ap:payables.filter(p=>p.status!=="Paid").length,
@@ -9943,10 +9951,23 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(fail.length) toastEmit(`PO ${poNo} saved, but ${fail.length} PRF link(s) failed: ${fail[0]}. Link it from the PRF page.`,"error",12000);
     if(ordered) sendTelegramNotification("ops",`✅ <b>PO ${poNo}</b> issued for ${ordered} PRF${ordered>1?"s":""} (all items ordered).`);
   };
+  // "+ PO" / "+ WO" on Purchasing open the existing forms with the supplier filled in.
+  // Procurement and Managers only: Finance pays, so it doesn't raise orders from here.
+  const canRaiseOrders=canRaiseOrder(role);
   const purchasingPage=()=>(
     <PurchasingHub prs={prs} swos={swos} payables={payables} payPays={payPays} deals={deals} exps={exps} role={role} today={today}
+      onNewPO={canRaiseOrders?sup=>{setPoDraft({supplier:sup||"",lines:[]});setPage("procurement");}:null}
+      onNewWO={canRaiseOrders?sub=>{setWoDraft({subcontractor:sub||""});setPage("subconwo");}:null}
       onGo={id=>{if(id==="bills"){setPage("finance");setFinTab(billsTab);}else setPage(id);}}
       onPayBill={roleCanInsert("payable_payments")?b=>{setPage("finance");setFinTab(billsTab);openPayModal(b);}:null}
+      // "Pay" on a supplier line: supplier bills open "Pay several bills" for that supplier;
+      // a subcontractor bill opens the single-payment form (retention is per bill).
+      onPaySupplier={roleCanInsert("payable_payments")?bills=>{
+        const sup=bills.filter(b=>!payIsSubcon(b));
+        setPage("finance");setFinTab(billsTab);
+        if(sup.length) setMultiPay({vendor:sup[0].vendor||"",sel:Object.fromEntries(sup.filter(b=>(b.vendor||"")===(sup[0].vendor||"")).map(b=>[b.id,String(Math.round(((Number(b.amount)||0)-(Number(b.paidAmount)||0))*100)/100)])),date:today,method:"Check",bank:"",ref:""});
+        else openPayModal(bills[0]);
+      }:null}
       onNewBilling={roleCanInsert("payables")?r=>{
         const pid=r.dealId&&isUUID(r.dealId)?r.dealId:null;
         const line=(r.lines||[]).find(l=>l.accountCode)||{};
@@ -10119,7 +10140,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                                    {id:"materialreq",l:"PRF"},{id:"orderboard",l:"Order Board"},{id:"purchasing",l:"Purchasing"},{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"deliveries",l:"Deliveries"},{id:"inventory",l:"Inventory"},{id:"masters",l:"Suppliers"}]},
       {group:"Money",       items:[{id:"executive",l:"Overview"},...[["exectxns","txns","Transactions"],["execpl","pl","P&L"],["execloans","loans","Loans"]].filter(([,t])=>!HIDDEN_FIN_TABS.has(t)).map(([id,,l])=>({id,l})),{id:"monboard",l:"Monitoring Board"},...(OWNER_USERS.includes(session?.username)?[{id:"projectmargins",l:"Project Margins"}]:[]),{id:"costanalysis",l:"Budget & Costs"},{id:"finance-reports",l:"Reports"},
                                    {id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},
-                                   {id:"payables",l:"Supplier Bills"},{id:"payments",l:"Payments"},{id:"payrun",l:"Payment Run"},{id:"checkvouchers",l:"Check Vouchers"},{id:"subconmon",l:"Subcon Payments"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills (old)"}]:[]),
+                                   {id:"payables",l:"Supplier Bills"},{id:"aplog",l:"AP Log"},{id:"payments",l:"Payments"},{id:"payrun",l:"Payment Run"},{id:"checkvouchers",l:"Check Vouchers"},{id:"subconmon",l:"Subcon Payments"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills (old)"}]:[]),
                                    {id:"finance",l:"Accounting Home"},{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
       {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"audit",l:"Audit"},{id:"syshealth",l:"System Health"},{id:"botsettings",l:"Bot Settings"},{id:"tvboard",l:"Office TV Board"},{id:"activity",l:"Team Activity"}]},
     ],
@@ -10133,10 +10154,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     Finance:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"boq",l:"BOQ"},{id:"clients",l:"Clients"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"payables",l:"Supplier Bills"},{id:"payments",l:"Payments"},{id:"payrun",l:"Payment Run"},{id:"checkvouchers",l:"Check Vouchers"},{id:"subconmon",l:"Subcon Payments"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills (old)"}]:[]),{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"monboard",l:"Monitoring Board"},{id:"finance-reports",l:"Reports"},{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"purchasing",l:"Purchasing"},{id:"payables",l:"Supplier Bills"},{id:"aplog",l:"AP Log"},{id:"payments",l:"Payments"},{id:"payrun",l:"Payment Run"},{id:"checkvouchers",l:"Check Vouchers"},{id:"subconmon",l:"Subcon Payments"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills (old)"}]:[]),{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"monboard",l:"Monitoring Board"},{id:"finance-reports",l:"Reports"},{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"},{id:"subconcert",l:"Subcon Billing"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
-      {group:"Procurement", items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"purchasing",l:"Purchasing"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Suppliers"}]},
+      {group:"Procurement", items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Suppliers"}]},
       {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"}]},
       {group:"Admin",       items:[{id:"audit",l:"Audit"},{id:"botsettings",l:"Bot Settings"},{id:"activity",l:"Team Activity"}]},
     ],
@@ -10152,8 +10173,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     Accounting:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"payables",l:"Supplier Bills"},{id:"payments",l:"Payments"},{id:"checkvouchers",l:"Check Vouchers"},{id:"subconmon",l:"Subcon Payments"},{id:"purchaseorders",l:"Purchase Orders"},{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
-      {group:"Procurement", items:[{id:"purchasing",l:"Purchasing"},{id:"subconwo",l:"SWO For Accounting"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"purchasing",l:"Purchasing"},{id:"payables",l:"Supplier Bills"},{id:"aplog",l:"AP Log"},{id:"payments",l:"Payments"},{id:"checkvouchers",l:"Check Vouchers"},{id:"subconmon",l:"Subcon Payments"},{id:"purchaseorders",l:"Purchase Orders"},{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
+      {group:"Procurement", items:[{id:"subconwo",l:"SWO For Accounting"}]},
     ],
     Procurement:[
       {group:"Overview",   items:[{id:"home",l:"Overview"}]},
@@ -10163,7 +10184,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     QS:[
       {group:"Overview", items:[{id:"home",l:"Dashboard"}]},
       {group:"Sales",    items:[{id:"pipeline",l:"Sales Pipeline"},{id:"boq",l:"BOQ"}]},
-      {group:"Cost Control", items:[{id:"costanalysis",l:"Budget & Costs"},{id:"projectmargins",l:"Project Margins"},{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"purchaseorders",l:"Purchase Orders"}]},
+      {group:"Cost Control", items:[{id:"costanalysis",l:"Budget & Costs"},{id:"projectmargins",l:"Project Margins"},{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"purchaseorders",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"}]},
       {group:"Operations", items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
     ],
     Operations:[
@@ -10208,8 +10229,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     FinanceAssistant:[
       {group:"Overview",   items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
-      {group:"Finance",    items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"payables",l:"Supplier Bills"},{id:"payments",l:"Payments"},{id:"payrun",l:"Payment Run"},{id:"checkvouchers",l:"Check Vouchers"},{id:"subconmon",l:"Subcon Payments"},{id:"purchaseorders",l:"Purchase Orders"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills (old)"}]:[]),{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"monboard",l:"Monitoring Board"},{id:"finance-reports",l:"Reports"},{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
-      {group:"Procurement", items:[{id:"purchasing",l:"Purchasing"}]},
+      {group:"Finance",    items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"purchasing",l:"Purchasing"},{id:"payables",l:"Supplier Bills"},{id:"aplog",l:"AP Log"},{id:"payments",l:"Payments"},{id:"payrun",l:"Payment Run"},{id:"checkvouchers",l:"Check Vouchers"},{id:"subconmon",l:"Subcon Payments"},{id:"purchaseorders",l:"Purchase Orders"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills (old)"}]:[]),{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"monboard",l:"Monitoring Board"},{id:"finance-reports",l:"Reports"},{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
     ],
     // Procurement Manager sees the same workspace as Procurement — the only
     // difference is authority (they approve POs), not navigation.
@@ -15558,7 +15578,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             dashboard (overview/P&L/Loans) and Cash Position — are their own pages. */}
         {/* Weekly Dues board toggle — always reachable from anywhere in Finance
             (hidden with the AP while the new AP/AR system is built). */}
-        {!AP_HIDDEN&&["payables","payments","duesboard"].includes(finTab)&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:12}}>
+        {!AP_HIDDEN&&["payables","aplog","payments","duesboard"].includes(finTab)&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:12}}>
           <button onClick={()=>setFinTab(finTab==="duesboard"?"payables":"duesboard")} style={{whiteSpace:"nowrap",padding:"6px 14px",borderRadius:20,border:`1px solid ${finTab==="duesboard"?ERP.navy:ERP.line}`,background:finTab==="duesboard"?ERP.navy:"#fff",color:finTab==="duesboard"?"#fff":ERP.muted,cursor:"pointer",fontSize:".78rem",fontWeight:600,fontFamily:"inherit"}}>📅 Weekly Dues</button>
         </div>}
         {finTab==="duesboard"&&(
@@ -16041,7 +16061,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         })()}
 
         {/* ── PAYABLES TAB ── */}
-        {finTab==="payables"&&(()=>{
+        {(finTab==="payables"||finTab==="aplog")&&(()=>{
           const n=v=>Number(v)||0;
           const fmtM=v=>"₱"+Number(v).toLocaleString("en-PH",{maximumFractionDigits:0});
           // PO-derived payables — group by supplier
@@ -16088,10 +16108,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           const paidThisMonth=paid.filter(p=>p.paidDate?.startsWith(today.slice(0,7))).reduce((s,p)=>s+Number(p.amount||0),0);
           // AP-log filter (All / Unpaid / Partial / Paid) — mirrors Aerwin's chips.
           const apRows=[...payables].sort((a,b)=>String(a.apNumber||"~").localeCompare(String(b.apNumber||"~"))||String(a.dueDate||"9999").localeCompare(String(b.dueDate||"9999")));
-          const apFilter=payFilter||"All";
+          const apFilter=["Open","Partial","Paid","All"].includes(payFilter)?payFilter:"Open";
           const projName=id=>{const d=wonDeals.find(x=>x.id===id)||completedDeals.find(x=>x.id===id);return d?(d.contact||d.client):"";};
           const apQ=apLogSearch.trim().toLowerCase();
-          const apVisible=apRows.filter(p=>(apFilter==="All"?true:apFilter==="Paid"?isSettled(p):apFilter==="Partial"?p.status==="Partial":(p.status==="Unpaid"||p.status==="Check Issued"))
+          const apVisible=apRows.filter(p=>(apFilter==="All"?true:apFilter==="Paid"?isSettled(p):apFilter==="Partial"?p.status==="Partial":!isSettled(p)&&!["Cancelled","Void"].includes(p.status))
             &&(!apQ||[p.apNumber,p.poNumber,p.vendor,p.invoiceNumber,p.invoiceRef,p.accountCode,projName(p.projectId)].some(v=>String(v||"").toLowerCase().includes(apQ))))
             // Float payables awaiting approval to the top so nothing sits forgotten in Pending.
             .sort((a,b)=>((a.approvalStatus==="Pending"&&!isSettled(a))?0:1)-((b.approvalStatus==="Pending"&&!isSettled(b))?0:1));
@@ -16099,6 +16119,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           return(
             <div>
               {/* ERP bar is already rendered once at the top of the finance page — no duplicate here. */}
+              {finTab==="payables"&&<>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
                 <div>
                   <div style={{fontWeight:700,color:ERP.navy,fontSize:16}}>Accounts Payable</div>
@@ -16121,39 +16142,46 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               {/* AP home, per supplier (Finance, 2026-11-04): one line per supplier with
                   what is owed, its bills underneath, issued POs / WOs with no bill
                   flagged, and the supplier's payment history one click away. The
-                  per-bill AP Log stays below. */}
+                  per-bill AP Log is its own tab (finTab "aplog"). */}
               <CashPositionPayables payables={payables} payPays={payPays} prs={prs} swos={swos} exps={exps} deals={deals} today={today}
                 canApprove={canApprovePayables} enteredByMe={enteredByMe} canPay={roleCanInsert("payable_payments")}
                 onApprove={approvePayable} onPay={(id,amt,o)=>recordPayablePayment(id,amt,o)} onPayMany={recordPayments} onCancelPay={cancelPayablePayment}/>
-              {/* ── Accounts Payable Log — vendor invoices with aging & balances ── */}
-              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,flexWrap:"wrap"}}>
-                <div style={{fontSize:12.5,fontWeight:700,color:ERP.navy}}>📋 Accounts Payable Log</div>
-                <span style={{fontSize:11.5,color:ERP.muted}}>Vendor invoices logged from POs, with aging & balances.</span>
+              </>}
+              {/* ── AP Log (own tab, 2026-11-09) ── one line per bill, 6 columns instead
+                  of 14: AP / PO / invoice no. in one cell, the account and docs status
+                  under it, amount / paid / balance as one figure, status + approval +
+                  receipt in one cell. Open bills by default, 50 at a time. */}
+              {finTab==="aplog"&&<>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,flexWrap:"wrap"}}>
+                <div>
+                  <div style={{fontWeight:700,color:ERP.navy,fontSize:16}}>AP Log</div>
+                  <div style={{fontSize:12.5,color:ERP.muted,marginTop:2}}>Every supplier bill, one line each. Approve bills on Supplier Bills.</div>
+                </div>
                 <div style={{marginLeft:"auto",display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
                   {roleCanInsert("payable_payments")&&<button onClick={()=>setMultiPay({vendor:"",sel:{},date:today,method:"Check",bank:"",ref:""})} title="One check or transfer that pays several bills of the same supplier" style={{background:ERP.navy,color:"#fff",border:"none",borderRadius:7,padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Pay several bills</button>}
-                  <input value={apLogSearch} onChange={e=>setApLogSearch(e.target.value)} placeholder="Search AP/PO no., vendor, invoice, account…" style={{minWidth:200,flex:"0 1 280px",border:`1px solid ${ERP.line}`,borderRadius:7,padding:"6px 11px",fontFamily:"inherit",fontSize:12,outline:"none",color:ERP.ink}}/>
+                  <input value={apLogSearch} onChange={e=>{setApLogSearch(e.target.value);setApLogShow(50);}} placeholder="Search AP/PO no., supplier, invoice…" style={{minWidth:200,flex:"0 1 260px",border:`1px solid ${ERP.line}`,borderRadius:7,padding:"6px 11px",fontFamily:"inherit",fontSize:12,outline:"none",color:ERP.ink}}/>
                   <div style={{display:"flex",gap:5}}>
-                    {["All","Unpaid","Partial","Paid"].map(f=>(
-                      <button key={f} onClick={()=>setPayFilter(f)} style={{background:apFilter===f?ERP.navy:"#fff",color:apFilter===f?"#fff":ERP.muted,border:`1px solid ${apFilter===f?ERP.navy:ERP.line}`,borderRadius:7,padding:"5px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{f}</button>
+                    {["Open","Partial","Paid","All"].map(f=>(
+                      <button key={f} onClick={()=>{setPayFilter(f);setApLogShow(50);}} style={{background:apFilter===f?ERP.navy:"#fff",color:apFilter===f?"#fff":ERP.muted,border:`1px solid ${apFilter===f?ERP.navy:ERP.line}`,borderRadius:7,padding:"5px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{f}</button>
                     ))}
                   </div>
                 </div>
               </div>
-              {apRows.length===0&&poPayables.length===0&&<div style={{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:".84rem"}}>No payables logged yet — issue a PO or add one manually. ✓</div>}
+              {apRows.length===0&&<div style={{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:".84rem"}}>No bills logged yet.</div>}
               {apRows.length>0&&(
                 <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16}}>
                   <div style={{overflowX:"auto"}}>
-                    <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:960}}>
+                    <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:isMobile?640:0}}>
                       <thead>
                         <tr>
-                          {["AP No.","PO No.","Vendor","Account","Invoice No.","Invoice Date","Due Date","Aging","Amount","Paid","Balance","Status","Verification",""].map((h,i)=>(
-                            <th key={h+i} style={i>=8&&i<=10?erpThNum:erpTh}>{h}</th>
+                          {["Bill","Supplier","Due","Balance","Status",""].map((h,i)=>(
+                            <th key={h+i} style={i===3?erpThNum:erpTh}>{h}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
-                        {apVisible.length===0&&<tr><td colSpan={14} style={{padding:"20px",textAlign:"center",color:"#94a3b8",fontSize:".8rem"}}>No {apFilter.toLowerCase()} payables.</td></tr>}
-                        {apVisible.map((p,idx)=>{
+                        {apVisible.length===0&&<tr><td colSpan={6} style={{padding:"20px",textAlign:"center",color:"#94a3b8",fontSize:".8rem"}}>No {apFilter==="All"?"":apFilter.toLowerCase()+" "}bills{apQ?" match the search":""}.</td></tr>}
+                        {apVisible.slice(0,apLogShow).map(p=>{
                           const ag=payableAging(p);
                           const settled=isSettled(p);
                           const balance=bal(p);
@@ -16161,47 +16189,50 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                           const stTxt=settled?"Paid":p.status==="Partial"?"Partial":p.status==="Check Issued"?"Check Issued":"Unpaid";
                           const pn=projName(p.projectId);
                           const acct=chartOfAccounts.find(a=>String(a.code)===String(p.accountCode));
+                          const inv=p.invoiceNumber||p.invoiceRef||"";
+                          const needV=payNeedsVerify(p),isSub=payIsSubcon(p);
+                          const ds=!settled?supplierDocsStatus(p,{prs,drs,suppliers}):null;
+                          const sub={fontSize:11,color:ERP.muted,marginTop:2};
                           return(
                             <tr key={p.id}
                               onMouseEnter={ev=>ev.currentTarget.style.background="#FAFBFD"} onMouseLeave={ev=>ev.currentTarget.style.background=""}>
-                              <td style={{...erpTd,fontVariantNumeric:"tabular-nums",fontWeight:700,color:ERP.navy,whiteSpace:"nowrap"}}>{p.apNumber||<span style={{color:ERP.muted,fontWeight:500}} title="The server assigns the number when this syncs">pending</span>}{p.docType==="PRV"&&<div style={{fontSize:10.5,color:ERP.purple,fontWeight:700}}>Payment request</div>}</td>
-                              <td style={{...erpTd,fontVariantNumeric:"tabular-nums",color:ERP.muted,whiteSpace:"nowrap"}}>{p.poNumber||"—"}</td>
-                              <td style={{...erpTd,fontWeight:600,color:ERP.ink,maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={p.vendor}>{p.vendor||"—"}{pn&&<div style={{fontSize:11,color:ERP.purple,fontWeight:500}}>📁 {pn}</div>}</td>
-                              <td style={{...erpTd,fontVariantNumeric:"tabular-nums",fontSize:11.5,color:p.accountCode?ERP.ink:"#cbd5e1",whiteSpace:"nowrap"}} title={acct?`${acct.code} · ${acct.name}`:""}>{p.accountCode||"—"}</td>
-                              <td style={{...erpTd,color:ERP.muted,whiteSpace:"nowrap"}}>{p.invoiceNumber||p.invoiceRef||"—"}{!settled&&(()=>{const ds=supplierDocsStatus(p,{prs,drs,suppliers});if(!ds.applies&&!ds.overridden)return null;const n=ds.items.filter(i=>i.ok).length;return <div title={ds.overridden?"Docs overridden by a Manager":ds.ok?"All payment documents on file":"Missing: "+ds.missing.join(", ")} style={{fontSize:10.5,fontWeight:700,color:ds.overridden?"#7c3aed":ds.ok?ERP.ok:"#b45309"}}>{ds.overridden?"Docs overridden":ds.ok?"Docs ✓":`Docs ${n}/${ds.items.length}`}</div>;})()}</td>
-                              <td style={{...erpTd,fontVariantNumeric:"tabular-nums",color:ERP.muted,whiteSpace:"nowrap"}}>{p.invoiceDate||"—"}</td>
-                              <td style={{...erpTd,fontVariantNumeric:"tabular-nums",color:ERP.muted,whiteSpace:"nowrap"}}>{p.dueDate||"—"}</td>
-                              <td style={{...erpTd,fontWeight:700,color:settled?ERP.muted:ag.clr,whiteSpace:"nowrap"}}>{settled?"—":ag.label}</td>
-                              <td style={{...erpTdNum,fontWeight:700,color:ERP.navy,whiteSpace:"nowrap"}}>{fmtM(p.amount)}</td>
-                              <td style={{...erpTdNum,color:ERP.ok,whiteSpace:"nowrap"}}>{paidAmt>0?<button onClick={()=>setPayHistId(p.id)} title="Payment history" style={{background:"none",border:"none",padding:0,cursor:"pointer",color:"inherit",font:"inherit",textAlign:"right"}}>{fmtM(paidAmt)}{Number(p.amount)>0&&<div style={{fontSize:11,color:ERP.muted}}>{Math.round(paidAmt/Number(p.amount)*100)}%</div>}</button>:"—"}{(Number(p.retentionHeld)||0)>0&&<div style={{fontSize:10.5,color:"#b45309",fontWeight:700}} title="Retention held back from progress payments">Ret. {fmtM(Number(p.retentionHeld))}</div>}</td>
-                              <td style={{...erpTdNum,fontWeight:700,color:balance>0?ERP.danger:ERP.muted,whiteSpace:"nowrap"}}>{fmtM(balance)}</td>
-                              <td style={{...erpTd,whiteSpace:"nowrap"}}><ErpBadge kind={erpStatusKind(stTxt)}>{stTxt}</ErpBadge>{!settled&&p.approvalStatus==="Pending"&&<div style={{fontSize:10.5,fontWeight:800,color:"#b45309",marginTop:2}}>⏳ For approval</div>}{p.approvalStatus==="Rejected"&&<div style={{fontSize:10.5,fontWeight:800,color:ERP.danger,marginTop:2}}>✕ Rejected</div>}{p.approvalStatus==="Approved"&&p.approvedBy&&<div style={{fontSize:10,color:ERP.muted,marginTop:2}} title={`Approved by ${p.approvedBy}${p.approvedAt?" · "+p.approvedAt:""}`}>✓ {p.approvedBy}</div>}</td>
-                              {(()=>{
-                                const needV=payNeedsVerify(p),isSub=payIsSubcon(p);
-                                return(
-                                  <td style={{...erpTd,whiteSpace:"nowrap"}}>
-                                    {!needV
-                                      ? <span style={{fontSize:11,color:ERP.muted}}>—</span>
-                                      : p.verified
-                                        ? <ErpBadge kind="paid">{isSub?`${Number(p.verificationPct||0)}% Verified`:"Verified"}</ErpBadge>
-                                        : <ErpBadge kind="unpaid">{isSub?"Pending (Operations)":"Pending (Warehouse)"}</ErpBadge>}
-                                  </td>
-                                );
-                              })()}
+                              <td style={{...erpTd,whiteSpace:"nowrap"}} title={acct?`Account ${acct.code} · ${acct.name}`:p.accountCode?`Account ${p.accountCode}`:""}>
+                                <div style={{fontVariantNumeric:"tabular-nums",fontWeight:700,color:ERP.navy}}>{p.poNumber||p.apNumber||"—"}{p.docType==="PRV"&&<span style={{fontSize:10.5,color:ERP.purple,fontWeight:700,marginLeft:6}}>Payment request</span>}</div>
+                                <div style={sub}>{p.poNumber?(p.apNumber||"AP no. pending"):""}{inv&&inv!==p.poNumber?`${p.poNumber?" · ":""}Inv ${inv}`:""}
+                                  {ds&&(ds.applies||ds.overridden)&&(()=>{const k=ds.items.filter(i=>i.ok).length;return <span title={ds.overridden?"Docs overridden by a Manager":ds.ok?"All payment documents on file":"Missing: "+ds.missing.join(", ")} style={{marginLeft:6,fontWeight:700,color:ds.overridden?"#7c3aed":ds.ok?ERP.ok:"#b45309"}}>{ds.overridden?"Docs overridden":ds.ok?"Docs ✓":`Docs ${k}/${ds.items.length}`}</span>;})()}</div>
+                              </td>
+                              <td style={{...erpTd,maxWidth:220}}>
+                                <div style={{fontWeight:600,color:ERP.ink,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={p.vendor}>{p.vendor||"—"}</div>
+                                {pn&&<div style={{...sub,color:ERP.purple,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={pn}>{pn}</div>}
+                              </td>
+                              <td style={{...erpTd,whiteSpace:"nowrap"}}>
+                                <div style={{fontVariantNumeric:"tabular-nums",color:p.dueDate?ERP.ink:"#94a3b8"}}>{p.dueDate||"No date"}</div>
+                                {!settled&&p.dueDate&&<div style={{...sub,fontWeight:700,color:ag.clr}}>{ag.label}</div>}
+                              </td>
+                              <td style={{...erpTdNum,whiteSpace:"nowrap"}}>
+                                <div style={{fontWeight:700,color:balance>0?ERP.danger:ERP.muted}}>{fmtM(balance)}</div>
+                                <div style={sub}>{paidAmt>0
+                                  ?<button onClick={()=>setPayHistId(p.id)} title="Payment history" style={{background:"none",border:"none",padding:0,cursor:"pointer",color:ERP.ok,font:"inherit"}}>{Number(p.amount)>0?Math.round(paidAmt/Number(p.amount)*100):0}% paid</button>
+                                  :null}{paidAmt>0?" of ":"of "}{fmtM(p.amount)}</div>
+                                {(Number(p.retentionHeld)||0)>0&&<div style={{fontSize:10.5,color:"#b45309",fontWeight:700}} title="Retention held back from progress payments">Ret. {fmtM(Number(p.retentionHeld))}</div>}
+                              </td>
+                              <td style={{...erpTd,whiteSpace:"nowrap"}}>
+                                <ErpBadge kind={erpStatusKind(stTxt)}>{stTxt}</ErpBadge>
+                                <div style={{fontSize:10.5,fontWeight:700,marginTop:3,color:ERP.muted}}>
+                                  {!settled&&p.approvalStatus==="Pending"&&<span style={{color:"#b45309"}}>⏳ For approval</span>}
+                                  {p.approvalStatus==="Rejected"&&<span style={{color:ERP.danger}} title={p.notes||""}>✕ Rejected</span>}
+                                  {p.approvalStatus==="Approved"&&p.approvedBy&&<span title={`Approved by ${p.approvedBy}${p.approvedAt?" · "+p.approvedAt:""}`}>✓ {p.approvedBy}</span>}
+                                  {!settled&&needV&&<span style={{marginLeft:6,color:p.verified?ERP.ok:"#b45309"}}>{p.verified?(isSub?`· ${Number(p.verificationPct||0)}% certified`:"· Received"):(isSub?"· Not certified":"· Not received")}</span>}
+                                </div>
+                              </td>
                               <td style={{...erpTd,whiteSpace:"nowrap"}}>
                                 <div style={{display:"flex",gap:4,justifyContent:"flex-end",alignItems:"center"}}>
-                                  {!settled&&p.approvalStatus==="Pending"&&(canApprovePayables
-                                    ? <><button onClick={()=>approvePayable(p.id)} title="Approve for payment (Manager / Finance)" style={{background:ERP.ok||"#16a34a",border:"none",borderRadius:6,padding:"4px 10px",fontSize:".7rem",color:"#fff",cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>✓ Approve</button>
-                                        <button onClick={()=>rejectPayable(p.id)} title="Reject" style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>Reject</button></>
-                                    : <span title="Awaiting Manager / Finance approval" style={{fontSize:11,fontWeight:700,color:"#b45309",whiteSpace:"nowrap"}}>⏳ For approval</span>)}
-                                  {!settled&&p.approvalStatus==="Rejected"&&<span title={p.notes||"Rejected"} style={{fontSize:11,fontWeight:700,color:ERP.danger,whiteSpace:"nowrap"}}>✕ Rejected</span>}
-                                  {!settled&&payNeedsVerify(p)&&!p.verified&&<button onClick={()=>verifyPayable(p.id)} title={payIsSubcon(p)?"Operations: verify % complete":"Warehouse: verify receipt"} style={{background:ERP.gold,border:"none",borderRadius:6,padding:"4px 10px",fontSize:".7rem",color:ERP.navy,cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>✓ Verify</button>}
-                                  {!settled&&balance>0&&payApproved(p)&&(!payNeedsVerify(p)||p.verified)&&(!payIsSubcon(p)||(Number(p.amount)||0)-payableClaimed(p)>0.005)&&<button onClick={()=>openPayModal(p)} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"4px 12px",fontSize:".7rem",color:"#fff",cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>Pay</button>}
-                                  {(Number(p.retentionHeld)||0)>0&&payApproved(p)&&(!payNeedsVerify(p)||(Number(p.verificationPct)||0)>=100)&&<button onClick={()=>openRetentionRelease(p)} title="Release the retention held on this subcontractor bill" style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#b45309",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>Release ret.</button>}
-                                  {(paysOf(p.id).length>0||paidAmt>0)&&<button onClick={()=>setPayHistId(p.id)} title="Payment history" style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>History</button>}
-                                  {pageOn("checkvouchers")&&!settled&&payApproved(p)&&(!payNeedsVerify(p)||p.verified)&&!(p.cvId||p.status==="Check Issued")&&<button onClick={()=>payableToCheck(p.id)} title="Route to Check Voucher" style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#2563eb",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🖊 CV</button>}
-                                  <button onClick={()=>openBillForm({...p},p.id)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
-                                  <button onClick={()=>delPayable(p.id)} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+                                  {!settled&&needV&&!p.verified&&<button onClick={()=>verifyPayable(p.id)} title={isSub?"Operations: verify % complete":"Warehouse: verify receipt"} style={{background:ERP.gold,border:"none",borderRadius:6,padding:"4px 10px",fontSize:".7rem",color:ERP.navy,cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>✓ Verify</button>}
+                                  {!settled&&balance>0&&payApproved(p)&&(!needV||p.verified)&&(!isSub||(Number(p.amount)||0)-payableClaimed(p)>0.005)&&<button onClick={()=>openPayModal(p)} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"4px 12px",fontSize:".7rem",color:"#fff",cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>Pay</button>}
+                                  {(Number(p.retentionHeld)||0)>0&&payApproved(p)&&(!needV||(Number(p.verificationPct)||0)>=100)&&<button onClick={()=>openRetentionRelease(p)} title="Release the retention held on this subcontractor bill" style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#b45309",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>Release ret.</button>}
+                                  {pageOn("checkvouchers")&&!settled&&payApproved(p)&&(!needV||p.verified)&&!(p.cvId||p.status==="Check Issued")&&<button onClick={()=>payableToCheck(p.id)} title="Route to Check Voucher" style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#2563eb",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🖊 CV</button>}
+                                  <button onClick={()=>openBillForm({...p},p.id)} title="Edit bill" aria-label="Edit bill" style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
+                                  <button onClick={()=>delPayable(p.id)} title="Delete bill" aria-label="Delete bill" style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
                                 </div>
                               </td>
                             </tr>
@@ -16210,8 +16241,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       </tbody>
                     </table>
                   </div>
+                  {apVisible.length>apLogShow&&<div style={{padding:"10px 14px",borderTop:`1px solid ${ERP.line}`,display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:12,color:ERP.muted}}>
+                    <span>Showing {apLogShow} of {apVisible.length}</span>
+                    <button onClick={()=>setApLogShow(n=>n+50)} style={{background:"#fff",border:`1px solid ${ERP.line}`,borderRadius:7,padding:"5px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",color:ERP.navy}}>Show 50 more</button>
+                  </div>}
                 </div>
               )}
+              </>}
               {/* Record-Payment modal: full / partial payment, subcontractor progress
                   claim with retention, or retention release. Every save is a row in
                   payable_payments (see recordPayments). */}
@@ -16654,7 +16690,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(page==="procurement") return(<Wrap><ProcurementView2 poDraft={poDraft} clearPoDraft={()=>setPoDraft(null)} onPoFromPrf={linkPrfLines} payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="purchasing") return(<Wrap>{purchasingPage()}</Wrap>);
     if(page==="orderboard") return(<Wrap>{orderBoardPage()}</Wrap>);
-    if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="subconwo") return(<Wrap><SubconWOView woDraft={woDraft} clearWoDraft={()=>setWoDraft(null)} deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="costing") return(<Wrap><CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView sendTelegramNotification={sendTelegramNotification} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
@@ -17000,7 +17036,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(page==="procurement") return(<Wrap><ProcurementView2 poDraft={poDraft} clearPoDraft={()=>setPoDraft(null)} onPoFromPrf={linkPrfLines} payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="purchasing") return(<Wrap>{purchasingPage()}</Wrap>);
     if(page==="orderboard") return(<Wrap>{orderBoardPage()}</Wrap>);
-    if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="subconwo") return(<Wrap><SubconWOView woDraft={woDraft} clearWoDraft={()=>setWoDraft(null)} deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap} addMR={addMR} wonDeals={wonDeals} session={session}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView sendTelegramNotification={sendTelegramNotification} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="requests") return(<Wrap><RequestsView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
@@ -17500,7 +17536,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(page==="procurement") return(<Wrap><ProcurementView2 poDraft={poDraft} clearPoDraft={()=>setPoDraft(null)} onPoFromPrf={linkPrfLines} payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="purchasing") return(<Wrap>{purchasingPage()}</Wrap>);
     if(page==="orderboard") return(<Wrap>{orderBoardPage()}</Wrap>);
-    if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="subconwo") return(<Wrap><SubconWOView woDraft={woDraft} clearWoDraft={()=>setWoDraft(null)} deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView sendTelegramNotification={sendTelegramNotification} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="requests") return(<Wrap><RequestsView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
@@ -22782,7 +22818,7 @@ function CEQSView({ceReqs,addCEReq,updateCEReq,session,role,toastEmit,deals}){
 // ─── BOQ MODAL (opened from pipeline 📋 button) ──────────────────────────────
 
 // ─── SUBCON WORK ORDERS VIEW ───────────────────────────────────────────────────
-function SubconWOView({embedded=false,onEmbeddedDone,swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,deals,subcons,session,role,toastEmit,sendTelegramNotification,chartOfAccounts=[],onWaiveDp,onCreditTerms}){
+function SubconWOView({embedded=false,onEmbeddedDone,woDraft=null,clearWoDraft,swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,deals,subcons,session,role,toastEmit,sendTelegramNotification,chartOfAccounts=[],onWaiveDp,onCreditTerms}){
   const today=new Date().toISOString().split("T")[0];
   const[mode,setMode]=useState("list");
   const[editingId,setEditingId]=useState(null);
@@ -22821,7 +22857,29 @@ function SubconWOView({embedded=false,onEmbeddedDone,swos,addSWO,addSWOBatch,upd
   const ACCT_CLR={"For Accounting":"#d97706","Checked":"#2563eb","Payment Ordered":"#059669"};
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
   const canManage=role==="Manager"||isProcurementRole(role);
-  const woDirect=canApprovePO(role,session?.name||"",session?.name||"");
+  // Two signatures (Cost Control, then Finance) from the PO-tier release: no WO is issued
+  // on creation any more; before it, a Manager / the Procurement Manager issued directly.
+  const woDirect=!PO_TIERS_ON&&canApprovePO(role,session?.name||"",session?.name||"");
+  const woIssueBlocked=w=>PO_TIERS_ON&&w&&(w.status==="Pending Approval"||w.status==="Draft");
+  const signWo=async w=>{
+    if(!isSupabaseReady()){toastEmit&&toastEmit("No server connection: work orders are signed online only.","error",8000);return;}
+    const{data,error}=await supabase.rpc("sign_wo",{p_id:w.id});
+    if(error){toastEmit&&toastEmit(`Not signed: ${error.message||WO_SIGN_MSG}`,"error",9000);return;}
+    const me=session?.name||"";
+    if(data==="issued"){
+      updateSWO(w.id,{status:"Issued",approvedBy:me,acctStatus:w.acctStatus||"For Accounting"});
+      const aMsg=`✅ <b>Work Order Issued — ${w.woNumber}</b>\nSubcontractor: ${w.subcontractor||"—"}\nAmount: ${fmt(w.contractAmount)}\nRequested by: ${w.requestedBy||"—"}\nCost Control: ${w.ccApprovedBy||"—"} · Finance: ${me} · ${today}\n→ Sent to Accounting for documentation`;
+      sendTelegramNotification("procurement",aMsg);
+      sendTelegramNotification("financialcontrol",aMsg);
+      toastEmit&&toastEmit(`${w.woNumber} issued — sent to Accounting`,"success");
+    }else{
+      updateSWO(w.id,{ccApprovedBy:me,ccApprovedAt:new Date().toISOString()});
+      const cMsg=`✍️ <b>Work Order signed by Cost Control — ${w.woNumber}</b>\nSubcontractor: ${w.subcontractor||"—"}\nAmount: ${fmt(w.contractAmount)}\nSigned by: ${me} · ${today}\n→ Paolo Gomez (Finance) to sign and issue`;
+      sendTelegramNotification("financialcontrol",cMsg);
+      sendTelegramNotification("management",cMsg);
+      toastEmit&&toastEmit(`${w.woNumber} signed — Finance (Paolo Gomez) signs next`,"success");
+    }
+  };
   // Down payment gate (same rule as POs): no work order is issued on a deal the
   // client hasn't paid on, unless a Manager waived the down payment.
   const WO_ISSUED=["Issued","In Progress","Completed"];
@@ -22876,6 +22934,13 @@ function SubconWOView({embedded=false,onEmbeddedDone,swos,addSWO,addSWOBatch,upd
       paymentStructure:m.payment_structure||m.paymentStructure||p.paymentStructure||"",
       paymentTerms:m.payment_terms||m.paymentTerms||p.paymentTerms||""};
   });
+  // Purchasing → "+ WO": open the new-WO form with that subcontractor picked.
+  useEffect(()=>{
+    if(!woDraft) return;
+    openNew();
+    if(woDraft.subcontractor) pickSubcon(woDraft.subcontractor);
+    clearWoDraft&&clearWoDraft();
+  },[woDraft]);
 
   // ── Batch upload ────────────────────────────────────────────────────────────
   const batchInputRef=useRef(null);
@@ -23092,6 +23157,7 @@ function SubconWOView({embedded=false,onEmbeddedDone,swos,addSWO,addSWOBatch,upd
       const orig=swos.find(w=>w.id===editingId);
       const dpBlk=orig&&WO_ISSUED.includes(base.status)&&!WO_ISSUED.includes(orig.status)&&dpBlockedDeal(base.projectId);
       if(dpBlk){toastEmit&&toastEmit(dpMsg(dpBlk),"error",9000);return;}
+      if(base.status==="Issued"&&woIssueBlocked(orig)){toastEmit&&toastEmit(`${WO_SIGN_MSG} Use the Sign button on the work order.`,"error",8000);return;}
       if(base.status==="Issued"&&orig&&(orig.status==="Pending Approval"||orig.status==="Draft")&&!canApprovePO(role,session?.name||"",orig.requestedBy)){toastEmit&&toastEmit("Needs a Manager or the Procurement Manager to approve.","error");return;}
       if(base.status==="Issued"&&orig&&orig.status!=="Issued") Object.assign(base,{approvedBy:session?.name||"",acctStatus:base.acctStatus||"For Accounting"});
       updateSWO(editingId,base);
@@ -23634,13 +23700,26 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
                         <select value={w.status} onChange={e=>{const st=e.target.value;
                           const dpBlk=WO_ISSUED.includes(st)&&!WO_ISSUED.includes(w.status)&&dpBlockedDeal(w.projectId);
                           if(dpBlk){toastEmit&&toastEmit(dpMsg(dpBlk),"error",9000);return;}
+                          if(st==="Issued"&&woIssueBlocked(w)){toastEmit&&toastEmit(`${WO_SIGN_MSG} Use the Sign button.`,"error",8000);return;}
                           if(st==="Issued"&&(w.status==="Pending Approval"||w.status==="Draft")&&!canApprovePO(role,session?.name||"",w.requestedBy)){toastEmit&&toastEmit("Needs a Manager or the Procurement Manager to approve.","error");return;}
                           updateSWO(w.id,{status:st,...(st==="Issued"&&w.status!=="Issued"?{approvedBy:session?.name||"",acctStatus:w.acctStatus||"For Accounting"}:{})});}} style={{border:"1.5px solid #e2e8f0",borderRadius:6,padding:"3px 6px",fontFamily:"inherit",fontSize:".7rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
                           {SWO_STATUSES.map(s=><option key={s}>{s}</option>)}
                         </select>
                         {w.acctStatus&&<span style={{fontSize:".62rem",background:(ACCT_CLR[w.acctStatus]||"#94a3b8")+"22",color:ACCT_CLR[w.acctStatus]||"#94a3b8",border:`1px solid ${(ACCT_CLR[w.acctStatus]||"#94a3b8")}44`,borderRadius:20,padding:"1px 8px",fontWeight:700}}>🧾 {w.acctStatus}{w.acctStatus==="Payment Ordered"&&w.paymentBank?` · ${(BANKS.find(b=>b.id===w.paymentBank)||{}).short||w.paymentBank}`:""}</span>}
                         <div style={{marginLeft:"auto",display:"flex",gap:6}}>
-                          {(w.status==="Pending Approval"||w.status==="Draft")&&canApprovePO(role,session?.name||"",w.requestedBy)&&(
+                          {PO_TIERS_ON&&(w.status==="Pending Approval"||w.status==="Draft")&&(()=>{
+                            const step=woSignStep(w,session?.username,role,session?.name);
+                            return <>
+                              <span style={{fontSize:".66rem",color:"#475569",alignSelf:"center",whiteSpace:"nowrap"}}>
+                                Cost Control: {w.ccApprovedBy?<b style={{color:"#059669"}}>✓ {w.ccApprovedBy}</b>:<b style={{color:"#b45309"}}>waiting</b>} · Finance: <b style={{color:"#b45309"}}>waiting</b>
+                              </span>
+                              {step&&<button onClick={()=>{
+                                if(step==="finance"){const dpBlk=dpBlockedDeal(w.projectId);if(dpBlk){toastEmit&&toastEmit(dpMsg(dpBlk),"error",9000);return;}}
+                                signWo(w);
+                              }} style={{background:step==="finance"?"#059669":"#2563eb",border:"none",borderRadius:7,padding:"4px 12px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>{step==="finance"?"✓ Sign & Issue (Finance)":"✍ Sign (Cost Control)"}</button>}
+                            </>;
+                          })()}
+                          {!PO_TIERS_ON&&(w.status==="Pending Approval"||w.status==="Draft")&&canApprovePO(role,session?.name||"",w.requestedBy)&&(
                             <button onClick={()=>{
                               const dpBlk=dpBlockedDeal(w.projectId);
                               if(dpBlk){toastEmit&&toastEmit(dpMsg(dpBlk),"error",9000);return;}
@@ -23651,12 +23730,12 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
                               toastEmit&&toastEmit(`${w.woNumber} approved — sent to Accounting`,"success");
                             }} style={{background:"#059669",border:"none",borderRadius:7,padding:"4px 12px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>✓ Approve & Issue</button>
                           )}
-                          {(w.status==="Pending Approval"||w.status==="Draft")&&!canApprovePO(role,session?.name||"",w.requestedBy)&&(
+                          {!PO_TIERS_ON&&(w.status==="Pending Approval"||w.status==="Draft")&&!canApprovePO(role,session?.name||"",w.requestedBy)&&(
                             <span style={{fontSize:".68rem",color:"#b45309",fontWeight:600,alignSelf:"center"}}>⏳ Awaiting approval</span>
                           )}
                           <button aria-label={`Print work order ${w.woNumber||""}`.trim()} title="Print work order" onClick={()=>printWO(w)} style={{background:"#eff6ff",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨 Print</button>
                           <button aria-label="Generate subcontractor contract" onClick={()=>printSubconContract(w)} title="Generate the Standard Subcontractor Contract" style={{background:"#0B2545",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>📄 Contract</button>
-                          <button aria-label={`Edit work order ${w.woNumber||""}`.trim()} title="Edit work order" onClick={()=>openEdit(w)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏ Edit</button>
+                          {role!=="QS"&&<button aria-label={`Edit work order ${w.woNumber||""}`.trim()} title="Edit work order" onClick={()=>openEdit(w)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏ Edit</button>}
                           {canManage&&<button aria-label={`Delete work order ${w.woNumber||""}`.trim()} title="Delete work order" onClick={async ()=>{
                             // Policy v2.0: a WO already in Accounting (or paid) can't be
                             // deleted silently — it breaks the finance/document trail.
@@ -23989,7 +24068,7 @@ function ProcurementView2({embedded=false,onEmbeddedDone,poDraft=null,clearPoDra
   // approver stamp, so the printed PO never shows the preparer as the approver.
   // Same helper (canApprovePO) already gates Subcon Work Orders.
   // PO approval: Cost Control up to ₱150,000, a Manager above (canApprovePOLine).
-  const canApproveFor=(requestedBy,total)=>canApprovePOLine(role,session?.name||"",requestedBy,total);
+  const canApproveFor=(requestedBy,total,poNo)=>canApprovePOLine(role,session?.name||"",requestedBy,total,poNo?poSplitTotal(prs,poNo):null);
   const poApprovalTotal=no=>poLinesTotal(prs.filter(p=>p.poNumber===no));
   // Down payment gate: the deal a PO line is for, when that deal still needs a
   // down payment (or a Manager's waiver) before anything can be issued on it.
@@ -24003,7 +24082,7 @@ function ProcurementView2({embedded=false,onEmbeddedDone,poDraft=null,clearPoDra
     const blocked=ISSUED_ST.includes(st)&&!ISSUED_ST.includes(pr.status)&&dpBlockedDeal(pr.projectId||pr.dealId);
     if(blocked){toastEmit&&toastEmit(dpMsg(blocked),"error",9000);return;}
     if(st==="PO Issued"&&pr.status!=="PO Issued"){
-      if(!canApproveFor(pr.requestedBy,poApprovalTotal(pr.poNumber))){
+      if(!canApproveFor(pr.requestedBy,poApprovalTotal(pr.poNumber),pr.poNumber)){
         toastEmit&&toastEmit(`${PO_APPROVER_MSG}: held at Pending Approval.`,"error");
         patch={status:"Pending Approval"};
       }else{
@@ -24080,6 +24159,8 @@ function ProcurementView2({embedded=false,onEmbeddedDone,poDraft=null,clearPoDra
     if(!poDraft) return;
     openNewPO();
     setPoSupplier(poDraft.supplier||"");
+    // Purchasing → "+ PO" sends only the supplier: keep the blank line openNewPO made.
+    if(!(poDraft.lines||[]).length){clearPoDraft&&clearPoDraft();return;}
     setPoItems(poDraft.lines.map(l=>({...emptyPoItem(),projectId:l.dealId||"",projectName:(()=>{const d=activeDeals.find(x=>x.id===l.dealId)||(allDeals||[]).find(x=>x.id===l.dealId);return d?projDisplayName(d):"";})(),itemName:l.itemName,category:l.category||"Materials",budgetCategory:"Materials",
       qty:Number(l.qty)||1,unit:l.unit||"pcs",estUnitCost:Number(l.estUnitCost)||0,_prfId:l.prfId,_prfLineId:l.lineId,_prfNo:l.prfNo})));
     prfDraftRef.current=true;
@@ -24264,7 +24345,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
       sendTelegramNotification("management",poMsg);
       if(effStatus==="Pending Approval"){
         const tot=poLinesTotal(poItems.map(i=>({qty:i.qty,estUnitCost:i.estUnitCost})));
-        sendTelegramNotification("financialcontrol",`🧾 <b>PO ${poNo} needs approval</b> · ₱${Math.round(tot).toLocaleString("en-PH")}\n${PO_TIERS_ON&&tot>=250000?"₱250,000 and above: Paulo, Mar or Arrius approves.":tot>150000?(PO_TIERS_ON?"₱150,000 to ₱250,000: Paolo Gomez approves.":"Above ₱150,000: Paolo Gomez approves."):"Cost Control approves (up to ₱150,000)."}\nSupplier: ${poSupplier} · Project: ${projects}`);
+        sendTelegramNotification("financialcontrol",`🧾 <b>PO ${poNo} needs approval</b> · ₱${Math.round(tot).toLocaleString("en-PH")}\n${PO_TIERS_ON&&tot>=250000?"₱250,000 and above: Paulo, Mar or Arrius approves.":tot>150000?(PO_TIERS_ON?"₱150,000 to ₱250,000: Paolo Gomez approves.":"Above ₱150,000: Paolo Gomez approves."):PO_TIERS_ON&&tot<=50000?"Up to ₱50,000: Marian (if that supplier's POs today stay within ₱50,000) or Cost Control approves.":"Cost Control approves (up to ₱150,000)."}\nSupplier: ${poSupplier} · Project: ${projects}`);
       }
       toastEmit&&toastEmit(`PO ${poNo} saved — ${poItems.length} item${poItems.length>1?"s":""}`,"success");
     }
@@ -24435,7 +24516,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
               // Enforce the PO issue gate on edits too — a non-approver cannot
               // flip an existing PO to "PO Issued" via the edit form.
               else if(editForm.status==="PO Issued"&&orig&&orig.status!=="PO Issued"){
-                if(!canApproveFor(editForm.requestedBy||orig.requestedBy,poApprovalTotal(orig.poNumber))){
+                if(!canApproveFor(editForm.requestedBy||orig.requestedBy,poApprovalTotal(orig.poNumber),orig.poNumber)){
                   toastEmit&&toastEmit(`${PO_APPROVER_MSG}: held at Pending Approval.`,"error");
                   patch={...patch,status:"Pending Approval",approvedBy:"",approvedAt:""};
                 }else{
@@ -24689,6 +24770,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
             const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
             const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent("﻿"+csv);a.download=`GMD_PurchaseOrders_${today}.csv`;a.click();
           }} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>
+          {canRaiseOrder(role)&&<>
           <label style={{background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#16a34a",cursor:"pointer",whiteSpace:"nowrap"}}>
             ⬆ Import CSV
             <input type="file" accept=".csv" style={{display:"none"}} onChange={e=>{
@@ -24726,6 +24808,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
             }}/>
           </label>
           <button onClick={()=>cashOutHas("po")?openCashOut("po"):openNewPO()} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>+ New Purchase Order</button>
+          </>}
         </div>
       </div>
 

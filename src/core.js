@@ -426,6 +426,10 @@ export const canonRole = r => RLS_ROLE_MAP[r] || r;
 // Use this for every UI/ability gate that should cover both; keep === checks
 // only where the manager and the buyer must be told apart (i.e. PO approval).
 export const isProcurementRole = r => r === "Procurement" || r === "ProcurementManager";
+// Who raises (creates) POs and subcon WOs: Procurement, the Procurement Manager and
+// Managers. Finance pays, so it never raises an order (Paulo, 2026-11-11). The
+// database refuses a new PO line / WO from Finance roles (migration 20261114050000).
+export const canRaiseOrder = r => r === "Manager" || isProcurementRole(r);
 
 // Human-readable labels for role codes that aren't self-explanatory when shown
 // raw (role codes are used directly in ===/object-key comparisons, so we keep
@@ -1369,14 +1373,32 @@ export const isTopApprover=name=>PO_TOP_APPROVERS.includes(String(name||"").trim
 // Switched on with migration 20261114010000 (weekend release). Until then any
 // Manager approves any amount, as the database still does.
 export const PO_TIERS_ON=false;
-export const canApprovePOLine=(role,sessionName,requestedBy,total)=>{
+// Procurement Manager (Paulo, 2026-11-09; on with PO_TIERS_ON): Marian approves a PO
+// requested by her team (not by her) up to ₱50,000, as long as everything ordered from
+// that supplier on the PO's date is ₱50,000 or less (poSplitTotal), so one order can't
+// be cut into small POs. The database also checks the requester is in Procurement.
+// Mirrors po_split_total() / po_line_approver_name() (migration 20261114030000).
+export const PO_PROC_MGR_LIMIT=50000;
+// Same key as ap_vendor_key() in the database: first 8 letters/digits, lower case.
+export const poVendorKey=v=>String(v||"").replace(/[^a-zA-Z0-9]/g,"").toLowerCase().slice(0,8);
+const poLineDate=l=>l.poDate||String(l.createdAt||l.createdDate||"").slice(0,10);
+// What was ordered from PO poNo's supplier on its date, across all POs (non-cancelled
+// lines). null when the PO has no supplier: the Procurement Manager can't approve it.
+export const poSplitTotal=(prs,poNo)=>{
+  const f=(prs||[]).find(p=>p.poNumber===poNo); if(!f) return null;
+  const k=poVendorKey(f.supplier), d=poLineDate(f); if(!k) return null;
+  return poLinesTotal((prs||[]).filter(p=>p.poNumber&&poVendorKey(p.supplier)===k&&poLineDate(p)===d));
+};
+export const canApprovePOLine=(role,sessionName,requestedBy,total,split=null)=>{
   const t=Number(total)||0;
+  const notMine=!requestedBy||!sessionName||sessionName.trim().toLowerCase()!==requestedBy.trim().toLowerCase();
   if(role==="Manager") return !PO_TIERS_ON||t<PO_MANAGER_LIMIT||isTopApprover(sessionName);
-  if(role==="QS") return t<=PO_COST_CONTROL_LIMIT
-    &&(!requestedBy||!sessionName||sessionName.trim().toLowerCase()!==requestedBy.trim().toLowerCase());
+  if(role==="QS") return t<=PO_COST_CONTROL_LIMIT&&notMine;
+  if(role==="ProcurementManager") return PO_TIERS_ON&&!!requestedBy&&notMine
+    &&split!=null&&t<=PO_PROC_MGR_LIMIT&&Number(split)<=PO_PROC_MGR_LIMIT;
   return false;
 };
-export const PO_APPROVER_MSG=PO_TIERS_ON?"Cost Control approves POs up to ₱150,000, Paolo Gomez up to ₱250,000, and Paulo, Mar or Arrius from ₱250,000":"Needs Cost Control (POs up to ₱150,000) or a Manager (above ₱150,000: Paolo Gomez)";
+export const PO_APPROVER_MSG=PO_TIERS_ON?"Marian approves her team's POs up to ₱50,000 (all of that supplier's POs that day), Cost Control up to ₱150,000, Paolo Gomez up to ₱250,000, and Paulo, Mar or Arrius from ₱250,000":"Needs Cost Control (POs up to ₱150,000) or a Manager (above ₱150,000: Paolo Gomez)";
 
 export const canApprovePO=(role,sessionName,requestedBy)=>{
   // Only a Manager or a Procurement Manager may approve (issue) a PO or subcon
@@ -1388,6 +1410,29 @@ export const canApprovePO=(role,sessionName,requestedBy)=>{
   if(role==="ProcurementManager") return !requestedBy||!sessionName||sessionName.trim().toLowerCase()!==requestedBy.trim().toLowerCase();
   return false;
 };
+
+// Work orders: two signatures, no amount limit (Paulo, 2026-11-12; on with PO_TIERS_ON).
+// 1) Cost Control: Rodney (username rodney) or the Procurement Manager (Marian);
+// 2) Finance: Paolo Gomez (paolo), with Paulo and Mar as back-up; it issues the WO.
+// Nobody signs both, nobody signs a WO they requested. Mirrors wo_signer_kind() /
+// sign_wo() / swo_require_approver() (migration 20261114070000).
+export const WO_FIN_SIGNERS=["paolo","paulo","mar"];
+export const woSignerKind=(username,role)=>{
+  const u=String(username||"").trim().toLowerCase();
+  if(WO_FIN_SIGNERS.includes(u)) return "finance";
+  if(u==="rodney"||role==="ProcurementManager") return "cc";
+  return null;
+};
+// Which signature this user can give on WO w now: "cc", "finance" or null.
+export const woSignStep=(w,username,role,name)=>{
+  if(!w||!["Draft","Pending Approval"].includes(w.status||"")) return null;
+  const nm=String(name||"").trim().toLowerCase();
+  if(nm&&nm===String(w.requestedBy||"").trim().toLowerCase()) return null;
+  const kind=woSignerKind(username,role);
+  if(!w.ccApprovedBy) return kind==="cc"?"cc":null;
+  return kind==="finance"&&nm!==String(w.ccApprovedBy).trim().toLowerCase()?"finance":null;
+};
+export const WO_SIGN_MSG="A work order needs Cost Control (Rodney or Marian), then Finance (Paolo Gomez) to sign it.";
 
 export const woRetentionAmt=w=>Math.min(Number(w.retentionPct)||0,100)/100*(Number(w.contractAmount)||0);
 
