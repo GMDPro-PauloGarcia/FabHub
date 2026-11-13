@@ -61,7 +61,7 @@ const MGR_SIMPLE_HOME=true;
 // Owners (Paulo, Mar, Arrius from 2026-11-14): Project Margins and the Financial Overview.
 const OWNER_USERS=PO_TIERS_ON?["paulo","mar","arrius"]:["paulo","mar"];
 // Loans (preview 2026-11-08): credit lines + bank loans, linked to the cash sheet (views/LoansView.jsx).
-const LOANS_V2=true; // on since the 13 Nov release (migration 20261108010000)
+const LOANS_V2=false; // on once migration 20261108010000 is applied
 // Nav items that are a Finance tab, not a page of their own.
 const NAV_FIN_TAB={payables:"payables",aplog:"aplog",payments:"payments",cashposition:"cash",supplierbills:"bills",executive:"overview",exectxns:"txns",execpl:"pl",execloans:"loans",
   expmon:"expmon",payrun:"payrun",bir2307:"bir2307",monboard:"monboard",subconmon:"subconmon"};

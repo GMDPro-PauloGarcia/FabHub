@@ -1405,7 +1405,7 @@ export const PO_TOP_APPROVERS=["paulo garcia","mar mungcal","arrius catubay"];
 export const isTopApprover=name=>PO_TOP_APPROVERS.includes(String(name||"").trim().toLowerCase());
 // Switched on with migration 20261114010000 (weekend release). Until then any
 // Manager approves any amount, as the database still does.
-export const PO_TIERS_ON=true;
+export const PO_TIERS_ON=false;
 // Procurement Manager (Paulo, 2026-11-09; on with PO_TIERS_ON): Marian approves a PO
 // requested by her team (not by her) up to ₱50,000, as long as everything ordered from
 // that supplier on the PO's date is ₱50,000 or less (poSplitTotal), so one order can't

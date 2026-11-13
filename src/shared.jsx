@@ -169,8 +169,9 @@ export const isHiddenView=(page,finTab)=>HIDDEN_PAGES.has(page)||(page==="financ
 // Deliveries (receiving). Issue to Site / Fab Release / Stock Log / low-stock
 // prompts are gated with pageOn("inventory"). PM Updates (pmupdates) and Scope
 // Changes (addenda) are replaced by the Progress list (30/60/90/100).
-const RETIRED_PAGES = ["dailylog","swatchboard","budgetreq","requests","audit","checkvouchers","stockmove","inventory","pmupdates","addenda"];
+const RETIRED_PAGES = ["liquidations","dailylog","swatchboard","budgetreq","requests","audit","checkvouchers","stockmove","inventory","pmupdates","addenda"];
 RETIRED_PAGES.forEach(id=>{HIDDEN_NAV_IDS.add(id);HIDDEN_PAGES.add(id);});
+HIDDEN_FIN_TABS.add("loans"); // on once migration 20261108010000 is applied (views/LoansView.jsx, LOANS_V2)
 export const HIDDEN_PIPE_TABS = new Set(["updates"]);
 // A link, tile or quick action to a page shows only while that page is on.
 export const pageOn = id => !HIDDEN_PAGES.has(id);
