@@ -720,13 +720,8 @@ export const sbLoadAll = async () => {
     const settingsObj = Object.fromEntries((appSettings||[]).map(s => [s.key, s.value]))
     const projsObj    = Object.fromEntries((projRows||[]).map(r => [r.deal_id, r.data]))
 
-    // Embed loan_payments into loans
-    const loansArr = loans.map(l => ({
-      ...l,
-      payments: loanPayments.filter(p => p.loan_id === l.id).map(p => ({
-        id: p.id, loan_id: p.loan_id, amount: Number(p.amount), date: p.date
-      }))
-    }))
+    // Embed loan_payments into loans (draws / payments, see loanFromSb)
+    const loansArr = loans.map(l => loanFromSb(l, loanPayments))
 
     return { deals, jos, pcards: pcardsObj, billings: billingsArr, exps: expenses, inflows,
              prs, mreqs, breqs, addenda, cashPositions: cashPosObj, budgets: budgetsObj,
@@ -830,3 +825,46 @@ export const logClientError = (err, info, view) => {
       .catch(() => {})
   } catch (_) { /* telemetry must never break the crash handler */ }
 }
+
+
+// ─── Loans (Executive › Loans) ──────────────────────────────────────────────
+// One loan row + its loan_payments rows → the shape LoansView uses: credit
+// lines carry draws (money in) and payments; bank loans carry payments.
+// Migration 20261108010000 added kind / credit_limit / first_due and, on
+// loan_payments, entry_type / principal / interest / bank / cash_key / note.
+const _ln = v => Number(v) || 0
+export const loanEntryFromSb = p => ({
+  id: p.id, loanId: p.loan_id, type: p.entry_type || 'payment', date: p.date || null,
+  amount: _ln(p.amount), principal: _ln(p.principal), interest: _ln(p.interest),
+  bank: p.bank || '', cashKey: p.cash_key || '', cashDate: p.cash_date || null,
+  note: p.note || '', recordedBy: p.recorded_by || '', createdAt: p.created_at || null,
+})
+export const loanFromSb = (l, payments = []) => {
+  const entries = (payments || []).filter(p => p.loan_id === l.id).map(loanEntryFromSb)
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+  return {
+    ...l,
+    kind: l.kind || 'bank_loan', name: l.name || '', lender: l.lender || '',
+    limit: _ln(l.credit_limit), principal: _ln(l.principal),
+    disbursedDate: l.disbursed_date || null, termMonths: _ln(l.term_months),
+    interestRate: _ln(l.interest_rate), monthlyPayment: _ln(l.monthly_payment),
+    firstDue: l.first_due || null, status: l.status || 'Active', notes: l.notes || '',
+    draws: entries.filter(e => e.type === 'draw'),
+    payments: entries.filter(e => e.type !== 'draw'),
+  }
+}
+export const loanToSb = l => ({
+  id: l.id, kind: l.kind === 'credit_line' ? 'credit_line' : 'bank_loan',
+  lender: l.lender || '', name: l.name || '', type: l.kind === 'credit_line' ? 'Credit line' : 'Bank loan',
+  credit_limit: l.kind === 'credit_line' ? (_ln(l.limit) || null) : null,
+  principal: l.kind === 'credit_line' ? null : (_ln(l.principal) || null),
+  disbursed_date: l.disbursedDate || null, term_months: _ln(l.termMonths) || null,
+  interest_rate: _ln(l.interestRate) || null, monthly_payment: _ln(l.monthlyPayment) || null,
+  first_due: l.firstDue || null, status: l.status || 'Active', notes: l.notes || '',
+})
+export const loanEntryToSb = e => ({
+  id: e.id, loan_id: e.loanId, entry_type: e.type === 'draw' ? 'draw' : 'payment', date: e.date || null,
+  amount: e.type === 'draw' ? _ln(e.amount) : _ln(e.principal) + _ln(e.interest),
+  principal: e.type === 'draw' ? _ln(e.amount) : _ln(e.principal), interest: e.type === 'draw' ? 0 : _ln(e.interest),
+  bank: e.bank || '', cash_key: e.cashKey || null, cash_date: e.cashDate || null, note: e.note || '',
+})

@@ -113,6 +113,44 @@ export const isActivePipeline = (stage)=>!WON_STAGES.includes(stage)&&!isLostSta
 // Kickoff and Close-Out; Completed (financial gate) and reopening a Completed
 // project stay with the deal editors. Mirrors set_deal_stage() (migration
 // 20261027090000_set_deal_stage_rpc.sql) — keep them in sync.
+// Project stages as shown on Project Cards (agreed with Paulo 2026-11-11).
+// Two flows, picked by the deal's CE type. Each step is one stored stage
+// value (or two), so the database keeps its detailed stages (set_deal_stage,
+// jo_awarded_stage, PRF and coordinator rules treat 06..12 as one set).
+// Construction tracks progress as the PM's % (Progress tab), not as steps.
+// Every WON_STAGES value must be in one step of each flow.
+export const CONSTRUCTION_CE_TYPES=["Construction","Retail Fit-Out"];
+export const isConstructionDeal=d=>CONSTRUCTION_CE_TYPES.includes(d?.ceType);
+const _K={key:"kickoff", label:"Kickoff",     target:"06 · Kickoff",     color:"#8b5cf6",stages:["06 · Kickoff"]};
+const _P={key:"punch",   label:"Punchlist",   target:"11 · Punchlist",   color:"#ef4444",stages:["11 · Punchlist"]};
+const _D={key:"done",    label:"Done",        target:"12 · Close-Out",   color:"#059669",stages:["12 · Close-Out"],
+  hint:"All punchlist items completed; ready to receive retention"};
+const _C={key:"complete",label:"Completed",   target:"14 · Completed",   color:"#047857",stages:["14 · Completed"]};
+export const PROJECT_STAGE_FLOWS={
+  fabrication:[_K,
+    {key:"briefing",label:"Briefing",    target:"07 · Briefing",    color:"#6366f1",stages:["07 · Briefing"]},
+    {key:"fab",     label:"Fabrication", target:"08 · Fabrication", color:"#f59e0b",stages:["08 · Fabrication"]},
+    {key:"install", label:"Installation",target:"10 · Installation",color:"#3b82f6",stages:["09 · Site & Billing","10 · Installation"]},
+    _P,_D,_C],
+  construction:[_K,
+    {key:"briefing",label:"Briefing",    target:"07 · Briefing",    color:"#6366f1",stages:["07 · Briefing","08 · Fabrication"]},
+    {key:"mob",     label:"Mobilization",target:"09 · Site & Billing",color:"#f97316",stages:["09 · Site & Billing"]},
+    {key:"works",   label:"Works",       target:"10 · Installation",color:"#3b82f6",stages:["10 · Installation"],showPct:true,
+      hint:"Construction under way: the PM updates the % on the Progress tab"},
+    _P,_D,_C],
+};
+export const projStageFlow=deal=>PROJECT_STAGE_FLOWS[isConstructionDeal(deal)?"construction":"fabrication"];
+// Index of the deal's current step in its flow (-1 if its stage isn't a project stage).
+export const projStepIndex=deal=>projStageFlow(deal).findIndex(s=>s.stages.includes(deal?.stage));
+// "Works · 45%" for a construction project under way; otherwise the step name.
+export const projStepLabel=(step,pc)=>step.showPct&&pc?.manualProgress!=null?`${step.label} · ${pc.manualProgress}%`:step.label;
+export const projStageLabel=(deal,pc)=>{
+  const f=projStageFlow(deal)[projStepIndex(deal)];
+  return f?projStepLabel(f,pc):(String(deal?.stage||"").replace(/^\d+ · /,"")||"—");
+};
+// Punchlist is the sign a project has reached 90 %.
+export const PUNCHLIST_MIN_PCT=90;
+
 export const STAGE_EDITOR_ROLES = ["Manager","Sales","SalesOpsAdmin","QS"];
 export const PM_STAGE_ROLES     = ["ProjectMover","Operations"];
 export const PM_SETTABLE_STAGES = WON_STAGES.filter(s=>s!=="14 · Completed");
@@ -388,6 +426,10 @@ export const canonRole = r => RLS_ROLE_MAP[r] || r;
 // Use this for every UI/ability gate that should cover both; keep === checks
 // only where the manager and the buyer must be told apart (i.e. PO approval).
 export const isProcurementRole = r => r === "Procurement" || r === "ProcurementManager";
+// Who raises (creates) POs and subcon WOs: Procurement, the Procurement Manager and
+// Managers. Finance pays, so it never raises an order (Paulo, 2026-11-11). The
+// database refuses a new PO line / WO from Finance roles (migration 20261114050000).
+export const canRaiseOrder = r => r === "Manager" || isProcurementRole(r);
 
 // Human-readable labels for role codes that aren't self-explanatory when shown
 // raw (role codes are used directly in ===/object-key comparisons, so we keep
@@ -428,11 +470,11 @@ export const PERMISSIONS = {
   billing_milestones:  { label:"Billing Milestones",       group:"Finance",     select:["Manager","Sales","Finance","Accounting","FinanceAssistant","SalesOpsAdmin"], insert:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"], update:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"], delete:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"] },
   billing_payments:    { label:"Billing Payments",         group:"Finance",     select:["Manager","Sales","Finance","Accounting","FinanceAssistant","SalesOpsAdmin"], insert:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"], update:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"], delete:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"] },
   expenses:            { label:"Expenses",                 group:"Finance",     select:[AUTH], insert:["Manager","Finance","Accounting","FinanceAssistant","SalesOpsAdmin","Procurement"], update:["Manager","Finance","Accounting","FinanceAssistant","SalesOpsAdmin","Procurement"], delete:["Manager"] },
-  payables:            { label:"Payables",                 group:"Finance",     select:["Manager","Finance","Accounting","FinanceAssistant","Procurement","SalesOpsAdmin"], insert:["Manager","Finance","Accounting","FinanceAssistant","Procurement","SalesOpsAdmin"], update:["Manager","Finance","Accounting","FinanceAssistant","Procurement","SalesOpsAdmin"], delete:["Manager"] },
+  payables:            { label:"Payables",                 group:"Finance",     select:["Manager","Finance","Accounting","FinanceAssistant","Procurement","ProcurementManager","SalesOpsAdmin"], insert:["Manager","Procurement","ProcurementManager","Finance","FinanceAssistant","Accounting"], update:["Manager","Finance","Accounting","FinanceAssistant","Procurement","ProcurementManager","SalesOpsAdmin"], delete:["Manager"] }, // insert: Finance roles only for no-PO bills on a cost center (migration 20261111100000, canBillOpex)
   payable_payments:    { label:"Payable Payments",         group:"Finance",     select:["Manager","Finance","Accounting","FinanceAssistant","Procurement","SalesOpsAdmin"], insert:["Manager","Finance","Accounting","FinanceAssistant"], update:["Manager","Finance","Accounting","FinanceAssistant"], delete:[] },
   check_vouchers:      { label:"Check Vouchers",           group:"Finance",     select:["Manager","Finance","Accounting","FinanceAssistant"], insert:["Manager","Accounting"], update:["Manager","Finance","Accounting","FinanceAssistant"], delete:["Manager"] },
-  purchase_requests:   { label:"Purchase Orders",          group:"Procurement", select:["Manager","Finance","Accounting","FinanceAssistant","Procurement","QS"], insert:["Manager","Finance","FinanceAssistant","Procurement"], update:["Manager","Finance","FinanceAssistant","Procurement"], delete:["Manager","Procurement"] },
-  subcon_work_orders:  { label:"Subcon Work Orders",       group:"Procurement", select:["Manager","Sales","Finance","Accounting","FinanceAssistant","Procurement","SalesOpsAdmin"], insert:["Manager","Finance","FinanceAssistant","Procurement"], update:["Manager","Finance","Accounting","FinanceAssistant","Procurement"], delete:["Manager","Procurement"] },
+  purchase_requests:   { label:"Purchase Orders",          group:"Procurement", select:["Manager","Finance","Accounting","FinanceAssistant","Procurement","ProcurementManager","QS"], insert:["Manager","Procurement","ProcurementManager"], update:["Manager","Finance","FinanceAssistant","Procurement","ProcurementManager"], delete:["Manager","Procurement","ProcurementManager"] },
+  subcon_work_orders:  { label:"Subcon Work Orders",       group:"Procurement", select:["Manager","Sales","Finance","Accounting","FinanceAssistant","Procurement","ProcurementManager","SalesOpsAdmin"], insert:["Manager","Procurement","ProcurementManager"], update:["Manager","Finance","Accounting","FinanceAssistant","Procurement","ProcurementManager"], delete:["Manager","Procurement","ProcurementManager"] },
   material_requests:   { label:"Material Requests",        group:"Procurement", select:["Manager","ProjectMover","Sales","Finance","FinanceAssistant","Procurement","SalesOpsAdmin"], insert:["Manager","Sales","Procurement","SalesOpsAdmin"], update:["Manager","Finance","FinanceAssistant","Procurement"], delete:["Manager","Procurement"] },
   budget_requests:     { label:"Budget Requests",          group:"Procurement", select:["Manager","ProjectMover","Sales","Finance","FinanceAssistant","Procurement","SalesOpsAdmin"], insert:["Manager","Sales","Procurement","SalesOpsAdmin"], update:["Manager","Finance","FinanceAssistant","Procurement"], delete:["Manager","Procurement"] },
   suppliers:           { label:"Suppliers",                group:"Procurement", select:["Manager","Finance","FinanceAssistant","Procurement"], insert:["Manager","Procurement"], update:["Manager","Procurement"], delete:["Manager","Procurement"] },
@@ -578,6 +620,30 @@ export const isBillingOverdue = (b={}, today) =>
   !!b.dueDate && b.dueDate < today && !["Draft","Fully Paid","Cancelled"].includes(b.status);
 export const isBillingUnsentLate = (b={}, today) =>
   !!b.dueDate && b.dueDate < today && b.status === "Draft";
+// ── Collections: aging bucket and call order, one rule for every AR screen ──
+// A Draft milestone has not been sent to the client, so it is never aged as
+// overdue: it sits in "unbilled" (Finance still has to send it). Everything
+// else is aged by days past its due date. Before 2026-11-11 Drafts were aged
+// with the sent invoices, which put ₱6.7M of unsent billings in the overdue
+// buckets for collectors to call about.
+export const AR_SMALL_BALANCE = 5000; // below this, a balance goes to the bottom of the call order
+export const arDaysPastDue = (b={}, now=new Date()) =>
+  b.dueDate ? Math.floor((now - new Date(b.dueDate)) / 864e5) : 0;
+export const arAgeBucket = (b={}, now=new Date()) => {
+  if (b.status === "Draft") return "unbilled";
+  const d = arDaysPastDue(b, now);
+  return d<=0 ? "current" : d<=30 ? "d30" : d<=60 ? "d60" : d<=90 ? "d90" : "over90";
+};
+const arRankOfDays = d => d>90 ? 4 : d>60 ? 3 : d>30 ? 2 : d>0 ? 1 : 0;
+// Who to call first: oldest aging bucket first, then the biggest amount within
+// that bucket, with balances under AR_SMALL_BALANCE last. So a ₱939K invoice 53
+// days late comes before a ₱358 one 54 days late (same 31–60 bucket).
+// `a` / `b` are {days, amount}: days = oldest past-due days, amount = what is owed.
+export const arCallOrder = (a, b) => {
+  const sa = a.amount < AR_SMALL_BALANCE, sb = b.amount < AR_SMALL_BALANCE;
+  if (sa !== sb) return sa ? 1 : -1;
+  return (arRankOfDays(b.days) - arRankOfDays(a.days)) || (b.amount - a.amount) || (b.days - a.days);
+};
 // Portfolio totals over a list of milestones. `dealOf(dealId)` returns the deal (or
 // undefined) so receipt type / EWT can fall back to it.
 export const arSummary = (billings=[], dealOf=()=>undefined) => {
@@ -617,7 +683,9 @@ export const costNet = (x={}) => {
 // when the PO is "with VAT"); the same formula the printed PO, the PO list and
 // syncPoPayable use. Cost is taken VAT-ex (net), like every other cost here.
 export const PO_ISSUED_STATUSES = ["PO Issued","Partially Delivered","Delivered"];
-export const WO_COMMITTED_STATUSES = ["Issued","Partially Delivered","Delivered","Completed","For Accounting"];
+// "In Progress" is a committed WO too (SWO_STATUSES); without it a WO dropped out
+// of project cost the moment work started.
+export const WO_COMMITTED_STATUSES = ["Issued","In Progress","Partially Delivered","Delivered","Completed","For Accounting"];
 const poLineGross = i => (_amt(i.actUnitCost)||_amt(i.estUnitCost))*_amt(i.qty);
 export const poTotals = (lines=[]) => {
   const gross=(lines||[]).reduce((s,i)=>s+poLineGross(i),0);
@@ -665,6 +733,24 @@ export const ledgerCosts = (exps=[], payables=[], prs=null, swos=null) => {
     date:e.date||(e.year!=null&&e.month!=null?`${e.year}-${String(Number(e.month)+1).padStart(2,"0")}-01`:null),
     gross:_amt(e.amount), net:costNet(e), vatTracked:!!(e.vatable||_amt(e.inputVat)>0), src:"expense" })),
   ];
+};
+// Cost waiting on approval, per project (VAT-ex, same basis as poCostRows /
+// woCostRows): POs with lines at "Pending Approval" and no issued line, and WOs
+// at "Pending Approval". Project Margins shows it beside the committed cost so a
+// job whose POs haven't been approved yet doesn't read as a 99% margin.
+export const pendingCostByProject = (prs=[], swos=[]) => {
+  const out=new Map(), add=(id,v)=>{ if(id&&v) out.set(id,(out.get(id)||0)+v); };
+  const byPo=new Map();
+  (prs||[]).forEach(p=>{ if(p.poNumber&&p.status!=="Cancelled"){ const a=byPo.get(p.poNumber)||[]; a.push(p); byPo.set(p.poNumber,a); } });
+  byPo.forEach(lines=>{
+    if(lines.some(l=>PO_ISSUED_STATUSES.includes(l.status))) return; // already counted as committed
+    const pend=lines.filter(l=>l.status==="Pending Approval");
+    if(!pend.length) return;
+    const t=poTotals(pend);
+    pend.forEach(l=>{ const share=t.gross>0?poLineGross(l)/t.gross:0; add(realProject(l.projectId||l.dealId),Math.round(t.net*share*100)/100); });
+  });
+  (swos||[]).forEach(w=>{ if(w.status==="Pending Approval") add(realProject(w.projectId||w.dealId),_amt(w.contractAmount)); });
+  return out;
 };
 export const costSummary = (exps=[], payables=[], prs=null, swos=null) => {
   const rows=ledgerCosts(exps,payables,prs,swos), byProject=new Map();
@@ -722,6 +808,20 @@ const _joPlain=j=>/^JO-\d+$/.test(j.joNo||"")?0:1;
 const _joCmp=(a,b)=>_joPlain(a)-_joPlain(b)
   ||String(a.created_at||"").localeCompare(String(b.created_at||""))
   ||String(a.joNo||"").localeCompare(String(b.joNo||""));
+// Project progress is ONE number: the PM's 30 / 60 / 90 / 100 % estimate
+// (project_cards.manual_progress, set only through set_project_progress,
+// migration 20261107020000). Close-Out / Completed count as 100. null = not set.
+// Department checkboxes no longer count (0 of 3,627 sub-tasks were ever ticked;
+// the only ticks were Finance, auto-set when billing is fully paid).
+export const projProgressPct=(pc,deal=null)=>{
+  if(deal?.stage==="12 · Close-Out"||deal?.stage==="14 · Completed") return 100;
+  const v=pc?.manualProgress;
+  const n=v==null||v===""||isNaN(Number(v))?null:Number(v);
+  // A project at Punchlist is at least 90 %, even before the PM picks it.
+  if(deal?.stage==="11 · Punchlist") return Math.max(n||0,PUNCHLIST_MIN_PCT);
+  return n;
+};
+
 export const dealJo=(jos,dealId)=>{
   let best=null;
   for(const j of jos||[]) if(j.dealId===dealId&&j.status!=="Void"&&(!best||_joCmp(j,best)<0)) best=j;
@@ -1306,14 +1406,32 @@ export const isTopApprover=name=>PO_TOP_APPROVERS.includes(String(name||"").trim
 // Switched on with migration 20261114010000 (weekend release). Until then any
 // Manager approves any amount, as the database still does.
 export const PO_TIERS_ON=false;
-export const canApprovePOLine=(role,sessionName,requestedBy,total)=>{
+// Procurement Manager (Paulo, 2026-11-09; on with PO_TIERS_ON): Marian approves a PO
+// requested by her team (not by her) up to ₱50,000, as long as everything ordered from
+// that supplier on the PO's date is ₱50,000 or less (poSplitTotal), so one order can't
+// be cut into small POs. The database also checks the requester is in Procurement.
+// Mirrors po_split_total() / po_line_approver_name() (migration 20261114030000).
+export const PO_PROC_MGR_LIMIT=50000;
+// Same key as ap_vendor_key() in the database: first 8 letters/digits, lower case.
+export const poVendorKey=v=>String(v||"").replace(/[^a-zA-Z0-9]/g,"").toLowerCase().slice(0,8);
+const poLineDate=l=>l.poDate||String(l.createdAt||l.createdDate||"").slice(0,10);
+// What was ordered from PO poNo's supplier on its date, across all POs (non-cancelled
+// lines). null when the PO has no supplier: the Procurement Manager can't approve it.
+export const poSplitTotal=(prs,poNo)=>{
+  const f=(prs||[]).find(p=>p.poNumber===poNo); if(!f) return null;
+  const k=poVendorKey(f.supplier), d=poLineDate(f); if(!k) return null;
+  return poLinesTotal((prs||[]).filter(p=>p.poNumber&&poVendorKey(p.supplier)===k&&poLineDate(p)===d));
+};
+export const canApprovePOLine=(role,sessionName,requestedBy,total,split=null)=>{
   const t=Number(total)||0;
+  const notMine=!requestedBy||!sessionName||sessionName.trim().toLowerCase()!==requestedBy.trim().toLowerCase();
   if(role==="Manager") return !PO_TIERS_ON||t<PO_MANAGER_LIMIT||isTopApprover(sessionName);
-  if(role==="QS") return t<=PO_COST_CONTROL_LIMIT
-    &&(!requestedBy||!sessionName||sessionName.trim().toLowerCase()!==requestedBy.trim().toLowerCase());
+  if(role==="QS") return t<=PO_COST_CONTROL_LIMIT&&notMine;
+  if(role==="ProcurementManager") return PO_TIERS_ON&&!!requestedBy&&notMine
+    &&split!=null&&t<=PO_PROC_MGR_LIMIT&&Number(split)<=PO_PROC_MGR_LIMIT;
   return false;
 };
-export const PO_APPROVER_MSG=PO_TIERS_ON?"Cost Control approves POs up to ₱150,000, Paolo Gomez up to ₱250,000, and Paulo, Mar or Arrius from ₱250,000":"Needs Cost Control (POs up to ₱150,000) or a Manager (above ₱150,000: Paolo Gomez)";
+export const PO_APPROVER_MSG=PO_TIERS_ON?"Marian approves her team's POs up to ₱50,000 (all of that supplier's POs that day), Cost Control up to ₱150,000, Paolo Gomez up to ₱250,000, and Paulo, Mar or Arrius from ₱250,000":"Needs Cost Control (POs up to ₱150,000) or a Manager (above ₱150,000: Paolo Gomez)";
 
 export const canApprovePO=(role,sessionName,requestedBy)=>{
   // Only a Manager or a Procurement Manager may approve (issue) a PO or subcon
@@ -1325,6 +1443,29 @@ export const canApprovePO=(role,sessionName,requestedBy)=>{
   if(role==="ProcurementManager") return !requestedBy||!sessionName||sessionName.trim().toLowerCase()!==requestedBy.trim().toLowerCase();
   return false;
 };
+
+// Work orders: two signatures, no amount limit (Paulo, 2026-11-12; on with PO_TIERS_ON).
+// 1) Cost Control: Rodney (username rodney) or the Procurement Manager (Marian);
+// 2) Finance: Paolo Gomez (paolo), with Paulo and Mar as back-up; it issues the WO.
+// Nobody signs both, nobody signs a WO they requested. Mirrors wo_signer_kind() /
+// sign_wo() / swo_require_approver() (migration 20261114070000).
+export const WO_FIN_SIGNERS=["paolo","paulo","mar"];
+export const woSignerKind=(username,role)=>{
+  const u=String(username||"").trim().toLowerCase();
+  if(WO_FIN_SIGNERS.includes(u)) return "finance";
+  if(u==="rodney"||role==="ProcurementManager") return "cc";
+  return null;
+};
+// Which signature this user can give on WO w now: "cc", "finance" or null.
+export const woSignStep=(w,username,role,name)=>{
+  if(!w||!["Draft","Pending Approval"].includes(w.status||"")) return null;
+  const nm=String(name||"").trim().toLowerCase();
+  if(nm&&nm===String(w.requestedBy||"").trim().toLowerCase()) return null;
+  const kind=woSignerKind(username,role);
+  if(!w.ccApprovedBy) return kind==="cc"?"cc":null;
+  return kind==="finance"&&nm!==String(w.ccApprovedBy).trim().toLowerCase()?"finance":null;
+};
+export const WO_SIGN_MSG="A work order needs Cost Control (Rodney or Marian), then Finance (Paolo Gomez) to sign it.";
 
 export const woRetentionAmt=w=>Math.min(Number(w.retentionPct)||0,100)/100*(Number(w.contractAmount)||0);
 

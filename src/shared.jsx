@@ -169,9 +169,9 @@ export const isHiddenView=(page,finTab)=>HIDDEN_PAGES.has(page)||(page==="financ
 // Deliveries (receiving). Issue to Site / Fab Release / Stock Log / low-stock
 // prompts are gated with pageOn("inventory"). PM Updates (pmupdates) and Scope
 // Changes (addenda) are replaced by the Progress list (30/60/90/100).
-const RETIRED_PAGES = ["dailylog","swatchboard","budgetreq","requests","audit","checkvouchers","stockmove","inventory","pmupdates","addenda"];
+const RETIRED_PAGES = ["liquidations","dailylog","swatchboard","budgetreq","requests","audit","checkvouchers","stockmove","inventory","pmupdates","addenda"];
 RETIRED_PAGES.forEach(id=>{HIDDEN_NAV_IDS.add(id);HIDDEN_PAGES.add(id);});
-HIDDEN_FIN_TABS.add("loans"); // back on for the weekend release (views/LoansView.jsx, LOANS_V2)
+HIDDEN_FIN_TABS.add("loans"); // on once migration 20261108010000 is applied (views/LoansView.jsx, LOANS_V2)
 export const HIDDEN_PIPE_TABS = new Set(["updates"]);
 // A link, tile or quick action to a page shows only while that page is on.
 export const pageOn = id => !HIDDEN_PAGES.has(id);
@@ -193,6 +193,73 @@ export const Sel=({value,onChange,children,disabled})=>(
     {children}
   </select>
 );
+
+// ── ProjectSelect: searchable picker for any field that links a record to a
+// project (Paulo, 2026-11-11). A drop-in for <Sel>/<select>: same value,
+// same onChange(e) with e.target.value, same <option>/<optgroup> children, so
+// each form keeps its own list and save logic. Typing filters by the option
+// text plus, for a deal id, its CE no., JO no., client, store and location
+// (registered once by App via setProjectSearchIndex). Use it for every new
+// project link; plain filters ("show project X") can stay as <select>.
+let _projIdx=new Map();
+export const setProjectSearchIndex=(deals=[],jos=[])=>{
+  const jo=new Map();(jos||[]).forEach(j=>{if(j&&j.dealId&&j.status!=="Void"&&j.joNo&&!jo.has(j.dealId))jo.set(j.dealId,j.joNo);});
+  const m=new Map();
+  (deals||[]).forEach(d=>{if(!d||!d.id)return;const j=jo.get(d.id)||"";m.set(String(d.id),{tag:[d.ceNo,j].filter(Boolean).join(" · "),text:[d.ceNo,j,d.client,d.contact,d.projectName,d.location].filter(Boolean).join(" ")});});
+  _projIdx=m;
+};
+const _optText=c=>React.Children.toArray(c).map(x=>typeof x==="string"||typeof x==="number"?String(x):"").join("").trim();
+const _flatOptions=(children,group="")=>{
+  const out=[];
+  React.Children.toArray(children).forEach(ch=>{
+    if(!ch||!ch.type) return;
+    if(ch.type==="optgroup") out.push(..._flatOptions(ch.props.children,ch.props.label||""));
+    else if(ch.type==="option"){const label=_optText(ch.props.children);out.push({value:ch.props.value!==undefined?String(ch.props.value):label,label,group,disabled:!!ch.props.disabled});}
+    else if(ch.type===React.Fragment) out.push(..._flatOptions(ch.props.children,group));
+  });
+  return out;
+};
+export const ProjectSelect=({value,onChange,children,disabled,style:sx,placeholder="Search project, CE no., JO no. or client…",autoFocus})=>{
+  const opts=_flatOptions(children);
+  const cur=opts.find(o=>o.value===String(value??""));
+  const[q,setQ]=useState(null); // null = not typing; show the selected label
+  const[open,setOpen]=useState(false);
+  const[hiIdx,setHiIdx]=useState(0);
+  const words=String(q||"").toLowerCase().split(/\s+/).filter(Boolean);
+  const list=opts.filter(o=>!o.disabled&&(!words.length||words.every(w=>(o.label+" "+o.group+" "+(_projIdx.get(o.value)?.text||"")).toLowerCase().includes(w)))).slice(0,80);
+  const pick=o=>{setQ(null);setOpen(false);if(o&&o.value!==String(value??""))onChange&&onChange({target:{value:o.value},currentTarget:{value:o.value},stopPropagation(){},preventDefault(){}});};
+  const base={width:"100%",border:`1.5px solid ${T.line}`,borderRadius:T.radius.md,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:T.inkStrong,background:disabled?T.line:T.surface,boxSizing:"border-box",...(sx||{})};
+  return(
+    <div style={{position:"relative",width:base.width==="auto"?"auto":"100%"}}>
+      <input type="text" role="combobox" aria-expanded={open} aria-autocomplete="list" disabled={disabled} autoFocus={autoFocus}
+        value={q!==null?q:(cur&&cur.value!==""?cur.label:"")} placeholder={cur&&cur.value===""&&cur.label?cur.label:placeholder}
+        onFocus={e=>{setOpen(true);setHiIdx(0);e.target.select();}}
+        onChange={e=>{setQ(e.target.value);setOpen(true);setHiIdx(0);}}
+        onBlur={()=>setTimeout(()=>{setOpen(false);setQ(null);},150)}
+        onKeyDown={e=>{
+          if(e.key==="ArrowDown"){e.preventDefault();setOpen(true);setHiIdx(h=>Math.min(h+1,list.length-1));}
+          else if(e.key==="ArrowUp"){e.preventDefault();setHiIdx(h=>Math.max(h-1,0));}
+          else if(e.key==="Enter"){if(open&&list[hiIdx]){e.preventDefault();pick(list[hiIdx]);}}
+          else if(e.key==="Escape"){setOpen(false);setQ(null);}
+        }}
+        style={{...base,paddingRight:30,cursor:disabled?"not-allowed":"text"}}/>
+      <span aria-hidden="true" style={{position:"absolute",right:11,top:"50%",transform:"translateY(-50%)",color:T.inkFaint,fontSize:".7rem",pointerEvents:"none"}}>▾</span>
+      {open&&!disabled&&(
+        <div role="listbox" style={{position:"absolute",zIndex:1200,left:0,right:0,top:"calc(100% + 4px)",background:T.surface,border:`1.5px solid ${T.line}`,borderRadius:T.radius.md,boxShadow:"0 10px 28px rgba(15,23,42,.16)",maxHeight:280,overflowY:"auto",minWidth:220}}>
+          {list.length===0&&<div style={{padding:"10px 13px",fontSize:".8rem",color:T.inkFaint}}>No project matches “{q}”.</div>}
+          {list.map((o,i)=>(
+            <div key={o.value+"|"+i} role="option" aria-selected={o.value===String(value??"")}
+              onMouseDown={e=>{e.preventDefault();pick(o);}} onMouseEnter={()=>setHiIdx(i)}
+              style={{padding:"8px 13px",fontSize:".84rem",cursor:"pointer",background:i===hiIdx?T.surface3:"transparent",color:o.value===""?T.inkFaint:T.inkStrong,borderBottom:`1px solid ${T.lineSoft||T.line}`}}>
+              <div style={{fontWeight:o.value===String(value??"")?700:500}}>{o.label||"—"}</div>
+              {(o.group||_projIdx.get(o.value)?.tag)&&<div style={{fontSize:".7rem",color:T.inkFaint,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{[_projIdx.get(o.value)?.tag,o.group].filter(Boolean).join(" · ")}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const Fld=({label,required,children,hint})=>(
   <div style={{marginBottom:16}}>

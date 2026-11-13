@@ -1,5 +1,5 @@
 import React,{useState,useMemo,useEffect,useRef} from "react";
-import {fmt,today,uid,toastEmit,Fld,Inp,Sel,KPI,uiConfirm,uiAlert} from "../shared";
+import {fmt,today,uid,toastEmit,Fld,Inp,Sel,KPI,uiConfirm,uiAlert,ProjectSelect} from "../shared";
 import {moveNeedsWitness,SCRAP_MOVE_TYPE,emptyPR,isProcurementRole} from "../core";
 
 const INV_CATEGORIES = [
@@ -1277,7 +1277,7 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addPR,addInv
                                 <Fld label="Type"><Sel value={moveForm.moveType} onChange={e=>fm("moveType",e.target.value)} style={{fontSize:11,padding:"5px 8px"}}>{STOCK_MOVE_TYPES.map(t=><option key={t}>{t}</option>)}</Sel></Fld>
                                 <Fld label="Qty"><Inp type="number" value={moveForm.qty} onChange={e=>fm("qty",e.target.value)} placeholder="0" min={0} style={{fontSize:11,padding:"5px 8px"}}/></Fld>
                                 {moveForm.moveType.startsWith("IN")&&<Fld label="Unit Cost (₱)"><Inp type="number" value={moveForm.unitCost} onChange={e=>fm("unitCost",e.target.value)} placeholder="0.00" style={{fontSize:11,padding:"5px 8px"}}/></Fld>}
-                                {moveForm.moveType.startsWith("OUT")&&<Fld label="Project"><Sel value={moveForm.projectId} onChange={e=>fm("projectId",e.target.value)} style={{fontSize:11,padding:"5px 8px"}}><option value="">— Select —</option>{wonDeals.map(d=><option key={d.id} value={d.id}>{d.client} {d.ceNo?`(${d.ceNo})`:""}</option>)}</Sel></Fld>}
+                                {moveForm.moveType.startsWith("OUT")&&<Fld label="Project"><ProjectSelect value={moveForm.projectId} onChange={e=>fm("projectId",e.target.value)} style={{fontSize:11,padding:"5px 8px"}}><option value="">— Select —</option>{wonDeals.map(d=><option key={d.id} value={d.id}>{d.client} {d.ceNo?`(${d.ceNo})`:""}</option>)}</ProjectSelect></Fld>}
                                 {moveNeedsWitness(moveForm.moveType,item)&&<div style={{gridColumn:"1/-1"}}><Fld label="🔒 Finance Witness (§5.3 — required)"><Inp value={moveForm.financeWitness||""} onChange={e=>fm("financeWitness",e.target.value)} placeholder="Finance rep present at release" style={{fontSize:11,padding:"5px 8px"}}/></Fld></div>}
                                 <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp value={moveForm.notes} onChange={e=>fm("notes",e.target.value)} placeholder="DR #, PO ref…" style={{fontSize:11,padding:"5px 8px"}}/></Fld></div>
                               </div>
@@ -1783,11 +1783,11 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addPR,addInv
               <div><div style={{fontSize:9,fontWeight:700,color:C.muted,textTransform:"uppercase",marginBottom:4}}>PO No. (optional)</div><input value={drForm.poNumber} onChange={e=>setDrForm(f=>({...f,poNumber:e.target.value}))} style={{width:"100%",border:`1px solid ${C.border}`,borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:12,boxSizing:"border-box"}}/></div>
               <div><div style={{fontSize:9,fontWeight:700,color:C.muted,textTransform:"uppercase",marginBottom:4}}>Supplier</div><input value={drForm.supplier} onChange={e=>setDrForm(f=>({...f,supplier:e.target.value}))} list="supp-opts" style={{width:"100%",border:`1px solid ${C.border}`,borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:12,boxSizing:"border-box"}}/></div>
               <div style={{gridColumn:"span 2"}}><div style={{fontSize:9,fontWeight:700,color:C.muted,textTransform:"uppercase",marginBottom:4}}>Project</div>
-                <select value={drForm.projectId} onChange={e=>setDrForm(f=>({...f,projectId:e.target.value}))} style={{width:"100%",border:`1px solid ${C.border}`,borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:12,background:"#fff",boxSizing:"border-box"}}>
+                <ProjectSelect value={drForm.projectId} onChange={e=>setDrForm(f=>({...f,projectId:e.target.value}))} style={{width:"100%",border:`1px solid ${C.border}`,borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:12,background:"#fff",boxSizing:"border-box"}}>
                   <option value="">— Unassigned —</option>
                   <option value="__gmd_stocks__">GMD Stocks</option>
                   {wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" — "+d.contact:""}</option>)}
-                </select>
+                </ProjectSelect>
               </div>
             </div>
             <div style={{fontSize:9,fontWeight:700,color:C.muted,textTransform:"uppercase",marginBottom:6}}>Line Items</div>
@@ -1868,10 +1868,10 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addPR,addInv
             </div>
             <div style={{marginBottom:10}}>
               <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>Destination Project</div>
-              <select value={dispatchForm.projectId} onChange={e=>setDispatchForm(p=>({...p,projectId:e.target.value}))} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",background:"#fff"}}>
+              <ProjectSelect value={dispatchForm.projectId} onChange={e=>setDispatchForm(p=>({...p,projectId:e.target.value}))} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",background:"#fff"}}>
                 <option value="">— GMD Warehouse / Internal Use</option>
                 {wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" — "+d.contact:""}</option>)}
-              </select>
+              </ProjectSelect>
             </div>
             <div style={{marginBottom:18}}>
               <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>Notes (DR #, delivery slip, etc.)</div>
@@ -2020,7 +2020,7 @@ function StockMovementView({inventory,stocklog,wonDeals,logStockMove,session,rol
             <Fld label={form.moveType.startsWith("ADJUST")?"New Total Qty (absolute count)":"Quantity"}><Inp type="number" value={form.qty} onChange={e=>f("qty",e.target.value)} min={0} placeholder="0"/></Fld>
             <Fld label="Date"><Inp type="date" value={form.date} onChange={e=>f("date",e.target.value)}/></Fld>
             {form.moveType.startsWith("IN")&&<Fld label="Unit Cost (₱)" hint="Updates average cost automatically"><Inp type="number" value={form.unitCost} onChange={e=>f("unitCost",e.target.value)} placeholder="0.00"/></Fld>}
-            {form.moveType.startsWith("OUT")&&<Fld label="Project / CE No."><Sel value={form.projectId} onChange={e=>f("projectId",e.target.value)}><option value="">— Optional —</option>{wonDeals.map(d=><option key={d.id} value={d.id}>{d.client} {d.ceNo?`(${d.ceNo})`:""}</option>)}</Sel></Fld>}
+            {form.moveType.startsWith("OUT")&&<Fld label="Project / CE No."><ProjectSelect value={form.projectId} onChange={e=>f("projectId",e.target.value)}><option value="">— Optional —</option>{wonDeals.map(d=><option key={d.id} value={d.id}>{d.client} {d.ceNo?`(${d.ceNo})`:""}</option>)}</ProjectSelect></Fld>}
             {moveNeedsWitness(form.moveType,inventory.find(i=>i.id===form.itemId))&&<Fld label="🔒 Finance Witness (§5.3 — required)"><Inp value={form.financeWitness||""} onChange={e=>f("financeWitness",e.target.value)} placeholder="Finance rep present at release / scrap"/></Fld>}
             <div style={{gridColumn:"1/-1"}}><Fld label="Notes / Reference"><Inp value={form.notes} onChange={e=>f("notes",e.target.value)} placeholder="DR number, PO reference, project site, reason for adjustment…"/></Fld></div>
           </div>

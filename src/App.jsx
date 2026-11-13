@@ -6,11 +6,14 @@ import {deductionFromSb,supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpse
 import{idbGetMany,idbSetMany}from'./idb.js';
 import {useSharePdf} from "./views/SharePdf";
 import SupplierDocsPanel from "./views/SupplierDocsPanel";
-import {fmt,addPrintClose,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable,HIDDEN_NAV_IDS,AP_HIDDEN,WAREHOUSE_HIDDEN,isHiddenView,HIDDEN_FIN_TABS,HIDDEN_PIPE_TABS,pageOn,cashCanEdit} from './shared';
+import CashOutModal,{openCashOut,closeCashOut,cashOutHas,OrderPicker} from "./views/CashOutModal";
+import {buildOrders} from "./data/ledger";
+import {fmt,addPrintClose,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable,HIDDEN_NAV_IDS,AP_HIDDEN,WAREHOUSE_HIDDEN,isHiddenView,HIDDEN_FIN_TABS,HIDDEN_PIPE_TABS,pageOn,cashCanEdit,ProjectSelect,setProjectSearchIndex} from './shared';
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealHasBoq, MOTHER_PO_BOQ_MSG, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine,PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
+import {projProgressPct, isConstructionDeal, projStageFlow, projStepIndex, projStepLabel, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel, pendingCostByProject, poSplitTotal, canRaiseOrder, woSignStep, WO_SIGN_MSG, arAgeBucket, arCallOrder, dealHasBoq, MOTHER_PO_BOQ_MSG} from './core';
+import ProgressReportModal from './views/ProgressReportModal';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -34,7 +37,7 @@ const NAV_HUBS={orders:{l:"Orders",icon:"📦"},warehouse:{l:"Warehouse",icon:"�
   payables:{l:"Payables",icon:"📤"},cash:{l:"Cash",icon:"🏦"},monitoring:{l:"Monitoring",icon:"🚦"},accounting:{l:"Accounting",icon:"📒"},
   sales:{l:"Sales",icon:"📊"},projects:{l:"Projects",icon:"📋"},design:{l:"Design",icon:"🖌️"},executive:{l:"Executive",icon:"🎯"},money:{l:"Cash & Billing",icon:"🏦"},admin:{l:"Admin",icon:"⚙️"}};
 const NAV_HUB_OF={orderboard:"orders",purchasing:"orders",procurement:"orders",subconwo:"orders",inventory:"warehouse",deliveries:"warehouse",stockmove:"warehouse",
-  payables:"payables",payments:"payables",payrun:"payables",checkvouchers:"payables",subconmon:"payables",purchaseorders:"payables",
+  payables:"payables",aplog:"payables",payments:"payables",payrun:"payables",liquidations:"payables",checkvouchers:"payables",subconmon:"payables",purchaseorders:"payables",
   cashposition:"cash",cashflow:"cash",monboard:"monitoring","finance-reports":"monitoring",
   expmon:"accounting",bir2307:"accounting",coa:"accounting"};
 // Manager-only hubs (2026-11-07): the Manager sidebar went from 29 items to 11.
@@ -45,7 +48,11 @@ const MGR_HUB_OF={pipeline:"sales",boq:"sales",clients:"sales","sales-reports":"
   executive:"executive",exectxns:"executive",execpl:"executive",execloans:"executive",monboard:"executive","finance-reports":"executive",projectmargins:"executive",costanalysis:"executive",
   billing:"money",cashposition:"money",cashflow:"money",finance:"accounting",
   accounts:"admin",audit:"admin",syshealth:"admin",botsettings:"admin",tvboard:"admin",activity:"admin"};
-const hubOf=(r,id)=>(r==="Manager"&&MGR_HUB_OF[id])||NAV_HUB_OF[id];
+// Finance roles (2026-11-11, Paulo): Purchasing is the first tab of Payables, so
+// Finance and Procurement work from the same per-supplier view of POs / WOs and payments.
+const FIN_HUB_ROLES=["Finance","FinanceAssistant","Accounting"];
+const FIN_HUB_OF={purchasing:"payables"};
+const hubOf=(r,id)=>(r==="Manager"&&MGR_HUB_OF[id])||(FIN_HUB_ROLES.includes(r)&&FIN_HUB_OF[id])||NAV_HUB_OF[id];
 // Manager: Executive's own sub-tabs (Transactions, P&L, Loans) are tabs of the
 // Executive hub strip, so the page shows one tab row instead of two.
 const MGR_FIN_TAB_NAV={txns:"exectxns",pl:"execpl",loans:"execloans"};
@@ -54,11 +61,11 @@ const MGR_SIMPLE_HOME=true;
 // Owners (Paulo, Mar, Arrius from 2026-11-14): Project Margins and the Financial Overview.
 const OWNER_USERS=PO_TIERS_ON?["paulo","mar","arrius"]:["paulo","mar"];
 // Loans (preview 2026-11-08): credit lines + bank loans, linked to the cash sheet (views/LoansView.jsx).
-const LOANS_V2=false; // on for the weekend release, with migration 20261108010000
+const LOANS_V2=false; // on once migration 20261108010000 is applied
 // Nav items that are a Finance tab, not a page of their own.
-const NAV_FIN_TAB={payables:"payables",payments:"payments",cashposition:"cash",supplierbills:"bills",executive:"overview",exectxns:"txns",execpl:"pl",execloans:"loans",
+const NAV_FIN_TAB={payables:"payables",aplog:"aplog",payments:"payments",cashposition:"cash",supplierbills:"bills",executive:"overview",exectxns:"txns",execpl:"pl",execloans:"loans",
   expmon:"expmon",payrun:"payrun",bir2307:"bir2307",monboard:"monboard",subconmon:"subconmon"};
-const FIN_TAB_NAV={payables:"payables",payments:"payments",cash:"cashposition",bills:"supplierbills",overview:"executive",pl:"executive",loans:"executive",txns:"executive",
+const FIN_TAB_NAV={payables:"payables",aplog:"aplog",payments:"payments",cash:"cashposition",bills:"supplierbills",overview:"executive",pl:"executive",loans:"executive",txns:"executive",
   expmon:"expmon",payrun:"payrun",bir2307:"bir2307",monboard:"monboard",subconmon:"subconmon"};
 
 // ─── CODE-SPLIT VIEWS ────────────────────────────────────────────────────────
@@ -87,6 +94,7 @@ const CashPositionPayables=_lazyView(()=>import('./views/CashPositionPayables'))
 const TransactionHistory=_lazyView(()=>import('./views/TransactionHistory'));
 const ExpenseMonitoring=_lazyView(()=>import('./views/ExpenseMonitoring'));
 const PaymentRun=_lazyView(()=>import('./views/PaymentRun'));
+const Liquidations=_lazyView(()=>import('./views/Liquidations'));
 const Bir2307=_lazyView(()=>import('./views/Bir2307'));
 const MonitoringBoard=_lazyView(()=>import('./views/MonitoringBoard'));
 const SubconPaymentMonitor=_lazyView(()=>import('./views/SubconPaymentMonitor'));
@@ -354,39 +362,14 @@ const Btn=({children,onClick,variant="primary",small,full,disabled,type="button"
     </button>
   );
 };
-function SearchSelect({value,onChange,options,placeholder="Search…",noneLabel="— None —",noneValue=null}){
-  const [query,setQuery]=useState("");
-  const [open,setOpen]=useState(false);
-  const ref=useRef(null);
-  const selected=options.find(o=>o.value===value);
-  const filtered=query.trim()===""?options:options.filter(o=>o.label.toLowerCase().includes(query.toLowerCase()));
-  useEffect(()=>{
-    const handler=e=>{if(ref.current&&!ref.current.contains(e.target)) setOpen(false);};
-    document.addEventListener("mousedown",handler);
-    return()=>document.removeEventListener("mousedown",handler);
-  },[]);
-  const choose=v=>{onChange(v);setOpen(false);setQuery("");};
+// Kept for its callers; it now renders the shared ProjectSelect (search by
+// name, CE no., JO no., client) so every project field searches the same way.
+function SearchSelect({value,onChange,options,placeholder,noneLabel="— None —",noneValue=null}){
   return(
-    <div ref={ref} style={{position:"relative"}}>
-      <div style={{display:"flex",alignItems:"center",border:"1.5px solid "+(open?"#6366f1":"#e2e8f0"),borderRadius:8,background:"#fff",cursor:"pointer",transition:"border-color .15s"}} onClick={()=>{setOpen(o=>!o);setQuery("");}}>
-        {open?(
-          <input autoFocus value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>{if(e.key==="Escape"){setOpen(false);setQuery("");}if(e.key==="Enter"&&filtered.length>0) choose(filtered[0].value);}} placeholder={placeholder} style={{flex:1,border:"none",outline:"none",padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"transparent",borderRadius:8}} onClick={e=>e.stopPropagation()}/>
-        ):(
-          <div style={{flex:1,padding:"10px 13px",fontSize:".87rem",color:selected?"#1e293b":"#94a3b8",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{selected?selected.label:noneLabel}</div>
-        )}
-        <span style={{padding:"0 10px",color:"#94a3b8",fontSize:".75rem",flexShrink:0}}>{open?"▲":"▼"}</span>
-      </div>
-      {open&&(
-        <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,right:0,background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:8,boxShadow:"0 8px 24px rgba(0,0,0,.12)",zIndex:999,maxHeight:240,overflowY:"auto"}}>
-          <div onClick={()=>choose(noneValue)} style={{padding:"10px 13px",fontSize:".85rem",color:"#94a3b8",cursor:"pointer",borderBottom:"1px solid #f1f5f9",fontStyle:"italic"}} onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>{noneLabel}</div>
-          {filtered.length===0?(
-            <div style={{padding:"10px 13px",fontSize:".82rem",color:"#94a3b8",textAlign:"center"}}>No projects match "{query}"</div>
-          ):filtered.map(o=>(
-            <div key={o.value} onClick={()=>choose(o.value)} style={{padding:"9px 13px",fontSize:".85rem",color:o.value===value?"#6366f1":"#1e293b",fontWeight:o.value===value?700:400,cursor:"pointer",background:o.value===value?"#f0f0ff":"transparent",borderBottom:"1px solid #f8fafc"}} onMouseEnter={e=>{if(o.value!==value)e.currentTarget.style.background="#f8fafc";}} onMouseLeave={e=>{e.currentTarget.style.background=o.value===value?"#f0f0ff":"transparent";}}>{o.label}</div>
-          ))}
-        </div>
-      )}
-    </div>
+    <ProjectSelect value={value==null?"":value} placeholder={placeholder} onChange={e=>{const v=e.target.value;onChange(v===""?noneValue:v);}}>
+      <option value="">{noneLabel}</option>
+      {(options||[]).map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
+    </ProjectSelect>
   );
 }
 // Focus-safe raw input — use this instead of bare <input> inside forms
@@ -1569,12 +1552,12 @@ function CollectionsPanel({wonDeals,infs,onUpdatePayment,onLogPayment,readonly=f
       {/* Log Payment Modal */}
       <Modal open={logModal} onClose={()=>setLogModal(false)} title="Log Payment Received">
         <Fld label="Client / Project" required>
-          <Sel value={logForm.dealId} onChange={e=>setLogForm(p=>({...p,dealId:e.target.value}))}>
+          <ProjectSelect value={logForm.dealId} onChange={e=>setLogForm(p=>({...p,dealId:e.target.value}))}>
             <option value="">— Select client —</option>
             {wonDeals.filter(d=>d.invoiced>0).map(d=>(
               <option key={d.id} value={d.id}>{d.client} — {fmt(dealFinancials(d).outstanding)} remaining</option>
             ))}
-          </Sel>
+          </ProjectSelect>
         </Fld>
         <Fld label="Amount Received (₱)" required>
           <Inp type="number" value={logForm.amount} onChange={e=>setLogForm(p=>({...p,amount:e.target.value}))} placeholder="e.g. 25000"/>
@@ -2721,29 +2704,26 @@ function MyAccountPage({session,users,setUsers,upUsers:upUsersExt,setSession:set
 }
 
 
-// Stage / % Complete here are the project's real status: a changed stage goes
-// through changeDealStage (set_deal_stage) and % Complete sets the project
-// card's progress. They used to be stored only as text inside the update, so
-// a PM could report "Installation" while the project still read Fabrication.
-function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logActivityProp,addPmUpdate,updateProjectTurnover,sendTelegramNotification,deals=[],role,changeDealStage,setProjectProgress}){
+// Stage here is the project's real status: a changed stage goes through
+// changeDealStage (set_deal_stage). Progress % is not set here: since
+// 2026-11-11 it needs the full Progress update (ProgressReportModal).
+function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logActivityProp,addPmUpdate,updateProjectTurnover,sendTelegramNotification,deals=[],role,changeDealStage}){
   const deal=pmUpdateModal?.dealId?deals.find(d=>d.id===pmUpdateModal.dealId):null;
   const curStage=deal?.stage||"";
   // Awarded projects only: a pre-award deal enters Kickoff through the Award
   // flow (JO, award date), never from here.
   const canStage=!!(deal&&changeDealStage&&WON_STAGES.includes(curStage)&&canSetDealStage(role,curStage));
-  const canPct=!!(deal&&setProjectProgress&&["Manager","ProjectMover","Operations","SalesOpsAdmin"].includes(role));
   const[saving,setSaving]=useState(false);
   const[updateType,setUpdateType]=useState(pmUpdateModal?.initialType||"General Progress");
   const[note,setNote]=useState("");
   const[nextSteps,setNextSteps]=useState("");
   const[stage,setStage]=useState("");
-  const[pct,setPct]=useState("");
   const[revisedDate,setRevisedDate]=useState("");
   const[blockerDesc,setBlockerDesc]=useState("");
   const[decisionMaker,setDecisionMaker]=useState("");
   const[actionPlan,setActionPlan]=useState("");
   React.useEffect(()=>{
-    if(pmUpdateModal){setUpdateType(pmUpdateModal.initialType||"General Progress");setNote("");setNextSteps("");setStage(curStage);setPct("");setSaving(false);setRevisedDate("");setBlockerDesc("");setDecisionMaker("");setActionPlan("");}
+    if(pmUpdateModal){setUpdateType(pmUpdateModal.initialType||"General Progress");setNote("");setNextSteps("");setStage(curStage);setSaving(false);setRevisedDate("");setBlockerDesc("");setDecisionMaker("");setActionPlan("");}
   },[pmUpdateModal?.dealId]);
   if(!pmUpdateModal) return null;
   const typeColor=PM_TYPE_COLOR[updateType]||"#0ea5e9";
@@ -2776,10 +2756,8 @@ function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logAc
             )}
             {canStage&&stage!==curStage&&<div style={{fontSize:".72rem",color:"#f97316",marginTop:3,fontWeight:600}}>⚠ Moves the project to {stage.replace(/^\d+ · /,"")}.</div>}
           </div>
-          {canPct&&<div>
-            <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>% Complete <span style={{fontWeight:400,color:"#94a3b8"}}>(optional)</span></label>
-            <input type="number" min="0" max="100" value={pct} onChange={e=>setPct(e.target.value)} placeholder="e.g. 45" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box"}}/>
-          </div>}
+          {/* Progress % is not set here: it needs the full Progress update
+              (Project Cards › Progress tab, or Projects › Progress). */}
         </div>
         )}
         <div>
@@ -2818,8 +2796,6 @@ function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logAc
             if(saving) return;
             if(!note.trim()){toastEmit("Please enter what happened.","warning");return;}
             if(isBlocker&&!blockerDesc.trim()){toastEmit("Please describe the blocker.","warning");return;}
-            const pctNum=String(pct).trim()===""?null:Math.round(Number(pct));
-            if(pctNum!=null&&(!Number.isFinite(pctNum)||pctNum<0||pctNum>100)){toastEmit("% Complete must be between 0 and 100.","warning");return;}
             const dealId=pmUpdateModal.dealId;
             const stageChanged=canStage&&!!stage&&stage!==curStage;
             // Stage first: if the server refuses it (or a gate is cancelled),
@@ -2830,8 +2806,7 @@ function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logAc
               setSaving(false);
               if(!ok) return;
             }
-            if(pctNum!=null&&canPct) setProjectProgress(dealId,pctNum);
-            const entry={id:uid(),type:updateType,date:today,time:new Date().toLocaleTimeString("en-PH",{hour:"2-digit",minute:"2-digit"}),by:session?.name||"Team",stage:deal?(stage||curStage):"",pct:pctNum!=null?String(pctNum):"",note:note.trim(),nextSteps:nextSteps.trim(),revisedDate,...(isBlocker?{blockerDesc:blockerDesc.trim(),decisionMaker:decisionMaker.trim(),actionPlan:actionPlan.trim(),blockerStatus:"Open"}:{})};
+            const entry={id:uid(),type:updateType,date:today,time:new Date().toLocaleTimeString("en-PH",{hour:"2-digit",minute:"2-digit"}),by:session?.name||"Team",stage:deal?(stage||curStage):"",pct:"",note:note.trim(),nextSteps:nextSteps.trim(),revisedDate,...(isBlocker?{blockerDesc:blockerDesc.trim(),decisionMaker:decisionMaker.trim(),actionPlan:actionPlan.trim(),blockerStatus:"Open"}:{})};
             // One Telegram per update: skip the generic ops ping when a more
             // specific message (stage change, blocker, materials) goes to ops.
             const silent=stageChanged||isBlocker||updateType==="Materials Needed";
@@ -2991,10 +2966,10 @@ function AddendaPageContent({role,wonDeals,deals,jos,session,addenda,upAddenda,u
         <div style={{padding:"16px",display:"flex",flexDirection:"column",gap:12}}>
           <div>
             <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Project <span style={{color:"#ef4444"}}>*</span></label>
-            <select value={selDealId} onChange={e=>setSelDealId(e.target.value)}
+            <ProjectSelect value={selDealId} onChange={e=>setSelDealId(e.target.value)}
               style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem"}}>
               {(["Manager","QS"].includes(role)?wonDeals:myProjects).map(d=><option key={d.id} value={d.id}>{d.client} — {d.ceNo}</option>)}
-            </select>
+            </ProjectSelect>
           </div>
           <div>
             <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Change Type <span style={{color:"#ef4444"}}>*</span></label>
@@ -3674,7 +3649,7 @@ function DailySiteLogView({dailyLogs,wonDeals,addDailyLog,delDailyLog,session,ro
         <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:18,marginBottom:16}}>
           <div style={{fontWeight:800,color:"#0f172a",marginBottom:12}}>New Site Log Entry</div>
           <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"2fr 1fr 1fr 1fr",gap:10,marginBottom:10}}>
-            <div>{lbl("Project *")}<select value={f.dealId} onChange={e=>up("dealId",e.target.value)} style={{...inp,background:"#fff"}}><option value="">— Select —</option>{wonDeals.map(d=><option key={d.id} value={d.id}>{d.contact||d.client} · {d.ceNo||""}</option>)}</select></div>
+            <div>{lbl("Project *")}<ProjectSelect value={f.dealId} onChange={e=>up("dealId",e.target.value)} style={{...inp,background:"#fff"}}><option value="">— Select —</option>{wonDeals.map(d=><option key={d.id} value={d.id}>{d.contact||d.client} · {d.ceNo||""}</option>)}</ProjectSelect></div>
             <div>{lbl("Date")}<input type="date" value={f.date} onChange={e=>up("date",e.target.value)} style={inp}/></div>
             <div>{lbl("Weather")}<select value={f.weather} onChange={e=>up("weather",e.target.value)} style={{...inp,background:"#fff"}}>{WEATHER_OPTS.map(w=><option key={w}>{w}</option>)}</select></div>
             <div>{lbl("Manpower")}<input type="number" min="0" value={f.manpower} onChange={e=>up("manpower",e.target.value)} placeholder="0" style={inp}/></div>
@@ -4019,10 +3994,10 @@ function OfficeTVDashboard({deals=[],wonDeals=[],checklists=[],announcements=[],
             <label style={lbl}>Date</label>
             <input type="date" value={jobForm.dueDate} onChange={e=>setJobForm(f=>({...f,dueDate:e.target.value}))} style={inp}/>
             <label style={lbl}>Project (optional)</label>
-            <select value={jobForm.projectId} onChange={e=>setJobForm(f=>({...f,projectId:e.target.value}))} style={inp}>
+            <ProjectSelect value={jobForm.projectId} onChange={e=>setJobForm(f=>({...f,projectId:e.target.value}))} style={inp}>
               <option value="">— No project / other —</option>
               {wonDeals.map(d=><option key={d.id} value={d.id}>{(d.contact||d.product||d.client)}{d.client?` — ${d.client}`:""}</option>)}
-            </select>
+            </ProjectSelect>
             {!jobForm.projectId&&(<><label style={lbl}>Job Title</label><input value={jobForm.title} onChange={e=>setJobForm(f=>({...f,title:e.target.value}))} placeholder="e.g. Punchlist — SM North kiosk" style={inp}/></>)}
             <label style={lbl}>Location</label>
             <input value={jobForm.location} onChange={e=>setJobForm(f=>({...f,location:e.target.value}))} placeholder="Site / address" style={inp}/>
@@ -4155,6 +4130,8 @@ function bankCashSummary(cashPositions, today){
 // as-of number, not final profitability; early-stage jobs read optimistically
 // high because their costs haven't been incurred yet. The "% billed" column is
 // shown alongside so the reader can gauge how far along each job actually is.
+// PO numbers whose supplier bill is being raised (syncPoPayable's server check).
+const _poBillPending=new Set();
 // Per-project margin rows — all won deals, contract value less expenses booked
 // to date. Shared by the dashboard panel (preview) and the full Project Margins
 // page so both compute identically. Sorted worst-margin-first so problems lead.
@@ -4162,15 +4139,21 @@ function projectMarginRows(wonDeals=[],exps=[],billings=[],payables=[],prs=[],sw
   // Cost committed to date on the PO basis, VAT-ex (issued POs + Work Orders +
   // other payables + unrouted expenses; see costSummary).
   const costByDeal=costSummary(exps,payables,prs,swos).byProject;
+  // POs / WOs still at Pending Approval: not cost yet, but the job's margin once
+  // they're approved. Shown beside the committed cost ("If approved").
+  const pendByDeal=pendingCostByProject(prs,swos);
   const billedByDeal={};(billings||[]).forEach(b=>{if(b.dealId)billedByDeal[b.dealId]=(billedByDeal[b.dealId]||0)+Number(b.amount||0);});
   return (wonDeals||[]).map(d=>{
     const contract=Number(d.value||0);
     const spent=costByDeal.get(d.id)||0;
     const profit=contract-spent;
     const margin=contract>0?Math.round(profit/contract*100):null;
+    const pending=Math.round((pendByDeal.get(d.id)||0)*100)/100;
+    const projProfit=profit-pending;
+    const projMargin=contract>0?Math.round(projProfit/contract*100):null;
     const billedPct=contract>0?Math.round((billedByDeal[d.id]||0)/contract*100):0;
-    return {id:d.id,name:d.contact||d.client||d.projName||"Untitled",ceNo:d.ceNo||"",contract,spent,profit,margin,billedPct};
-  }).sort((a,b)=>(a.margin==null?999:a.margin)-(b.margin==null?999:b.margin));
+    return {id:d.id,name:d.contact||d.client||d.projName||"Untitled",ceNo:d.ceNo||"",contract,spent,profit,margin,pending,projProfit,projMargin,billedPct};
+  }).sort((a,b)=>(a.projMargin==null?999:a.projMargin)-(b.projMargin==null?999:b.projMargin));
 }
 const _fmtM=v=>{const a=Math.abs(v);const s=v<0?"−":"";return a>=1000000?s+"₱"+(Math.round(a/100000)/10)+"M":a>=1000?s+"₱"+Math.round(a/1000)+"K":s+"₱"+Math.round(a||0);};
 const _money=v=>(v<0?"−₱":"₱")+Math.round(Math.abs(Number(v)||0)).toLocaleString("en-PH");
@@ -4238,7 +4221,7 @@ function FinancialOverview({deals=[],wonDeals=[],exps=[],payables=[],prs=[],swos
       <div style={{background:"#fff",borderRadius:12,overflow:"hidden"}}>
         <div style={{padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid #f1f5f9"}}>
           <span style={{fontWeight:800,fontSize:".84rem",color:"#0f172a"}}>⚠ Lowest-Margin Projects</span>
-          <span style={{fontSize:".62rem",color:"#94a3b8"}}>Contract − expenses booked</span>
+          <span style={{fontSize:".62rem",color:"#94a3b8"}}>Sorted by margin if pending POs/WOs are approved</span>
         </div>
         {allRows.length===0
           ?<div style={{padding:"22px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No awarded projects yet.</div>
@@ -4246,7 +4229,7 @@ function FinancialOverview({deals=[],wonDeals=[],exps=[],payables=[],prs=[],swos
             <div key={r.id} onClick={()=>openProj(r.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderTop:i>0?"1px solid #f8fafc":"",cursor:"pointer"}}>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:".82rem",fontWeight:600,color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.name}{r.ceNo?<span style={{color:"#94a3b8",fontWeight:400}}> · {r.ceNo}</span>:null}</div>
-                <div style={{fontSize:".68rem",color:"#94a3b8"}}>{_money(r.contract)} contract · {r.billedPct}% billed</div>
+                <div style={{fontSize:".68rem",color:"#94a3b8"}}>{_money(r.contract)} contract · {r.billedPct}% billed{r.pending>0?<span style={{color:"#b45309",fontWeight:700}}> · {_money(r.pending)} pending approval → {r.projMargin}%</span>:null}</div>
               </div>
               <div style={{textAlign:"right",flexShrink:0}}>
                 <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.05rem",color:_marginClr(r.margin)}}>{r.margin==null?"—":r.margin+"%"}</div>
@@ -4268,8 +4251,8 @@ function FinancialOverview({deals=[],wonDeals=[],exps=[],payables=[],prs=[],swos
 // Full owner-only page: every awarded project's margin, click a row to open its
 // project card. Reached from the Financial Overview panel's "View all" button.
 function ProjectMarginsView({wonDeals=[],exps=[],billings=[],payables=[],prs=[],swos=[],today,setPage,onOpenProject,Wrap,isMobile}){
-  const [sortKey,setSortKey]=useState("margin"); // margin | contract | profit | billed | name
-  const [sortDir,setSortDir]=useState("desc");    // desc = highest first
+  const [sortKey,setSortKey]=useState("projMargin"); // projMargin | margin | pending | contract | profit | billed | name
+  const [sortDir,setSortDir]=useState("asc");         // lowest "if approved" margin first: problems lead
   const [q,setQ]=useState("");
   let rows=projectMarginRows(wonDeals,exps,billings,payables,prs,swos);
   if(q.trim()){const t=q.trim().toLowerCase();rows=rows.filter(r=>r.name.toLowerCase().includes(t)||r.ceNo.toLowerCase().includes(t));}
@@ -4277,6 +4260,8 @@ function ProjectMarginsView({wonDeals=[],exps=[],billings=[],payables=[],prs=[],
   // Null margins always sink to the bottom regardless of direction.
   const base={
     margin:(a,b)=>{if(a.margin==null&&b.margin==null)return 0;if(a.margin==null)return 1;if(b.margin==null)return -1;return a.margin-b.margin;},
+    projMargin:(a,b)=>{if(a.projMargin==null&&b.projMargin==null)return 0;if(a.projMargin==null)return 1;if(b.projMargin==null)return -1;return a.projMargin-b.projMargin;},
+    pending:(a,b)=>a.pending-b.pending,
     contract:(a,b)=>a.contract-b.contract,
     profit:(a,b)=>a.profit-b.profit,
     billed:(a,b)=>a.billedPct-b.billedPct,
@@ -4293,6 +4278,8 @@ function ProjectMarginsView({wonDeals=[],exps=[],billings=[],payables=[],prs=[],
   const totSpent=rows.reduce((s,r)=>s+r.spent,0);
   const totProfit=totContract-totSpent;
   const totMargin=totContract>0?Math.round(totProfit/totContract*100):null;
+  const totPending=rows.reduce((s,r)=>s+r.pending,0);
+  const totProjMargin=totContract>0?Math.round((totProfit-totPending)/totContract*100):null;
 
   const th=(key,label,align="left")=>(
     <th onClick={()=>setSort(key)} style={{padding:"9px 12px",fontWeight:700,textAlign:align,cursor:"pointer",whiteSpace:"nowrap",userSelect:"none",color:sortKey===key?"#1e293b":"#64748b"}}>
@@ -4305,18 +4292,20 @@ function ProjectMarginsView({wonDeals=[],exps=[],billings=[],payables=[],prs=[],
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
         <div>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.5rem",color:"#0f172a"}}>Profit Margin by Project</div>
-          <div style={{fontSize:".8rem",color:"#64748b",marginTop:2}}>All awarded projects · contract value less expenses booked to date</div>
+          <div style={{fontSize:".8rem",color:"#64748b",marginTop:2}}>All awarded projects · contract less issued POs, committed work orders and bills · "If approved" also takes off POs / WOs still pending approval</div>
         </div>
         <button onClick={()=>setPage&&setPage("home")} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>← Back to Dashboard</button>
       </div>
 
       {/* totals strip */}
-      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:12,marginBottom:14}}>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(6,1fr)",gap:12,marginBottom:14}}>
         {[
           {l:"Projects",v:rows.length,c:"#0f172a"},
           {l:"Total Contract",v:_fmtM(totContract),c:"#6366f1"},
           {l:"Profit (to date)",v:_money(totProfit),c:totProfit>=0?"#059669":"#ef4444"},
           {l:"Blended Margin",v:totMargin==null?"—":totMargin+"%",c:_marginClr(totMargin)},
+          {l:"Pending Approval",v:_fmtM(totPending),c:totPending>0?"#b45309":"#94a3b8"},
+          {l:"Margin If Approved",v:totProjMargin==null?"—":totProjMargin+"%",c:_marginClr(totProjMargin)},
         ].map(k=>(
           <div key={k.l} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 16px",textAlign:"center"}}>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.5rem",color:k.c}}>{k.v}</div>
@@ -4329,19 +4318,21 @@ function ProjectMarginsView({wonDeals=[],exps=[],billings=[],payables=[],prs=[],
 
       <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
         <div style={{overflowX:"auto"}}>
-          <table style={{width:"100%",borderCollapse:"collapse",fontSize:".8rem",minWidth:620}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:".8rem",minWidth:820}}>
             <thead><tr style={{background:"#f8fafc"}}>
               {th("name","Project")}
               {th("contract","Contract","right")}
               <th style={{padding:"9px 12px",fontWeight:700,textAlign:"right",color:"#64748b"}}>Expenses</th>
               {th("profit","Profit","right")}
               {th("margin","Margin","right")}
+              {th("pending","Pending Approval","right")}
+              {th("projMargin","If Approved","right")}
               {th("billed","% Billed","right")}
               <th style={{width:24}}></th>
             </tr></thead>
             <tbody>
               {rows.length===0
-                ?<tr><td colSpan={7} style={{padding:"24px",textAlign:"center",color:"#94a3b8"}}>No matching projects.</td></tr>
+                ?<tr><td colSpan={9} style={{padding:"24px",textAlign:"center",color:"#94a3b8"}}>No matching projects.</td></tr>
                 :rows.map((r,i)=>(
                   <tr key={r.id} onClick={()=>onOpenProject&&onOpenProject(r.id)} style={{borderTop:"1px solid #f1f5f9",cursor:"pointer"}}>
                     <td style={{padding:"9px 12px",fontWeight:600,color:"#0f172a",maxWidth:240,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.name}{r.ceNo?<span style={{color:"#94a3b8",fontWeight:400}}> · {r.ceNo}</span>:null}</td>
@@ -4349,6 +4340,8 @@ function ProjectMarginsView({wonDeals=[],exps=[],billings=[],payables=[],prs=[],
                     <td style={{padding:"9px 12px",textAlign:"right",fontVariantNumeric:"tabular-nums",color:"#475569"}}>{_money(r.spent)}</td>
                     <td style={{padding:"9px 12px",textAlign:"right",fontVariantNumeric:"tabular-nums",fontWeight:700,color:r.profit>=0?"#059669":"#ef4444"}}>{_money(r.profit)}</td>
                     <td style={{padding:"9px 12px",textAlign:"right",fontWeight:800,color:_marginClr(r.margin)}}>{r.margin==null?"—":r.margin+"%"}</td>
+                    <td style={{padding:"9px 12px",textAlign:"right",fontVariantNumeric:"tabular-nums",color:r.pending>0?"#b45309":"#cbd5e1"}}>{r.pending>0?_money(r.pending):"—"}</td>
+                    <td style={{padding:"9px 12px",textAlign:"right",fontWeight:800,color:_marginClr(r.projMargin)}}>{r.projMargin==null?"—":r.projMargin+"%"}</td>
                     <td style={{padding:"9px 12px",textAlign:"right",fontVariantNumeric:"tabular-nums",color:"#94a3b8"}}>{r.billedPct}%</td>
                     <td style={{padding:"9px 8px",textAlign:"right",color:"#cbd5e1"}}>→</td>
                   </tr>
@@ -4357,7 +4350,7 @@ function ProjectMarginsView({wonDeals=[],exps=[],billings=[],payables=[],prs=[],
           </table>
         </div>
         <div style={{padding:"9px 14px",fontSize:".64rem",color:"#94a3b8",background:"#fafafa",borderTop:"1px solid #f1f5f9"}}>
-          ⚠ Margin uses expenses booked so far, not final cost. Early-stage jobs (low % billed) will read high — cross-check against progress before treating as final profit. Tap any column header to sort; tap it again to reverse (highest ↔ lowest). Tap a row to open its project card.
+          ⚠ Margin uses cost committed so far (issued POs, committed work orders, bills), not final cost. "If approved" also takes off POs and work orders still waiting for approval. Draft POs are not counted. Early-stage jobs (low % billed) will read high — cross-check against progress before treating as final profit. Tap any column header to sort; tap it again to reverse (highest ↔ lowest). Tap a row to open its project card.
         </div>
       </div>
     </Wrap>
@@ -4459,6 +4452,120 @@ function PayHistoryList({rows,onCancel,canCancel}){
             ? <div style={{color:"#b91c1c",marginTop:2,fontWeight:600}}>Cancelled{r.cancelledBy?` by ${r.cancelledBy}`:""}: {r.cancelReason}</div>
             : canCancel&&<button onClick={()=>onCancel(r.id)} style={{marginTop:6,background:"#fff",border:"1px solid #fca5a5",color:"#b91c1c",borderRadius:6,padding:"3px 10px",fontSize:".72rem",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Cancel payment</button>}
         </div>);})}
+    </div>
+  );
+}
+
+// Supplier bill (AP) / payment request (PRV) form, shown inside Cash Out
+// (src/views/CashOutModal.jsx). It keeps the draft in its own state, so typing
+// re-renders only this form, not the whole App (the old page-level Payables
+// modal kept payForm in App and rebuilt everything on every keystroke).
+// onSave(form, editId) is App's savePayable: every rule stays there.
+function PayableForm({opexOnly=false,initial,editId=null,onSave,onCancel,swos=[],payables=[],chartOfAccounts=[],costCenterDeals=[],wonDeals=[],deals=[],today,role,sendTelegramNotification,prs,drs,suppliers,upPayables}){
+  const[payForm,setPayForm]=useState(()=>({...initial}));
+  const[busy,setBusy]=useState(false);
+  const accounts=useMemo(()=>[...chartOfAccounts].filter(a=>a.active!==false&&(a.type==="COGS"||a.type==="Expense"||a.type==="Asset")).sort((a,b)=>String(a.code).localeCompare(String(b.code))),[chartOfAccounts]);
+  const woOptions=useMemo(()=>(swos||[]).filter(w=>w.woNumber&&w.status!=="Cancelled").slice().sort((a,b)=>String(b.woNumber).localeCompare(String(a.woNumber))),[swos]);
+  const chargeDeal=deals.find(d=>d.id===payForm.projectId);
+  // Finance enters only no-PO bills charged to a cost center (canBillOpex in App).
+  const ccOnly=opexOnly&&!editId;
+  const save=async()=>{
+    if(busy) return;
+    setBusy(true);
+    try{ if(await onSave(payForm,editId)) onCancel&&onCancel(); }
+    finally{ setBusy(false); }
+  };
+  return(
+    <div>
+      {editId&&payForm.apNumber&&<div style={{fontSize:".72rem",color:"#6366f1",fontWeight:700,fontFamily:"monospace",marginBottom:8}}>{payForm.apNumber}{payForm.poNumber?` · PO ${payForm.poNumber}`:""}</div>}
+      {!editId&&payForm.poNumber&&!isSubconPayable(payForm)&&(
+        <div style={{background:"#eef2ff",border:"1px solid #c7d2fe",borderRadius:8,padding:"8px 10px",fontSize:".76rem",color:"#3730a3",marginBottom:10}}>
+          Supplier bill for <b style={{fontFamily:"monospace"}}>{payForm.poNumber}</b>. Enter the supplier's invoice no. and amount.
+        </div>)}
+      {!editId&&isSubconPayable(payForm)&&payForm.poNumber&&(()=>{const wo=swos.find(w=>w.woNumber===payForm.poNumber);const billed=payables.filter(p=>isSubconPayable(p)&&p.poNumber===payForm.poNumber&&!["Cancelled","Void"].includes(p.status)).reduce((t,p)=>t+(Number(p.amount)||0),0);return(
+        <div style={{background:"#eef2ff",border:"1px solid #c7d2fe",borderRadius:8,padding:"8px 10px",fontSize:".76rem",color:"#3730a3",marginBottom:10}}>
+          Subcon billing against <b style={{fontFamily:"monospace"}}>{payForm.poNumber}</b>{wo?` · contract ₱${(Number(wo.contractAmount)||0).toLocaleString("en-PH")} · billed so far ₱${billed.toLocaleString("en-PH")} · left to bill ₱${Math.max(0,(Number(wo.contractAmount)||0)-billed).toLocaleString("en-PH")}`:""}.
+          Enter the subcontractor's billing no. and this billing's amount. It's paid only up to the % the PM certifies, or the WO's down payment % once the WO is issued.
+        </div>);})()}
+      {ccOnly&&<div style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontSize:".76rem",color:"#475569",marginBottom:10}}>
+        OPEX bill with no PO, charged to a cost center. Bills on a PO or Work Order are entered by Procurement.
+      </div>}
+      <Fld label="Type">
+        <Sel value={payForm.docType==="PRV"?"PRV":"AP"} onChange={e=>setPayForm(p=>({...p,docType:e.target.value}))} disabled={!!(editId&&payForm.apNumber)}>
+          <option value="AP">Supplier bill (AP)</option>
+          <option value="PRV">Payment request, no PO (PRV)</option>
+        </Sel>
+        {!editId&&<div style={{fontSize:".72rem",color:"#64748b",marginTop:3}}>The {payForm.docType==="PRV"?"PRV":"AP"} number is assigned by the server when it saves, so two people can never get the same number.</div>}
+      </Fld>
+      <Fld label="Vendor / Payee"><Inp value={payForm.vendor||""} onChange={e=>setPayForm(p=>({...p,vendor:e.target.value}))} placeholder="e.g. ABC Steel Supply"/></Fld>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+        <Fld label={isSubconPayable(payForm)&&payForm.poNumber?"Subcon billing no.":"Invoice No."}><Inp value={payForm.invoiceNumber||""} onChange={e=>setPayForm(p=>({...p,invoiceNumber:e.target.value}))} placeholder="Vendor invoice #"/></Fld>
+        <Fld label="Invoice Date"><Inp type="date" value={payForm.invoiceDate||""} onChange={e=>setPayForm(p=>({...p,invoiceDate:e.target.value}))}/></Fld>
+      </div>
+      {editId&&<SupplierDocsPanel role={role} sendTelegramNotification={sendTelegramNotification} ctx={{prs,drs,suppliers}}
+        bill={{...(payables.find(x=>x.id===editId)||{}),...payForm,id:editId}}
+        onChanged={patch=>{upPayables(ps=>ps.map(x=>x.id===editId?{...x,...patch}:x));setPayForm(f=>({...f,...patch}));}}/>}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+        <Fld label="Amount (₱)" required><Inp type="number" value={payForm.amount} onChange={e=>setPayForm(p=>({...p,amount:e.target.value}))} placeholder="0"/></Fld>
+        <Fld label="Already Paid (₱)"><Inp type="number" value={payForm.paidAmount} onChange={e=>setPayForm(p=>({...p,paidAmount:e.target.value}))} placeholder="0"/></Fld>
+      </div>
+      <Fld label="Due Date" required>
+        <Inp type="date" value={payForm.dueDate||""} onChange={e=>setPayForm(p=>({...p,dueDate:e.target.value}))}/>
+        {payForm.dueDate&&payForm.dueDate<today&&<div style={{fontSize:".72rem",color:"#ef4444",marginTop:3,fontWeight:600}}>⚠ Due date is in the past — this payable is already overdue.</div>}
+        {!payForm.dueDate&&<div style={{fontSize:".72rem",color:"#b45309",marginTop:3,fontWeight:600}}>Recommended — drives the cash-flow forecast.</div>}
+      </Fld>
+      <Fld label="Category"><Sel value={payForm.category} onChange={e=>setPayForm(p=>({...p,category:e.target.value}))}>{["Supplier","Subcontractor","Utility","Rent","Labor","Government","Other"].map(c=><option key={c}>{c}</option>)}</Sel></Fld>
+      <Fld label="Account (Chart of Accounts)" required>
+        <Sel value={payForm.accountCode||""} onChange={e=>setPayForm(p=>({...p,accountCode:e.target.value}))}>
+          <option value="">— Select account —</option>
+          {accounts.map(a=><option key={a.id||a.code} value={a.code}>{a.code} · {a.name}</option>)}
+        </Sel>
+        {!payForm.accountCode&&<div style={{fontSize:".72rem",color:"#b45309",marginTop:3,fontWeight:600}}>Required — this drives the account-code financial statements.</div>}
+      </Fld>
+      {!ccOnly&&payForm.docType==="PRV"&&isSubconPayable(payForm)&&(
+        <Fld label="Work order">
+          <Sel value={payForm.poNumber||""} onChange={e=>setPayForm(p=>({...p,poNumber:e.target.value,poId:e.target.value||null}))}>
+            <option value="">— None —</option>
+            {woOptions.map(w=><option key={w.id||w.woNumber} value={w.woNumber}>{w.woNumber} · {w.subcontractor||"—"} · {"₱"+(Number(w.contractAmount)||0).toLocaleString("en-PH",{maximumFractionDigits:0})}</option>)}
+          </Sel>
+          {subconNeedsWo(payForm)&&<div style={{fontSize:".72rem",color:"#b91c1c",marginTop:3,fontWeight:600}}>Required: subcontractor payment requests of ₱{AP_RULES.subconNoWoLimit.toLocaleString("en-PH")} or more need a Work Order.</div>}
+          {payForm.poNumber&&<div style={{fontSize:".72rem",color:"#64748b",marginTop:3}}>Payment waits for Operations to verify % complete. Retention is held at payment.</div>}
+        </Fld>
+      )}
+      <Fld label={ccOnly?"Charge to (cost center)":"Charge to (project or cost center)"}><ProjectSelect value={payForm.projectId||"none"} onChange={e=>setPayForm(p=>({...p,projectId:e.target.value==="none"?null:e.target.value}))}><option value="none">{ccOnly?"— Select a cost center":"— Select a project or cost center"}</option>{costCenterDeals.length>0&&<optgroup label="Cost centers">{costCenterDeals.map(d=><option key={d.id} value={d.id}>🏷 {d.contact||d.client}</option>)}</optgroup>}{!ccOnly&&<optgroup label="Projects">{wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" — "+d.contact:""}</option>)}</optgroup>}</ProjectSelect></Fld>
+      {/* BIR: VAT + EWT capture (restored from the legacy expense flow) */}
+      {(()=>{
+        const amt=Number(payForm.amount)||0;
+        const net=payForm.vatable?Math.round(amt/1.12*100)/100:amt;
+        const iv=payForm.vatable?Math.round((amt-net)*100)/100:0;
+        const er=Number(payForm.ewtRate)||0;
+        const ewt=er>0?Math.round(net*er/100*100)/100:0;
+        const peso=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+        return(
+          <div style={{border:`1px solid ${ERP.line}`,borderRadius:8,padding:"10px 12px",marginBottom:12,background:"#FAFBFD"}}>
+            <div style={{fontSize:".7rem",fontWeight:800,color:ERP.navy,textTransform:"uppercase",letterSpacing:".5px",marginBottom:8}}>BIR — VAT / Withholding</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              <label style={{display:"flex",alignItems:"center",gap:8,fontSize:".8rem",color:"#334155",fontWeight:600,cursor:"pointer"}}>
+                <input type="checkbox" checked={!!payForm.vatable} onChange={e=>setPayForm(p=>({...p,vatable:e.target.checked}))} style={{width:16,height:16}}/>
+                VAT-inclusive (12%)
+              </label>
+              <Fld label="EWT Rate"><Sel value={String(payForm.ewtRate||0)} onChange={e=>setPayForm(p=>({...p,ewtRate:Number(e.target.value)}))}>{[["0","None"],["1","1%"],["2","2% (services/goods)"],["5","5%"],["10","10% (rental/pro.)"],["15","15%"]].map(([v,l])=><option key={v} value={v}>{l}</option>)}</Sel></Fld>
+            </div>
+            <Fld label="Supplier TIN"><Inp value={payForm.tin||""} onChange={e=>setPayForm(p=>({...p,tin:e.target.value}))} placeholder="000-000-000-000"/></Fld>
+            <div style={{display:"flex",gap:16,flexWrap:"wrap",fontSize:".74rem",color:ERP.muted,marginTop:4}}>
+              <span>Net: <strong style={{color:ERP.ink}}>{peso(net)}</strong></span>
+              {payForm.vatable&&<span>Input VAT: <strong style={{color:ERP.navy}}>{peso(iv)}</strong></span>}
+              {er>0&&<span>EWT ({er}%): <strong style={{color:ERP.danger}}>−{peso(ewt)}</strong></span>}
+              {er>0&&<span>Net of EWT: <strong style={{color:ERP.ink}}>{peso(amt-ewt)}</strong></span>}
+            </div>
+          </div>
+        );
+      })()}
+      <Fld label={chargeDeal?.isCostCenter?"What was it used for? (required for cost centers)":"Notes"}><Inp value={payForm.notes||""} onChange={e=>setPayForm(p=>({...p,notes:e.target.value}))} placeholder={chargeDeal?.isCostCenter?"e.g. Warehouse racking, bay 2":"Optional details"}/></Fld>
+      <div style={{display:"flex",gap:10,marginTop:18}}>
+        <Btn full variant="green" disabled={busy} onClick={save}>{busy?"Saving…":editId?"Save changes":"Save bill"}</Btn>
+        <Btn variant="ghost" onClick={onCancel}>Cancel</Btn>
+      </div>
     </div>
   );
 }
@@ -5421,10 +5528,10 @@ export default function App(){
   const INSERT_ROLES={
     deals:["Manager","Sales","SalesOpsAdmin"],
     job_orders:["Manager","ProjectMover"],
-    purchase_requests:["Manager","Finance","FinanceAssistant","Procurement"],
+    purchase_requests:["Manager","Procurement"], // orders: Procurement only (migration 20261111100000)
     material_requests:["Manager","Sales","Procurement","SalesOpsAdmin"],
     budget_requests:["Manager","Sales","Procurement","SalesOpsAdmin"],
-    subcon_work_orders:["Manager","Finance","FinanceAssistant","Procurement"],
+    subcon_work_orders:["Manager","Procurement"],
     addenda:["Manager","ProjectMover","Procurement","Design"],
     swatches:["Manager","Procurement","Design"],
     // checklists: intentionally UNMAPPED. Migration 049 opened checklists
@@ -5455,6 +5562,13 @@ export default function App(){
     const canon=ROLE_ALIASES[role]||role;
     return allowed.includes(canon);
   };
+  // Who enters bills (Paulo, 2026-11-11; migration 20261111100000): Procurement
+  // (and the Procurement Manager, aliased to it) and Managers enter any bill;
+  // Finance, Finance Assistant and Accounting enter only bills with no PO,
+  // charged to a cost center (OPEX). Cost Control is aliased to Finance but
+  // writes no bills.
+  const canBillPo=["Manager","Procurement"].includes(ROLE_ALIASES[role]||role);
+  const canBillOpex=role!=="Cost Control"&&["Finance","FinanceAssistant","Accounting"].includes(ROLE_ALIASES[role]||role);
   // ── Permission guard for user-initiated writes ──────────────────────────────
   // Checks the PERMISSIONS map (client mirror of RLS) BEFORE a role-gated write
   // and, if the current role isn't allowed, shows a clear dialog and returns
@@ -5575,7 +5689,9 @@ export default function App(){
   const logActivity=(dealId,action,detail,by,opts)=>{
     const entry={id:uid(),dealId,action,detail,by:by||session?.name||"System",date:today,time:new Date().toLocaleTimeString("en-PH",{hour:"2-digit",minute:"2-digit"})};
     setActLog(prev=>{const next=[entry,...prev].slice(0,500);return next;});
-    if(isSupabaseReady()) sbInsert('activity_log',toSbActivity(entry)).catch(()=>{});
+    // localOnly: the server already wrote this row (e.g. set_project_progress);
+    // show it now without inserting a duplicate.
+    if(isSupabaseReady()&&!opts?.localOnly) sbInsert('activity_log',toSbActivity(entry)).catch(()=>{});
     if(action==="PM Update"&&!opts?.silent){
       const deal=deals.find(d=>d.id===dealId);
       sendTelegramNotification("ops",`📝 <b>PM Update</b>\n${deal?.client||dealId}\nBy: ${entry.by} · ${today}\n${detail||""}`);
@@ -6263,7 +6379,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       material_requests:["Manager","Sales","Finance","Procurement","Operations","Design","ProjectMover"],
       budget_requests:["Manager","Sales","Finance","Procurement","Operations","Design","ProjectMover"],
       expenses:["Manager","Sales","Finance","Accounting","QS","Procurement","Operations","Design","ProjectMover"],
-      subcon_work_orders:["Manager","Sales","Finance","Accounting","Procurement","Operations","Design","ProjectMover"],
+      subcon_work_orders:["Manager","Sales","Finance","Accounting","Procurement","Operations","Design","ProjectMover","QS"],
       inflows:["Manager"],
       // Calendar/field-board events live in `checklists`. Every audited role must
       // receive these live — a role left off this list only sees items it created
@@ -7278,6 +7394,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     return await sbUpsert("project_budgets",toSbBudget(dealId,saved),"deal_id");
   };
   const addPR=(pr,{silent=false}={})=>{
+    // Finance pays; it doesn't raise POs (the database refuses it too, 20261114050000).
+    if(["Finance","FinanceAssistant","Accounting"].includes(role)){toastEmit("Only Procurement or a Manager creates purchase orders.","error",7000);return;}
     const rec={...pr,id:uid(),createdDate:today};
     upPrs(ps=>[rec,...ps]);
     if(isSupabaseReady()) sbSyncOne("purchase_requests",rec,toSbPR);
@@ -7296,7 +7414,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const want=new Set(poNos||[]);
     const me=session?.name||"";
     const totOf=no=>poLinesTotal(prs.filter(p=>p.poNumber===no));
-    const pending=prs.filter(p=>want.has(p.poNumber)&&p.status==="Pending Approval"&&canApprovePOLine(role,me,p.requestedBy,totOf(p.poNumber)));
+    const pending=prs.filter(p=>want.has(p.poNumber)&&p.status==="Pending Approval"&&canApprovePOLine(role,me,p.requestedBy,totOf(p.poNumber),poSplitTotal(prs,p.poNumber)));
     // Down payment gate: a PO with any line on a deal that has no payment (and
     // no Manager waiver) is skipped whole. The database rejects those writes,
     // and one bad row would fail its entire 200-row batch below.
@@ -7724,14 +7842,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   };
   // PM-reported % complete → the project card's manual progress (the same
   // override the Projects page sets). Only for a project that has a card.
-  const setProjectProgress=(dealId,val)=>{
-    if(!pcards[dealId]) return false;
-    upPcards(ps=>({...ps,[dealId]:{...ps[dealId],manualProgress:val}}));
-    if(isSupabaseReady()) syncProjectCard(dealId,{manual_progress:val});
-    return true;
-  };
+  // Progress % changes only through the Progress update form
+  // (src/views/ProgressReportModal.jsx → set_project_progress with a report).
   // Everything the Log Update modal needs to move the real project status.
-  const pmModalExtra={deals,role,changeDealStage,setProjectProgress,sendTelegramNotification};
+  const pmModalExtra={deals,role,changeDealStage,sendTelegramNotification};
   const addAddendum=(dealId,title,desc,requestedBy)=>{
     const entry={id:uid(),dealId,title,desc,requestedBy,date:today,status:"Pending",notifiedSales:false,notifiedOps:false};
     upDeals(ds=>ds.map(d=>d.id===dealId?{...d,addenda:[entry,...(d.addenda||[])]}:d));
@@ -7926,6 +8040,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const wonDeals    =useMemo(()=>deals.filter(d=>WON_STAGES.includes(d.stage)&&!d.isCostCenter),[deals]);
   const completedDeals=useMemo(()=>deals.filter(d=>d.stage==="14 · Completed"&&!d.isCostCenter),[deals]);
   const costCenterDeals=useMemo(()=>deals.filter(d=>d.isCostCenter&&!isLostStage(d.stage)).sort((a,b)=>(a.contact||"").localeCompare(b.contact||"")),[deals]);
+  // Search index for every project picker (ProjectSelect): CE no., JO no., client, location.
+  useMemo(()=>setProjectSearchIndex(deals,jos),[deals,jos]);
   const closedDeals=useMemo(()=>deals.filter(d=>d.stage==="12 · Close-Out"),[deals]);
   // Auto-create project entries for any won deal that doesn't have one yet
   // Depends on both wonDeals.length AND projs key count so it re-runs after Supabase loads projs
@@ -8147,12 +8263,31 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const costTot   =useMemo(()=>costSummary(exps,payables,prs,swos),[exps,payables,prs,swos]);
   const totExp    =costTot.net;
   const[payouts,   setPayouts]  =useState([]);
-  const[payModal,  setPayModal] =useState(false);
   const emptyPayForm=()=>({vendor:"",amount:"",paidAmount:"",dueDate:"",invoiceNumber:"",invoiceDate:"",projectId:null,category:"Supplier",accountCode:"",notes:"",invoiceRef:""});
-  const[payForm,   setPayForm]  =useState(emptyPayForm());
-  const[payFilter, setPayFilter]=useState("All");
+  // Cash Out (src/views/CashOutModal.jsx) is the one form for new and edited
+  // bills; it keeps its own state, so opening it doesn't re-render App.
+  const openBillForm=(form,id=null)=>openCashOut("bill",{form,id});
+  // A subcon progress billing on a Work Order: one bill per billing (2026-11-05).
+  const subconBillForm=wo=>{
+    const pid=(wo.dealId&&isUUID(wo.dealId))?wo.dealId:((wo.projectId&&isUUID(wo.projectId))?wo.projectId:null);
+    return {...emptyPayForm(),docType:"AP",vendor:wo.subcontractor||"",category:"Subcontractor",accountCode:wo.accountCode||"5070",
+      projectId:pid,poNumber:wo.woNumber,poId:wo.woNumber,invoiceRef:wo.woNumber,retentionPct:Number(wo.retentionPct)||0,
+      notes:`Progress billing on Work Order ${wo.woNumber}`};
+  };
+  // A Finance bill with no PO: starts charged to GMD OPEX (a cost center).
+  const opexBillForm=docType=>{const opex=costCenterDeals.find(d=>/opex/i.test(d.contact||d.client||""));return {...emptyPayForm(),docType,category:"Utility",projectId:opex?opex.id:null};};
+  // A supplier bill for an issued PO that has no bill on file yet (buildOrders row).
+  const poBillForm=r=>{
+    const line=(r.items||[]).find(l=>l.accountCode)||{};
+    const pid=(r.projectIds||[]).find(x=>isUUID(x))||null;
+    return {...emptyPayForm(),docType:"AP",vendor:r.vendor||"",category:"Supplier",accountCode:line.accountCode||"",
+      projectId:pid,poNumber:r.no,poId:r.no,invoiceRef:r.no,notes:`Supplier invoice for PO ${r.no} (PO total ₱${(Number(r.amount)||0).toLocaleString("en-PH")})`};
+  };
+  const[payFilter, setPayFilter]=useState("Open");
+  const[apLogShow,setApLogShow]=useState(50);     // AP Log rows shown (50 at a time)
   const[poViewFilter,setPoViewFilter]=useState("all"); // unified PO view: all | po | wo
   const[poViewSearch,setPoViewSearch]=useState("");
+  const[poViewProj,setPoViewProj]=useState(null); // Purchase Orders: show only this project's orders
   const[apLogSearch,setApLogSearch]=useState("");   // Accounts Payable Log search
   const[supPaySearch,setSupPaySearch]=useState(""); // Supplier Payables (Open POs) search
   const[payPayId,  setPayPayId] =useState(null); // payable id being settled in the Record-Payment modal
@@ -8167,7 +8302,6 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[payPayKind,  setPayPayKind]  =useState("Payment"); // "Payment" | "Retention release"
   const[multiPay,    setMultiPay]    =useState(null);  // one check / transfer paying several bills: {vendor, sel:{id:amount}, date, method, bank, ref}
   const[payHistId,   setPayHistId]   =useState(null);  // payable whose payment history is open
-  const[editPayId, setEditPayId]=useState(null);
   const[loans,     setLoans]    =useState([]);
   const[loanModal, setLoanModal]=useState(false);
   const[editLoanId,setEditLoanId]=useState(null);
@@ -9062,11 +9196,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // Other Payable form instead. Editing legacy expenses (openEditExp) is
     // unaffected. Guard against being wired directly as an event handler.
     const pid=(projId&&typeof projId==="object")?null:projId;
-    setPayForm({...emptyPayForm(),projectId:(pid&&isUUID(pid))?pid:null});
-    setEditPayId(null);
-    setFinTab("payables");
-    setPage("finance");
-    setPayModal(true);
+    openBillForm({...emptyPayForm(),docType:"AP",projectId:(pid&&isUUID(pid))?pid:null});
   };
   const openEditExp=e=>{setExpForm({...e});setEditExpId(e.id);setExpModal(true);};
   const saveExp=(overrideData)=>{
@@ -9181,11 +9311,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   };
 
   const upPayables=fn=>{const next=fn(payables);setPayables(next);persist(KEYS.payables,next);};
+  // Save changes to a bill that already exists as a plain UPDATE, never an upsert:
+  // Postgres checks the INSERT policy on an upsert even when the row exists, and
+  // since 2026-11-11 only Procurement and Managers may create bills (migration
+  // 20261111100000), so an upsert from Finance / Accounting would be refused.
+  const sbUpdatePayable=rec=>{const{id,...rest}=payableToSb(rec);return sbUpdate("payables",rec.id,rest);};
   // Set just the due date on a payable (used by the due-date backfill dialog) and sync it.
   const setPayableDueDate=(id,dueDate)=>{
     let updated=null;
     upPayables(ps=>ps.map(p=>{if(p.id!==id)return p;updated={...p,dueDate};return updated;}));
-    if(updated&&isSupabaseReady()) sbUpsert("payables",payableToSb(updated),"id").catch(()=>{});
+    if(updated&&isSupabaseReady()) sbUpdatePayable(updated).catch(()=>{});
   };
 
   // ── Commission payouts (what Finance has disbursed to each rep) ─────────────
@@ -9377,7 +9512,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const syncPoPayable=(poNo,lines)=>{
     if(!poNo) return null;
     const active=(lines||[]).filter(p=>p.poNumber===poNo&&p.status!=="Cancelled");
-    const existing=payables.find(p=>p.poId===poNo);
+    // A Cancelled / Void bill is not the PO's bill: approving the PO later must
+    // raise a live one, not quietly update the cancelled copy (AP-2026-0941/0942).
+    const liveBill=p=>!["Cancelled","Void"].includes(p.status);
+    const existing=payables.find(p=>p.poId===poNo&&liveBill(p));
     const issued=active.some(p=>["PO Issued","Partially Delivered","Delivered"].includes(p.status));
     if(!issued) return existing||null; // still Draft/Pending — no payable yet
     // True amount owed: gross − PO-level discount (+ VAT), the shared poTotals
@@ -9393,16 +9531,38 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       if(existing.status==="Paid") return existing; // never disturb a settled payable
       const upd={...existing,amount,vendor:supplier||existing.vendor,projectId:linkedProjectId||existing.projectId};
       upPayables(ps=>ps.map(p=>p.id===existing.id?upd:p));
-      if(isSupabaseReady()&&isUUID(existing.id)) sbUpsert("payables",payableToSb(upd),"id").catch(()=>{});
+      if(isSupabaseReady()&&isUUID(existing.id)) sbUpdatePayable(upd).catch(()=>{});
       return upd;
     }
     const rec={id:uid(),apNumber:"",vendor:supplier, /* AP no. assigned by the server on insert (migration 20260930140000) */amount,paidAmount:0,dueDate:"",category:"Supplier",
       accountCode:active[0]?.accountCode||"5020", // default: 5020 Production Supplies (5000 is Warehouse Rental in the chart)
       invoiceRef:poNo,invoiceNumber:"",invoiceDate:"",notes:`Auto-created from PO ${poNo}`,projectId:linkedProjectId,
       poNumber:poNo,poId:poNo,status:"Unpaid",verified:false,verificationPct:0,createdAt:today,createdBy:session?.name||""};
-    upPayables(ps=>[rec,...ps]);
-    if(isSupabaseReady()) sbUpsert("payables",payableToSb(rec),"id").catch(()=>{});
-    return rec;
+    if(!isSupabaseReady()){upPayables(ps=>[rec,...ps]);return rec;}
+    // Raise the bill only once the SERVER has the PO as issued. The PO form
+    // saves its lines without waiting, so a refused issue (approver or down
+    // payment rule) left this device thinking "PO Issued" and raised a bill on
+    // a PO the server still had at Draft / Pending Approval (AP-2026-0941 on
+    // Draft PO-1429, AP-2026-0942 on Pending PO-1433, 2026-11-09). Retries
+    // while the line writes reach the server.
+    if(_poBillPending.has(poNo)) return null; // a check for this PO is already running
+    _poBillPending.add(poNo);
+    (async()=>{
+     try{
+      for(let i=0;i<4;i++){
+        if(i) await new Promise(res=>setTimeout(res,1500));
+        const{data,error}=await supabase.from("purchase_requests").select("status").eq("po_number",poNo);
+        if(error) continue;
+        if((data||[]).some(r=>["PO Issued","Partially Delivered","Delivered"].includes(r.status))){
+          upPayables(ps=>ps.some(p=>p.poId===poNo&&liveBill(p))?ps:[rec,...ps]);
+          sbUpsert("payables",payableToSb(rec),"id").catch(()=>{});
+          return;
+        }
+      }
+      toastEmit(`PO ${poNo} is not issued on the server, so no supplier bill was raised. Check the PO's status and approver.`,"error",9000);
+     }finally{_poBillPending.delete(poNo);}
+    })();
+    return null;
   };
   // Work Order → Accounts Payable. Mirrors syncPoPayable for subcontractor Work
   // Orders so both procurement doors (PO to suppliers, WO to subcontractors) land
@@ -9428,8 +9588,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     await uiAlert({title:res.duplicate==="block"?"Not saved: duplicate":"Not saved: needs a Manager",message:text});
     return null;
   };
-  const savePayable=async(data)=>{
-    if(!data.vendor||!data.amount) return;
+  const savePayable=async(data,editPayId=null)=>{
+    if(!String(data.vendor||"").trim()||!(Number(data.amount)>0)){toastEmit("Enter the vendor / payee and the amount before saving.","error");return;}
+    // Bills on a PO / WO are entered by Procurement; Finance enters only bills with
+    // no PO, charged to a cost center (OPEX). Mirrors payables_ins (migration 20261111100000).
+    if(!editPayId&&!canBillPo){
+      if(String(data.poNumber||data.poId||"").trim()){toastEmit("Bills on a PO or Work Order are entered by Procurement. Ask them to log this one.","error",9000);return;}
+      if(!deals.find(d=>d.id===data.projectId)?.isCostCenter){toastEmit("A bill with no PO is charged to a cost center (GMD OPEX, GMD Tools, GMD Warehouse Stocks). Project bills are entered by Procurement against the PO.","error",10000);return;}
+    }
     if(!String(data.accountCode||"").trim()){toastEmit("Select a Chart-of-Accounts code before saving — it drives the financial statements.","error");return;}
     // Every peso is charged to a project or a cost center (GMD OPEX / Tools / Stocks).
     if(!data.projectId){toastEmit("Charge this bill to a project or a cost center (GMD OPEX, GMD Tools, GMD Stocks) before saving.","error");return;}
@@ -9541,7 +9707,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       paidDate:derived==="Paid"?(data.paidDate||today):(data.paidDate||""),
       createdAt:editPayId?data.createdAt:today,createdBy:editPayId?(data.createdBy||session?.name||""):session?.name||""};
     if(isSupabaseReady()){
-      let res=await sbUpsertDetailed("payables",payableToSb(rec),"id");
+      // A role that can't create this bill saves an edit as a plain update: Postgres
+      // checks the INSERT policy on an upsert even when the row exists.
+      let res=(editPayId&&!canBillPo)?{ok:await sbUpdatePayable(rec)}:await sbUpsertDetailed("payables",payableToSb(rec),"id");
       if(res.duplicate){
         const reason=await askDupOverride(res);
         if(!reason) return;
@@ -9554,7 +9722,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       toastEmit("⚠️ Payable saved locally only — no server connection. Do not close this tab!","warning",9000);
     }
     upPayables(ps=>editPayId?ps.map(p=>p.id===editPayId?rec:p):[rec,...ps]);
-    setPayModal(false);setEditPayId(null);setPayForm(emptyPayForm());
+    return true;
   };
   // Verification gate: a PO/WO-sourced payable is locked from payment until the
   // receiving side signs off — Warehouse for Materials, Operations (% complete)
@@ -9572,7 +9740,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(!(await uiConfirm(`Confirm Warehouse received the items for ${p.vendor||"this vendor"}${p.apNumber?` (${p.apNumber})`:""}? This unlocks it for payment.`))) return;
     const upd={...p,verified:true,verificationPct:pct,verifiedBy:session?.name||"",verifiedAt:today};
     upPayables(ps=>ps.map(x=>x.id===id?upd:x));
-    if(isSupabaseReady()&&isUUID(id)) sbUpsert("payables",payableToSb(upd),"id").catch(()=>{});
+    if(isSupabaseReady()&&isUUID(id)) sbUpdatePayable(upd).catch(()=>{});
     toastEmit("Warehouse receipt verified — now payable.","success");
   };
   // ── Expense/payable approval gate ────────────────────────────────────────
@@ -9761,6 +9929,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // Open the Record-Payment modal for a payable, pre-filled with its open balance.
   // Navigation + badge counts for the Aerwin-styled Finance module tab bar.
   const[poDraft,setPoDraft]=useState(null); // PRF lines handed from the Order Board to the PO form
+  const[woDraft,setWoDraft]=useState(null); // supplier handed from Purchasing to the new-WO form
   const financeErpCounts=()=>({
     po:new Set(prs.filter(p=>["PO Issued","Partially Delivered"].includes(p.status)&&p.poNumber).map(p=>p.poNumber)).size,
     ap:payables.filter(p=>p.status!=="Paid").length,
@@ -9807,22 +9976,33 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(fail.length) toastEmit(`PO ${poNo} saved, but ${fail.length} PRF link(s) failed: ${fail[0]}. Link it from the PRF page.`,"error",12000);
     if(ordered) sendTelegramNotification("ops",`✅ <b>PO ${poNo}</b> issued for ${ordered} PRF${ordered>1?"s":""} (all items ordered).`);
   };
+  // "+ PO" / "+ WO" on Purchasing open the existing forms with the supplier filled in.
+  // Procurement and Managers only: Finance pays, so it doesn't raise orders from here.
+  const canRaiseOrders=canRaiseOrder(role);
   const purchasingPage=()=>(
     <PurchasingHub prs={prs} swos={swos} payables={payables} payPays={payPays} deals={deals} exps={exps} role={role} today={today}
+      onNewPO={canRaiseOrders?sup=>{setPoDraft({supplier:sup||"",lines:[]});setPage("procurement");}:null}
+      onNewWO={canRaiseOrders?sub=>{setWoDraft({subcontractor:sub||""});setPage("subconwo");}:null}
       onGo={id=>{if(id==="bills"){setPage("finance");setFinTab(billsTab);}else setPage(id);}}
       onPayBill={roleCanInsert("payable_payments")?b=>{setPage("finance");setFinTab(billsTab);openPayModal(b);}:null}
+      // "Pay" on a supplier line: supplier bills open "Pay several bills" for that supplier;
+      // a subcontractor bill opens the single-payment form (retention is per bill).
+      onPaySupplier={roleCanInsert("payable_payments")?bills=>{
+        const sup=bills.filter(b=>!payIsSubcon(b));
+        setPage("finance");setFinTab(billsTab);
+        if(sup.length) setMultiPay({vendor:sup[0].vendor||"",sel:Object.fromEntries(sup.filter(b=>(b.vendor||"")===(sup[0].vendor||"")).map(b=>[b.id,String(Math.round(((Number(b.amount)||0)-(Number(b.paidAmount)||0))*100)/100)])),date:today,method:"Check",bank:"",ref:""});
+        else openPayModal(bills[0]);
+      }:null}
       onNewBilling={roleCanInsert("payables")?r=>{
         const pid=r.dealId&&isUUID(r.dealId)?r.dealId:null;
         const line=(r.lines||[]).find(l=>l.accountCode)||{};
         const wo=r.wo||{};
-        setPage("finance");setFinTab(billsTab);
-        setPayForm({...emptyPayForm(),docType:"AP",vendor:r.vendor==="—"?"":r.vendor,
+        openBillForm({...emptyPayForm(),docType:"AP",vendor:r.vendor==="—"?"":r.vendor,
           category:r.isWO?"Subcontractor":"Supplier",
           accountCode:r.isWO?(wo.accountCode||"5070"):(line.accountCode||""),
           projectId:pid,poNumber:r.no,poId:r.no,invoiceRef:r.no,
           retentionPct:r.isWO?(Number(wo.retentionPct)||0):0,
           notes:r.isWO?`Progress billing on Work Order ${r.no}`:`Supplier invoice for PO ${r.no}`});
-        setEditPayId(null);setPayModal(true);
       }:null}/>
   );
   const openRetentionRelease=(p)=>{
@@ -9985,7 +10165,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                                    {id:"materialreq",l:"PRF"},{id:"orderboard",l:"Order Board"},{id:"purchasing",l:"Purchasing"},{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"deliveries",l:"Deliveries"},{id:"inventory",l:"Inventory"},{id:"masters",l:"Suppliers"}]},
       {group:"Money",       items:[{id:"executive",l:"Overview"},...[["exectxns","txns","Transactions"],["execpl","pl","P&L"],["execloans","loans","Loans"]].filter(([,t])=>!HIDDEN_FIN_TABS.has(t)).map(([id,,l])=>({id,l})),{id:"monboard",l:"Monitoring Board"},...(OWNER_USERS.includes(session?.username)?[{id:"projectmargins",l:"Project Margins"}]:[]),{id:"costanalysis",l:"Budget & Costs"},{id:"finance-reports",l:"Reports"},
                                    {id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},
-                                   {id:"payables",l:"Supplier Bills"},{id:"payments",l:"Payments"},{id:"payrun",l:"Payment Run"},{id:"checkvouchers",l:"Check Vouchers"},{id:"subconmon",l:"Subcon Payments"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills (old)"}]:[]),
+                                   {id:"payables",l:"Supplier Bills"},{id:"aplog",l:"AP Log"},{id:"payments",l:"Payments"},{id:"payrun",l:"Payment Run"},{id:"checkvouchers",l:"Check Vouchers"},{id:"subconmon",l:"Subcon Payments"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills (old)"}]:[]),
                                    {id:"finance",l:"Accounting Home"},{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
       {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"audit",l:"Audit"},{id:"syshealth",l:"System Health"},{id:"botsettings",l:"Bot Settings"},{id:"tvboard",l:"Office TV Board"},{id:"activity",l:"Team Activity"}]},
     ],
@@ -9999,10 +10179,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     Finance:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"boq",l:"BOQ"},{id:"clients",l:"Clients"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"payables",l:"Supplier Bills"},{id:"payments",l:"Payments"},{id:"payrun",l:"Payment Run"},{id:"checkvouchers",l:"Check Vouchers"},{id:"subconmon",l:"Subcon Payments"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills (old)"}]:[]),{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"monboard",l:"Monitoring Board"},{id:"finance-reports",l:"Reports"},{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"purchasing",l:"Purchasing"},{id:"payables",l:"Supplier Bills"},{id:"aplog",l:"AP Log"},{id:"payments",l:"Payments"},{id:"payrun",l:"Payment Run"},{id:"checkvouchers",l:"Check Vouchers"},{id:"subconmon",l:"Subcon Payments"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills (old)"}]:[]),{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"monboard",l:"Monitoring Board"},{id:"finance-reports",l:"Reports"},{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"},{id:"subconcert",l:"Subcon Billing"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
-      {group:"Procurement", items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"purchasing",l:"Purchasing"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Suppliers"}]},
+      {group:"Procurement", items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Suppliers"}]},
       {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"}]},
       {group:"Admin",       items:[{id:"audit",l:"Audit"},{id:"botsettings",l:"Bot Settings"},{id:"activity",l:"Team Activity"}]},
     ],
@@ -10018,8 +10198,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     Accounting:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"payables",l:"Supplier Bills"},{id:"payments",l:"Payments"},{id:"checkvouchers",l:"Check Vouchers"},{id:"subconmon",l:"Subcon Payments"},{id:"purchaseorders",l:"Purchase Orders"},{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
-      {group:"Procurement", items:[{id:"purchasing",l:"Purchasing"},{id:"subconwo",l:"SWO For Accounting"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"purchasing",l:"Purchasing"},{id:"payables",l:"Supplier Bills"},{id:"aplog",l:"AP Log"},{id:"payments",l:"Payments"},{id:"checkvouchers",l:"Check Vouchers"},{id:"subconmon",l:"Subcon Payments"},{id:"purchaseorders",l:"Purchase Orders"},{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
+      {group:"Procurement", items:[{id:"subconwo",l:"SWO For Accounting"}]},
     ],
     Procurement:[
       {group:"Overview",   items:[{id:"home",l:"Overview"}]},
@@ -10029,7 +10209,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     QS:[
       {group:"Overview", items:[{id:"home",l:"Dashboard"}]},
       {group:"Sales",    items:[{id:"pipeline",l:"Sales Pipeline"},{id:"boq",l:"BOQ"}]},
-      {group:"Cost Control", items:[{id:"costanalysis",l:"Budget & Costs"},{id:"projectmargins",l:"Project Margins"},{id:"materialreq",l:"Purchase Requests (PRF)"}]},
+      {group:"Cost Control", items:[{id:"costanalysis",l:"Budget & Costs"},{id:"projectmargins",l:"Project Margins"},{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"purchaseorders",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"}]},
       {group:"Operations", items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
     ],
     Operations:[
@@ -10074,8 +10254,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     FinanceAssistant:[
       {group:"Overview",   items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
-      {group:"Finance",    items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"payables",l:"Supplier Bills"},{id:"payments",l:"Payments"},{id:"payrun",l:"Payment Run"},{id:"checkvouchers",l:"Check Vouchers"},{id:"subconmon",l:"Subcon Payments"},{id:"purchaseorders",l:"Purchase Orders"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills (old)"}]:[]),{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"monboard",l:"Monitoring Board"},{id:"finance-reports",l:"Reports"},{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
-      {group:"Procurement", items:[{id:"purchasing",l:"Purchasing"}]},
+      {group:"Finance",    items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"purchasing",l:"Purchasing"},{id:"payables",l:"Supplier Bills"},{id:"aplog",l:"AP Log"},{id:"payments",l:"Payments"},{id:"payrun",l:"Payment Run"},{id:"checkvouchers",l:"Check Vouchers"},{id:"subconmon",l:"Subcon Payments"},{id:"purchaseorders",l:"Purchase Orders"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills (old)"}]:[]),{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"monboard",l:"Monitoring Board"},{id:"finance-reports",l:"Reports"},{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
     ],
     // Procurement Manager sees the same workspace as Procurement — the only
     // difference is authority (they approve POs), not navigation.
@@ -10085,6 +10264,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Projects",   items:[{id:"projects",l:"Projects"},{id:"clients",l:"Clients"}]},
     ],
   };
+  // Liquidations (2026-11-11): Finance roles get it next to Payment Run (Payables
+  // hub); Accounting reads it there; every other role gets "My Liquidations".
+  Object.keys(navMap).forEach(r=>{
+    const fin=["Manager","Finance","FinanceAssistant","Accounting"].includes(r);
+    const item={id:"liquidations",l:fin?"Liquidations":"My Liquidations"};
+    if(fin){
+      const g=navMap[r].find(x=>(x.items||[]).some(it=>it.id==="payrun"||it.id==="payables"));
+      if(g){const i=g.items.findIndex(it=>it.id==="payrun");g.items.splice(i>=0?i+1:g.items.length,0,item);return;}
+    }
+    navMap[r].push({group:"Money",items:[item]});
+  });
   // Hidden modules drop out of every role's nav; a group left empty goes too.
   const visibleNav=r=>(navMap[r]||[]).map(g=>({...g,items:(g.items||[]).filter(it=>!HIDDEN_NAV_IDS.has(it.id))})).filter(g=>g.items.length);
   // Nav hubs (2026-11-05): pages that belong together share one sidebar item,
@@ -10117,7 +10307,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const Nav=useStableComponent(()=>{
     const NAV_ICONS={
       home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   cashposition:"🏦",   supplierbills:"📦",   cashflow:"📈",   payables:"📤",   billing:"🧾",
-      reports:"📈", "sales-reports":"📈", "finance-reports":"📈", projectmargins:"🪙", acctdash:"📒", executive:"🎯", expmon:"🧾", payrun:"💸", bir2307:"📑", monboard:"🚦", subconmon:"🔨", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
+      reports:"📈", "sales-reports":"📈", "finance-reports":"📈", projectmargins:"🪙", acctdash:"📒", executive:"🎯", expmon:"🧾", payrun:"💸", liquidations:"🧾", bir2307:"📑", monboard:"🚦", subconmon:"🔨", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅", financecal:"📅",
       drf:"🖌️",    procurement:"📦", purchasing:"🛒", orderboard:"📋", progress:"📶", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
       masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆", audit:"🔎", syshealth:"🩺", tvboard:"📺",
@@ -10158,6 +10348,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             {navCollapsed?"→":"←"}
           </button>
         </div>
+        {cashOutKinds.length>0&&(
+          <div style={{padding:navCollapsed?"10px 0 2px":"10px 12px 2px",display:"flex",justifyContent:"center",flexShrink:0}}>
+            <button onClick={()=>openCashOut()} title="Cash Out: order, bill or pay" aria-label="Cash Out"
+              style={{width:navCollapsed?40:"100%",height:36,border:"none",borderRadius:9,background:"#C9A24B",color:"#0B2545",fontFamily:"inherit",fontWeight:800,fontSize:".84rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+              <span>💸</span>{!navCollapsed&&<span>Cash Out</span>}
+            </button>
+          </div>
+        )}
         {/* Nav items */}
         <div style={{flex:1,overflowY:"auto",padding:"8px 0"}}>
           {navCollapsed ? (
@@ -10251,6 +10449,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           <span style={{fontSize:".65rem",fontWeight:700,color:roleColor,background:roleColor+"22",borderRadius:20,padding:"2px 8px"}}>
             {session?.name?.split(" ")[0]} · {roleLabel(session?.title||role)}
           </span>
+          {cashOutKinds.length>0&&<button onClick={()=>openCashOut()} aria-label="Cash Out" style={{background:"#C9A24B",border:"none",borderRadius:6,padding:"9px 10px",color:"#0B2545",cursor:"pointer",fontSize:".72rem",fontWeight:800,fontFamily:"inherit",minHeight:36}}>💸</button>}
           <a href="/handbook.html" target="_blank" rel="noopener noreferrer" style={{background:"rgba(245,158,11,.2)",border:"none",borderRadius:6,padding:"9px 12px",color:"#f59e0b",fontSize:".72rem",fontWeight:700,textDecoration:"none",display:"inline-flex",alignItems:"center",minHeight:36}}>📘</a>
           <button onClick={logout} style={{background:"rgba(239,68,68,.2)",border:"none",borderRadius:6,padding:"9px 12px",color:"#ef4444",cursor:"pointer",fontSize:".72rem",fontFamily:"inherit",minHeight:36,minWidth:36,display:"inline-flex",alignItems:"center",justifyContent:"center"}}>↩</button>
         </div>
@@ -10266,7 +10465,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const favPool=visibleNav(role).flatMap(g=>g.items||[]);
     const NAV_ICONS={
       home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   cashposition:"🏦",   supplierbills:"📦",   cashflow:"📈",   payables:"📤",   billing:"🧾",
-      reports:"📈", "sales-reports":"📈", "finance-reports":"📈", projectmargins:"🪙", acctdash:"📒", executive:"🎯", expmon:"🧾", payrun:"💸", bir2307:"📑", monboard:"🚦", subconmon:"🔨", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
+      reports:"📈", "sales-reports":"📈", "finance-reports":"📈", projectmargins:"🪙", acctdash:"📒", executive:"🎯", expmon:"🧾", payrun:"💸", liquidations:"🧾", bir2307:"📑", monboard:"🚦", subconmon:"🔨", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅", financecal:"📅",
       drf:"🖌️",    procurement:"📦", purchasing:"🛒", orderboard:"📋", progress:"📶", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
       masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆", audit:"🔎", syshealth:"🩺", tvboard:"📺",
@@ -10452,6 +10651,43 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     </div>
   ):null;
 
+  // ── CASH OUT ── the one modal for money leaving GMD (src/views/CashOutModal.jsx).
+  // Each option renders the existing form; saves go through the same guarded
+  // functions (PO / WO approval and DP gates, savePayable, recordPayments).
+  const billFormProps={onSave:savePayable,onCancel:closeCashOut,swos,payables,chartOfAccounts,costCenterDeals,wonDeals,deals,today,role,sendTelegramNotification,prs,drs,suppliers,upPayables};
+  // roleCanInsert maps Cost Control to Finance, but Cost Control (QS) only reads
+  // payables and approves POs through approve_po; it writes none of these.
+  const coCan=t=>role!=="Cost Control"&&roleCanInsert(t);
+  const cashOutKinds=[
+    coCan("purchase_requests")&&pageOn("procurement")&&{id:"po",group:"order",icon:"📦",label:"Purchase Order",wide:true,
+      desc:"Order materials from a supplier. Cost Control or a Manager approves it before it's issued; no down payment, no issue.",
+      render:(_,close)=><ProcurementView2 embedded onEmbeddedDone={close} onPoFromPrf={linkPrfLines} payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/>},
+    coCan("subcon_work_orders")&&pageOn("subconwo")&&{id:"wo",group:"order",icon:"🔨",label:"Subcon Work Order",wide:true,
+      desc:"Engage a subcontractor for a contract amount. Needs an approver and the client's down payment to issue.",
+      render:(_,close)=><SubconWOView embedded onEmbeddedDone={close} deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/>},
+    (canBillPo||canBillOpex)&&{id:"bill",group:"bill",icon:"🧾",label:canBillPo?"Supplier bill (AP)":"OPEX bill (no PO)",editLabel:"Edit bill",
+      desc:canBillPo?"A supplier's invoice. Pick its PO to fill in the details, or enter a bill with no PO (rent, utilities, OPEX).":"Rent, utilities, permits and other bills with no PO, charged to GMD OPEX or another cost center. Bills on a PO are entered by Procurement.",
+      render:(p,close)=>p?.form
+        ?<PayableForm {...billFormProps} onCancel={close} initial={p.form} editId={p.id||null} opexOnly={!canBillPo}/>
+        :canBillPo
+          ?<OrderPicker rows={buildOrders({prs,swos,payables}).filter(r=>r.kind==="PO"&&r.payStatus==="No bill on file")}
+              onPick={r=>openBillForm(poBillForm(r))} onManual={()=>openBillForm({...emptyPayForm(),docType:"AP"})}
+              manualLabel="Bill with no PO" empty="Every issued PO already has a bill. Use “Bill with no PO” for anything else."/>
+          :<PayableForm {...billFormProps} onCancel={close} initial={opexBillForm("AP")} opexOnly/>},
+    canBillPo&&{id:"subcon",group:"bill",icon:"👷",label:"Subcon progress billing",
+      desc:"The subcontractor's next billing against a Work Order. Paid only up to the % the PM certifies.",
+      render:()=><OrderPicker rows={buildOrders({prs,swos,payables}).filter(r=>r.kind==="WO"&&r.issued&&(Number(r.amount)||0)-(Number(r.billed)||0)>1)}
+            onPick={r=>openBillForm(subconBillForm(r.items[0]))} empty="No issued Work Order has anything left to bill."/>},
+    (canBillPo||canBillOpex)&&{id:"prv",group:"bill",icon:"📝",label:"Payment request, no PO (PRV)",
+      desc:canBillPo?"Money out with no PO or supplier invoice. Subcon work of ₱50,000+ still needs a Work Order.":"Money out with no PO or supplier invoice, charged to GMD OPEX or another cost center.",
+      render:(_,close)=><PayableForm {...billFormProps} onCancel={close} initial={canBillPo?{...emptyPayForm(),docType:"PRV"}:opexBillForm("PRV")} opexOnly={!canBillPo}/>},
+    coCan("payable_payments")&&role!=="Accounting"&&{id:"pay",group:"pay",icon:"💸",label:"Pay bills",wide:true,
+      desc:"Approve and pay bills that are due, one at a time or several in one check or transfer.",
+      render:()=><CashPositionPayables payables={payables} payPays={payPays} prs={prs} swos={swos} exps={exps} deals={deals} today={today}
+            canApprove={canApprovePayables} enteredByMe={enteredByMe} canPay={roleCanInsert("payable_payments")}
+            onApprove={approvePayable} onPay={(id,amt,o)=>recordPayablePayment(id,amt,o)} onPayMany={recordPayments} onCancelPay={cancelPayablePayment}/>},
+  ].filter(Boolean);
+
   // Wrap is the shared page shell (side nav + global modals + fade-in content).
   // It closes over ~15 modal-open states (confirmDel, dealModal, expModal,
   // swModal, infModal, …) that live in the Global Modals block below and must be
@@ -10605,6 +10841,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         </div>
       )}
       {/* Global Modals */}
+      <CashOutModal kinds={cashOutKinds}/>
       <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal} deals={deals} addenda={addenda} role={role}/>
       <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={spendProjList} clientName={clientName} chartOfAccounts={chartOfAccounts} suppliers={suppliers} exps={exps} poRefOptions={[...new Set([...prs.map(p=>p.poNumber),...swos.map(w=>w.woNumber)].filter(Boolean))]}/>
       <Modal open={confirmDel!==null} onClose={()=>{setConfirmDel(null);setDelAck(false);}} title="Delete this deal?">
@@ -10695,7 +10932,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           <Fld label="Supplier"><Inp value={swForm.supplier} onChange={e=>setSwForm(p=>({...p,supplier:e.target.value}))} placeholder="e.g. Casa Hardware"/></Fld>
           <Fld label="Est. Cost (₱)"><Inp type="number" value={swForm.estCost} onChange={e=>setSwForm(p=>({...p,estCost:e.target.value}))}/></Fld>
           <Fld label="Status"><Sel value={swForm.status} onChange={e=>setSwForm(p=>({...p,status:e.target.value}))}>{SWATCH_STATUS.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
-          <div style={{gridColumn:"1/-1"}}><Fld label="Project"><Sel value={swForm.projectId||"none"} onChange={e=>setSwForm(p=>({...p,projectId:e.target.value==="none"?null:e.target.value}))}><option value="none">— Not linked —</option>{projList.map(d=><option key={d.id} value={d.id}>{d.client}</option>)}</Sel></Fld></div>
+          <div style={{gridColumn:"1/-1"}}><Fld label="Project"><ProjectSelect value={swForm.projectId||"none"} onChange={e=>setSwForm(p=>({...p,projectId:e.target.value==="none"?null:e.target.value}))}><option value="none">— Not linked —</option>{projList.map(d=><option key={d.id} value={d.id}>{d.client}</option>)}</ProjectSelect></Fld></div>
           <div style={{gridColumn:"1/-1"}}><Fld label="Swatch / Reference Link"><Inp type="url" value={swForm.swatchLink||""} onChange={e=>setSwForm(p=>({...p,swatchLink:e.target.value}))} placeholder="https://… (optional)"/></Fld></div>
           <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp rows={2} value={swForm.notes||""} onChange={e=>setSwForm(p=>({...p,notes:e.target.value}))}/></Fld></div>
         </div>
@@ -10756,10 +10993,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           <Inp value={infForm?.source||""} onChange={e=>setInfForm(p=>({...p,source:e.target.value}))} placeholder="e.g. Metro Retail Co."/>
         </Fld>
         <Fld label="Link to Project">
-          <Sel value={infForm?.projectId||"none"} onChange={e=>setInfForm(p=>({...p,projectId:e.target.value==="none"?null:e.target.value}))}>
+          <ProjectSelect value={infForm?.projectId||"none"} onChange={e=>setInfForm(p=>({...p,projectId:e.target.value==="none"?null:e.target.value}))}>
             <option value="none">— Not linked to a project —</option>
             {projList.map(d=><option key={d.id} value={d.id}>{d.client}</option>)}
-          </Sel>
+          </ProjectSelect>
         </Fld>
         <Fld label="Note" hint="e.g. Full payment, 50% deposit, partial">
           <Inp value={infForm?.note||""} onChange={e=>setInfForm(p=>({...p,note:e.target.value}))} placeholder="Payment note"/>
@@ -11980,7 +12217,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     .map((d,i)=>{
                       const jo=dealJo(jos,d.id);
                       const pc=pcards[d.id];
-                      const pct=pc?Math.round(Object.values(pc.departments||{}).filter(dept=>dept.done).length/6*100):0;
+                      const pct=projProgressPct(pc,d);
                       const daysLeft=pc?.targetEndDate?Math.ceil((new Date(pc.targetEndDate)-today2)/(1000*60*60*24)):null;
                       const isOver=daysLeft!==null&&daysLeft<0;
                       const myUpdates=actLog.filter(a=>a.dealId===d.id&&a.action==="PM Update");
@@ -12002,7 +12239,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                             </div>
                             <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
                               <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                                <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:pct===100?"#059669":"#3b82f6"}}>{pct}%</span>
+                                <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:pct===100?"#059669":pct==null?"#94a3b8":"#3b82f6"}}>{pct==null?"—":`${pct}%`}</span>
                                 {daysLeft!==null&&(
                                   <span style={{fontSize:".7rem",fontWeight:700,color:isOver?"#dc2626":daysLeft<=7?"#f59e0b":"#059669",background:isOver?"#fef2f2":daysLeft<=7?"#fffbeb":"#f0fdf4",border:"1px solid",borderColor:isOver?"#fecaca":daysLeft<=7?"#fde68a":"#6ee7b7",borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap"}}>
                                     {isOver?`${Math.abs(daysLeft)}d OVER`:`${daysLeft}d left`}
@@ -12034,14 +12271,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 {otherProjects.slice(0,5).map((d,i)=>{
                   const jo=dealJo(jos,d.id);
                   const pc=pcards[d.id];
-                  const pct=pc?Math.round(Object.values(pc.departments||{}).filter(dept=>dept.done).length/6*100):0;
+                  const pct=projProgressPct(pc,d);
                   return(
                     <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:i<4?"1px solid #f8fafc":""}}>
                       <div>
                         <div style={{fontWeight:600,color:"#475569",fontSize:".85rem"}}>{d.client}</div>
                         <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d.ceNo} · PM: {pc?.pm1||jo?.pm1||"—"}</div>
                       </div>
-                      <span style={{fontSize:".8rem",fontWeight:700,color:"#94a3b8"}}>{pct}%</span>
+                      <span style={{fontSize:".8rem",fontWeight:700,color:"#94a3b8"}}>{pct==null?"—":`${pct}%`}</span>
                     </div>
                   );
                 })}
@@ -13747,14 +13984,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 </button>
               ))}
             </div>
-            <select value={aeUpdateDealId} onChange={e=>setAeUpdateDealId(e.target.value)}
+            <ProjectSelect value={aeUpdateDealId} onChange={e=>setAeUpdateDealId(e.target.value)}
               style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 9px",fontFamily:"inherit",fontSize:".8rem",background:"#f8fafc",color:aeUpdateDealId?"#1d4ed8":"#94a3b8",fontWeight:aeUpdateDealId?700:400,marginBottom:12,boxSizing:"border-box"}}>
               <option value="">— No project tag —</option>
               {aeUpdateDealType==="active"
                 ? wonDeals.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed").map(d=><option key={d.id} value={d.id}>{d.contact||d.client}{d.ceNo?" · "+d.ceNo:""}</option>)
                 : deals.filter(d=>isActivePipeline(d.stage)).map(d=><option key={d.id} value={d.id}>{d.contact||d.client}{d.ceNo?" · "+d.ceNo:""}</option>)
               }
-            </select>
+            </ProjectSelect>
             <textarea value={aeUpdateText} onChange={e=>setAeUpdateText(e.target.value)}
               onKeyDown={e=>{if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){e.preventDefault();if(aeUpdateText.trim())addAeUpdate(aeUpdateText,aeUpdateDealId);}}}
               rows={isMobile?3:4}
@@ -15377,7 +15614,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             dashboard (overview/P&L/Loans) and Cash Position — are their own pages. */}
         {/* Weekly Dues board toggle — always reachable from anywhere in Finance
             (hidden with the AP while the new AP/AR system is built). */}
-        {!AP_HIDDEN&&["payables","payments","duesboard"].includes(finTab)&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:12}}>
+        {!AP_HIDDEN&&["payables","aplog","payments","duesboard"].includes(finTab)&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:12}}>
           <button onClick={()=>setFinTab(finTab==="duesboard"?"payables":"duesboard")} style={{whiteSpace:"nowrap",padding:"6px 14px",borderRadius:20,border:`1px solid ${finTab==="duesboard"?ERP.navy:ERP.line}`,background:finTab==="duesboard"?ERP.navy:"#fff",color:finTab==="duesboard"?"#fff":ERP.muted,cursor:"pointer",fontSize:".78rem",fontWeight:600,fontFamily:"inherit"}}>📅 Weekly Dues</button>
         </div>}
         {finTab==="duesboard"&&(
@@ -15752,13 +15989,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         {finTab==="expmon"&&(
           <ExpenseMonitoring cashPositions={cashPositions} saveDayPos={saveDayPos} cashDayIsCurrent={cashDayIsCurrent} payables={payables} payPays={payPays} prs={prs} swos={swos} exps={exps} deals={deals} today={today}
             role={role} username={session?.username||""} userName={session?.name||""} canPay={roleCanInsert("payable_payments")} onPayMany={recordPayments}
-            onNewPayable={roleCanInsert("payables")?()=>{setPayForm(emptyPayForm());setEditPayId(null);setPayModal(true);}:null}
-            onEditPayable={roleCanInsert("payables")?p=>{setPayForm({...p});setEditPayId(p.id);setPayModal(true);}:null}/>
+            onNewPayable={roleCanInsert("payables")?()=>openBillForm({...emptyPayForm(),docType:"AP"}):null}
+            onEditPayable={roleCanInsert("payables")?p=>openBillForm({...p},p.id):null}/>
         )}
 
         {/* ── PAYMENT RUN ── weekly: list Mon, propose Tue, Manager approves Wed, release Thu. */}
         {finTab==="payrun"&&role!=="Accounting"&&(
-          <PaymentRun payables={payables} payPays={payPays} prs={prs} swos={swos} exps={exps} deals={deals} cashPositions={cashPositions} today={today}
+          <PaymentRun payables={payables} payPays={payPays} prs={prs} swos={swos} exps={exps} deals={deals} billings={billings} cashPositions={cashPositions} today={today}
             role={canonRole(role)} session={session} canPay={roleCanInsert("payable_payments")} onPayMany={recordPayments} sendTelegramNotification={sendTelegramNotification}
             onBillsApproved={ids=>upPayables(ps=>ps.map(p=>ids.includes(p.id)&&(p.approvalStatus||"Approved")==="Pending"?{...p,approvalStatus:"Approved",approvedBy:session?.name||"",approvedAt:new Date().toISOString()}:p))}/>
         )}
@@ -15778,102 +16015,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         {/* ── SUBCON PAYMENT MONITORING ── one row per WO, payments as columns (read-only). */}
         {finTab==="subconmon"&&(
           <SubconPaymentMonitor swos={swos} payables={payables} payPays={payPays} deals={deals} prs={prs} exps={exps} today={today}
-            onNewBilling={roleCanInsert("payables")?wo=>{
-              const pid=(wo.dealId&&isUUID(wo.dealId))?wo.dealId:((wo.projectId&&isUUID(wo.projectId))?wo.projectId:null);
-              setPayForm({...emptyPayForm(),docType:"AP",vendor:wo.subcontractor||"",category:"Subcontractor",accountCode:wo.accountCode||"5070",
-                projectId:pid,poNumber:wo.woNumber,poId:wo.woNumber,invoiceRef:wo.woNumber,retentionPct:Number(wo.retentionPct)||0,
-                notes:`Progress billing on Work Order ${wo.woNumber}`});
-              setEditPayId(null);setPayModal(true);
-            }:null}/>
+            onNewBilling={roleCanInsert("payables")?wo=>openBillForm(subconBillForm(wo)):null}/>
         )}
 
-        {/* Add/Edit Payable modal: page-level so Expense Monitoring (and the
-            hidden Accounts Payable tab) can both open it. */}
-{/* Add/Edit Payable Modal */}
-        <Modal open={payModal} onClose={()=>{setPayModal(false);setEditPayId(null);}} title={editPayId?(payForm.docType==="PRV"?"Edit Payment Request":"Edit Other Payable"):(payForm.docType==="PRV"?"New Payment Request (PRV)":"New Other Payable")}>
-          {editPayId&&payForm.apNumber&&<div style={{fontSize:".72rem",color:"#6366f1",fontWeight:700,fontFamily:"monospace",marginBottom:8}}>{payForm.apNumber}{payForm.poNumber?` · PO ${payForm.poNumber}`:""}</div>}
-          {!editPayId&&isSubconPayable(payForm)&&payForm.poNumber&&(()=>{const wo=swos.find(w=>w.woNumber===payForm.poNumber);const billed=payables.filter(p=>isSubconPayable(p)&&p.poNumber===payForm.poNumber&&!["Cancelled","Void"].includes(p.status)).reduce((t,p)=>t+(Number(p.amount)||0),0);return(
-            <div style={{background:"#eef2ff",border:"1px solid #c7d2fe",borderRadius:8,padding:"8px 10px",fontSize:".76rem",color:"#3730a3",marginBottom:10}}>
-              Subcon billing against <b style={{fontFamily:"monospace"}}>{payForm.poNumber}</b>{wo?` · contract ₱${(Number(wo.contractAmount)||0).toLocaleString("en-PH")} · billed so far ₱${billed.toLocaleString("en-PH")} · left to bill ₱${Math.max(0,(Number(wo.contractAmount)||0)-billed).toLocaleString("en-PH")}`:""}.
-              Enter the subcontractor's billing no. and this billing's amount. It's paid only up to the % the PM certifies, or the WO's down payment % once the WO is issued.
-            </div>);})()}
-          <Fld label="Type">
-            <Sel value={payForm.docType==="PRV"?"PRV":"AP"} onChange={e=>setPayForm(p=>({...p,docType:e.target.value}))} disabled={!!(editPayId&&payForm.apNumber)}>
-              <option value="AP">Supplier bill (AP)</option>
-              <option value="PRV">Payment request, no PO (PRV)</option>
-            </Sel>
-            {!editPayId&&<div style={{fontSize:".72rem",color:"#64748b",marginTop:3}}>The {payForm.docType==="PRV"?"PRV":"AP"} number is assigned by the server when it saves, so two people can never get the same number.</div>}
-          </Fld>
-          <Fld label="Vendor / Payee"><Inp value={payForm.vendor||""} onChange={e=>setPayForm(p=>({...p,vendor:e.target.value}))} placeholder="e.g. ABC Steel Supply"/></Fld>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-            <Fld label="Invoice No."><Inp value={payForm.invoiceNumber||""} onChange={e=>setPayForm(p=>({...p,invoiceNumber:e.target.value}))} placeholder="Vendor invoice #"/></Fld>
-            <Fld label="Invoice Date"><Inp type="date" value={payForm.invoiceDate||""} onChange={e=>setPayForm(p=>({...p,invoiceDate:e.target.value}))}/></Fld>
-          </div>
-          {editPayId&&<SupplierDocsPanel role={role} sendTelegramNotification={sendTelegramNotification} ctx={{prs,drs,suppliers}}
-            bill={{...(payables.find(x=>x.id===editPayId)||{}),...payForm,id:editPayId}}
-            onChanged={patch=>{upPayables(ps=>ps.map(x=>x.id===editPayId?{...x,...patch}:x));setPayForm(f=>({...f,...patch}));}}/>}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-            <Fld label="Amount (₱)" required><Inp type="number" value={payForm.amount} onChange={e=>setPayForm(p=>({...p,amount:e.target.value}))} placeholder="0"/></Fld>
-            <Fld label="Already Paid (₱)"><Inp type="number" value={payForm.paidAmount} onChange={e=>setPayForm(p=>({...p,paidAmount:e.target.value}))} placeholder="0"/></Fld>
-          </div>
-          <Fld label="Due Date" required>
-            <Inp type="date" value={payForm.dueDate||""} onChange={e=>setPayForm(p=>({...p,dueDate:e.target.value}))}/>
-            {payForm.dueDate&&payForm.dueDate<today&&<div style={{fontSize:".72rem",color:"#ef4444",marginTop:3,fontWeight:600}}>⚠ Due date is in the past — this payable is already overdue.</div>}
-            {!payForm.dueDate&&<div style={{fontSize:".72rem",color:"#b45309",marginTop:3,fontWeight:600}}>Recommended — drives the cash-flow forecast.</div>}
-          </Fld>
-          <Fld label="Category"><Sel value={payForm.category} onChange={e=>setPayForm(p=>({...p,category:e.target.value}))}>{["Supplier","Subcontractor","Utility","Rent","Labor","Government","Other"].map(c=><option key={c}>{c}</option>)}</Sel></Fld>
-          <Fld label="Account (Chart of Accounts)" required>
-            <Sel value={payForm.accountCode||""} onChange={e=>setPayForm(p=>({...p,accountCode:e.target.value}))}>
-              <option value="">— Select account —</option>
-              {[...chartOfAccounts].filter(a=>a.active!==false&&(a.type==="COGS"||a.type==="Expense"||a.type==="Asset")).sort((a,b)=>String(a.code).localeCompare(String(b.code))).map(a=><option key={a.id||a.code} value={a.code}>{a.code} · {a.name}</option>)}
-            </Sel>
-            {!payForm.accountCode&&<div style={{fontSize:".72rem",color:"#b45309",marginTop:3,fontWeight:600}}>Required — this drives the account-code financial statements.</div>}
-          </Fld>
-          {payForm.docType==="PRV"&&isSubconPayable(payForm)&&(
-            <Fld label="Work order">
-              <Sel value={payForm.poNumber||""} onChange={e=>setPayForm(p=>({...p,poNumber:e.target.value,poId:e.target.value||null}))}>
-                <option value="">— None —</option>
-                {(swos||[]).filter(w=>w.woNumber&&w.status!=="Cancelled").slice().sort((a,b)=>String(b.woNumber).localeCompare(String(a.woNumber))).map(w=><option key={w.id||w.woNumber} value={w.woNumber}>{w.woNumber} · {w.subcontractor||"—"} · {"₱"+(Number(w.contractAmount)||0).toLocaleString("en-PH",{maximumFractionDigits:0})}</option>)}
-              </Sel>
-              {subconNeedsWo(payForm)&&<div style={{fontSize:".72rem",color:"#b91c1c",marginTop:3,fontWeight:600}}>Required: subcontractor payment requests of ₱{AP_RULES.subconNoWoLimit.toLocaleString("en-PH")} or more need a Work Order.</div>}
-              {payForm.poNumber&&<div style={{fontSize:".72rem",color:"#64748b",marginTop:3}}>Payment waits for Operations to verify % complete. Retention is held at payment.</div>}
-            </Fld>
-          )}
-          <Fld label="Charge to (project or cost center)"><Sel value={payForm.projectId||"none"} onChange={e=>setPayForm(p=>({...p,projectId:e.target.value==="none"?null:e.target.value}))}><option value="none">— Select a project or cost center</option>{costCenterDeals.length>0&&<optgroup label="Cost centers">{costCenterDeals.map(d=><option key={d.id} value={d.id}>🏷 {d.contact||d.client}</option>)}</optgroup>}<optgroup label="Projects">{wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" — "+d.contact:""}</option>)}</optgroup></Sel></Fld>
-          {/* BIR: VAT + EWT capture (restored from the legacy expense flow) */}
-          {(()=>{
-            const amt=Number(payForm.amount)||0;
-            const net=payForm.vatable?Math.round(amt/1.12*100)/100:amt;
-            const iv=payForm.vatable?Math.round((amt-net)*100)/100:0;
-            const er=Number(payForm.ewtRate)||0;
-            const ewt=er>0?Math.round(net*er/100*100)/100:0;
-            const peso=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
-            return(
-              <div style={{border:`1px solid ${ERP.line}`,borderRadius:8,padding:"10px 12px",marginBottom:12,background:"#FAFBFD"}}>
-                <div style={{fontSize:".7rem",fontWeight:800,color:ERP.navy,textTransform:"uppercase",letterSpacing:".5px",marginBottom:8}}>BIR — VAT / Withholding</div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                  <label style={{display:"flex",alignItems:"center",gap:8,fontSize:".8rem",color:"#334155",fontWeight:600,cursor:"pointer"}}>
-                    <input type="checkbox" checked={!!payForm.vatable} onChange={e=>setPayForm(p=>({...p,vatable:e.target.checked}))} style={{width:16,height:16}}/>
-                    VAT-inclusive (12%)
-                  </label>
-                  <Fld label="EWT Rate"><Sel value={String(payForm.ewtRate||0)} onChange={e=>setPayForm(p=>({...p,ewtRate:Number(e.target.value)}))}>{[["0","None"],["1","1%"],["2","2% (services/goods)"],["5","5%"],["10","10% (rental/pro.)"],["15","15%"]].map(([v,l])=><option key={v} value={v}>{l}</option>)}</Sel></Fld>
-                </div>
-                <Fld label="Supplier TIN"><Inp value={payForm.tin||""} onChange={e=>setPayForm(p=>({...p,tin:e.target.value}))} placeholder="000-000-000-000"/></Fld>
-                <div style={{display:"flex",gap:16,flexWrap:"wrap",fontSize:".74rem",color:ERP.muted,marginTop:4}}>
-                  <span>Net: <strong style={{color:ERP.ink}}>{peso(net)}</strong></span>
-                  {payForm.vatable&&<span>Input VAT: <strong style={{color:ERP.navy}}>{peso(iv)}</strong></span>}
-                  {er>0&&<span>EWT ({er}%): <strong style={{color:ERP.danger}}>−{peso(ewt)}</strong></span>}
-                  {er>0&&<span>Net of EWT: <strong style={{color:ERP.ink}}>{peso(amt-ewt)}</strong></span>}
-                </div>
-              </div>
-            );
-          })()}
-          <Fld label={deals.find(d=>d.id===payForm.projectId)?.isCostCenter?"What was it used for? (required for cost centers)":"Notes"}><Inp value={payForm.notes||""} onChange={e=>setPayForm(p=>({...p,notes:e.target.value}))} placeholder={deals.find(d=>d.id===payForm.projectId)?.isCostCenter?"e.g. Warehouse racking, bay 2":"Optional details"}/></Fld>
-          <div style={{display:"flex",gap:10,marginTop:18}}>
-            <Btn full variant="green" onClick={()=>savePayable(payForm)}>Save Payable</Btn>
-            <Btn variant="ghost" onClick={()=>{setPayModal(false);setEditPayId(null);}}>Cancel</Btn>
-          </div>
-        </Modal>
 
         {/* ── P&L TAB ── */}
         {finTab==="pl"&&role!=="Accounting"&&(
@@ -15953,7 +16097,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         })()}
 
         {/* ── PAYABLES TAB ── */}
-        {finTab==="payables"&&(()=>{
+        {(finTab==="payables"||finTab==="aplog")&&(()=>{
           const n=v=>Number(v)||0;
           const fmtM=v=>"₱"+Number(v).toLocaleString("en-PH",{maximumFractionDigits:0});
           // PO-derived payables — group by supplier
@@ -16000,10 +16144,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           const paidThisMonth=paid.filter(p=>p.paidDate?.startsWith(today.slice(0,7))).reduce((s,p)=>s+Number(p.amount||0),0);
           // AP-log filter (All / Unpaid / Partial / Paid) — mirrors Aerwin's chips.
           const apRows=[...payables].sort((a,b)=>String(a.apNumber||"~").localeCompare(String(b.apNumber||"~"))||String(a.dueDate||"9999").localeCompare(String(b.dueDate||"9999")));
-          const apFilter=payFilter||"All";
+          const apFilter=["Open","Partial","Paid","All"].includes(payFilter)?payFilter:"Open";
           const projName=id=>{const d=wonDeals.find(x=>x.id===id)||completedDeals.find(x=>x.id===id);return d?(d.contact||d.client):"";};
           const apQ=apLogSearch.trim().toLowerCase();
-          const apVisible=apRows.filter(p=>(apFilter==="All"?true:apFilter==="Paid"?isSettled(p):apFilter==="Partial"?p.status==="Partial":(p.status==="Unpaid"||p.status==="Check Issued"))
+          const apVisible=apRows.filter(p=>(apFilter==="All"?true:apFilter==="Paid"?isSettled(p):apFilter==="Partial"?p.status==="Partial":!isSettled(p)&&!["Cancelled","Void"].includes(p.status))
             &&(!apQ||[p.apNumber,p.poNumber,p.vendor,p.invoiceNumber,p.invoiceRef,p.accountCode,projName(p.projectId)].some(v=>String(v||"").toLowerCase().includes(apQ))))
             // Float payables awaiting approval to the top so nothing sits forgotten in Pending.
             .sort((a,b)=>((a.approvalStatus==="Pending"&&!isSettled(a))?0:1)-((b.approvalStatus==="Pending"&&!isSettled(b))?0:1));
@@ -16011,6 +16155,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           return(
             <div>
               {/* ERP bar is already rendered once at the top of the finance page — no duplicate here. */}
+              {finTab==="payables"&&<>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
                 <div>
                   <div style={{fontWeight:700,color:ERP.navy,fontSize:16}}>Accounts Payable</div>
@@ -16019,7 +16164,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
                   {(()=>{const miss=payables.filter(p=>p.status!=="Paid"&&p.status!=="Cancelled"&&Number(p.amount)>0&&!p.dueDate).length;
                     return miss>0?<button onClick={()=>setDueDateFixOpen(true)} style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:7,padding:"9px 14px",fontFamily:"inherit",fontSize:13,color:"#b45309",cursor:"pointer",fontWeight:700}}>📅 Set due dates ({miss})</button>:null;})()}
-                  <button onClick={()=>{setPayForm(emptyPayForm());setEditPayId(null);setPayModal(true);}}
+                  <button onClick={()=>openBillForm({...emptyPayForm(),docType:"AP"})}
                     style={{background:ERP.gold,border:"none",borderRadius:7,padding:"9px 16px",fontFamily:"inherit",fontSize:13,color:ERP.navy,cursor:"pointer",fontWeight:600}}>+ Other Payable</button>
                 </div>
               </div>
@@ -16033,39 +16178,46 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               {/* AP home, per supplier (Finance, 2026-11-04): one line per supplier with
                   what is owed, its bills underneath, issued POs / WOs with no bill
                   flagged, and the supplier's payment history one click away. The
-                  per-bill AP Log stays below. */}
+                  per-bill AP Log is its own tab (finTab "aplog"). */}
               <CashPositionPayables payables={payables} payPays={payPays} prs={prs} swos={swos} exps={exps} deals={deals} today={today}
                 canApprove={canApprovePayables} enteredByMe={enteredByMe} canPay={roleCanInsert("payable_payments")}
                 onApprove={approvePayable} onPay={(id,amt,o)=>recordPayablePayment(id,amt,o)} onPayMany={recordPayments} onCancelPay={cancelPayablePayment}/>
-              {/* ── Accounts Payable Log — vendor invoices with aging & balances ── */}
-              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,flexWrap:"wrap"}}>
-                <div style={{fontSize:12.5,fontWeight:700,color:ERP.navy}}>📋 Accounts Payable Log</div>
-                <span style={{fontSize:11.5,color:ERP.muted}}>Vendor invoices logged from POs, with aging & balances.</span>
+              </>}
+              {/* ── AP Log (own tab, 2026-11-09) ── one line per bill, 6 columns instead
+                  of 14: AP / PO / invoice no. in one cell, the account and docs status
+                  under it, amount / paid / balance as one figure, status + approval +
+                  receipt in one cell. Open bills by default, 50 at a time. */}
+              {finTab==="aplog"&&<>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,flexWrap:"wrap"}}>
+                <div>
+                  <div style={{fontWeight:700,color:ERP.navy,fontSize:16}}>AP Log</div>
+                  <div style={{fontSize:12.5,color:ERP.muted,marginTop:2}}>Every supplier bill, one line each. Approve bills on Supplier Bills.</div>
+                </div>
                 <div style={{marginLeft:"auto",display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
                   {roleCanInsert("payable_payments")&&<button onClick={()=>setMultiPay({vendor:"",sel:{},date:today,method:"Check",bank:"",ref:""})} title="One check or transfer that pays several bills of the same supplier" style={{background:ERP.navy,color:"#fff",border:"none",borderRadius:7,padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Pay several bills</button>}
-                  <input value={apLogSearch} onChange={e=>setApLogSearch(e.target.value)} placeholder="Search AP/PO no., vendor, invoice, account…" style={{minWidth:200,flex:"0 1 280px",border:`1px solid ${ERP.line}`,borderRadius:7,padding:"6px 11px",fontFamily:"inherit",fontSize:12,outline:"none",color:ERP.ink}}/>
+                  <input value={apLogSearch} onChange={e=>{setApLogSearch(e.target.value);setApLogShow(50);}} placeholder="Search AP/PO no., supplier, invoice…" style={{minWidth:200,flex:"0 1 260px",border:`1px solid ${ERP.line}`,borderRadius:7,padding:"6px 11px",fontFamily:"inherit",fontSize:12,outline:"none",color:ERP.ink}}/>
                   <div style={{display:"flex",gap:5}}>
-                    {["All","Unpaid","Partial","Paid"].map(f=>(
-                      <button key={f} onClick={()=>setPayFilter(f)} style={{background:apFilter===f?ERP.navy:"#fff",color:apFilter===f?"#fff":ERP.muted,border:`1px solid ${apFilter===f?ERP.navy:ERP.line}`,borderRadius:7,padding:"5px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{f}</button>
+                    {["Open","Partial","Paid","All"].map(f=>(
+                      <button key={f} onClick={()=>{setPayFilter(f);setApLogShow(50);}} style={{background:apFilter===f?ERP.navy:"#fff",color:apFilter===f?"#fff":ERP.muted,border:`1px solid ${apFilter===f?ERP.navy:ERP.line}`,borderRadius:7,padding:"5px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{f}</button>
                     ))}
                   </div>
                 </div>
               </div>
-              {apRows.length===0&&poPayables.length===0&&<div style={{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:".84rem"}}>No payables logged yet — issue a PO or add one manually. ✓</div>}
+              {apRows.length===0&&<div style={{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:".84rem"}}>No bills logged yet.</div>}
               {apRows.length>0&&(
                 <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16}}>
                   <div style={{overflowX:"auto"}}>
-                    <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:960}}>
+                    <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:isMobile?640:0}}>
                       <thead>
                         <tr>
-                          {["AP No.","PO No.","Vendor","Account","Invoice No.","Invoice Date","Due Date","Aging","Amount","Paid","Balance","Status","Verification",""].map((h,i)=>(
-                            <th key={h+i} style={i>=8&&i<=10?erpThNum:erpTh}>{h}</th>
+                          {["Bill","Supplier","Due","Balance","Status",""].map((h,i)=>(
+                            <th key={h+i} style={i===3?erpThNum:erpTh}>{h}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
-                        {apVisible.length===0&&<tr><td colSpan={14} style={{padding:"20px",textAlign:"center",color:"#94a3b8",fontSize:".8rem"}}>No {apFilter.toLowerCase()} payables.</td></tr>}
-                        {apVisible.map((p,idx)=>{
+                        {apVisible.length===0&&<tr><td colSpan={6} style={{padding:"20px",textAlign:"center",color:"#94a3b8",fontSize:".8rem"}}>No {apFilter==="All"?"":apFilter.toLowerCase()+" "}bills{apQ?" match the search":""}.</td></tr>}
+                        {apVisible.slice(0,apLogShow).map(p=>{
                           const ag=payableAging(p);
                           const settled=isSettled(p);
                           const balance=bal(p);
@@ -16073,47 +16225,50 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                           const stTxt=settled?"Paid":p.status==="Partial"?"Partial":p.status==="Check Issued"?"Check Issued":"Unpaid";
                           const pn=projName(p.projectId);
                           const acct=chartOfAccounts.find(a=>String(a.code)===String(p.accountCode));
+                          const inv=p.invoiceNumber||p.invoiceRef||"";
+                          const needV=payNeedsVerify(p),isSub=payIsSubcon(p);
+                          const ds=!settled?supplierDocsStatus(p,{prs,drs,suppliers}):null;
+                          const sub={fontSize:11,color:ERP.muted,marginTop:2};
                           return(
                             <tr key={p.id}
                               onMouseEnter={ev=>ev.currentTarget.style.background="#FAFBFD"} onMouseLeave={ev=>ev.currentTarget.style.background=""}>
-                              <td style={{...erpTd,fontVariantNumeric:"tabular-nums",fontWeight:700,color:ERP.navy,whiteSpace:"nowrap"}}>{p.apNumber||<span style={{color:ERP.muted,fontWeight:500}} title="The server assigns the number when this syncs">pending</span>}{p.docType==="PRV"&&<div style={{fontSize:10.5,color:ERP.purple,fontWeight:700}}>Payment request</div>}</td>
-                              <td style={{...erpTd,fontVariantNumeric:"tabular-nums",color:ERP.muted,whiteSpace:"nowrap"}}>{p.poNumber||"—"}</td>
-                              <td style={{...erpTd,fontWeight:600,color:ERP.ink,maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={p.vendor}>{p.vendor||"—"}{pn&&<div style={{fontSize:11,color:ERP.purple,fontWeight:500}}>📁 {pn}</div>}</td>
-                              <td style={{...erpTd,fontVariantNumeric:"tabular-nums",fontSize:11.5,color:p.accountCode?ERP.ink:"#cbd5e1",whiteSpace:"nowrap"}} title={acct?`${acct.code} · ${acct.name}`:""}>{p.accountCode||"—"}</td>
-                              <td style={{...erpTd,color:ERP.muted,whiteSpace:"nowrap"}}>{p.invoiceNumber||p.invoiceRef||"—"}{!settled&&(()=>{const ds=supplierDocsStatus(p,{prs,drs,suppliers});if(!ds.applies&&!ds.overridden)return null;const n=ds.items.filter(i=>i.ok).length;return <div title={ds.overridden?"Docs overridden by a Manager":ds.ok?"All payment documents on file":"Missing: "+ds.missing.join(", ")} style={{fontSize:10.5,fontWeight:700,color:ds.overridden?"#7c3aed":ds.ok?ERP.ok:"#b45309"}}>{ds.overridden?"Docs overridden":ds.ok?"Docs ✓":`Docs ${n}/${ds.items.length}`}</div>;})()}</td>
-                              <td style={{...erpTd,fontVariantNumeric:"tabular-nums",color:ERP.muted,whiteSpace:"nowrap"}}>{p.invoiceDate||"—"}</td>
-                              <td style={{...erpTd,fontVariantNumeric:"tabular-nums",color:ERP.muted,whiteSpace:"nowrap"}}>{p.dueDate||"—"}</td>
-                              <td style={{...erpTd,fontWeight:700,color:settled?ERP.muted:ag.clr,whiteSpace:"nowrap"}}>{settled?"—":ag.label}</td>
-                              <td style={{...erpTdNum,fontWeight:700,color:ERP.navy,whiteSpace:"nowrap"}}>{fmtM(p.amount)}</td>
-                              <td style={{...erpTdNum,color:ERP.ok,whiteSpace:"nowrap"}}>{paidAmt>0?<button onClick={()=>setPayHistId(p.id)} title="Payment history" style={{background:"none",border:"none",padding:0,cursor:"pointer",color:"inherit",font:"inherit",textAlign:"right"}}>{fmtM(paidAmt)}{Number(p.amount)>0&&<div style={{fontSize:11,color:ERP.muted}}>{Math.round(paidAmt/Number(p.amount)*100)}%</div>}</button>:"—"}{(Number(p.retentionHeld)||0)>0&&<div style={{fontSize:10.5,color:"#b45309",fontWeight:700}} title="Retention held back from progress payments">Ret. {fmtM(Number(p.retentionHeld))}</div>}</td>
-                              <td style={{...erpTdNum,fontWeight:700,color:balance>0?ERP.danger:ERP.muted,whiteSpace:"nowrap"}}>{fmtM(balance)}</td>
-                              <td style={{...erpTd,whiteSpace:"nowrap"}}><ErpBadge kind={erpStatusKind(stTxt)}>{stTxt}</ErpBadge>{!settled&&p.approvalStatus==="Pending"&&<div style={{fontSize:10.5,fontWeight:800,color:"#b45309",marginTop:2}}>⏳ For approval</div>}{p.approvalStatus==="Rejected"&&<div style={{fontSize:10.5,fontWeight:800,color:ERP.danger,marginTop:2}}>✕ Rejected</div>}{p.approvalStatus==="Approved"&&p.approvedBy&&<div style={{fontSize:10,color:ERP.muted,marginTop:2}} title={`Approved by ${p.approvedBy}${p.approvedAt?" · "+p.approvedAt:""}`}>✓ {p.approvedBy}</div>}</td>
-                              {(()=>{
-                                const needV=payNeedsVerify(p),isSub=payIsSubcon(p);
-                                return(
-                                  <td style={{...erpTd,whiteSpace:"nowrap"}}>
-                                    {!needV
-                                      ? <span style={{fontSize:11,color:ERP.muted}}>—</span>
-                                      : p.verified
-                                        ? <ErpBadge kind="paid">{isSub?`${Number(p.verificationPct||0)}% Verified`:"Verified"}</ErpBadge>
-                                        : <ErpBadge kind="unpaid">{isSub?"Pending (Operations)":"Pending (Warehouse)"}</ErpBadge>}
-                                  </td>
-                                );
-                              })()}
+                              <td style={{...erpTd,whiteSpace:"nowrap"}} title={acct?`Account ${acct.code} · ${acct.name}`:p.accountCode?`Account ${p.accountCode}`:""}>
+                                <div style={{fontVariantNumeric:"tabular-nums",fontWeight:700,color:ERP.navy}}>{p.poNumber||p.apNumber||"—"}{p.docType==="PRV"&&<span style={{fontSize:10.5,color:ERP.purple,fontWeight:700,marginLeft:6}}>Payment request</span>}</div>
+                                <div style={sub}>{p.poNumber?(p.apNumber||"AP no. pending"):""}{inv&&inv!==p.poNumber?`${p.poNumber?" · ":""}Inv ${inv}`:""}
+                                  {ds&&(ds.applies||ds.overridden)&&(()=>{const k=ds.items.filter(i=>i.ok).length;return <span title={ds.overridden?"Docs overridden by a Manager":ds.ok?"All payment documents on file":"Missing: "+ds.missing.join(", ")} style={{marginLeft:6,fontWeight:700,color:ds.overridden?"#7c3aed":ds.ok?ERP.ok:"#b45309"}}>{ds.overridden?"Docs overridden":ds.ok?"Docs ✓":`Docs ${k}/${ds.items.length}`}</span>;})()}</div>
+                              </td>
+                              <td style={{...erpTd,maxWidth:220}}>
+                                <div style={{fontWeight:600,color:ERP.ink,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={p.vendor}>{p.vendor||"—"}</div>
+                                {pn&&<div style={{...sub,color:ERP.purple,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={pn}>{pn}</div>}
+                              </td>
+                              <td style={{...erpTd,whiteSpace:"nowrap"}}>
+                                <div style={{fontVariantNumeric:"tabular-nums",color:p.dueDate?ERP.ink:"#94a3b8"}}>{p.dueDate||"No date"}</div>
+                                {!settled&&p.dueDate&&<div style={{...sub,fontWeight:700,color:ag.clr}}>{ag.label}</div>}
+                              </td>
+                              <td style={{...erpTdNum,whiteSpace:"nowrap"}}>
+                                <div style={{fontWeight:700,color:balance>0?ERP.danger:ERP.muted}}>{fmtM(balance)}</div>
+                                <div style={sub}>{paidAmt>0
+                                  ?<button onClick={()=>setPayHistId(p.id)} title="Payment history" style={{background:"none",border:"none",padding:0,cursor:"pointer",color:ERP.ok,font:"inherit"}}>{Number(p.amount)>0?Math.round(paidAmt/Number(p.amount)*100):0}% paid</button>
+                                  :null}{paidAmt>0?" of ":"of "}{fmtM(p.amount)}</div>
+                                {(Number(p.retentionHeld)||0)>0&&<div style={{fontSize:10.5,color:"#b45309",fontWeight:700}} title="Retention held back from progress payments">Ret. {fmtM(Number(p.retentionHeld))}</div>}
+                              </td>
+                              <td style={{...erpTd,whiteSpace:"nowrap"}}>
+                                <ErpBadge kind={erpStatusKind(stTxt)}>{stTxt}</ErpBadge>
+                                <div style={{fontSize:10.5,fontWeight:700,marginTop:3,color:ERP.muted}}>
+                                  {!settled&&p.approvalStatus==="Pending"&&<span style={{color:"#b45309"}}>⏳ For approval</span>}
+                                  {p.approvalStatus==="Rejected"&&<span style={{color:ERP.danger}} title={p.notes||""}>✕ Rejected</span>}
+                                  {p.approvalStatus==="Approved"&&p.approvedBy&&<span title={`Approved by ${p.approvedBy}${p.approvedAt?" · "+p.approvedAt:""}`}>✓ {p.approvedBy}</span>}
+                                  {!settled&&needV&&<span style={{marginLeft:6,color:p.verified?ERP.ok:"#b45309"}}>{p.verified?(isSub?`· ${Number(p.verificationPct||0)}% certified`:"· Received"):(isSub?"· Not certified":"· Not received")}</span>}
+                                </div>
+                              </td>
                               <td style={{...erpTd,whiteSpace:"nowrap"}}>
                                 <div style={{display:"flex",gap:4,justifyContent:"flex-end",alignItems:"center"}}>
-                                  {!settled&&p.approvalStatus==="Pending"&&(canApprovePayables
-                                    ? <><button onClick={()=>approvePayable(p.id)} title="Approve for payment (Manager / Finance)" style={{background:ERP.ok||"#16a34a",border:"none",borderRadius:6,padding:"4px 10px",fontSize:".7rem",color:"#fff",cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>✓ Approve</button>
-                                        <button onClick={()=>rejectPayable(p.id)} title="Reject" style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>Reject</button></>
-                                    : <span title="Awaiting Manager / Finance approval" style={{fontSize:11,fontWeight:700,color:"#b45309",whiteSpace:"nowrap"}}>⏳ For approval</span>)}
-                                  {!settled&&p.approvalStatus==="Rejected"&&<span title={p.notes||"Rejected"} style={{fontSize:11,fontWeight:700,color:ERP.danger,whiteSpace:"nowrap"}}>✕ Rejected</span>}
-                                  {!settled&&payNeedsVerify(p)&&!p.verified&&<button onClick={()=>verifyPayable(p.id)} title={payIsSubcon(p)?"Operations: verify % complete":"Warehouse: verify receipt"} style={{background:ERP.gold,border:"none",borderRadius:6,padding:"4px 10px",fontSize:".7rem",color:ERP.navy,cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>✓ Verify</button>}
-                                  {!settled&&balance>0&&payApproved(p)&&(!payNeedsVerify(p)||p.verified)&&(!payIsSubcon(p)||(Number(p.amount)||0)-payableClaimed(p)>0.005)&&<button onClick={()=>openPayModal(p)} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"4px 12px",fontSize:".7rem",color:"#fff",cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>Pay</button>}
-                                  {(Number(p.retentionHeld)||0)>0&&payApproved(p)&&(!payNeedsVerify(p)||(Number(p.verificationPct)||0)>=100)&&<button onClick={()=>openRetentionRelease(p)} title="Release the retention held on this subcontractor bill" style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#b45309",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>Release ret.</button>}
-                                  {(paysOf(p.id).length>0||paidAmt>0)&&<button onClick={()=>setPayHistId(p.id)} title="Payment history" style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>History</button>}
-                                  {pageOn("checkvouchers")&&!settled&&payApproved(p)&&(!payNeedsVerify(p)||p.verified)&&!(p.cvId||p.status==="Check Issued")&&<button onClick={()=>payableToCheck(p.id)} title="Route to Check Voucher" style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#2563eb",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🖊 CV</button>}
-                                  <button onClick={()=>{setPayForm({...p});setEditPayId(p.id);setPayModal(true);}} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
-                                  <button onClick={()=>delPayable(p.id)} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+                                  {!settled&&needV&&!p.verified&&<button onClick={()=>verifyPayable(p.id)} title={isSub?"Operations: verify % complete":"Warehouse: verify receipt"} style={{background:ERP.gold,border:"none",borderRadius:6,padding:"4px 10px",fontSize:".7rem",color:ERP.navy,cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>✓ Verify</button>}
+                                  {!settled&&balance>0&&payApproved(p)&&(!needV||p.verified)&&(!isSub||(Number(p.amount)||0)-payableClaimed(p)>0.005)&&<button onClick={()=>openPayModal(p)} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"4px 12px",fontSize:".7rem",color:"#fff",cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>Pay</button>}
+                                  {(Number(p.retentionHeld)||0)>0&&payApproved(p)&&(!needV||(Number(p.verificationPct)||0)>=100)&&<button onClick={()=>openRetentionRelease(p)} title="Release the retention held on this subcontractor bill" style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#b45309",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>Release ret.</button>}
+                                  {pageOn("checkvouchers")&&!settled&&payApproved(p)&&(!needV||p.verified)&&!(p.cvId||p.status==="Check Issued")&&<button onClick={()=>payableToCheck(p.id)} title="Route to Check Voucher" style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#2563eb",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🖊 CV</button>}
+                                  <button onClick={()=>openBillForm({...p},p.id)} title="Edit bill" aria-label="Edit bill" style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
+                                  <button onClick={()=>delPayable(p.id)} title="Delete bill" aria-label="Delete bill" style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
                                 </div>
                               </td>
                             </tr>
@@ -16122,8 +16277,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       </tbody>
                     </table>
                   </div>
+                  {apVisible.length>apLogShow&&<div style={{padding:"10px 14px",borderTop:`1px solid ${ERP.line}`,display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:12,color:ERP.muted}}>
+                    <span>Showing {apLogShow} of {apVisible.length}</span>
+                    <button onClick={()=>setApLogShow(n=>n+50)} style={{background:"#fff",border:`1px solid ${ERP.line}`,borderRadius:7,padding:"5px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",color:ERP.navy}}>Show 50 more</button>
+                  </div>}
                 </div>
               )}
+              </>}
               {/* Record-Payment modal: full / partial payment, subcontractor progress
                   claim with retention, or retention release. Every save is a row in
                   payable_payments (see recordPayments). */}
@@ -16403,7 +16563,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         })()}
         {finTab==="loans"&&role!=="Accounting"&&LOANS_V2&&(
           <LoansView loans={loans} cashPositions={cashPositions} today={today} isMobile={isMobile}
-            canEdit={cashCanEdit(role,session?.username)} sample={loans.some(l=>l.sample)}/>
+            canEdit={["Manager","Finance","FinanceAssistant"].includes(role)} canDelete={role==="Manager"}
+            sample={loans.some(l=>l.sample)} onLoans={ls=>upLoans(()=>ls)}/>
         )}
         {finTab==="loans"&&role!=="Accounting"&&!LOANS_V2&&(()=>{
           const fmtM=v=>"₱"+Number(v).toLocaleString("en-PH",{maximumFractionDigits:0});
@@ -16565,7 +16726,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(page==="procurement") return(<Wrap><ProcurementView2 poDraft={poDraft} clearPoDraft={()=>setPoDraft(null)} onPoFromPrf={linkPrfLines} payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="purchasing") return(<Wrap>{purchasingPage()}</Wrap>);
     if(page==="orderboard") return(<Wrap>{orderBoardPage()}</Wrap>);
-    if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="subconwo") return(<Wrap><SubconWOView woDraft={woDraft} clearWoDraft={()=>setWoDraft(null)} deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="costing") return(<Wrap><CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView sendTelegramNotification={sendTelegramNotification} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
@@ -16620,6 +16781,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   // ─── SALES ────────────────────────────────────────────────────────────────
   // Progress (30/60/90/100), replaces PM Updates / Scope Changes (2026-11-07).
+  if(page==="liquidations") return(
+    <Wrap><Liquidations deals={wonDeals} role={canonRole(role)} session={session} today={today}/></Wrap>
+  );
   if(page==="progress"&&["Manager","Operations","ProjectMover","Coordinator"].includes(role)) return(
     <Wrap><ProjectProgress deals={wonDeals} pcards={pcards} role={role} session={session} upPcards={upPcards}/></Wrap>
   );
@@ -16911,7 +17075,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(page==="procurement") return(<Wrap><ProcurementView2 poDraft={poDraft} clearPoDraft={()=>setPoDraft(null)} onPoFromPrf={linkPrfLines} payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="purchasing") return(<Wrap>{purchasingPage()}</Wrap>);
     if(page==="orderboard") return(<Wrap>{orderBoardPage()}</Wrap>);
-    if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="subconwo") return(<Wrap><SubconWOView woDraft={woDraft} clearWoDraft={()=>setWoDraft(null)} deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap} addMR={addMR} wonDeals={wonDeals} session={session}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView sendTelegramNotification={sendTelegramNotification} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="requests") return(<Wrap><RequestsView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
@@ -17188,14 +17352,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     // receipt and link this receipt's expense to it. Only fall back to a fresh
                     // per-line payable when the PO has none yet — legacy POs issued before the
                     // auto-payable, or solo requests with no PO number.
-                    const existingPoPay=receivingPr.poNumber?payables.find(p=>p.poId===receivingPr.poNumber):null;
+                    const existingPoPay=receivingPr.poNumber?payables.find(p=>p.poId===receivingPr.poNumber&&!["Cancelled","Void"].includes(p.status)):null;
                     let payId;
                     if(existingPoPay){
                       payId=existingPoPay.id;
                       if(!existingPoPay.dueDate&&existingPoPay.status!=="Paid"){
                         const upd={...existingPoPay,dueDate:due};
                         upPayables(ps=>ps.map(p=>p.id===existingPoPay.id?upd:p));
-                        if(isSupabaseReady()&&isUUID(existingPoPay.id)) sbUpsert("payables",payableToSb(upd),"id").catch(()=>{});
+                        if(isSupabaseReady()&&isUUID(existingPoPay.id)) sbUpdatePayable(upd).catch(()=>{});
                       }
                     } else {
                       payId=uid();
@@ -17257,13 +17421,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 <div style={{display:"flex",flexDirection:"column",gap:12}}>
                   <div>
                     <label style={{fontSize:".75rem",fontWeight:700,color:"#475569",display:"block",marginBottom:5}}>Project / Site <span style={{color:"#ef4444"}}>*</span></label>
-                    <select value={issueForm.projectId} onChange={e=>setIssueForm(f=>({...f,projectId:e.target.value}))}
+                    <ProjectSelect value={issueForm.projectId} onChange={e=>setIssueForm(f=>({...f,projectId:e.target.value}))}
                       style={{width:"100%",border:`1.5px solid ${issueForm.projectId?"#f97316":"#e2e8f0"}`,borderRadius:8,padding:"9px 12px",fontFamily:"inherit",fontSize:".87rem",color:"#0f172a"}}>
                       <option value="">— Select project —</option>
                       {wonDeals.filter(d=>d.stage!=="14 · Completed").map(d=>(
                         <option key={d.id} value={d.id}>{d.client}{d.ceNo?` (${d.ceNo})`:""}</option>
                       ))}
-                    </select>
+                    </ProjectSelect>
                   </div>
                   <div>
                     <label style={{fontSize:".75rem",fontWeight:700,color:"#475569",display:"block",marginBottom:5}}>Item <span style={{color:"#ef4444"}}>*</span></label>
@@ -17364,13 +17528,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   </div>
                   <div>
                     <label style={{fontSize:".75rem",fontWeight:700,color:"#475569",display:"block",marginBottom:5}}>Project</label>
-                    <select value={fabForm.projectId} onChange={e=>setFabForm(f=>({...f,projectId:e.target.value}))}
+                    <ProjectSelect value={fabForm.projectId} onChange={e=>setFabForm(f=>({...f,projectId:e.target.value}))}
                       style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"9px 12px",fontFamily:"inherit",fontSize:".87rem",color:"#0f172a"}}>
                       <option value="">— Optional —</option>
                       {wonDeals.filter(d=>d.stage!=="14 · Completed").map(d=>(
                         <option key={d.id} value={d.id}>{d.client}{d.ceNo?` (${d.ceNo})`:""}</option>
                       ))}
-                    </select>
+                    </ProjectSelect>
                   </div>
                   <div>
                     <label style={{fontSize:".75rem",fontWeight:700,color:"#475569",display:"block",marginBottom:5}}>Requested by</label>
@@ -17411,7 +17575,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(page==="procurement") return(<Wrap><ProcurementView2 poDraft={poDraft} clearPoDraft={()=>setPoDraft(null)} onPoFromPrf={linkPrfLines} payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="purchasing") return(<Wrap>{purchasingPage()}</Wrap>);
     if(page==="orderboard") return(<Wrap>{orderBoardPage()}</Wrap>);
-    if(page==="subconwo") return(<Wrap><SubconWOView deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="subconwo") return(<Wrap><SubconWOView woDraft={woDraft} clearWoDraft={()=>setWoDraft(null)} deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView sendTelegramNotification={sendTelegramNotification} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="requests") return(<Wrap><RequestsView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
@@ -17557,14 +17721,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               {myProjects.map(d=>{
                 const jo=dealJo(jos,d.id);
                 const pc=pcards[d.id];
-                const pct=pc?Math.round(Object.values(pc.departments||{}).filter(dept=>dept.done).length/6*100):0;
+                const pct=projProgressPct(pc,d);
                 const myUpdates=actLog.filter(a=>a.dealId===d.id&&a.action==="PM Update").slice(0,3);
                 return(
                   <div key={d.id} style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
                     <div style={{background:"#0ea5e9",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                       <div>
                         <div style={{fontWeight:700,color:"#fff",fontSize:".92rem"}}>{d.client}</div>
-                        <div style={{fontSize:".72rem",color:"rgba(255,255,255,.7)",marginTop:1}}>{d.ceNo} · PM: {pc?.pm1||jo?.pm1||"—"} · {pct}% complete</div>
+                        <div style={{fontSize:".72rem",color:"rgba(255,255,255,.7)",marginTop:1}}>{d.ceNo} · PM: {pc?.pm1||jo?.pm1||"—"} · {pct==null?"progress not set":`${pct}% complete`}</div>
                       </div>
                       <button onClick={()=>setPmUpdateModal({dealId:d.id,dealName:d.client,ceNo:d.ceNo,ae:jo?.aeAssigned||d.salesOwner})}
                         style={{background:"rgba(255,255,255,.2)",border:"1px solid rgba(255,255,255,.3)",borderRadius:8,padding:"7px 14px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>
@@ -17605,7 +17769,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   if(page==="projects") return(
     <Wrap>
-      <ProjectCards changeDealStage={changeDealStage} setProjectProgress={setProjectProgress} syncProjectCard={syncProjectCard}
+      <ProjectCards changeDealStage={changeDealStage} syncProjectCard={syncProjectCard}
         pcards={pcards} wonDeals={wonDeals} completedDeals={completedDeals} deals={deals}
         toggleDeptTask={toggleDeptTask} markDeptDone={markDeptDone}
         setProjectTAT={setProjectTAT} jos={jos}
@@ -18157,15 +18321,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         // Each bucket holds the open balance split into VAT-exclusive base, VAT and
         // EWT (milestoneBalanceParts): base + VAT − EWT = what the client still owes.
         const z=()=>({base:0,vat:0,ewt:0,bal:0});
-        const aging={current:z(),d30:z(),d60:z(),d90:z(),over90:z()};
+        const aging={unbilled:z(),current:z(),d30:z(),d60:z(),d90:z(),over90:z()};
         billings.forEach(b=>{
           // Same basis as the Outstanding figure (arSummary): any milestone with a
           // balance counts, even one marked Fully Paid — a short payment shouldn't
-          // drop out of the aging just because of its status.
+          // drop out of the aging just because of its status. A Draft (not yet
+          // sent to the client) goes to "Not yet sent", never to an overdue bucket
+          // (arAgeBucket), so the Total still matches arSummary and the buckets
+          // add up to it.
           const p=milestoneBalanceParts(b,dealById.get(b.dealId));
           if(p.bal<=0.005) return;
-          const days=b.dueDate?Math.floor((now-new Date(b.dueDate))/(1000*60*60*24)):0;
-          const k=days<=0?"current":days<=30?"d30":days<=60?"d60":days<=90?"d90":"over90";
+          const k=arAgeBucket(b,now);
           ["base","vat","ewt","bal"].forEach(f=>{aging[k][f]+=p[f];});
         });
         const tot=Object.values(aging).reduce((a,v)=>({base:a.base+v.base,vat:a.vat+v.vat,ewt:a.ewt+v.ewt,bal:a.bal+v.bal}),z());
@@ -18174,9 +18340,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         return(
           <div style={{marginBottom:16}}>
             <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem",marginBottom:10}}>📊 AR Aging <span style={{fontWeight:500,color:"#94a3b8",fontSize:".72rem"}}>· VAT-exclusive · tap a card for the list</span></div>
-            {/* Mobile: Total across the top, buckets two per row. Desktop: Total + five buckets in one row. */}
-            <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(6,1fr)",gap:8}}>
-              {[["Total",tot,"#0f172a","all"],["Current",aging.current,"#10b981","current"],["1–30 days",aging.d30,"#f59e0b","d30"],
+            {/* Mobile: Total across the top, buckets two per row. Desktop: Total + six buckets in one row. */}
+            <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(7,1fr)",gap:8}}>
+              {[["Total",tot,"#0f172a","all"],["Not yet sent",aging.unbilled,"#64748b","unbilled"],["Current",aging.current,"#10b981","current"],["1–30 days",aging.d30,"#f59e0b","d30"],
                 ["31–60 days",aging.d60,"#f97316","d60"],["61–90 days",aging.d90,"#ef4444","d90"],["90+ days",aging.over90,"#dc2626","over90"]
               ].map(([l,a,c,key])=>{const isTot=l==="Total";return(
                 <div key={l} role="button" tabIndex={0} title="Show the projects to collect" onClick={()=>a.bal>0.005&&setArDrill(key)} onKeyDown={e=>{if((e.key==="Enter"||e.key===" ")&&a.bal>0.005){e.preventDefault();setArDrill(key);}}} style={{cursor:a.bal>0.005?"pointer":"default",background:isTot?"#1e293b":"#fff",border:`1.5px solid ${isTot?"#1e293b":c+"33"}`,borderRadius:10,padding:isMobile?"10px 8px":"12px 14px",textAlign:"center",minWidth:0,gridColumn:isMobile&&isTot?"1 / -1":undefined}}>
@@ -18200,45 +18366,6 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         canPay={["Manager","Finance","FinanceAssistant","SalesOpsAdmin"].includes(role)}
         onReceive={(dealId,msId)=>{setArDrill(null);setBillingJumpPay(msId);setBillingJumpDeal(dealId);}}
         onClose={()=>setArDrill(null)}/>}
-      {/* Priority call list */}
-      {(()=>{
-        const today2=new Date();
-        const callList=wonDeals.map(d=>{
-          const ms=billings.filter(b=>b.dealId===d.id&&b.status!=="Cancelled"&&b.status!=="Fully Paid");
-          const totalDue=ms.reduce((s,m)=>s+milestoneBalance(m,d),0);
-          const mostOverdue=ms.filter(m=>m.dueDate&&m.dueDate<today).sort((a,b)=>new Date(a.dueDate)-new Date(b.dueDate))[0];
-          const daysOverdue=mostOverdue?Math.floor((today2-new Date(mostOverdue.dueDate))/(1000*60*60*24)):null;
-          return{d,totalDue,daysOverdue,msCount:ms.length};
-        }).filter(x=>x.totalDue>0).sort((a,b)=>((b.daysOverdue||0)-(a.daysOverdue||0))||(b.totalDue-a.totalDue));
-        if(!callList.length) return null;
-        return(
-          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",marginBottom:16,overflow:"hidden"}}>
-            <div style={{background:"#1e293b",padding:"12px 18px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"4px 12px"}}>
-              <span style={{fontWeight:700,color:"#f59e0b",fontSize:".88rem"}}>📞 Priority Call List — ₱{callList.reduce((s,x)=>s+x.totalDue,0).toLocaleString("en-PH",{minimumFractionDigits:0})} outstanding</span>
-              <span style={{fontSize:".72rem",color:"rgba(255,255,255,.5)"}}>{callList.length} clients to follow up</span>
-            </div>
-            {callList.slice(0,8).map(({d,totalDue,daysOverdue,msCount})=>(
-              <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 18px",borderBottom:"1px solid #f8fafc",flexWrap:"wrap",gap:8}}>
-                <div>
-                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{d.client}</div>
-                  <div style={{fontSize:".72rem",color:"#64748b",marginTop:1}}>{d.ceNo||"No CE"} · {msCount} milestone{msCount!==1?"s":""}</div>
-                </div>
-                <div style={{display:"flex",gap:12,alignItems:"center"}}>
-                  <div style={{textAlign:"right"}}>
-                    <div style={{fontWeight:800,color:"#ef4444",fontSize:".92rem"}}>₱{totalDue.toLocaleString("en-PH",{minimumFractionDigits:0})}</div>
-                    <div style={{fontSize:".68rem",color:"#94a3b8"}}>outstanding</div>
-                  </div>
-                  {daysOverdue!==null&&(
-                    <span style={{background:daysOverdue>60?"#fef2f2":daysOverdue>30?"#fff7ed":"#fffbeb",color:daysOverdue>60?"#dc2626":daysOverdue>30?"#c2410c":"#d97706",border:`1px solid ${daysOverdue>60?"#fecaca":daysOverdue>30?"#fed7aa":"#fde68a"}`,borderRadius:20,padding:"2px 9px",fontSize:".72rem",fontWeight:700}}>
-                      {daysOverdue}d overdue
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        );
-      })()}
       <BillingView
         billings={billings} wonDeals={wonDeals} completedDeals={completedDeals} deals={deals} addenda={addenda}
         addMilestone={addMilestone} updateMilestone={updateMilestone} applyDeduction={applyDeduction}
@@ -18565,11 +18692,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             </div>
             <div style={{marginBottom:12}}>
               <label style={{fontSize:".72rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Project (optional)</label>
-              <select value={cvForm.projectId||""} onChange={e=>setCvForm(f=>({...f,projectId:e.target.value||null}))} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",background:"#fff",boxSizing:"border-box"}}>
+              <ProjectSelect value={cvForm.projectId||""} onChange={e=>setCvForm(f=>({...f,projectId:e.target.value||null}))} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",background:"#fff",boxSizing:"border-box"}}>
                 <option value="">— Company-wide / No project —</option>
                 {wonDeals.map(d=><option key={d.id} value={d.id}>{projDisplayName(d)}</option>)}
                 {costCenterDeals.length>0&&<optgroup label="Cost centers">{costCenterDeals.map(d=><option key={d.id} value={d.id}>🏷 {d.contact||d.client}</option>)}</optgroup>}
-              </select>
+              </ProjectSelect>
             </div>
             <div style={{marginBottom:16}}>
               <label style={{fontSize:".72rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Notes</label>
@@ -18804,9 +18931,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const handleConfirm=async()=>{
           if(poPayType==="daily"){
             // "Other Payable" — an AP-ledger entry (was the retired Daily Payables expense).
-            setPayForm({...emptyPayForm(),vendor:pr.supplier||"",amount:amt||"",dueDate:today,category:"Supplier",projectId:pr.projectId||null,notes:`${pr.itemName}${pr.poNumber?" — "+pr.poNumber:""}`,poNumber:pr.poNumber||"",invoiceNumber:pr.deliveryNote||""});
-            setEditPayId(null);setPayModal(true);
-            setPage("finance");setFinTab("payables");
+            openBillForm({...emptyPayForm(),vendor:pr.supplier||"",amount:amt||"",dueDate:today,category:"Supplier",projectId:pr.projectId||null,notes:`${pr.itemName}${pr.poNumber?" — "+pr.poNumber:""}`,poNumber:pr.poNumber||"",invoiceNumber:pr.deliveryNote||""});
           } else {
             const nextNo=await claimDocNumber("CV",vouchers.map(v=>v.cvNo),4,true);
             setCvForm({date:today,cvNo:nextNo,payee:pr.supplier||"",description:`${pr.itemName}${pr.poNumber?" — "+pr.poNumber:""}`,amount:amt||"",bank:"",notes:"",status:"Draft",poRef:pr.poNumber||"",payableId:null,checkNo:"",clearedDate:"",isCleared:false,projectId:pr.projectId||null});
@@ -18931,9 +19056,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ── Unified Purchase Orders view (Aerwin-style) — Materials POs + Subcontractor
   // WOs in one clean list. Read/launch only: creation stays in the Procurement
   // and Work Order modules so each keeps its own form + features. ──────────────
-  if(page==="purchaseorders"&&(role==="Finance"||role==="Manager"||role==="FinanceAssistant"||role==="Accounting")) return(
+  // Cost Control (QS) sees it view-only (2026-11-12): no create, verify, pay or
+  // open buttons. The database already lets QS read PO lines, WOs and bills and
+  // write none of them; creating and approving stay where they are.
+  if(page==="purchaseorders"&&(role==="Finance"||role==="Manager"||role==="FinanceAssistant"||role==="Accounting"||role==="QS")) return(
     <Wrap>
       {(()=>{
+        const poViewOnly=role==="QS";
         const N=v=>Number(v)||0;
         const projName=(id,fallback)=>{const d=wonDeals.find(x=>x.id===id)||completedDeals.find(x=>x.id===id);return d?projDisplayName(d):(fallback||"—");};
         // Materials POs — group purchase_requests line items by PO number.
@@ -18941,8 +19070,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         prs.forEach(p=>{
           if(!p.poNumber) return;
           const k=p.poNumber;
-          if(!poGroups[k]) poGroups[k]={kind:"po",type:"Materials",no:k,vendor:p.supplier||"—",projectId:p.projectId,date:p.poDate||p.createdDate||"",account:p.accountCode||"",statuses:[],amount:0};
+          if(!poGroups[k]) poGroups[k]={kind:"po",type:"Materials",no:k,vendor:p.supplier||"—",projectId:p.projectId,date:p.poDate||p.createdDate||"",account:p.accountCode||"",statuses:[],amount:0,projectIds:[],looseNames:[],idNames:{}};
           const g=poGroups[k];
+          // A PO can carry lines of several projects (Order Board): keep every
+          // project, not just the first line's. A line with no project keeps
+          // its typed name ("GMD Stocks", or a client never linked to a deal).
+          if(p.status!=="Cancelled"){
+            if(p.projectId){if(!g.projectIds.includes(p.projectId)) g.projectIds.push(p.projectId); if(p.projectName&&!g.idNames[p.projectId]) g.idNames[p.projectId]=p.projectName;}
+            else if(p.projectName&&!g.looseNames.includes(p.projectName)) g.looseNames.push(p.projectName);
+          }
           g.amount+=(N(p.actUnitCost)||N(p.estUnitCost)||N(p.actualCost)||N(p.estimatedCost))*N(p.qty);
           g.statuses.push(p.status);
           if(!g.account&&p.accountCode) g.account=p.accountCode;
@@ -18956,13 +19092,18 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           return {...g,status};
         });
         // Subcontractor WOs — one row each.
-        const woRows=swos.map(w=>({kind:"wo",type:"Subcontractor",no:w.woNumber||"—",vendor:w.subcontractor||"—",projectId:w.dealId||w.projectId,projectName:w.projectName,date:w.woDate||w.createdDate||"",account:w.accountCode||"",amount:N(w.contractAmount),status:w.status||"Issued"}));
+        const woRows=swos.map(w=>({kind:"wo",type:"Subcontractor",no:w.woNumber||"—",vendor:w.subcontractor||"—",projectId:w.dealId||w.projectId,projectName:w.projectName,
+          projectIds:[w.dealId||w.projectId].filter(Boolean),looseNames:(w.dealId||w.projectId)?[]:[w.projectName].filter(Boolean),idNames:(w.dealId||w.projectId)?{[w.dealId||w.projectId]:w.projectName}:{},date:w.woDate||w.createdDate||"",account:w.accountCode||"",amount:N(w.contractAmount),status:w.status||"Issued"}));
         const rows=[...poRows,...woRows].sort((a,b)=>String(b.date).localeCompare(String(a.date)));
         const totalValue=rows.reduce((s,r)=>s+r.amount,0);
         const openCount=rows.filter(r=>!["Delivered","Cancelled","Completed"].includes(r.status)).length;
         const q=poViewSearch.trim().toLowerCase();
+        const projNamesOf=r=>[...(r.projectIds||[]).map(id=>projName(id,(r.idNames||{})[id])),...(r.looseNames||[])];
+        const projLabel=id=>{const r=rows.find(x=>(x.idNames||{})[id]);return projName(id,r&&r.idNames[id]);};
         const visibleRows=rows.filter(r=>(poViewFilter==="all"||(poViewFilter==="po"&&r.kind==="po")||(poViewFilter==="wo"&&r.kind==="wo"))
-          &&(!q||String(r.no).toLowerCase().includes(q)||String(r.vendor).toLowerCase().includes(q)||String(projName(r.projectId,r.projectName)).toLowerCase().includes(q)));
+          &&(!poViewProj||(r.projectIds||[]).includes(poViewProj))
+          &&(!q||String(r.no).toLowerCase().includes(q)||String(r.vendor).toLowerCase().includes(q)||projNamesOf(r).some(n=>String(n).toLowerCase().includes(q))));
+        const projTotal=poViewProj?visibleRows.reduce((s,r)=>s+r.amount,0):0;
         return(
           <div>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16,flexWrap:"wrap",gap:10}}>
@@ -18970,10 +19111,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 <div style={{fontWeight:700,color:ERP.navy,fontSize:16}}>Purchase Orders</div>
                 <div style={{fontSize:12.5,color:ERP.muted,marginTop:2,maxWidth:620}}><strong>Materials POs</strong> are verified by Warehouse and billed in full. <strong>Subcontractor Work Orders</strong> are verified by Operations based on % of project completion — only the verified % reaches Accounts Payable.</div>
               </div>
-              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              {!poViewOnly&&<div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                 <button onClick={()=>setPage("procurement")} style={{background:ERP.navy,border:"none",borderRadius:7,padding:"9px 16px",fontFamily:"inherit",fontSize:13,color:"#fff",cursor:"pointer",fontWeight:600}}>+ Material PO</button>
                 <button onClick={()=>setPage("subconwo")} style={{background:ERP.gold,border:"none",borderRadius:7,padding:"9px 16px",fontFamily:"inherit",fontSize:13,color:ERP.navy,cursor:"pointer",fontWeight:600}}>+ Work Order</button>
-              </div>
+              </div>}
             </div>
             <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(auto-fit,minmax(190px,1fr))",gap:12,marginBottom:20}}>
               <ErpStat label="Total Orders" value={String(rows.length)} foot={poRows.length+" POs · "+woRows.length+" WOs"}/>
@@ -18981,7 +19122,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               <ErpStat label="Purchase Orders" value={fmt(poRows.reduce((s,r)=>s+r.amount,0))} foot="materials value"/>
               <ErpStat tone="purple" label="Work Orders" value={fmt(woRows.reduce((s,r)=>s+r.amount,0))} foot="subcontractor contracts"/>
             </div>
-            <ErpCard title="All Orders" desc="Materials Purchase Orders and Subcontractor Work Orders in one list. Click Open to view or edit in its module.">
+            <ErpCard title="All Orders" desc={poViewOnly?"Materials Purchase Orders and Subcontractor Work Orders in one list. View only.":"Materials Purchase Orders and Subcontractor Work Orders in one list. Click Open to view or edit in its module."}>
               <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
                 {[["all","All",rows.length],["po","Purchase Orders",poRows.length],["wo","Work Orders",woRows.length]].map(([k,l,n])=>{
                   const on=poViewFilter===k;
@@ -18991,6 +19132,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     </button>
                   );
                 })}
+                {poViewProj&&<button onClick={()=>setPoViewProj(null)} title="Show all projects" style={{display:"flex",alignItems:"center",gap:6,background:ERP.gold,color:ERP.navy,border:"none",borderRadius:20,padding:"5px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                  Project: {projLabel(poViewProj)} · {visibleRows.length} order{visibleRows.length!==1?"s":""} · {fmt(projTotal)} ✕
+                </button>}
                 <input value={poViewSearch} onChange={e=>setPoViewSearch(e.target.value)} placeholder="Search no., vendor, or project…" style={{marginLeft:"auto",minWidth:180,flex:"0 1 260px",border:`1px solid ${ERP.line}`,borderRadius:7,padding:"7px 12px",fontFamily:"inherit",fontSize:12.5,outline:"none",color:ERP.ink}}/>
               </div>
               <div style={{overflowX:"auto"}}>
@@ -19019,7 +19163,19 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                         <td style={{...erpTd,whiteSpace:"nowrap"}}><ErpBadge kind={r.type==="Subcontractor"?"approved":"open"}>{r.type}</ErpBadge></td>
                         <td style={{...erpTd,fontVariantNumeric:"tabular-nums",color:ERP.muted,whiteSpace:"nowrap"}}>{r.date||"—"}</td>
                         <td style={{...erpTd,fontWeight:600,color:ERP.ink,maxWidth:180,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={r.vendor}>{r.vendor}</td>
-                        <td style={{...erpTd,color:ERP.muted,maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{projName(r.projectId,r.projectName)}</td>
+                        <td style={{...erpTd,color:ERP.muted,maxWidth:220}}>
+                          {/* Each project is a link: click to list every order for that project. */}
+                          {(r.projectIds||[]).map(id=>(
+                            <button key={id} onClick={()=>setPoViewProj(id)} title="Show every order for this project"
+                              style={{display:"block",maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",background:"none",border:"none",padding:0,margin:"1px 0",color:ERP.navy,fontWeight:600,textDecoration:"underline",cursor:"pointer",fontFamily:"inherit",fontSize:12.5,textAlign:"left"}}>{projName(id,(r.idNames||{})[id])}</button>
+                          ))}
+                          {(r.looseNames||[]).map(n=>(
+                            <div key={n} style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontSize:12,fontStyle:"italic"}}
+                              title={/gmd stock/i.test(n)?"Bought for stock: no project until it is issued":"Typed name only: not linked to a project"}>
+                              {n}{/gmd stock/i.test(n)?" (stock)":" (not linked)"}</div>
+                          ))}
+                          {!(r.projectIds||[]).length&&!(r.looseNames||[]).length&&<span style={{color:"#cbd5e1"}}>—</span>}
+                        </td>
                         <td style={{...erpTd,fontVariantNumeric:"tabular-nums",fontSize:11.5,color:r.account?ERP.ink:"#cbd5e1",whiteSpace:"nowrap"}}>{r.account||"—"}</td>
                         <td style={{...erpTdNum,fontWeight:700,color:ERP.navy,whiteSpace:"nowrap"}}>{fmt(r.amount)}</td>
                         <td style={{...erpTd,whiteSpace:"nowrap"}}><ErpBadge kind={erpStatusKind(r.status)}>{r.status}</ErpBadge></td>
@@ -19031,13 +19187,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                               : <ErpBadge kind="unpaid">{isSub?"Pending (Ops)":"Pending (WH)"}</ErpBadge>}
                         </td>
                         <td style={{...erpTd,whiteSpace:"nowrap"}}>
-                          <div style={{display:"flex",gap:4,justifyContent:"flex-end",alignItems:"center"}}>
+                          {poViewOnly
+                            ? <div style={{display:"flex",justifyContent:"flex-end"}}>{pay&&settled?<span style={{fontSize:11,color:ERP.ok,fontWeight:700}}>Paid</span>:pay&&pay.verified&&payBal>0&&!payApproved(pay)?<span style={{fontSize:11,color:ERP.muted,fontWeight:600}}>Pending approval</span>:null}</div>
+                            : <div style={{display:"flex",gap:4,justifyContent:"flex-end",alignItems:"center"}}>
                             {pay&&!settled&&!pay.verified&&<button onClick={()=>verifyPayable(pay.id)} title={isSub?"Operations: verify % complete":"Warehouse: verify receipt"} style={{background:ERP.gold,border:"none",borderRadius:6,padding:"5px 10px",fontSize:12,color:ERP.navy,cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>✓ Verify</button>}
                             {pay&&!settled&&pay.verified&&payBal>0&&!payApproved(pay)&&<span style={{fontSize:11,color:ERP.muted,fontWeight:600}} title="Awaiting Manager / Finance approval before payment">Pending approval</span>}
                             {pay&&!settled&&pay.verified&&payBal>0&&payApproved(pay)&&<button onClick={()=>{setFinTab("payables");setPage("finance");openPayModal(pay);}} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"5px 12px",fontSize:12,color:"#fff",cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>Pay</button>}
                             {pay&&settled&&<span style={{fontSize:11,color:ERP.ok,fontWeight:700}}>Paid</span>}
                             <button onClick={()=>setPage(r.kind==="wo"?"subconwo":"procurement")} style={{background:"transparent",border:`1px solid ${ERP.line}`,borderRadius:6,padding:"5px 10px",fontSize:12,fontWeight:600,color:ERP.navy,cursor:"pointer",fontFamily:"inherit"}}>Open</button>
-                          </div>
+                          </div>}
                         </td>
                       </tr>
                       );})}
@@ -20363,7 +20521,7 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
               :<Fld label="Assigned Designer"><div style={{padding:"8px 12px",borderRadius:8,background:"#f1f5f9",fontSize:".85rem",color:"#94a3b8"}}>{form.designer||"— Design lead will assign —"}</div></Fld>
             }
             <Fld label="Design Deadline"><Inp type="date" value={form.designDeadline} onChange={e=>f("designDeadline",e.target.value)}/></Fld>
-            <Fld label="Linked Deal / Project"><Sel value={form.dealId} onChange={e=>{const d=wonDeals.find(x=>x.id===e.target.value);f("dealId",e.target.value);if(d&&!form.client)f("client",d.client);}}><option value="">— Link to deal (optional) —</option>{[...wonDeals].sort((a,b)=>(a.client||"").localeCompare(b.client||"")).map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?` — ${d.contact}`:""} ({d.stage?.replace(/^\d+ · /,"")||d.stage})</option>)}</Sel></Fld>
+            <Fld label="Linked Deal / Project"><ProjectSelect value={form.dealId} onChange={e=>{const d=wonDeals.find(x=>x.id===e.target.value);f("dealId",e.target.value);if(d&&!form.client)f("client",d.client);}}><option value="">— Link to deal (optional) —</option>{[...wonDeals].sort((a,b)=>(a.client||"").localeCompare(b.client||"")).map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?` — ${d.contact}`:""} ({d.stage?.replace(/^\d+ · /,"")||d.stage})</option>)}</ProjectSelect></Fld>
             <div style={{gridColumn:"1/-1"}}><Fld label="Description / Details" hint="What needs to be designed? Include dimensions, function, and key specs."><Inp rows={5} value={form.description} onChange={e=>f("description",e.target.value)} placeholder="RE-CREATE: Golf bag organizer rack with shelving&#10;SIZE: Must fit two large golf bags&#10;FUNCTION: Store 2 bags + shoe shelf (3-4 pairs) + drawer cabinet"/></Fld></div>
             {/* Accessories / Components */}
             <div style={{gridColumn:"1/-1"}}>
@@ -20858,10 +21016,10 @@ function ChecklistView({checklist,projList,deals,clientName,openAddCl,openEditCl
       <Modal open={clModal} onClose={()=>setClModal(false)} title={editCl?"Edit Task":"Add Task"} wide>
         {/* Project */}
         <Fld label="Project" hint="Which project is this task for?">
-          <select value={clForm.projectId||"none"} onChange={e=>f("projectId",e.target.value==="none"?null:e.target.value)} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box",cursor:"pointer"}}>
+          <ProjectSelect value={clForm.projectId||"none"} onChange={e=>f("projectId",e.target.value==="none"?null:e.target.value)} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box",cursor:"pointer"}}>
             <option value="none">— No specific project —</option>
             {deals.map(d=><option key={d.id} value={d.id}>{d.client} — {d.product}</option>)}
-          </select>
+          </ProjectSelect>
         </Fld>
 
         {/* Task Type — standard presets + custom */}
@@ -22701,7 +22859,7 @@ function CEQSView({ceReqs,addCEReq,updateCEReq,session,role,toastEmit,deals}){
 // ─── BOQ MODAL (opened from pipeline 📋 button) ──────────────────────────────
 
 // ─── SUBCON WORK ORDERS VIEW ───────────────────────────────────────────────────
-function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,deals,subcons,session,role,toastEmit,sendTelegramNotification,chartOfAccounts=[],onWaiveDp,onCreditTerms}){
+function SubconWOView({embedded=false,onEmbeddedDone,woDraft=null,clearWoDraft,swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,deals,subcons,session,role,toastEmit,sendTelegramNotification,chartOfAccounts=[],onWaiveDp,onCreditTerms}){
   const today=new Date().toISOString().split("T")[0];
   const[mode,setMode]=useState("list");
   const[editingId,setEditingId]=useState(null);
@@ -22740,7 +22898,29 @@ function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,deal
   const ACCT_CLR={"For Accounting":"#d97706","Checked":"#2563eb","Payment Ordered":"#059669"};
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
   const canManage=role==="Manager"||isProcurementRole(role);
-  const woDirect=canApprovePO(role,session?.name||"",session?.name||"");
+  // Two signatures (Cost Control, then Finance) from the PO-tier release: no WO is issued
+  // on creation any more; before it, a Manager / the Procurement Manager issued directly.
+  const woDirect=!PO_TIERS_ON&&canApprovePO(role,session?.name||"",session?.name||"");
+  const woIssueBlocked=w=>PO_TIERS_ON&&w&&(w.status==="Pending Approval"||w.status==="Draft");
+  const signWo=async w=>{
+    if(!isSupabaseReady()){toastEmit&&toastEmit("No server connection: work orders are signed online only.","error",8000);return;}
+    const{data,error}=await supabase.rpc("sign_wo",{p_id:w.id});
+    if(error){toastEmit&&toastEmit(`Not signed: ${error.message||WO_SIGN_MSG}`,"error",9000);return;}
+    const me=session?.name||"";
+    if(data==="issued"){
+      updateSWO(w.id,{status:"Issued",approvedBy:me,acctStatus:w.acctStatus||"For Accounting"});
+      const aMsg=`✅ <b>Work Order Issued — ${w.woNumber}</b>\nSubcontractor: ${w.subcontractor||"—"}\nAmount: ${fmt(w.contractAmount)}\nRequested by: ${w.requestedBy||"—"}\nCost Control: ${w.ccApprovedBy||"—"} · Finance: ${me} · ${today}\n→ Sent to Accounting for documentation`;
+      sendTelegramNotification("procurement",aMsg);
+      sendTelegramNotification("financialcontrol",aMsg);
+      toastEmit&&toastEmit(`${w.woNumber} issued — sent to Accounting`,"success");
+    }else{
+      updateSWO(w.id,{ccApprovedBy:me,ccApprovedAt:new Date().toISOString()});
+      const cMsg=`✍️ <b>Work Order signed by Cost Control — ${w.woNumber}</b>\nSubcontractor: ${w.subcontractor||"—"}\nAmount: ${fmt(w.contractAmount)}\nSigned by: ${me} · ${today}\n→ Paolo Gomez (Finance) to sign and issue`;
+      sendTelegramNotification("financialcontrol",cMsg);
+      sendTelegramNotification("management",cMsg);
+      toastEmit&&toastEmit(`${w.woNumber} signed — Finance (Paolo Gomez) signs next`,"success");
+    }
+  };
   // Down payment gate (same rule as POs): no work order is issued on a deal the
   // client hasn't paid on, unless a Manager waived the down payment.
   const WO_ISSUED=["Issued","In Progress","Completed"];
@@ -22776,6 +22956,15 @@ function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,deal
     setSuggestedNo(sug); setEditingId(null); setMode("form");
   };
   const openEdit=w=>{setForm({...w});setSuggestedNo(w.woNumber||"");setEditingId(w.id);setMode("form");};
+  // Inside Cash Out (embedded): open straight into a new Work Order, and close
+  // Cash Out when the form is left (saved or cancelled).
+  const embedSeenForm=useRef(false);
+  useEffect(()=>{if(embedded) openNew();},[]);
+  useEffect(()=>{
+    if(!embedded) return;
+    if(mode!=="list") embedSeenForm.current=true;
+    else if(embedSeenForm.current) onEmbeddedDone&&onEmbeddedDone();
+  },[mode]);
 
   // Picking a master-list subcon auto-fills their commercial terms
   const pickSubcon=name=>setForm(p=>{
@@ -22786,6 +22975,13 @@ function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,deal
       paymentStructure:m.payment_structure||m.paymentStructure||p.paymentStructure||"",
       paymentTerms:m.payment_terms||m.paymentTerms||p.paymentTerms||""};
   });
+  // Purchasing → "+ WO": open the new-WO form with that subcontractor picked.
+  useEffect(()=>{
+    if(!woDraft) return;
+    openNew();
+    if(woDraft.subcontractor) pickSubcon(woDraft.subcontractor);
+    clearWoDraft&&clearWoDraft();
+  },[woDraft]);
 
   // ── Batch upload ────────────────────────────────────────────────────────────
   const batchInputRef=useRef(null);
@@ -23002,6 +23198,7 @@ function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,deal
       const orig=swos.find(w=>w.id===editingId);
       const dpBlk=orig&&WO_ISSUED.includes(base.status)&&!WO_ISSUED.includes(orig.status)&&dpBlockedDeal(base.projectId);
       if(dpBlk){toastEmit&&toastEmit(dpMsg(dpBlk),"error",9000);return;}
+      if(base.status==="Issued"&&woIssueBlocked(orig)){toastEmit&&toastEmit(`${WO_SIGN_MSG} Use the Sign button on the work order.`,"error",8000);return;}
       if(base.status==="Issued"&&orig&&(orig.status==="Pending Approval"||orig.status==="Draft")&&!canApprovePO(role,session?.name||"",orig.requestedBy)){toastEmit&&toastEmit("Needs a Manager or the Procurement Manager to approve.","error");return;}
       if(base.status==="Issued"&&orig&&orig.status!=="Issued") Object.assign(base,{approvedBy:session?.name||"",acctStatus:base.acctStatus||"For Accounting"});
       updateSWO(editingId,base);
@@ -23221,12 +23418,13 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
   const totalValue=filtered.filter(w=>w.status!=="Cancelled").reduce((s,w)=>s+n(w.contractAmount),0);
 
   // ── Form (new / edit) ──────────────────────────────────────────────────────
+  if(embedded&&mode!=="form") return null;
   if(mode==="form"){
     const canSubmit=form.subcontractor.trim()&&form.projectId&&form.scopeOfWork.trim()&&n(form.contractAmount)>0&&!submitting;
     const retAmt=woRetentionAmt({retentionPct:form.retentionPct,contractAmount:n(form.contractAmount)});
     return(
       <div>
-        <button onClick={()=>{setMode("list");setEditingId(null);}} style={{background:"none",border:"none",color:"#3b82f6",cursor:"pointer",fontFamily:"inherit",fontSize:".84rem",fontWeight:700,marginBottom:14,padding:0}}>← Back to Work Orders</button>
+        {!embedded&&<button onClick={()=>{setMode("list");setEditingId(null);}} style={{background:"none",border:"none",color:"#3b82f6",cursor:"pointer",fontFamily:"inherit",fontSize:".84rem",fontWeight:700,marginBottom:14,padding:0}}>← Back to Work Orders</button>}
         <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:20}}>
           <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem",marginBottom:16}}>🛠️ {editingId?"Edit Work Order":"New Subcon Work Order"}</div>
           <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
@@ -23316,7 +23514,7 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
             <input ref={batchInputRef} type="file" accept=".csv,.xlsx,.xls" style={{display:"none"}} onChange={onBatchFile}/>
             <button onClick={downloadBatchTemplate} title="Download a CSV template with the expected columns" style={{background:"none",border:"none",color:"#3b82f6",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer",alignSelf:"center",padding:0}}>⬇ Template</button>
             <button onClick={()=>{if(!window.XLSX){toastEmit&&toastEmit("Excel library still loading — try again in a second.","warning");return;}batchInputRef.current&&batchInputRef.current.click();}} disabled={batchBusy} style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"9px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#475569",cursor:batchBusy?"wait":"pointer"}}>{batchBusy?"Reading…":"⬆️ Batch Upload"}</button>
-            <button onClick={openNew} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>+ New Work Order</button>
+            <button onClick={()=>cashOutHas("wo")?openCashOut("wo"):openNew()} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>+ New Work Order</button>
           </div>
         )}
       </div>
@@ -23343,11 +23541,11 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
                         <td style={{padding:"6px 9px",color:"#64748b",whiteSpace:"nowrap"}}>{r.woNumber||"auto"}</td>
                         <td style={{padding:"6px 9px",fontWeight:600,color:"#1e293b"}}>{r.subcontractor||"—"}</td>
                         <td style={{padding:"6px 9px",minWidth:200}}>
-                          <select value={r.projectId||""} onChange={e=>setBatchProject(i,e.target.value)} title={r.projectCell?`File said: ${r.projectCell}`:""}
+                          <ProjectSelect value={r.projectId||""} onChange={e=>setBatchProject(i,e.target.value)} title={r.projectCell?`File said: ${r.projectCell}`:""}
                             style={{width:"100%",maxWidth:230,border:`1.5px solid ${r.projectId?"#e2e8f0":"#fca5a5"}`,borderRadius:7,padding:"5px 7px",fontFamily:"inherit",fontSize:".74rem",color:r.projectId?"#1e293b":"#dc2626",background:"#fff"}}>
                             <option value="">{r.projectCell?`⚠ "${r.projectCell}" — pick…`:"— pick project —"}</option>
                             {projOpts.map(o=><option key={o.id} value={o.id}>{o.label}</option>)}
-                          </select>
+                          </ProjectSelect>
                         </td>
                         <td style={{padding:"6px 9px",color:"#64748b",maxWidth:220,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={r.scopeOfWork}>{r.scopeOfWork||"—"}</td>
                         <td style={{padding:"6px 9px",fontWeight:700,color:"#1e293b",whiteSpace:"nowrap"}}>{fmt(r.contractAmount)}</td>
@@ -23543,13 +23741,26 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
                         <select value={w.status} onChange={e=>{const st=e.target.value;
                           const dpBlk=WO_ISSUED.includes(st)&&!WO_ISSUED.includes(w.status)&&dpBlockedDeal(w.projectId);
                           if(dpBlk){toastEmit&&toastEmit(dpMsg(dpBlk),"error",9000);return;}
+                          if(st==="Issued"&&woIssueBlocked(w)){toastEmit&&toastEmit(`${WO_SIGN_MSG} Use the Sign button.`,"error",8000);return;}
                           if(st==="Issued"&&(w.status==="Pending Approval"||w.status==="Draft")&&!canApprovePO(role,session?.name||"",w.requestedBy)){toastEmit&&toastEmit("Needs a Manager or the Procurement Manager to approve.","error");return;}
                           updateSWO(w.id,{status:st,...(st==="Issued"&&w.status!=="Issued"?{approvedBy:session?.name||"",acctStatus:w.acctStatus||"For Accounting"}:{})});}} style={{border:"1.5px solid #e2e8f0",borderRadius:6,padding:"3px 6px",fontFamily:"inherit",fontSize:".7rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
                           {SWO_STATUSES.map(s=><option key={s}>{s}</option>)}
                         </select>
                         {w.acctStatus&&<span style={{fontSize:".62rem",background:(ACCT_CLR[w.acctStatus]||"#94a3b8")+"22",color:ACCT_CLR[w.acctStatus]||"#94a3b8",border:`1px solid ${(ACCT_CLR[w.acctStatus]||"#94a3b8")}44`,borderRadius:20,padding:"1px 8px",fontWeight:700}}>🧾 {w.acctStatus}{w.acctStatus==="Payment Ordered"&&w.paymentBank?` · ${(BANKS.find(b=>b.id===w.paymentBank)||{}).short||w.paymentBank}`:""}</span>}
                         <div style={{marginLeft:"auto",display:"flex",gap:6}}>
-                          {(w.status==="Pending Approval"||w.status==="Draft")&&canApprovePO(role,session?.name||"",w.requestedBy)&&(
+                          {PO_TIERS_ON&&(w.status==="Pending Approval"||w.status==="Draft")&&(()=>{
+                            const step=woSignStep(w,session?.username,role,session?.name);
+                            return <>
+                              <span style={{fontSize:".66rem",color:"#475569",alignSelf:"center",whiteSpace:"nowrap"}}>
+                                Cost Control: {w.ccApprovedBy?<b style={{color:"#059669"}}>✓ {w.ccApprovedBy}</b>:<b style={{color:"#b45309"}}>waiting</b>} · Finance: <b style={{color:"#b45309"}}>waiting</b>
+                              </span>
+                              {step&&<button onClick={()=>{
+                                if(step==="finance"){const dpBlk=dpBlockedDeal(w.projectId);if(dpBlk){toastEmit&&toastEmit(dpMsg(dpBlk),"error",9000);return;}}
+                                signWo(w);
+                              }} style={{background:step==="finance"?"#059669":"#2563eb",border:"none",borderRadius:7,padding:"4px 12px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>{step==="finance"?"✓ Sign & Issue (Finance)":"✍ Sign (Cost Control)"}</button>}
+                            </>;
+                          })()}
+                          {!PO_TIERS_ON&&(w.status==="Pending Approval"||w.status==="Draft")&&canApprovePO(role,session?.name||"",w.requestedBy)&&(
                             <button onClick={()=>{
                               const dpBlk=dpBlockedDeal(w.projectId);
                               if(dpBlk){toastEmit&&toastEmit(dpMsg(dpBlk),"error",9000);return;}
@@ -23560,12 +23771,12 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
                               toastEmit&&toastEmit(`${w.woNumber} approved — sent to Accounting`,"success");
                             }} style={{background:"#059669",border:"none",borderRadius:7,padding:"4px 12px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>✓ Approve & Issue</button>
                           )}
-                          {(w.status==="Pending Approval"||w.status==="Draft")&&!canApprovePO(role,session?.name||"",w.requestedBy)&&(
+                          {!PO_TIERS_ON&&(w.status==="Pending Approval"||w.status==="Draft")&&!canApprovePO(role,session?.name||"",w.requestedBy)&&(
                             <span style={{fontSize:".68rem",color:"#b45309",fontWeight:600,alignSelf:"center"}}>⏳ Awaiting approval</span>
                           )}
                           <button aria-label={`Print work order ${w.woNumber||""}`.trim()} title="Print work order" onClick={()=>printWO(w)} style={{background:"#eff6ff",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨 Print</button>
                           <button aria-label="Generate subcontractor contract" onClick={()=>printSubconContract(w)} title="Generate the Standard Subcontractor Contract" style={{background:"#0B2545",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>📄 Contract</button>
-                          <button aria-label={`Edit work order ${w.woNumber||""}`.trim()} title="Edit work order" onClick={()=>openEdit(w)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏ Edit</button>
+                          {role!=="QS"&&<button aria-label={`Edit work order ${w.woNumber||""}`.trim()} title="Edit work order" onClick={()=>openEdit(w)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏ Edit</button>}
                           {canManage&&<button aria-label={`Delete work order ${w.woNumber||""}`.trim()} title="Delete work order" onClick={async ()=>{
                             // Policy v2.0: a WO already in Accounting (or paid) can't be
                             // deleted silently — it breaks the finance/document trail.
@@ -23867,7 +24078,7 @@ function DpGate({deal,deals,role,onWaiveDp,onCreditTerms,what="POs"}){
 }
 
 // ─── PROCUREMENT VIEW 2 (Full PO → Multi-item → Delivery) ───────────────────
-function ProcurementView2({poDraft=null,clearPoDraft,onPoFromPrf,payPays=[],prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allDeals,budgets,exps,swos,session,role,toastEmit,suppliers,addSupplier,upPayables,payables,sendTelegramNotification,isSupabaseReady,sbUpsert,payableToSb,syncPoPayable,approvePOs,chartOfAccounts=[],onWaiveDp,onCreditTerms,costCenterDeals=[],onCreateCostCenter}){
+function ProcurementView2({embedded=false,onEmbeddedDone,poDraft=null,clearPoDraft,onPoFromPrf,payPays=[],prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allDeals,budgets,exps,swos,session,role,toastEmit,suppliers,addSupplier,upPayables,payables,sendTelegramNotification,isSupabaseReady,sbUpsert,payableToSb,syncPoPayable,approvePOs,chartOfAccounts=[],onWaiveDp,onCreditTerms,costCenterDeals=[],onCreateCostCenter}){
   // Internal cost centers (HR, GMD Tools, warehouse stock…): deals flagged
   // is_cost_center, bought against like a project but kept out of project
   // lists. Only a Manager adds one (create_cost_center RPC).
@@ -23884,6 +24095,11 @@ function ProcurementView2({poDraft=null,clearPoDraft,onPoFromPrf,payPays=[],prs,
     finally{setCcBusy(false);}
   };
   const activeDeals=React.useMemo(()=>(allDeals||wonDeals||[]).filter(d=>!isLostStage(d.stage)),[allDeals,wonDeals]);
+  // A PO line's project label comes from its deal (store name · CE no.), not the
+  // stored project_name: 93% of lines carry only the client name, so a client's
+  // projects (Yobo SM North Edsa, Yobo SM Nuvali) merged into one unsearchable row.
+  const poDealById=React.useMemo(()=>{const m=new Map();(allDeals||wonDeals||[]).forEach(d=>m.set(d.id,d));return m;},[allDeals,wonDeals]);
+  const prProjLabel=p=>{const d=p&&poDealById.get(p.projectId);return d?projDisplayName(d):(p?.projectName||"");};
   const today=new Date().toISOString().split("T")[0];
   // ── PO approval gate ────────────────────────────────────────────────────────
   // Segregation of duties: a PO may only be moved to "PO Issued" by a Manager or
@@ -23893,7 +24109,7 @@ function ProcurementView2({poDraft=null,clearPoDraft,onPoFromPrf,payPays=[],prs,
   // approver stamp, so the printed PO never shows the preparer as the approver.
   // Same helper (canApprovePO) already gates Subcon Work Orders.
   // PO approval: Cost Control up to ₱150,000, a Manager above (canApprovePOLine).
-  const canApproveFor=(requestedBy,total)=>canApprovePOLine(role,session?.name||"",requestedBy,total);
+  const canApproveFor=(requestedBy,total,poNo)=>canApprovePOLine(role,session?.name||"",requestedBy,total,poNo?poSplitTotal(prs,poNo):null);
   const poApprovalTotal=no=>poLinesTotal(prs.filter(p=>p.poNumber===no));
   // Down payment gate: the deal a PO line is for, when that deal still needs a
   // down payment (or a Manager's waiver) before anything can be issued on it.
@@ -23907,7 +24123,7 @@ function ProcurementView2({poDraft=null,clearPoDraft,onPoFromPrf,payPays=[],prs,
     const blocked=ISSUED_ST.includes(st)&&!ISSUED_ST.includes(pr.status)&&dpBlockedDeal(pr.projectId||pr.dealId);
     if(blocked){toastEmit&&toastEmit(dpMsg(blocked),"error",9000);return;}
     if(st==="PO Issued"&&pr.status!=="PO Issued"){
-      if(!canApproveFor(pr.requestedBy,poApprovalTotal(pr.poNumber))){
+      if(!canApproveFor(pr.requestedBy,poApprovalTotal(pr.poNumber),pr.poNumber)){
         toastEmit&&toastEmit(`${PO_APPROVER_MSG}: held at Pending Approval.`,"error");
         patch={status:"Pending Approval"};
       }else{
@@ -23970,11 +24186,22 @@ function ProcurementView2({poDraft=null,clearPoDraft,onPoFromPrf,payPays=[],prs,
     setPoTermsText(PO_TERMS_DEFAULT);
     setEditingPrIds(null); setMode("newpo");
   };
+  // Inside Cash Out (embedded): open straight into a new PO, and close Cash Out
+  // when the form is left (saved or cancelled).
+  const embedSeenForm=useRef(false);
+  useEffect(()=>{if(embedded) openNewPO();},[]);
+  useEffect(()=>{
+    if(!embedded) return;
+    if(mode!=="list") embedSeenForm.current=true;
+    else if(embedSeenForm.current) onEmbeddedDone&&onEmbeddedDone();
+  },[mode]);
   // Order Board → "Create PO": open the new-PO form pre-filled with those lines.
   useEffect(()=>{
     if(!poDraft) return;
     openNewPO();
     setPoSupplier(poDraft.supplier||"");
+    // Purchasing → "+ PO" sends only the supplier: keep the blank line openNewPO made.
+    if(!(poDraft.lines||[]).length){clearPoDraft&&clearPoDraft();return;}
     setPoItems(poDraft.lines.map(l=>({...emptyPoItem(),projectId:l.dealId||"",projectName:(()=>{const d=activeDeals.find(x=>x.id===l.dealId)||(allDeals||[]).find(x=>x.id===l.dealId);return d?projDisplayName(d):"";})(),itemName:l.itemName,category:l.category||"Materials",budgetCategory:"Materials",
       qty:Number(l.qty)||1,unit:l.unit||"pcs",estUnitCost:Number(l.estUnitCost)||0,_prfId:l.prfId,_prfLineId:l.lineId,_prfNo:l.prfNo})));
     prfDraftRef.current=true;
@@ -24132,7 +24359,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
         discType:"none",discValue:0,
         poDiscType:poLevelDiscType,poDiscValue:poLevelDiscValue,withVat:poWithVat,
         accountCode:poAccountCode,paymentTerms:poTerms,termsText:poTermsText,
-        projectId:item.projectId,projectName:deal?.client||item.projectName||"",
+        projectId:item.projectId,projectName:(deal?projDisplayName(deal):"")||item.projectName||"",
         supplier:poSupplier,poNumber:poNo,poDate:poDate,
         status:effStatus,deliveryDate:poExpectedDelivery||""};
     };
@@ -24159,7 +24386,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
       sendTelegramNotification("management",poMsg);
       if(effStatus==="Pending Approval"){
         const tot=poLinesTotal(poItems.map(i=>({qty:i.qty,estUnitCost:i.estUnitCost})));
-        sendTelegramNotification("financialcontrol",`🧾 <b>PO ${poNo} needs approval</b> · ₱${Math.round(tot).toLocaleString("en-PH")}\n${PO_TIERS_ON&&tot>=250000?"₱250,000 and above: Paulo, Mar or Arrius approves.":tot>150000?(PO_TIERS_ON?"₱150,000 to ₱250,000: Paolo Gomez approves.":"Above ₱150,000: Paolo Gomez approves."):"Cost Control approves (up to ₱150,000)."}\nSupplier: ${poSupplier} · Project: ${projects}`);
+        sendTelegramNotification("financialcontrol",`🧾 <b>PO ${poNo} needs approval</b> · ₱${Math.round(tot).toLocaleString("en-PH")}\n${PO_TIERS_ON&&tot>=250000?"₱250,000 and above: Paulo, Mar or Arrius approves.":tot>150000?(PO_TIERS_ON?"₱150,000 to ₱250,000: Paolo Gomez approves.":"Above ₱150,000: Paolo Gomez approves."):PO_TIERS_ON&&tot<=50000?"Up to ₱50,000: Marian (if that supplier's POs today stay within ₱50,000) or Cost Control approves.":"Cost Control approves (up to ₱150,000)."}\nSupplier: ${poSupplier} · Project: ${projects}`);
       }
       toastEmit&&toastEmit(`PO ${poNo} saved — ${poItems.length} item${poItems.length>1?"s":""}`,"success");
     }
@@ -24208,7 +24435,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
     const delQty=items.reduce((s,i)=>s+n(i.qtyDelivered),0);
     const anyDelivered=delQty>0||items.some(i=>["Delivered","Partially Delivered"].includes(i.status));
     const fullyDelivered=(totQty>0&&delQty>=totQty)||(items.length>0&&items.every(i=>i.status==="Delivered"));
-    const linkedAP=(payables||[]).filter(p=>p.poId===poNo||p.poNumber===poNo);
+    const linkedAP=(payables||[]).filter(p=>(p.poId===poNo||p.poNumber===poNo)&&!["Cancelled","Void"].includes(p.status));
     const apNos=[...new Set(linkedAP.map(p=>p.apNumber).filter(Boolean))];
     const isPaid=v=>v.status==="Paid"||v.acctStatus==="Paid"||(n(v.amount)>0&&n(v.paidAmount)>=n(v.amount));
     const paid=linkedAP.length>0&&linkedAP.every(isPaid);
@@ -24264,6 +24491,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
   };
 
   // Edit single PR inline
+  if(embedded&&mode!=="newpo") return null;
   if(mode==="editpr"&&editingId){
     const ef=(k,v)=>setEditForm(p=>({...p,[k]:v}));
     return(
@@ -24273,11 +24501,11 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
           <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem",marginBottom:16}}>Edit Purchase Request</div>
           <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
             <Fld label="Project" required>
-              <Sel value={editForm.projectId} onChange={e=>{const v=e.target.value;if(v==="__gmd_stocks__"){ef("projectId","__gmd_stocks__");ef("projectName","GMD Stocks");return;}const d=activeDeals.find(x=>x.id===v);ef("projectId",v);ef("projectName",projDisplayName(d));}}>
+              <ProjectSelect value={editForm.projectId} onChange={e=>{const v=e.target.value;if(v==="__gmd_stocks__"){ef("projectId","__gmd_stocks__");ef("projectName","GMD Stocks");return;}const d=activeDeals.find(x=>x.id===v);ef("projectId",v);ef("projectName",projDisplayName(d));}}>
                 <option value="">— Select Project —</option>
                 <option value="__gmd_stocks__">GMD Stocks</option>
                 {activeDeals.map(d=><option key={d.id} value={d.id}>{projDisplayName(d)}</option>)}
-              </Sel>
+              </ProjectSelect>
             </Fld>
             <Fld label="Budget Category">
               <Sel value={editForm.budgetCategory||"Materials"} onChange={e=>ef("budgetCategory",e.target.value)}>
@@ -24329,7 +24557,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
               // Enforce the PO issue gate on edits too — a non-approver cannot
               // flip an existing PO to "PO Issued" via the edit form.
               else if(editForm.status==="PO Issued"&&orig&&orig.status!=="PO Issued"){
-                if(!canApproveFor(editForm.requestedBy||orig.requestedBy,poApprovalTotal(orig.poNumber))){
+                if(!canApproveFor(editForm.requestedBy||orig.requestedBy,poApprovalTotal(orig.poNumber),orig.poNumber)){
                   toastEmit&&toastEmit(`${PO_APPROVER_MSG}: held at Pending Approval.`,"error");
                   patch={...patch,status:"Pending Approval",approvedBy:"",approvedAt:""};
                 }else{
@@ -24352,7 +24580,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
     const grandTotal=subtotalGross-poLevelDiscAmt;
     return(
       <div>
-        <button onClick={()=>setMode("list")} style={{background:"none",border:"none",color:"#3b82f6",cursor:"pointer",fontFamily:"inherit",fontSize:".84rem",fontWeight:700,marginBottom:14,padding:0}}>← Back to Purchase Orders</button>
+        {!embedded&&<button onClick={()=>setMode("list")} style={{background:"none",border:"none",color:"#3b82f6",cursor:"pointer",fontFamily:"inherit",fontSize:".84rem",fontWeight:700,marginBottom:14,padding:0}}>← Back to Purchase Orders</button>}
         <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:20}}>
           <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem",marginBottom:16}}>{editingPrIds?"✏ Edit Purchase Order":"📦 New Purchase Order"}</div>
           <datalist id="po-units-dl">{PO_UNITS.map(u=><option key={u} value={u}/>)}</datalist>
@@ -24401,26 +24629,23 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
                   </div>
                   <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(2,1fr) 1fr 1fr",gap:10}}>
                     <Fld label="Project" required>
-                      <input
-                        list={`proj-list-${item._id}`}
-                        value={item.projectName}
+                      {/* Pick from the list only: a typed name that matched no project used
+                          to save the line with no project link (34 POs, ₱1.18M, 2026-11-11). */}
+                      <ProjectSelect value={item.projectId&&(item.projectId==="__gmd_stocks__"||activeDeals.some(d=>d.id===item.projectId))?item.projectId:""}
                         onChange={e=>{
-                          const name=e.target.value;
-                          if(name==="GMD Stocks"){updatePoItem(item._id,"projectName","GMD Stocks");updatePoItem(item._id,"projectId","__gmd_stocks__");return;}
-                          const deal=activeDeals.find(d=>projDisplayName(d)===name);
-                          updatePoItem(item._id,"projectName",name);
-                          updatePoItem(item._id,"projectId",deal?deal.id:name||"");
-                        }}
-                        placeholder="Search or type project name…"
-                        style={{width:"100%",border:`1.5px solid ${item.projectName&&item.projectId&&!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.projectId)&&item.projectId!=="__gmd_stocks__"?"#f97316":"#e2e8f0"}`,borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box"}}
-                      />
+                          const v=e.target.value;
+                          if(v==="__gmd_stocks__"){updatePoItem(item._id,"projectName","GMD Stocks");updatePoItem(item._id,"projectId","__gmd_stocks__");return;}
+                          const deal=activeDeals.find(d=>d.id===v);
+                          updatePoItem(item._id,"projectName",deal?projDisplayName(deal):"");
+                          updatePoItem(item._id,"projectId",deal?deal.id:"");
+                        }}>
+                        <option value="">— Select project —</option>
+                        <option value="__gmd_stocks__">GMD Stocks</option>
+                        {activeDeals.map(d=><option key={d.id} value={d.id}>{projDisplayName(d)}</option>)}
+                      </ProjectSelect>
                       {item.projectName&&item.projectId&&!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.projectId)&&item.projectId!=="__gmd_stocks__"&&(
-                        <div style={{fontSize:".67rem",color:"#c2410c",marginTop:3}}>⚠ Project not found in FabHub — PO will save without project link. Select from the list to link properly.</div>
+                        <div style={{fontSize:".67rem",color:"#c2410c",marginTop:3}}>⚠ “{item.projectName}” isn't linked to a project in FabHub. Pick the project from the list.</div>
                       )}
-                      <datalist id={`proj-list-${item._id}`}>
-                        <option value="GMD Stocks"/>
-                        {activeDeals.map(d=><option key={d.id} value={projDisplayName(d)}/>)}
-                      </datalist>
                     </Fld>
                     <Fld label="Item Name / Description" required><Inp value={item.itemName} onChange={e=>updatePoItem(item._id,"itemName",e.target.value)} placeholder="e.g. 18mm Melamine Board White"/></Fld>
                     <Fld label="Category"><Sel value={item.category} onChange={e=>updatePoItem(item._id,"category",e.target.value)}>{PR_CATS.map(c=><option key={c}>{c}</option>)}</Sel></Fld>
@@ -24586,6 +24811,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
             const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
             const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent("﻿"+csv);a.download=`GMD_PurchaseOrders_${today}.csv`;a.click();
           }} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>
+          {canRaiseOrder(role)&&<>
           <label style={{background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#16a34a",cursor:"pointer",whiteSpace:"nowrap"}}>
             ⬆ Import CSV
             <input type="file" accept=".csv" style={{display:"none"}} onChange={e=>{
@@ -24622,7 +24848,8 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
               e.target.value="";
             }}/>
           </label>
-          <button onClick={openNewPO} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>+ New Purchase Order</button>
+          <button onClick={()=>cashOutHas("po")?openCashOut("po"):openNewPO()} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>+ New Purchase Order</button>
+          </>}
         </div>
       </div>
 
@@ -24638,7 +24865,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
       <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
         <select value={filterProj} onChange={e=>setFilterProj(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
           <option value="all">All Projects</option>
-          {activeDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?` — ${d.contact}`:""}</option>)}
+          {[...activeDeals].sort((a,b)=>projDisplayName(a).localeCompare(projDisplayName(b))).map(d=><option key={d.id} value={d.id}>{projDisplayName(d)}{d.client&&d.contact?` (${d.client})`:""}</option>)}
         </select>
         <select value={filterStat} onChange={e=>setFilterStat(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
           <option value="all">All Statuses</option>
@@ -24676,7 +24903,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
               const sup=p.supplier||"(No supplier)";
               if(!bySupplier[sup])bySupplier[sup]={count:0,total:0,items:[]};
               bySupplier[sup].count++;bySupplier[sup].total+=(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty);bySupplier[sup].items.push(p);
-              const proj=p.projectName||p.projectId||"GMD Stocks";
+              const proj=prProjLabel(p)||p.projectId||"GMD Stocks";
               if(!byProject[proj])byProject[proj]={count:0,total:0,id:(p.projectId&&p.projectId!=="__gmd_stocks__")?p.projectId:null};
               byProject[proj].count++;byProject[proj].total+=(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty);
               const st=p.status||"Draft";
@@ -24743,7 +24970,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
           if(g.type==="po"){
             const {poNo,groupKey,items,supplier,status,poDate:poD,total}=g;
             const lc=poLifecycle(items,poNo);
-            const projects=[...new Set(items.map(i=>i.projectName||"").filter(Boolean))].join(", ")||"—";
+            const projects=[...new Set(items.map(i=>prProjLabel(i)).filter(Boolean))].join(", ")||"—";
             // Keyed by groupKey (poNumber+supplier), not bare poNo — two different
             // suppliers can share the same PO number (dupPoColors below exists
             // specifically to flag that), and keying by poNo alone made both
@@ -24763,7 +24990,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
                   <div style={{fontSize:".75rem",color:"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{(()=>{
                     const ids=[...new Set(items.map(i=>i.projectId).filter(id=>id&&id!=="__gmd_stocks__"))];
                     if(!ids.length) return projects;
-                    return ids.map((id,k)=>{const nm=items.find(i=>i.projectId===id)?.projectName||projDisplayName((allDeals||wonDeals||[]).find(d=>d.id===id))||"Project";
+                    return ids.map((id,k)=>{const nm=projDisplayName((allDeals||wonDeals||[]).find(d=>d.id===id))||items.find(i=>i.projectId===id)?.projectName||"Project";
                       return <span key={id}>{k>0&&", "}<button style={ledgerLink} title={`All POs and expenses for ${nm}`} onClick={e=>{e.stopPropagation();setLedger({kind:"project",id});}}>{nm}</button></span>;});
                   })()}</div>
                   <div style={{textAlign:"right",fontWeight:800,color:"#10b981",fontSize:".85rem"}}>{fmt(total)}</div>
@@ -24812,7 +25039,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
           } else {
             const {pr}=g;
             const actTotal=(n(pr.actUnitCost)||n(pr.estUnitCost))*n(pr.qty);
-            const projName=pr.projectName||activeDeals.find(d=>d.id===pr.projectId)?.contact||activeDeals.find(d=>d.id===pr.projectId)?.client||"—";
+            const projName=prProjLabel(pr)||"—";
             return(
               <div key={pr.id} style={{display:"grid",gridTemplateColumns:"90px 1fr 1fr 110px 100px 90px",padding:"9px 14px",gap:8,alignItems:"center",borderBottom:gi<grouped.length-1?"1px solid #f1f5f9":"none",background:"#fff"}}
                 onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
@@ -25365,10 +25592,10 @@ function BudgetRequestView({sendTelegramNotification,breqs,addBR,updateBR,delete
           <div style={{fontWeight:800,color:"#0f172a",marginBottom:16}}>New Budget Request</div>
           <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
             <Fld label="Project" required>
-              <Sel value={form.projectId} onChange={e=>f("projectId",e.target.value)}>
+              <ProjectSelect value={form.projectId} onChange={e=>f("projectId",e.target.value)}>
                 <option value="">— Select Project —</option>
                 {wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?` — ${d.contact}`:""}</option>)}
-              </Sel>
+              </ProjectSelect>
             </Fld>
             <Fld label="Purpose" required>
               <Sel value={form.purpose} onChange={e=>f("purpose",e.target.value)}>
@@ -25834,6 +26061,9 @@ function ClientPoField({deal,inherited,canEdit,onSave}){
     </div>
   );
 }
+// Statement of Account: settled projects stay on it for this many months
+// after their last payment, in a separate "Settled" table.
+const SOA_SETTLED_MONTHS=3;
 function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMilestone,updateMilestone,applyDeduction,deleteMilestone,deleteProjectBilling,createMilestoneSchedule,logBillingPayment,deleteBillingPayment,setConfirmDel,canDeleteDeal,session,role,cocDeals,clientProfiles,initialDeal,clearInitialDeal,initialPayMs,clearInitialPayMs,upDeals,onSaveOnboarding,onOpenPayTerms,projs,overallProg,toastEmit,sendTelegramNotification}){
   const mob=window.innerWidth<768;
   const[selDeal,  setSelDeal]  =useState(initialDeal||null);
@@ -25924,18 +26154,23 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       [ms.invoiceNo,d?.client,"Billing Statement"].filter(Boolean).join(" - "),
       {draft:billingPdfDraft,draftNote:"Only Finance's or a Manager's copy is clean to send."});
   };
+  const soaPdfRow=(r)=>{
+    const po=dealClientPo(r.d,deals);
+    return{client:r.d.client||"",project:r.d.contact||r.d.product||r.d.ceNo||"—",
+      ref:[r.d.ceNo&&(r.d.contact||r.d.product)?r.d.ceNo:"",po?"PO# "+po:""].filter(Boolean).join(" · "),
+      vatable:r.vatable,vat:r.vat,gross:r.gross,payments:r.payments,ewt:r.ewt,due:r.due,balance:r.balance,
+      lastPaid:r.lastPaid,awaiting2307:r.awaiting2307};
+  };
   const shareSoaPdf=(clientName)=>{
     const sd=soaData(clientName);
     if(!sd){toastEmit&&toastEmit("No billing data found for "+clientName,"warning");return;}
     const model={
       draft:billingPdfDraft,clientName,address:sd.soaAddr,dateStr:sd.dateStr,refNos:sd.invoiceNos,amtLbl:sd.amtLbl,
       preparedBy:sd.preparedBy,
-      rows:sd.rows.map(r=>{
-        const po=dealClientPo(r.d,deals);
-        return{client:r.d.client||"",project:r.d.contact||r.d.product||r.d.ceNo||"—",
-          ref:[r.d.ceNo&&(r.d.contact||r.d.product)?r.d.ceNo:"",po?"PO# "+po:""].filter(Boolean).join(" · "),
-          vatable:r.vatable,vat:r.vat,gross:r.gross,payments:r.payments,ewt:r.ewt,due:r.due,balance:r.balance};
-      }),
+      rows:sd.rows.map(soaPdfRow),
+      settledRows:sd.settledRows.map(soaPdfRow),
+      settledSince:sd.settledSince,settledMonths:SOA_SETTLED_MONTHS,
+      settledTotals:{gross:sd.sG,payments:sd.sP},
       totals:{vatable:sd.tV,vat:sd.tVat,gross:sd.tG,payments:sd.tP,ewt:sd.tE,due:sd.tD,balance:sd.tB},
     };
     billingPdf.make(async()=>{const {buildSoaPdf}=await import("./views/billingPdf");return buildSoaPdf(model);},
@@ -25966,6 +26201,11 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     return arSummary(billings,id=>byId.get(id)).outstanding;
   },[billings,deals]);
   const overdue=useMemo(()=>billings.filter(m=>isBillingOverdue(m,today)),[billings]);
+  // Days an invoice is past due, and its aging bucket. One rule for the Aging
+  // Summary cards, the "age:*" list filter and the 📞 call line on each row.
+  const odDays=m=>Math.floor((Date.now()-new Date(m.dueDate))/(1000*60*60*24));
+  const ageKey=days=>days<=30?"d30":days<=60?"d60":days<=90?"d90":"d90p";
+  const AGE_LABEL={d30:"1–30 days",d60:"31–60 days",d90:"61–90 days",d90p:"90+ days"};
   // Drafts past their due date: never sent to the client, so not "overdue" — but
   // the money is late all the same. Shown apart so Finance sends them or re-dates them.
   const unsentLate=useMemo(()=>billings.filter(m=>isBillingUnsentLate(m,today)),[billings]);
@@ -26362,7 +26602,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   // (billingPdf.js), so the two can't disagree. null = nothing billed yet.
   const soaData=(clientName)=>{
     const clientDeals=[...wonDeals,...(completedDeals||[]),...deals.filter(d=>d.parentDealId&&new Set([...wonDeals,...(completedDeals||[])].map(x=>x.id)).has(d.parentDealId))].filter((d,i,a)=>a.findIndex(x=>x.id===d.id)===i).filter(d=>clientKey(d.client)===clientKey(clientName));
-    const rows=clientDeals.map(d=>{
+    const allRows=clientDeals.map(d=>{
       const ms=billings.filter(b=>b.dealId===d.id);
       const rt=d.receiptType||"OR",wh=d.withholding||false;
       const active=ms.filter(m=>m.status!=="Cancelled");
@@ -26375,9 +26615,24 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       const ewt=active.reduce((s,m)=>s+calcTax(m.amount,m.receiptType??rt,m.withholding??wh).ewt,0);
       const due=Math.max(0,gross-payments-ewt);
       const balance=Math.max(0,gross-payments);
-      return{d,vatable,vat,gross,payments,ewt,due,balance};
+      // Last payment date: when a settled project leaves the SOA (below).
+      const lastPaid=ms.reduce((mx,m)=>(m.payments||[]).filter(p=>!p.bounced&&p.date).reduce((x,p)=>String(p.date)>x?String(p.date):x,mx),"");
+      // Settled = nothing left on the balance. Due 0 with a balance left means
+      // the client withheld tax and we still need their BIR 2307: that stays
+      // outstanding, labelled, because the SOA is how Finance chases it.
+      const settled=balance<0.01;
+      const awaiting2307=!settled&&due<0.01;
+      return{d,vatable,vat,gross,payments,ewt,due,balance,lastPaid,settled,awaiting2307};
     }).filter(r=>r.vatable>0||r.payments>0);
-    if(!rows.length) return null;
+    if(!allRows.length) return null;
+    // Outstanding projects carry the statement's totals. Settled ones are shown
+    // in their own table, only those fully paid in the last 3 months, so a
+    // long-standing client's SOA doesn't list every project ever done.
+    const sc=new Date(today+"T00:00:00");sc.setMonth(sc.getMonth()-SOA_SETTLED_MONTHS);
+    const settledSince=`${sc.getFullYear()}-${String(sc.getMonth()+1).padStart(2,"0")}-${String(sc.getDate()).padStart(2,"0")}`;
+    const rows=allRows.filter(r=>!r.settled);
+    const settledRows=allRows.filter(r=>r.settled&&r.lastPaid&&r.lastPaid>=settledSince).sort((a,b)=>b.lastPaid.localeCompare(a.lastPaid));
+    const sG=settledRows.reduce((s,r)=>s+r.gross,0),sP=settledRows.reduce((s,r)=>s+r.payments,0);
     const tV=rows.reduce((s,r)=>s+r.vatable,0),tVat=rows.reduce((s,r)=>s+r.vat,0);
     const tG=rows.reduce((s,r)=>s+r.gross,0),tP=rows.reduce((s,r)=>s+r.payments,0);
     const tE=rows.reduce((s,r)=>s+r.ewt,0),tD=rows.reduce((s,r)=>s+r.due,0);
@@ -26389,20 +26644,32 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     const cpSoa=(clientProfiles||{})[clientName]||(clientProfiles||{})[clientDeals[0]?.client||""]||{};
     const soaAddr=[cpSoa.billingAddress,cpSoa.city,cpSoa.province,cpSoa.zipCode].filter(Boolean).join(", ");
     // AR (no VAT) projects have no "vatable" amount; don't label them as such.
-    const amtLbl=tVat>0?"VATABLE AMOUNT":"AMOUNT (NO VAT)";
-    const invoiceNos=[...new Set(billings.filter(b=>clientDeals.some(d=>d.id===b.dealId)&&b.invoiceNo&&b.status!=="Cancelled").map(b=>b.invoiceNo))].join(", ");
-    return{clientDeals,rows,tV,tVat,tG,tP,tE,tD,tB,dateStr,preparedBy,cpSoa,soaAddr,amtLbl,invoiceNos};
+    const amtLbl=(rows.length?tVat:allRows.reduce((s,r)=>s+r.vat,0))>0?"VATABLE AMOUNT":"AMOUNT (NO VAT)";
+    // Reference numbers of the projects actually on this statement.
+    const shownIds=new Set([...rows,...settledRows].map(r=>r.d.id));
+    const invoiceNos=[...new Set(billings.filter(b=>shownIds.has(b.dealId)&&b.invoiceNo&&b.status!=="Cancelled").map(b=>b.invoiceNo))].join(", ");
+    return{clientDeals,rows,settledRows,settledSince,sG,sP,tV,tVat,tG,tP,tE,tD,tB,dateStr,preparedBy,cpSoa,soaAddr,amtLbl,invoiceNos};
   };
   const printSOA=(clientName)=>{
     const esc=(s)=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
     const f=(v)=>Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
     const sd=soaData(clientName);
     if(!sd){alert("No billing data found for "+clientName);return;}
-    const{rows,tV,tVat,tG,tP,tE,tD,tB,dateStr,preparedBy,soaAddr,amtLbl,invoiceNos}=sd;
+    const{rows,settledRows,settledSince,sG,sP,tV,tVat,tG,tP,tE,tD,tB,dateStr,preparedBy,soaAddr,amtLbl,invoiceNos}=sd;
+    const fd=(iso)=>iso?new Date(iso+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):"—";
+    const projCell=(r)=>`<td style="text-align:left"><div style="color:#2563eb;font-weight:600">${esc(r.d.contact||r.d.product||r.d.ceNo||"—")}</div>${(()=>{const po=dealClientPo(r.d,deals);const ref=[r.d.ceNo&&(r.d.contact||r.d.product)?r.d.ceNo:"",po?"PO# "+po:""].filter(Boolean).join(" · ");return ref?`<div style="color:#64748b;font-size:8.5px;margin-top:1px">${esc(ref)}</div>`:"";})()}${r.awaiting2307?`<div style="color:#b45309;font-size:8.5px;font-weight:700;margin-top:1px">Awaiting BIR Form 2307</div>`:""}</td>`;
+    const settledHtml=settledRows.map((r,i)=>`<tr>
+      <td style="text-align:center;color:#64748b">${i+1}</td>
+      ${projCell(r)}
+      <td style="text-align:right">${f(r.gross)}</td>
+      <td style="text-align:right;color:#2563eb">${f(r.payments)}</td>
+      <td style="text-align:right">${esc(fd(r.lastPaid))}</td>
+      <td style="text-align:right;color:#059669;font-weight:700">PAID</td>
+    </tr>`).join("");
     const rowsHtml=rows.map((r,i)=>`<tr>
       <td style="text-align:center;color:#64748b">${i+1}</td>
       <td style="color:#2563eb;font-weight:600">${esc(r.d.client)}</td>
-      <td style="text-align:left"><div style="color:#2563eb;font-weight:600">${esc(r.d.contact||r.d.product||r.d.ceNo||"—")}</div>${(()=>{const po=dealClientPo(r.d,deals);const ref=[r.d.ceNo&&(r.d.contact||r.d.product)?r.d.ceNo:"",po?"PO# "+po:""].filter(Boolean).join(" · ");return ref?`<div style="color:#64748b;font-size:8.5px;margin-top:1px">${esc(ref)}</div>`:"";})()}</td>
+      ${projCell(r)}
       <td style="text-align:right">${f(r.vatable)}</td>
       <td style="text-align:right">${f(r.vat)}</td>
       <td style="text-align:right">${f(r.gross)}</td>
@@ -26444,6 +26711,14 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       tfoot td{color:#fff;font-weight:700;padding:9px 10px;font-size:10px;text-align:right}
       tfoot td:nth-child(1),tfoot td:nth-child(2){text-align:center;color:rgba(255,255,255,.7);font-size:9px;font-weight:400}
       .total-due{color:#f97316!important;font-size:13px!important;font-weight:900!important}
+      .tbl-title{font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#0f172a;margin:4px 0 6px}
+      .paid-full{border:2px solid #059669;color:#059669;background:#ecfdf5;font-weight:900;font-size:13px;letter-spacing:1px;text-align:center;padding:10px;margin-bottom:14px}
+      table.settled thead tr,table.settled tfoot tr{background:#475569}
+      table.settled thead th:nth-child(n+3){text-align:right}
+      table.settled thead th:nth-child(-n+2),table.settled tbody td:nth-child(-n+2){text-align:left}
+      table.settled tbody td:first-child{text-align:center}
+      table.settled tbody td:nth-child(n+3){text-align:right}
+      .none{font-size:9.5px;color:#64748b;font-style:italic;margin-bottom:14px}
       .notes{border:1px solid #e2e8f0;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:9px;color:#475569}
       .notes b{color:#0f172a;font-size:9px}
       .notes .nt{font-weight:700;font-size:10px;color:#0f172a;margin-bottom:6px}
@@ -26473,13 +26748,15 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         <span class="cl">BILLING ADDRESS:</span>
         <span class="cv">${soaAddr?esc(soaAddr):"&nbsp;"}</span>
       </div>
-      <div class="summary">
+      ${rows.length?`<div class="summary">
         <div class="sb"><div class="sl">TOTAL ${amtLbl}</div><div class="sv">${f(tV)}</div></div>
         <div class="sb"><div class="sl">TOTAL VAT</div><div class="sv">${f(tVat)}</div></div>
         <div class="sb"><div class="sl">TOTAL PAYMENTS MADE</div><div class="sv">${f(tP)}</div></div>
         <div class="sb"><div class="sl">TOTAL BALANCE</div><div class="sv">${f(tB)}</div></div>
         <div class="sb"><div class="sl">TOTAL AMOUNT DUE</div><div class="sv">${f(tD)}</div></div>
-      </div>
+      </div>`:""}
+      ${rows.length?"":`<div class="paid-full">PAID IN FULL — no outstanding balance as of ${esc(dateStr)}</div>`}
+      ${rows.length?`<div class="tbl-title">Outstanding</div>
       <table>
         <thead><tr>
           <th style="width:30px;text-align:center">#</th>
@@ -26494,7 +26771,16 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
           <td>${f(tP)}</td><td>${f(tE)}</td>
           <td class="total-due">${f(tD)}</td><td>${f(tB)}</td>
         </tr></tfoot>
-      </table>
+      </table>`:""}
+      <div class="tbl-title">Settled — fully paid since ${esc(fd(settledSince))}</div>
+      ${settledRows.length?`<table class="settled">
+        <thead><tr>
+          <th style="width:30px;text-align:center">#</th>
+          <th>PROJECT NAME</th><th>SALES AMOUNT</th><th>PAYMENT MADE</th><th>LAST PAYMENT</th><th>Status</th>
+        </tr></thead>
+        <tbody>${settledHtml}</tbody>
+        <tfoot><tr><td></td><td style="text-align:left">TOTAL SETTLED</td><td>${f(sG)}</td><td>${f(sP)}</td><td></td><td></td></tr></tfoot>
+      </table>`:`<div class="none">No projects fully paid in the last ${SOA_SETTLED_MONTHS} months.</div>`}
       <div class="notes">
         <div class="nt">NOTES</div>
         <p style="margin-bottom:6px">Thank you for your business! Please send or email (<b>finance@gmd.ph</b>) us a copy of the payment for proper recording.</p>
@@ -26540,18 +26826,22 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     const grossBase=tot.gross, vat=tot.vat, total=tot.total, collectible=tot.collectible;
     const collected=ms.reduce((s,m)=>s+(m.payments||[]).filter(p=>!p.bounced).reduce((ps,p)=>ps+n(p.amount),0),0);
     const balance  =Math.max(0,collectible-collected);
-    const hasOverdue=ms.some(m=>isBillingOverdue(m,today));
+    const odMs=ms.filter(m=>isBillingOverdue(m,today));
+    const hasOverdue=odMs.length>0;
+    const maxOverdue=odMs.reduce((x,m)=>Math.max(x,odDays(m)),0);
+    const odBalance=odMs.reduce((x,m)=>x+milestoneBalance(m,d),0);
+    const ageKeys=new Set(odMs.map(m=>ageKey(odDays(m))));
     const hasUnsent=ms.some(m=>isBillingUnsentLate(m,today));
     const fullyPaid=total>0&&balance===0;
     const toBill=ms.filter(m=>m.status==="Draft"&&m.plannedDate&&m.plannedDate<today).length;
-    return{d,ms,grossBase,vat,total,collected,collectible,balance,hasOverdue,hasUnsent,fullyPaid,toBill,milestoneCount:ms.length};
+    return{d,ms,grossBase,vat,total,collected,collectible,balance,hasOverdue,maxOverdue,odBalance,odCount:odMs.length,ageKeys,hasUnsent,fullyPaid,toBill,milestoneCount:ms.length};
   });
   // Count of awarded projects with no billing set up yet — hidden by default.
   const notBilledCount=_allSummaries.filter(s=>s.milestoneCount===0).length;
-  const projectSummaries=_allSummaries.filter(({d,total,collected,balance,hasOverdue,hasUnsent,fullyPaid,milestoneCount})=>{
+  const projectSummaries=_allSummaries.filter(({d,total,collected,balance,hasOverdue,ageKeys,hasUnsent,fullyPaid,milestoneCount})=>{
     const q=billingSearch.toLowerCase();
     const matchSearch=!q||(d.client||"").toLowerCase().includes(q)||(d.ceNo||"").toLowerCase().includes(q)||(d.contact||"").toLowerCase().includes(q);
-    const matchFilter=billingFilter==="all"||(billingFilter==="outstanding"&&balance>0&&!fullyPaid)||(billingFilter==="paid"&&fullyPaid)||(billingFilter==="overdue"&&hasOverdue)||(billingFilter==="unsent"&&hasUnsent)||(billingFilter==="collected"&&collected>0)||(billingFilter==="uncollected"&&total>0&&collected===0);
+    const matchFilter=billingFilter==="all"||(billingFilter==="outstanding"&&balance>0&&!fullyPaid)||(billingFilter==="paid"&&fullyPaid)||(billingFilter==="overdue"&&hasOverdue)||(billingFilter.startsWith("age:")&&ageKeys.has(billingFilter.slice(4)))||(billingFilter==="unsent"&&hasUnsent)||(billingFilter==="collected"&&collected>0)||(billingFilter==="uncollected"&&total>0&&collected===0);
     // Hide "Not billed" (0-milestone) projects unless the toggle is on or the user is searching.
     const matchNotBilled=milestoneCount>0||showNotBilled||!!q;
     return matchSearch&&matchFilter&&matchNotBilled;
@@ -26564,7 +26854,15 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const _kidsOf=new Map();
   _allSummaries.forEach(x=>{if(x.d.parentDealId&&_baseIds.has(x.d.parentDealId)){if(!_kidsOf.has(x.d.parentDealId))_kidsOf.set(x.d.parentDealId,[]);_kidsOf.get(x.d.parentDealId).push(x);}});
   const billingRows=[];
-  _allSummaries.filter(x=>!(x.d.parentDealId&&_baseIds.has(x.d.parentDealId))).forEach(parent=>{
+  // Overdue views list the client to call first at the top (arCallOrder): the
+  // oldest aging bucket first, then the biggest overdue amount in it, with
+  // amounts under ₱5,000 last. Counted across the project and its addenda.
+  const _overdueView=billingFilter==="overdue"||billingFilter.startsWith("age:");
+  const _grp=x=>[x,...(_kidsOf.get(x.d.id)||[])];
+  const _grpKey=x=>({days:Math.max(..._grp(x).map(k=>k.maxOverdue)),amount:_grp(x).reduce((t,k)=>t+k.odBalance,0)});
+  const _parents=_allSummaries.filter(x=>!(x.d.parentDealId&&_baseIds.has(x.d.parentDealId)));
+  if(_overdueView) _parents.sort((a,b)=>arCallOrder(_grpKey(a),_grpKey(b)));
+  _parents.forEach(parent=>{
     const kids=(_kidsOf.get(parent.d.id)||[]).filter(k=>k.milestoneCount>0||showNotBilled||_matchIds.has(k.d.id));
     if(!_matchIds.has(parent.d.id)&&!kids.some(k=>_matchIds.has(k.d.id))) return;
     const groupOverdue=parent.hasOverdue||kids.some(k=>k.hasOverdue);
@@ -26746,25 +27044,32 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
 
       {/* Overdue alert + Aging Summary */}
       {overdue.length>0&&(()=>{
-        const today2=new Date();
-        const age=ms=>{const d=new Date(ms.dueDate);return Math.floor((today2-d)/(1000*60*60*24));};
-        const d30 =overdue.filter(m=>age(m)<=30);
-        const d60 =overdue.filter(m=>age(m)>30&&age(m)<=60);
-        const d90 =overdue.filter(m=>age(m)>60&&age(m)<=90);
-        const d90p=overdue.filter(m=>age(m)>90);
+        const age=odDays;
+        const d30 =overdue.filter(m=>ageKey(age(m))==="d30");
+        const d60 =overdue.filter(m=>ageKey(age(m))==="d60");
+        const d90 =overdue.filter(m=>ageKey(age(m))==="d90");
+        const d90p=overdue.filter(m=>ageKey(age(m))==="d90p");
         return(
           <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:12,padding:"14px 18px",marginBottom:12}}>
-            <div style={{fontWeight:700,color:"#dc2626",marginBottom:10,fontSize:".88rem"}}>🚨 Overdue Invoice Aging Summary</div>
+            <div style={{fontWeight:700,color:"#dc2626",marginBottom:10,fontSize:".88rem"}}>🚨 Overdue Invoice Aging Summary <span style={{fontWeight:500,color:"#f87171",fontSize:".72rem"}}>· tap a card to list those projects</span></div>
             <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:10}}>
-              {[[d30,"1–30 days","#f59e0b","#fffbeb"],[d60,"31–60 days","#f97316","#fff7ed"],[d90,"61–90 days","#ef4444","#fef2f2"],[d90p,"90+ days","#dc2626","#fef2f2"]].map(([grp,lbl,clr,bg])=>(
-                <div key={lbl} style={{background:bg,borderRadius:8,padding:"10px 12px",textAlign:"center",border:`1px solid ${clr}33`}}>
+              {[[d30,"d30","#f59e0b","#fffbeb"],[d60,"d60","#f97316","#fff7ed"],[d90,"d90","#ef4444","#fef2f2"],[d90p,"d90p","#dc2626","#fef2f2"]].map(([grp,key,clr,bg])=>{
+                const lbl=AGE_LABEL[key], f="age:"+key, on=billingFilter===f, can=grp.length>0;
+                return(
+                <div key={key}
+                  {...(can?clickable(()=>{setBillingFilter(on?"all":f);if(!on){const el=document.getElementById("billing-list-top");if(el)el.scrollIntoView({behavior:"smooth",block:"start"});}}):{})}
+                  aria-label={can?(on?`Clear the ${lbl} filter`:`Show projects with invoices ${lbl} overdue`):undefined}
+                  title={can?(on?"Tap again to show all projects":`Show projects with invoices ${lbl} overdue`):undefined}
+                  style={{background:bg,borderRadius:8,padding:"10px 12px",textAlign:"center",border:on?`2px solid ${clr}`:`1px solid ${clr}33`,boxShadow:on?`0 0 0 3px ${clr}22`:"none",cursor:can?"pointer":"default"}}>
                   <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.4rem",color:clr}}>{grp.length}</div>
                   <div style={{fontSize:".65rem",textTransform:"uppercase",letterSpacing:"1px",color:clr,marginTop:3}}>{lbl}</div>
                   <div style={{fontSize:".72rem",color:clr,fontWeight:600,marginTop:2}}>
-                    ₱{grp.reduce((s,m)=>{const p=(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0);const md=deals.find(x=>x.id===m.dealId);return s+Math.max(0,calcTax(m.amount,m.receiptType??md?.receiptType??"OR",m.withholding??md?.withholding??false).netReceivable-p);},0).toLocaleString("en-PH",{minimumFractionDigits:0})}
+                    ₱{grp.reduce((s,m)=>s+milestoneBalance(m,deals.find(x=>x.id===m.dealId)),0).toLocaleString("en-PH",{minimumFractionDigits:0,maximumFractionDigits:2})}
                   </div>
+                  {on&&<div style={{fontSize:".6rem",color:clr,fontWeight:700,marginTop:4}}>✓ Filtering · tap to clear</div>}
                 </div>
-              ))}
+                );
+              })}
             </div>
             <div style={{fontSize:".78rem",color:"#dc2626"}}>
               {overdue.slice(0,4).map(m=>{const d=deals.find(x=>x.id===m.dealId);return`${d?.client||"?"} (${m.invoiceNo}, ${age(m)}d overdue)`;}).join(" · ")}
@@ -26788,6 +27093,12 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
               {l}
             </button>
           ))}
+          {billingFilter.startsWith("age:")&&(
+            <button onClick={()=>setBillingFilter("all")} title="Clear the aging filter"
+              style={{padding:"7px 13px",borderRadius:20,border:"1.5px solid #dc2626",background:"#dc2626",color:"#fff",fontFamily:"inherit",fontSize:".75rem",fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>
+              Overdue {AGE_LABEL[billingFilter.slice(4)]} ✕
+            </button>
+          )}
         </div>
         {notBilledCount>0&&(
           <button onClick={()=>setShowNotBilled(v=>!v)}
@@ -26830,7 +27141,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
               </div>
             );
           }
-          const {d,ms,grossBase,vat,total,collected,collectible,balance,hasOverdue,hasUnsent,fullyPaid,toBill,milestoneCount,groupOverdue,childOf,addendumCount}=row;
+          const {d,ms,grossBase,vat,total,collected,collectible,balance,hasOverdue,maxOverdue,odCount,hasUnsent,fullyPaid,toBill,milestoneCount,groupOverdue,childOf,addendumCount}=row;
           const statusBadge=(
             <>
               {hasOverdue&&<span style={{fontSize:".68rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Overdue</span>}
@@ -26896,6 +27207,10 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                 {toBill>0&&<span title="Draft milestones past their Bill-on date" style={{color:"#d97706",fontWeight:700,marginLeft:6}}>⏰ {toBill} to bill</span>}
                 {fullyPaid&&<span style={{color:"#059669",fontWeight:700,marginLeft:6}}>✓ Fully Paid</span>}
               </div>
+              {hasOverdue&&(()=>{const c=maxOverdue>60?["#fef2f2","#dc2626","#fecaca"]:maxOverdue>30?["#fff7ed","#c2410c","#fed7aa"]:["#fffbeb","#b45309","#fde68a"];return(
+                <div title="Follow up with the client: an invoice sent to them is past its due date" style={{display:"inline-flex",alignItems:"center",gap:5,marginTop:4,background:c[0],color:c[1],border:`1px solid ${c[2]}`,borderRadius:20,padding:"2px 9px",fontSize:".7rem",fontWeight:700,whiteSpace:"nowrap"}}>
+                  📞 Call client · {maxOverdue}d overdue{odCount>1?` · ${odCount} invoices`:""}
+                </div>);})()}
             </div>
           );
           const dash=<span style={{color:"#e2e8f0",fontSize:".78rem"}}>—</span>;
@@ -27663,7 +27978,7 @@ function TATSetter({deal,card,onSet,refTable,ceType}){
 }
 
 // ─── INVENTORY VIEW ───────────────────────────────────────────────────────────
-function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,prs=[],exps=[],isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,upDeals,ceReqs,toastEmit,sendTelegramNotification,initialDeal,clearJump,initialFilter,clearJumpFilter,loadChecklistTemplate,swos=[],addPmUpdate,setConfirmDel,customMembers=[],setCustomMembers=()=>{},setPage=()=>{},setJumpDeal=()=>{}}){
+function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,prs=[],exps=[],isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,upDeals,ceReqs,toastEmit,sendTelegramNotification,initialDeal,clearJump,initialFilter,clearJumpFilter,loadChecklistTemplate,swos=[],addPmUpdate,setConfirmDel,customMembers=[],setCustomMembers=()=>{},setPage=()=>{},setJumpDeal=()=>{}}){
   const todayStr=new Date().toISOString().split("T")[0];
   const[selDealRaw,setSelDeal]=useState(initialDeal||null);
   // A selection whose deal isn't loaded/won (deleted, moved to a lost stage, or a
@@ -27700,6 +28015,9 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
   const[scopeForm,setScopeForm]=useState({title:"",desc:"",value:"",ceNo:""});
   const fsc=(k,v)=>setScopeForm(p=>({...p,[k]:v}));
   const[showDateEdit,setShowDateEdit]=useState(false);
+  const[hqTab,setHqTab]=useState("progress");
+  const[pctDraft,setPctDraft]=useState("");
+  const[reportPct,setReportPct]=useState(null); // open Progress update form at this %
   const[dateForm,setDateForm]=useState({awardDate:"",targetEndDate:""});
   const fdt=(k,v)=>setDateForm(p=>({...p,[k]:v}));
   const[pmUpdateModal,setPmUpdateModal]=useState(null);
@@ -27731,14 +28049,6 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
   const card=selDeal?pcards[selDeal]:null;
   const jo=dealJo(jos,selDeal);
 
-  const PHASES=[
-    {id:"design",    label:"Design",     icon:"🎨", stgs:["06 · Kickoff","07 · Briefing"]},
-    {id:"fab",       label:"Fabrication",icon:"🔨", stgs:["08 · Fabrication"]},
-    {id:"site",      label:"Site",       icon:"🏗",  stgs:["09 · Site & Billing","10 · Installation"]},
-    {id:"punchlist", label:"Punchlist",  icon:"📋", stgs:["11 · Punchlist"]},
-    {id:"closeout",  label:"Close-Out",  icon:"✅", stgs:["12 · Close-Out","14 · Completed"]},
-  ];
-  const phaseIdx=stg=>PHASES.findIndex(p=>p.stgs.includes(stg));
 
   const fmt=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:0});
   const BUDGET_ONLY_PC=["Design","Operations","ProjectMover"];
@@ -27749,7 +28059,7 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
     return t>0?fmt(t)+" 📊":"Budget Pending";
   };
   const editableDepts={Manager:DEPT_ORDER,Sales:["Sales"],Design:["Design"],QS:["QS"],Procurement:["Procurement"],Operations:["Operations"],Finance:["Finance"],SalesOpsAdmin:DEPT_ORDER}[role]||[];
-  const projPct=(pc,deal=null)=>{if(deal?.stage==="12 · Close-Out"||deal?.stage==="14 · Completed")return 100;return pc?(pc.manualProgress!=null?pc.manualProgress:Math.round(Object.values(pc.departments||{}).filter(d=>d.done).length/6*100)):0;};
+  const projPct=(pc,deal=null)=>projProgressPct(pc,deal);
   const getHealth=(d,pc)=>{
     if(!pc||!d)return "none";
     const end=pc.targetEndDate?new Date(pc.targetEndDate):null;
@@ -28010,7 +28320,7 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
             list=[...list].sort((a,b)=>{
               if(pcSort==="client")return a.client.localeCompare(b.client);
               if(pcSort==="project")return (a.contact||a.client).localeCompare(b.contact||b.client);
-              if(pcSort==="pct")return projPct(pcards[a.id])-projPct(pcards[b.id]);
+              if(pcSort==="pct")return (projPct(pcards[a.id],a)??-1)-(projPct(pcards[b.id],b)??-1);
               if(pcSort==="tat"){
                 const da=pcards[a.id]?.targetEndDate?Math.ceil((new Date(pcards[a.id].targetEndDate)-today2)/86400000):999;
                 const db=pcards[b.id]?.targetEndDate?Math.ceil((new Date(pcards[b.id].targetEndDate)-today2)/86400000):999;
@@ -28081,8 +28391,6 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                   const projTypeC=pc?.tatCategory||d.projType||joC?.projType||"";
                   const pctC=projPct(pc,d);
                   const gradeC=calcCardGrade(d,pc);
-                  const deptStateC=DEPT_ORDER.map(dep=>({dep,done:!!pc?.departments?.[dep]?.done}));
-                  const doneCountC=deptStateC.filter(x=>x.done).length;
                   const lastNoteC=(pc?.pmUpdates||[])[0];
                   const lastNoteTxtC=lastNoteC?(lastNoteC.note||lastNoteC.text||""):"";
                   const[,hLabelC]=HC[h];
@@ -28109,27 +28417,17 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                             <span title={`Card health: ${hLabelC}`} style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:".92rem",lineHeight:1,minWidth:26,height:26,display:"inline-flex",alignItems:"center",justifyContent:"center",borderRadius:6,background:gradeC.gcolor,color:gradeC.color,border:`1px solid ${gradeC.color}55`,padding:"0 5px"}}>{gradeC.grade}</span>
                             {role==="Manager"&&setConfirmDel&&<button onClick={e=>{e.stopPropagation();setConfirmDel(d.id);}} title="Delete project" style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:5,padding:"3px 6px",fontSize:".72rem",lineHeight:1,color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>🗑</button>}
                           </div>
-                          <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:600,letterSpacing:".06em",textTransform:"uppercase",padding:"3px 8px",borderRadius:4,background:hc+"18",color:hc,border:`1px solid ${hc}44`,whiteSpace:"nowrap"}}>{d.stage?.replace(/^\d+ · /,"")||"—"}</span>
+                          <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:600,letterSpacing:".06em",textTransform:"uppercase",padding:"3px 8px",borderRadius:4,background:hc+"18",color:hc,border:`1px solid ${hc}44`,whiteSpace:"nowrap"}}>{projStageLabel(d,pc)}</span>
                         </div>
                       </div>
-                      {/* Progress + department strip */}
+                      {/* Progress: the PM's 30/60/90/100 estimate only */}
                       <div style={{padding:"10px 15px",borderBottom:"1px solid #e2e8f0",background:"#fbfcfe"}}>
                         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
-                          <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".55rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".08em",color:"#94a3b8"}}>Progress · {doneCountC}/6 depts</span>
-                          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:".95rem",color:pctC>=100?"#059669":pctC>=50?"#0f172a":"#64748b"}}>{pctC}%</span>
+                          <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".55rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".08em",color:"#94a3b8"}}>Progress{pc?.progressSetBy?` · ${pc.progressSetBy}`:""}</span>
+                          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:".95rem",color:pctC==null?"#94a3b8":pctC>=100?"#059669":pctC>=50?"#0f172a":"#64748b"}}>{pctC==null?"Not set":`${pctC}%`}</span>
                         </div>
-                        <div style={{height:6,borderRadius:20,background:"#e2e8f0",overflow:"hidden",marginBottom:8}}>
-                          <div style={{height:"100%",width:`${pctC}%`,borderRadius:20,background:pctC>=100?"#10b981":isOverC?"#ef4444":"#3b82f6",transition:"width .3s"}}/>
-                        </div>
-                        <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-                          {deptStateC.map(({dep,done})=>(
-                            <span key={dep} title={`${dep}: ${done?"done":"pending"}`}
-                              style={{fontSize:".55rem",fontWeight:700,padding:"2px 7px",borderRadius:20,whiteSpace:"nowrap",
-                                background:done?(DEPT_CLR[dep]||"#10b981"):"#fff",color:done?"#fff":"#94a3b8",
-                                border:`1px solid ${done?(DEPT_CLR[dep]||"#10b981"):"#e2e8f0"}`}}>
-                              {done?"✓ ":""}{dep.slice(0,4)}
-                            </span>
-                          ))}
+                        <div style={{height:6,borderRadius:20,background:"#e2e8f0",overflow:"hidden"}}>
+                          <div style={{height:"100%",width:`${pctC||0}%`,borderRadius:20,background:pctC>=100?"#10b981":isOverC?"#ef4444":"#3b82f6",transition:"width .3s"}}/>
                         </div>
                       </div>
                       {/* Spec table */}
@@ -28208,7 +28506,7 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                         const pm2L=pcL?.pm2||joL?.pm2||"";
                         const coordL=pcL?.coordinator||joL?.coordinator||"—";
                         const projSwosL=(swos||[]).filter(w=>w.projectId===d.id||w.dealId===d.id);
-                        const stageLabel=d.stage?.replace(/^\d+ · /,"")||"—";
+                        const stageLabel=projStageLabel(d,pcL);
                         return(
                           <tr key={d.id} style={{borderBottom:"1px solid #e2e8f0",cursor:"pointer"}}
                             onClick={()=>{setSelDeal(d.id);setShowTeamEdit(false);}}
@@ -28279,7 +28577,6 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
         (()=>{
           const pct=projPct(card,deal);
           const h=getHealth(deal,card);const[hc,hl]=HC[h];
-          const pi=phaseIdx(deal?.stage);
           const elapsed=card?.awardDate?Math.ceil((today2-new Date(card.awardDate))/86400000):0;
           const end=card?.targetEndDate?new Date(card.targetEndDate):null;
           const dLeft=end?Math.ceil((end-today2)/86400000):null;
@@ -28299,176 +28596,106 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
             return (sta[a.status]-sta[b.status])||(pri[a.priority]-pri[b.priority]);
           });
 
-          return(
-            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          const canEditTeam=role==="Manager"||role==="Operations"||role==="SalesOpsAdmin";
+          const canEditDates=role==="Manager"||role==="Operations"||role==="QS"||role==="SalesOpsAdmin";
+          const hqBtn=(bg,bd,c)=>({background:bg,border:`1px solid ${bd}`,borderRadius:6,padding:"4px 10px",fontSize:".72rem",fontWeight:700,color:c,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"});
+          // Same rule as the Progress page: PMs/Operations/Managers on any project, Coordinators on their own.
+          const pgNormHq=x=>String(x||"").replace(/\s*\([^)]*\)\s*$/,"").trim().toLowerCase();
+          const canSetPct=!!card&&(["Manager","Operations","ProjectMover"].includes(role)||(role==="Coordinator"&&!!session?.name&&pgNormHq(card.coordinator)===pgNormHq(session.name)));
+          // Every % change goes through the Progress update form (work done, next
+          // step + date, issues; why, when lowering). Only a Manager lowers it.
+          const setPctRpc=pctVal=>{
+            const old=card?.manualProgress;
+            if(old!=null&&pctVal<old&&role!=="Manager"){toastEmit(`Only a Manager can lower progress (it is ${old}% now).`,"warning",7000);return false;}
+            setReportPct(pctVal);
+            return true;
+          };
+          const updatesCount=(actLog||[]).filter(a=>a.dealId===selDeal&&a.action==="PM Update").length;
+          const clOpen=projCl.filter(c=>c.status!=="Done").length;
+          const hqTabs=[["progress","Progress",openProjB.length],["updates","Updates",updatesCount],["checklist","Checklist",clOpen],["finance","Finance",0]];
 
-              {/* ── Header card ── */}
-              <div style={{background:"#fff",borderRadius:14,border:`1.5px solid ${hc}44`,padding:isMobile?"14px":"18px 22px"}}>
-                {/* Top row: project name + stage badge */}
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10,marginBottom:10}}>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontWeight:800,color:"#0f172a",fontSize:isMobile?"1rem":"1.15rem"}}>{deal?.contact||deal?.client}</div>
-                    {deal?.contact&&<div style={{fontSize:".72rem",color:"#8b5cf6",marginTop:1}}>📁 {deal?.client}</div>}
-                    <div style={{fontSize:".75rem",color:"#64748b",marginTop:2,display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+          return(
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+
+              {/* ── Header: identity, key facts, team, dates and stage in one card ── */}
+              <div style={{background:"#fff",borderRadius:14,border:`1.5px solid ${hc}44`,padding:isMobile?"12px 14px":"14px 20px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10}}>
+                  <div style={{flex:"1 1 260px",minWidth:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                      <span style={{fontWeight:800,color:"#0f172a",fontSize:isMobile?"1rem":"1.12rem"}}>{deal?.contact||deal?.client}</span>
+                      <span style={{fontSize:".68rem",fontWeight:700,color:hc,background:hc+"18",borderRadius:20,padding:"2px 10px",border:`1px solid ${hc}44`}}>{projStageLabel(deal,card)}</span>
+                      {pct===100&&<span style={{fontSize:".66rem",fontWeight:700,color:"#059669",background:"#f0fdf4",borderRadius:20,padding:"2px 9px"}}>✅ Done</span>}
+                    </div>
+                    <div style={{fontSize:".72rem",color:"#64748b",marginTop:3,display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+                      {deal?.contact&&<span style={{color:"#8b5cf6"}}>📁 {deal?.client}</span>}
                       {deal?.ceNo&&<span>{deal.ceNo}</span>}
                       {jo&&<span style={{color:"#3b82f6"}}>📋 {jo.joNo}</span>}
+                      {deal?.ceType&&<span>· {deal.ceType}</span>}
                       {card?.warehouseOnly&&<span style={{background:"#fef3c7",color:"#92400e",border:"1px solid #fbbf24",borderRadius:20,padding:"1px 8px",fontSize:".65rem",fontWeight:700}}>📦 Warehouse / Procurement Only</span>}
+                      {deal?.salesRepoLink&&<a href={deal.salesRepoLink} target="_blank" rel="noreferrer" style={{color:"#3b82f6",textDecoration:"none",fontWeight:700}}>📁 Sales Repo</a>}
+                      {(card?.commsLink||jo?.commsLink)&&<a href={card?.commsLink||jo?.commsLink} target="_blank" rel="noreferrer" style={{color:"#059669",textDecoration:"none",fontWeight:700}}>📱 Comms Group</a>}
                     </div>
                   </div>
-                  <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0}}>
-                    <span style={{fontSize:".72rem",fontWeight:700,color:hc,background:hc+"18",borderRadius:20,padding:"4px 12px",border:`1px solid ${hc}44`}}>{deal?.stage?.replace(/^\d+ · /,"")||"—"}</span>
-                    {pct===100&&<span style={{fontSize:".68rem",fontWeight:700,color:"#059669",background:"#f0fdf4",borderRadius:20,padding:"2px 9px"}}>✅ Done</span>}
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+                    {canEditTeam&&!showTeamEdit&&selDeal&&(
+                      <button onClick={()=>{
+                        setTeamForm({ae:card?.aeAssigned||jo?.aeAssigned||deal?.salesOwner||"",pm1:card?.pm1||jo?.pm1||"",pm2:card?.pm2||jo?.pm2||"",pm3:card?.pm3||jo?.pm3||"",designer:card?.designer||jo?.designer||"",coordinator:card?.coordinator||jo?.coordinator||"",warehouseOnly:card?.warehouseOnly||false});
+                        setShowDateEdit(false);setShowTeamEdit(true);
+                      }} style={hqBtn("#f1f5f9","#e2e8f0","#475569")}>✏️ Team</button>
+                    )}
+                    {canEditDates&&!showDateEdit&&selDeal&&(
+                      <button onClick={()=>{setDateForm({awardDate:card?.awardDate||"",targetEndDate:card?.targetEndDate||"",location:deal?.location||"",ceType:deal?.ceType||"Fabrication / General"});setShowTeamEdit(false);setShowDateEdit(true);}}
+                        style={hqBtn("#f1f5f9","#e2e8f0","#475569")}>✏️ Dates &amp; Site</button>
+                    )}
                     {/* PRFs for this project — same roles that can read prfs (prf_can_read). */}
                     {deal&&["Manager","ProjectMover","Operations","Coordinator","Warehouse","QS","Procurement","ProcurementManager","Finance","FinanceAssistant","Accounting","SalesOpsAdmin"].includes(role)&&(
                       <button onClick={()=>{setJumpDeal(deal.id);setPage("materialreq");}} title="Purchase requests for this project"
-                        style={{background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:6,padding:"4px 10px",fontSize:".72rem",fontWeight:700,color:"#c2410c",cursor:"pointer",fontFamily:"inherit"}}>📦 PRFs</button>
+                        style={hqBtn("#fff7ed","#fed7aa","#c2410c")}>📦 PRFs</button>
                     )}
-                    {role==="Manager"&&setConfirmDel&&deal&&<button onClick={()=>setConfirmDel(deal.id)} title="Delete this project and all its records" style={{marginTop:2,background:"#fef2f2",border:"1px solid #fecaca",borderRadius:6,padding:"4px 10px",fontSize:".7rem",fontWeight:700,color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>🗑 Delete Project</button>}
+                    {role==="Manager"&&setConfirmDel&&deal&&<button onClick={()=>setConfirmDel(deal.id)} title="Delete this project and all its records" style={hqBtn("#fef2f2","#fecaca","#dc2626")}>🗑 Delete</button>}
                   </div>
                 </div>
 
-                {/* Info grid: location, team, subcons, timeline */}
-                <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:8,marginBottom:10}}>
-                  {/* Location */}
-                  <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px"}}>
-                    <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:2}}>📍 Location</div>
-                    <div style={{fontSize:".82rem",fontWeight:600,color:"#0f172a"}}>{deal?.location||jo?.location||"—"}</div>
-                  </div>
-                  {/* AE */}
-                  <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px"}}>
-                    <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:2}}>🤝 AE</div>
-                    <div style={{fontSize:".82rem",fontWeight:600,color:"#0f172a"}}>{card?.aeAssigned||jo?.aeAssigned||deal?.salesOwner||"—"}</div>
-                  </div>
-                  {/* PM */}
-                  <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px"}}>
-                    <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:2}}>👷 PM</div>
-                    <div style={{fontSize:".82rem",fontWeight:600,color:"#0f172a"}}>{[card?.pm1||jo?.pm1,card?.pm2||jo?.pm2,card?.pm3||jo?.pm3].filter(Boolean).join(", ")||"Unassigned"}</div>
-                  </div>
-                  {/* Coordinator */}
-                  <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px"}}>
-                    <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:2}}>📋 Coordinator</div>
-                    <div style={{fontSize:".82rem",fontWeight:600,color:"#0f172a"}}>{card?.coordinator||jo?.coordinator||"—"}</div>
-                  </div>
-                  {/* Subcontractors */}
-                  {(()=>{
-                    const projSwos=(swos||[]).filter(w=>w.projectId===selDeal||w.dealId===selDeal);
-                    return projSwos.length>0?(
-                      <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px",gridColumn:"1/-1"}}>
-                        <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:4}}>🔧 Subcontractors</div>
-                        <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
-                          {projSwos.map(w=>(
-                            <span key={w.id} style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:20,padding:"2px 10px",fontSize:".75rem",fontWeight:600,color:"#1d4ed8"}}>
-                              {w.subcontractor||"?"}{w.specialty?` · ${w.specialty}`:""}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ):null;
-                  })()}
-                  {/* Timeline */}
-                  <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px",gridColumn:"1/-1"}}>
-                    <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:4}}>📅 Timeline</div>
-                    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-                      <span style={{fontSize:".78rem",color:"#64748b"}}>{jo?.startDate||deal?.awardDate||"—"}</span>
-                      <span style={{color:"#94a3b8",fontSize:".7rem"}}>→</span>
-                      <span style={{fontSize:".78rem",fontWeight:700,color:isOver?"#ef4444":dLeft<=7?"#f59e0b":"#059669"}}>
-                        {card?.targetEndDate||"No turnover date set"}
-                      </span>
-                      {card?.targetDays&&(
-                        <span style={{fontSize:".7rem",fontWeight:700,color:isOver?"#ef4444":dLeft<=7?"#f59e0b":"#64748b",background:isOver?"#fef2f2":dLeft<=7?"#fffbeb":"#f1f5f9",borderRadius:20,padding:"2px 8px"}}>
-                          {isOver?`⚠ ${Math.abs(dLeft)}d overdue`:`${dLeft}d left`}
+                {/* Key facts: each shown once (location, team, dates, TAT) */}
+                <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(auto-fit,minmax(150px,1fr))",gap:6,marginTop:10}}>
+                  {[
+                    {l:"📍 Location",v:deal?.location||jo?.location||"—"},
+                    {l:"🤝 AE",v:card?.aeAssigned||jo?.aeAssigned||deal?.salesOwner||"—"},
+                    {l:"👷 PM",v:[card?.pm1||jo?.pm1,card?.pm2||jo?.pm2,card?.pm3||jo?.pm3].filter(Boolean).join(", ")||"Unassigned"},
+                    {l:"📋 Coordinator",v:card?.coordinator||jo?.coordinator||"—"},
+                    {l:"🎨 Designer",v:card?.designer||jo?.designer||"—"},
+                    {l:"📅 Start → Turnover",v:<>
+                      <span style={{color:"#64748b",fontWeight:500,whiteSpace:"nowrap"}}>{card?.awardDate||jo?.startDate||deal?.awardDate||"—"}</span>
+                      <span style={{color:"#94a3b8"}}> → </span>
+                      <span style={{color:dLeft===null?"#94a3b8":isOver?"#ef4444":dLeft<=7?"#f59e0b":"#059669",whiteSpace:"nowrap"}}>{card?.targetEndDate||"not set"}</span>
+                      {dLeft!==null&&<span style={{marginLeft:6,fontSize:".66rem",fontWeight:700,color:isOver?"#ef4444":dLeft<=7?"#f59e0b":"#64748b",background:isOver?"#fef2f2":dLeft<=7?"#fffbeb":"#f1f5f9",borderRadius:20,padding:"1px 7px",whiteSpace:"nowrap"}}>{isOver?`⚠ ${Math.abs(dLeft)}d overdue`:`${dLeft}d left`}</span>}
+                      {card?.targetDays&&card?.awardDate&&<span style={{marginLeft:6,fontSize:".64rem",color:"#94a3b8",fontWeight:500,whiteSpace:"nowrap"}}>day {elapsed}/{card.targetDays}</span>}
+                    </>,wide:true},
+                  ].map(({l,v,wide})=>(
+                    <div key={l} style={{background:"#f8fafc",borderRadius:8,padding:"6px 10px",minWidth:0,gridColumn:wide?(isMobile?"1/-1":"span 2"):undefined}}>
+                      <div style={{fontSize:".56rem",textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",marginBottom:1}}>{l}</div>
+                      <div style={{fontSize:".78rem",fontWeight:600,color:"#0f172a",overflow:"hidden",textOverflow:wide?undefined:"ellipsis",whiteSpace:wide?"normal":"nowrap"}} title={typeof v==="string"?v:undefined}>{v}</div>
+                    </div>
+                  ))}
+                </div>
+                {(()=>{
+                  const projSwos=(swos||[]).filter(w=>w.projectId===selDeal||w.dealId===selDeal);
+                  return projSwos.length>0?(
+                    <div style={{display:"flex",flexWrap:"wrap",gap:5,alignItems:"center",marginTop:8}}>
+                      <span style={{fontSize:".56rem",textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8"}}>🔧 Subcons</span>
+                      {projSwos.map(w=>(
+                        <span key={w.id} style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:20,padding:"1px 9px",fontSize:".7rem",fontWeight:600,color:"#1d4ed8"}}>
+                          {w.subcontractor||"?"}{w.specialty?` · ${w.specialty}`:""}
                         </span>
-                      )}
+                      ))}
                     </div>
-                  </div>
-                </div>
-                {/* Stage selector */}
-                {["Manager","Sales","Operations","ProjectMover","SalesOpsAdmin"].includes(role)&&deal&&changeDealStage&&canSetDealStage(role,deal.stage)&&(()=>{
-                  const changeStage=async st=>{
-                    if(!(await changeDealStage(selDeal,st))) return;
-                    if(st==="14 · Completed"){
-                      setPcFilter("completed");
-                      setSelDeal(null);
-                      toastEmit(`✅ ${deal.client} marked Completed — showing Completed tab`,"success");
-                    } else {
-                      toastEmit(`Stage → ${st}`,"success");
-                    }
-                  };
-                  const ACTIVE_STAGES=["06 · Kickoff","07 · Briefing","08 · Fabrication","09 · Site & Billing","10 · Installation","11 · Punchlist"];
-                  const isAlreadyDone=deal.stage==="12 · Close-Out"||deal.stage==="14 · Completed";
-                  return(
-                    <div style={{marginTop:12,borderTop:"1px solid #f1f5f9",paddingTop:12}}>
-                      <div style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".08em",color:"#94a3b8",marginBottom:8}}>Stage — tap to change</div>
-                      <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-                        {ACTIVE_STAGES.map(s=>{
-                          const isActive=deal.stage===s;
-                          const stageColors={"06 · Kickoff":"#8b5cf6","07 · Briefing":"#6366f1","08 · Fabrication":"#f59e0b","09 · Site & Billing":"#f97316","10 · Installation":"#3b82f6","11 · Punchlist":"#ef4444"};
-                          const sc=stageColors[s]||"#64748b";
-                          const label=s.replace(/^\d+ · /,"");
-                          return(
-                            <button key={s} onClick={()=>changeStage(s)}
-                              style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".62rem",fontWeight:600,letterSpacing:".04em",padding:"4px 11px",borderRadius:20,cursor:"pointer",transition:"all .12s",
-                                background:isActive?sc:"transparent",
-                                color:isActive?"#fff":sc,
-                                border:`1.5px solid ${isActive?sc:sc+"55"}`}}>
-                              {label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      {/* Complete project button — shown when stage is 06-11 */}
-                      {!isAlreadyDone&&(
-                        <div style={{marginTop:10,display:"flex",gap:8,flexWrap:"wrap"}}>
-                          <button onClick={async ()=>{if((await uiConfirm(`Move "${deal.contact||deal.client}" to Close-Out?\n\nUse this when the project is finishing up (final billing, punch items, handover).`))) changeStage("12 · Close-Out");}}
-                            style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".62rem",fontWeight:700,letterSpacing:".04em",padding:"5px 14px",borderRadius:20,cursor:"pointer",background:"transparent",color:"#059669",border:"1.5px solid #059669"}}>
-                            🔒 Move to Close-Out
-                          </button>
-                          {canSetDealStage(role,deal.stage,"14 · Completed")&&(
-                          <button onClick={async ()=>{if((await uiConfirm(`Mark "${deal.contact||deal.client}" as Completed?\n\nUse this only when all work is done and the project is fully closed.`))) changeStage("14 · Completed");}}
-                            style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".62rem",fontWeight:700,letterSpacing:".04em",padding:"5px 14px",borderRadius:20,cursor:"pointer",background:"#059669",color:"#fff",border:"1.5px solid #059669"}}>
-                            ✅ Mark as Completed
-                          </button>
-                          )}
-                        </div>
-                      )}
-                      {/* If already done, show badge + reopen option */}
-                      {isAlreadyDone&&(
-                        <div style={{marginTop:10,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-                          <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".62rem",fontWeight:700,padding:"4px 12px",borderRadius:20,background:"#ecfdf5",color:"#059669",border:"1px solid #a7f3d0"}}>
-                            {deal.stage==="14 · Completed"?"✅ Completed":"🔒 Close-Out"}
-                          </span>
-                          <button onClick={async ()=>{if((await uiConfirm("Reopen this project? It will be moved back to 11 · Punchlist."))) changeStage("11 · Punchlist");}}
-                            style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:600,padding:"3px 10px",borderRadius:20,cursor:"pointer",background:"transparent",color:"#94a3b8",border:"1px solid #e2e8f0"}}>
-                            ↩ Reopen
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
+                  ):null;
                 })()}
-                {/* All-depts-done celebration banner */}
-                {pct===100&&deal&&deal.stage!=="12 · Close-Out"&&deal.stage!=="14 · Completed"&&(
-                  <div style={{marginTop:10,background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:10,padding:"10px 14px"}}>
-                    <span style={{fontSize:".8rem",fontWeight:700,color:"#059669"}}>🎉 All departments complete! Use the buttons above to close out or complete this project.</span>
-                  </div>
-                )}
-                {/* Scope changes are logged by Sales as a linked deal
-                    (+ Add New Deal -> Link to Parent Deal), not from the project
-                    card, so there is no "Log Scope Change" form here. */}
-              </div>
 
-              {/* ── Project Team ── */}
-              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>👥 Project Team</div>
-                  {(role==="Manager"||role==="Operations"||role==="SalesOpsAdmin")&&!showTeamEdit&&selDeal&&(
-                    <button onClick={()=>{
-                      setTeamForm({ae:card?.aeAssigned||jo?.aeAssigned||deal?.salesOwner||"",pm1:card?.pm1||jo?.pm1||"",pm2:card?.pm2||jo?.pm2||"",pm3:card?.pm3||jo?.pm3||"",designer:card?.designer||jo?.designer||"",coordinator:card?.coordinator||jo?.coordinator||"",warehouseOnly:card?.warehouseOnly||false});
-                      setShowTeamEdit(true);
-                    }} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>✏️ Edit</button>
-                  )}
-                </div>
-                {showTeamEdit?(
+                {/* Inline editors (open one at a time) */}
+                {showTeamEdit&&(
+                  <div style={{marginTop:10,background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"12px 14px"}}>
+                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".8rem",marginBottom:8}}>👥 Project Team</div>
                   <div style={{display:"flex",flexDirection:"column",gap:8}}>
                     {[["ae","AE (Account Executive)",SALES_TEAM],["pm1","PM 1",OPS_TEAM],["pm2","PM 2",OPS_TEAM],["pm3","PM 3",OPS_TEAM],["designer","Designer",DESIGN_MEMBERS],["coordinator","Coordinator",OPS_TEAM]].map(([k,l,opts])=>{
                       const sugg=[...new Set([...opts,...customMembers])];
@@ -28517,33 +28744,10 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                       <button onClick={()=>setShowTeamEdit(false)} style={{flex:1,background:"#f1f5f9",border:"none",borderRadius:8,padding:"8px",fontFamily:"inherit",fontSize:".82rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>Cancel</button>
                     </div>
                   </div>
-                ):(
-                  <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:6}}>
-                    {[
-                      {l:"AE",v:card?.aeAssigned||jo?.aeAssigned||deal?.salesOwner||"—"},
-                      {l:"Designer",v:card?.designer||jo?.designer||"—"},
-                      {l:"PM",v:[card?.pm1||jo?.pm1,card?.pm2||jo?.pm2,card?.pm3||jo?.pm3].filter(Boolean).join(", ")||"—"},
-                      {l:"Coordinator",v:card?.coordinator||jo?.coordinator||"—"},
-                    ].map(({l,v})=>(
-                      <div key={l} style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px"}}>
-                        <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:2}}>{l}</div>
-                        <div style={{fontSize:".82rem",fontWeight:600,color:"#0f172a"}}>{v}</div>
-                      </div>
-                    ))}
                   </div>
                 )}
-              </div>
-
-              {/* ── Vitals ── */}
-              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>📌 Project Vitals</div>
-                  {(role==="Manager"||role==="Operations"||role==="QS"||role==="SalesOpsAdmin")&&selDeal&&!showDateEdit&&(
-                    <button onClick={()=>{setDateForm({awardDate:card?.awardDate||"",targetEndDate:card?.targetEndDate||"",location:deal?.location||"",ceType:deal?.ceType||"Fabrication / General"});setShowDateEdit(true);}}
-                      style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>✏️ Edit</button>
-                  )}
-                </div>
-                {showDateEdit?(
+                {showDateEdit&&(
+                  <div style={{marginTop:10}}>
                   <div style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"14px",marginBottom:10}}>
                     <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10,marginBottom:12}}>
                       <div>
@@ -28599,115 +28803,171 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                         style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"8px 14px",fontFamily:"inherit",fontSize:".82rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>Cancel</button>
                     </div>
                   </div>
-                ):(
-                  <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(3,1fr)",gap:8,marginBottom:10}}>
-                    {[{l:"Location",v:deal?.location||"—"},{l:"Award Date",v:card?.awardDate||"—"},{l:"Target Due",v:card?.targetEndDate||"Not set"},{l:"CE Type",v:deal?.ceType||"—"},{l:"Elapsed",v:card?.awardDate?elapsed+"d":"—"},{l:"TAT",v:card?.targetDays?card.targetDays+"d target":"Not set"}].map(({l,v})=>(
-                      <div key={l} style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px"}}>
-                        <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:2}}>{l}</div>
-                        <div style={{fontSize:".82rem",fontWeight:600,color:"#0f172a"}}>{v}</div>
-                      </div>
-                    ))}
                   </div>
                 )}
-                {!showDateEdit&&<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                  {deal?.salesRepoLink&&<a href={deal.salesRepoLink} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:".72rem",color:"#3b82f6",textDecoration:"none",fontWeight:700,background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 10px"}}>📁 Sales Repo</a>}
-                  {(card?.commsLink||jo?.commsLink)&&<a href={card?.commsLink||jo?.commsLink} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:".72rem",color:"#059669",textDecoration:"none",fontWeight:700,background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:6,padding:"4px 10px"}}>📱 Comms Group</a>}
-                </div>}
+
+                {/* Stage: one stepper (replaces the old Phase timeline + stage buttons).
+                    Clickable only where canSetDealStage allows the move. */}
+                {deal&&(()=>{
+                  const FLOW=projStageFlow(deal);
+                  const cur=projStepIndex(deal);
+                  const canStage=["Manager","Sales","Operations","ProjectMover","SalesOpsAdmin"].includes(role)&&!!changeDealStage&&canSetDealStage(role,deal.stage);
+                  const isAlreadyDone=deal.stage==="12 · Close-Out"||deal.stage==="14 · Completed";
+                  const stepCan=step=>canStage&&deal.stage!==step.target&&!step.stages.includes(deal.stage)&&canSetDealStage(role,deal.stage,step.target);
+                  const changeStage=async st=>{
+                    if(!(await changeDealStage(selDeal,st))) return false;
+                    if(st==="14 · Completed"){
+                      setPcFilter("completed");
+                      setSelDeal(null);
+                      toastEmit(`✅ ${deal.client} marked Completed — showing Completed tab`,"success");
+                    } else {
+                      toastEmit(`Stage → ${projStageLabel({...deal,stage:st},card)}`,"success");
+                    }
+                    return true;
+                  };
+                  const pick=async st=>{
+                    if(st==="12 · Close-Out"&&!(await uiConfirm(`Mark "${deal.contact||deal.client}" as Done?\n\nDone means every punchlist item is completed and the project is ready to receive retention.`))) return;
+                    if(st==="14 · Completed"&&!(await uiConfirm(`Mark "${deal.contact||deal.client}" as Completed?\n\nUse this only when all work is done and the project is fully closed.`))) return;
+                    if(st==="11 · Punchlist"&&!(await uiConfirm(`Move "${deal.contact||deal.client}" to Punchlist?\n\nPunchlist means the project has reached ${PUNCHLIST_MIN_PCT}%. You will be asked for a progress update at ${PUNCHLIST_MIN_PCT}%.`))) return;
+                    const moved=await changeStage(st);
+                    // Punchlist = 90 %: record it as the project's progress (audited
+                    // through set_project_progress) when the user may set progress.
+                    if(moved&&st==="11 · Punchlist"&&card&&canSetPct&&(card.manualProgress==null||card.manualProgress<PUNCHLIST_MIN_PCT)) setPctRpc(PUNCHLIST_MIN_PCT);
+                  };
+                  return(
+                    <div style={{marginTop:10,borderTop:"1px solid #f1f5f9",paddingTop:10}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginBottom:6}}>
+                        <span style={{fontSize:".58rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".08em",color:"#94a3b8"}}>Stage{canStage?" — tap to change":""}</span>
+                        {isAlreadyDone&&canStage&&canSetDealStage(role,deal.stage,"11 · Punchlist")&&(
+                          <button onClick={async ()=>{if((await uiConfirm("Reopen this project? It will be moved back to Punchlist."))) changeStage("11 · Punchlist");}}
+                            style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:600,padding:"2px 10px",borderRadius:20,cursor:"pointer",background:"transparent",color:"#64748b",border:"1px solid #e2e8f0"}}>↩ Reopen</button>
+                        )}
+                      </div>
+                      {isMobile?(
+                        // Phone: one dropdown instead of a bar that scrolls sideways.
+                        <select value={cur>=0?FLOW[cur].key:""} disabled={!FLOW.some(st=>stepCan(st))}
+                          onChange={e=>{const st=FLOW.find(x=>x.key===e.target.value);if(st&&stepCan(st)) pick(st.target);}}
+                          aria-label="Project stage"
+                          style={{width:"100%",border:`1.5px solid ${cur>=0?FLOW[cur].color:"#e2e8f0"}`,borderRadius:8,padding:"9px 10px",fontFamily:"inherit",fontSize:".88rem",fontWeight:700,color:"#0f172a",background:"#fff"}}>
+                          {cur<0&&<option value="">{deal.stage||"—"}</option>}
+                          {FLOW.map((step,i)=>(
+                            <option key={step.key} value={step.key} disabled={i!==cur&&!stepCan(step)}>
+                              {i<cur?"✓ ":""}{i+1}. {projStepLabel(step,card)}{step.hint?` (${step.hint.split(";")[0]})`:""}
+                            </option>
+                          ))}
+                        </select>
+                      ):(
+                      <div style={{display:"flex",alignItems:"center",overflowX:"auto",paddingBottom:2}}>
+                        {FLOW.map((step,i)=>{
+                          const {key,target:s,color:sc}=step;
+                          const isActive=i===cur; const isPast=cur>=0&&i<cur;
+                          const clickable=!isActive&&stepCan(step);
+                          return(
+                            <React.Fragment key={key}>
+                              <button disabled={!clickable} onClick={()=>pick(s)} aria-current={isActive?"step":undefined}
+                                title={[step.hint,clickable?`Move to ${step.label}`:""].filter(Boolean).join(" · ")||undefined}
+                                style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".63rem",fontWeight:isActive?800:600,letterSpacing:".03em",padding:"5px 12px",borderRadius:20,whiteSpace:"nowrap",flexShrink:0,
+                                  cursor:clickable?"pointer":"default",
+                                  background:isActive?sc:isPast?"#ecfdf5":"#fff",
+                                  color:isActive?"#fff":isPast?"#059669":clickable?sc:"#94a3b8",
+                                  border:`1.5px solid ${isActive?sc:isPast?"#a7f3d0":clickable?sc+"66":"#e2e8f0"}`}}>
+                                {isPast?"✓ ":""}{i+1}. {isActive?projStepLabel(step,card):step.label}
+                              </button>
+                              {i<FLOW.length-1&&<div style={{flex:"1 0 6px",height:2,background:isPast?"#10b981":"#e2e8f0",minWidth:6}}/>}
+                            </React.Fragment>
+                          );
+                        })}
+                      </div>
+                      )}
+                      {cur>=0&&FLOW[cur].hint&&<div style={{fontSize:".66rem",color:"#64748b",marginTop:5}}>{FLOW[cur].label}: {FLOW[cur].hint}.</div>}
+                    </div>
+                  );
+                })()}
+                {/* All-depts-done banner */}
+                {pct===100&&deal&&deal.stage!=="12 · Close-Out"&&deal.stage!=="14 · Completed"&&(
+                  <div style={{marginTop:8,background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:8,padding:"6px 12px",fontSize:".74rem",fontWeight:700,color:"#059669"}}>🎉 PM reports 100%. When every punchlist item is completed, mark it Done on the stage bar.</div>
+                )}
+                {/* Scope changes are logged by Sales as a linked deal
+                    (+ Add New Deal -> Link to Parent Deal), not from the project
+                    card, so there is no "Log Scope Change" form here. */}
               </div>
 
-              {/* ── Phase Timeline ── */}
-              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
-                <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:12}}>🗺 Project Phases</div>
-                <div style={{display:"flex",alignItems:"center",overflowX:"auto",paddingBottom:4}}>
-                  {PHASES.map((phase,i)=>{
-                    const isActive=i===pi; const isPast=i<pi;
-                    return(
-                      <React.Fragment key={phase.id}>
-                        <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,minWidth:64}}>
-                          <div style={{width:38,height:38,borderRadius:"50%",background:isActive?"#1e293b":isPast?"#10b981":"#f1f5f9",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1rem",border:isActive?"2.5px solid #f59e0b":"2.5px solid transparent",boxShadow:isActive?"0 0 0 3px rgba(245,158,11,.2)":undefined}}>
-                            {isPast?"✓":phase.icon}
-                          </div>
-                          <div style={{fontSize:".58rem",fontWeight:isActive?800:500,color:isActive?"#f59e0b":isPast?"#10b981":"#94a3b8",textAlign:"center",whiteSpace:"nowrap"}}>{phase.label}</div>
-                        </div>
-                        {i<PHASES.length-1&&<div style={{flex:1,height:2,background:i<pi?"#10b981":"#e2e8f0",minWidth:8}}/>}
-                      </React.Fragment>
-                    );
-                  })}
-                </div>
+              {/* ── Section tabs: one section at a time so the page fits the screen ── */}
+              <div role="tablist" aria-label="Project sections" style={{display:"flex",gap:2,background:"#f1f5f9",borderRadius:10,padding:3,overflowX:"auto",alignSelf:"flex-start",maxWidth:"100%"}}>
+                {hqTabs.map(([k,l,n])=>(
+                  <button key={k} role="tab" aria-selected={hqTab===k} onClick={()=>setHqTab(k)}
+                    style={{border:"none",borderRadius:8,padding:"6px 14px",background:hqTab===k?"#1e293b":"transparent",color:hqTab===k?"#fff":"#475569",fontWeight:hqTab===k?700:600,fontSize:".78rem",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
+                    {l}{n>0&&<span style={{marginLeft:6,fontSize:".64rem",fontWeight:800,borderRadius:20,padding:"0 6px",background:hqTab===k?"rgba(255,255,255,.2)":"#e2e8f0",color:hqTab===k?"#fff":"#475569"}}>{n}</span>}
+                  </button>
+                ))}
               </div>
 
-              {/* ── Department Progress (click to toggle done / expand tasks) ── */}
-              {card&&(()=>{
-                const doneDepts=DEPT_ORDER.filter(d=>card.departments?.[d]?.done).length;
-                const autoPct=Math.round(doneDepts/6*100);
-                const canEditManual=role==="Manager"||role==="Operations"||role==="SalesOpsAdmin";
-                const setManual=(val)=>{
-                  upPcards(ps=>({...ps,[selDeal]:{...ps[selDeal],manualProgress:val}}));
-                  if(isSupabaseReady()) syncProjectCard(selDeal,{manual_progress:val});
-                };
+              {hqTab==="progress"&&<>
+              {/* ── Progress: one number, the PM's 30 / 60 / 90 / 100 % estimate ──
+                  Saved through set_project_progress (who + when, every change in
+                  audit_log). Same roles as the Progress page. Department
+                  checkboxes are gone from this page (never used: 0 of 3,627
+                  sub-tasks ticked). */}
+              {(()=>{
+                const STEP_CLR={30:"#f59e0b",60:"#3b82f6",90:"#8b5cf6",100:"#059669"};
+                const closed=deal?.stage==="12 · Close-Out"||deal?.stage==="14 · Completed";
+                const barClr=pct==null?"#e2e8f0":pct>=100?"#059669":isOver?"#ef4444":"#3b82f6";
                 return(
                 <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
-                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>🏗 Department Progress</div>
-                    <div style={{display:"flex",alignItems:"center",gap:8}}>
-                      <span style={{fontSize:".72rem",fontWeight:700,color:pct>=100?"#059669":"#64748b"}}>{pct}%{card.manualProgress!=null&&<span style={{color:"#8b5cf6",fontWeight:600}}> (manual)</span>}</span>
-                      <span style={{fontSize:".66rem",color:"#94a3b8"}}>{doneDepts}/6 done</span>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8,flexWrap:"wrap",marginBottom:8}}>
+                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>📊 Progress</div>
+                    <div style={{fontSize:".7rem",color:"#94a3b8"}}>
+                      {closed?"Closed out: counts as 100%"
+                        :card?.progressSetBy?`Set by ${card.progressSetBy}${card.progressSetAt?` · ${String(card.progressSetAt).slice(0,10)}`:""}`
+                        :pct==null?"Not set yet":""}
                     </div>
                   </div>
-                  {/* progress bar */}
-                  <div style={{height:7,background:"#f1f5f9",borderRadius:4,overflow:"hidden",marginBottom:12}}>
-                    <div style={{height:"100%",width:pct+"%",background:pct>=100?"#059669":pct>=50?"#10b981":"#f59e0b",borderRadius:4,transition:"width .2s"}}/>
+                  <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:12}}>
+                    <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"2.2rem",lineHeight:1,color:pct==null?"#cbd5e1":pct>=100?"#059669":"#0f172a",minWidth:84}}>{pct==null?"—":`${pct}%`}</span>
+                    <div style={{flex:1,height:10,background:"#f1f5f9",borderRadius:6,overflow:"hidden"}}>
+                      <div style={{height:"100%",width:(pct||0)+"%",background:barClr,borderRadius:6,transition:"width .2s"}}/>
+                    </div>
                   </div>
-                  {/* department rows */}
-                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                    {DEPT_ORDER.map(dept=>{
-                      const dd=card.departments?.[dept]||{done:false,tasks:[]};
-                      const canEditDept=editableDepts.includes(dept);
-                      const clr=DEPT_CLR[dept]||"#64748b";
-                      const tasks=dd.tasks||[];
-                      const doneTasks=tasks.filter(t=>t.done).length;
-                      return(
-                        <details key={dept} style={{background:dd.done?"#f0fdf4":"#f8fafc",border:`1px solid ${dd.done?"#a7f3d0":"#e2e8f0"}`,borderRadius:10,padding:"8px 12px"}}>
-                          <summary style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer",listStyle:"none"}}>
-                            <input type="checkbox" checked={!!dd.done} disabled={!canEditDept}
-                              onChange={e=>{e.stopPropagation();markDeptDone(selDeal,dept,e.target.checked);}}
-                              onClick={e=>e.stopPropagation()}
-                              style={{width:17,height:17,accentColor:clr,cursor:canEditDept?"pointer":"not-allowed",flexShrink:0}}/>
-                            <span style={{width:8,height:8,borderRadius:"50%",background:clr,flexShrink:0}}/>
-                            <span style={{fontWeight:700,fontSize:".8rem",color:dd.done?"#059669":"#0f172a",flex:1}}>{dept}</span>
-                            {tasks.length>0&&<span style={{fontSize:".66rem",color:"#94a3b8"}}>{doneTasks}/{tasks.length} tasks</span>}
-                            {dd.done&&dd.doneBy&&<span style={{fontSize:".62rem",color:"#059669"}}>✓ {dd.doneBy}</span>}
-                            {tasks.length>0&&<span style={{fontSize:".7rem",color:"#94a3b8"}}>▾</span>}
-                          </summary>
-                          {tasks.length>0&&(
-                            <div style={{marginTop:8,paddingLeft:27,display:"flex",flexDirection:"column",gap:5}}>
-                              {tasks.map(t=>(
-                                <label key={t.id} style={{display:"flex",alignItems:"center",gap:8,cursor:canEditDept?"pointer":"default"}}>
-                                  <input type="checkbox" checked={!!t.done} disabled={!canEditDept}
-                                    onChange={()=>toggleDeptTask(selDeal,dept,t.id)}
-                                    style={{width:14,height:14,accentColor:clr,cursor:canEditDept?"pointer":"not-allowed",flexShrink:0}}/>
-                                  <span style={{fontSize:".76rem",color:t.done?"#94a3b8":"#334155",textDecoration:t.done?"line-through":"none"}}>{t.text}</span>
-                                </label>
-                              ))}
-                            </div>
-                          )}
-                          {tasks.length===0&&<div style={{marginTop:6,paddingLeft:27,fontSize:".72rem",color:"#94a3b8"}}>No sub-tasks — use the checkbox to mark this department done.</div>}
-                        </details>
-                      );
-                    })}
-                  </div>
-                  {/* manual progress override */}
-                  {canEditManual&&(
-                    <div style={{marginTop:12,paddingTop:10,borderTop:"1px solid #f1f5f9",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-                      <span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:600}}>Manual override:</span>
-                      <input type="number" min={0} max={100} value={card.manualProgress!=null?card.manualProgress:""}
-                        placeholder={`auto ${autoPct}`}
-                        onChange={e=>{const v=e.target.value===""?null:Math.max(0,Math.min(100,Number(e.target.value)));setManual(v);}}
-                        style={{width:72,border:"1.5px solid #e2e8f0",borderRadius:8,padding:"5px 8px",fontFamily:"inherit",fontSize:".8rem"}}/>
-                      <span style={{fontSize:".72rem",color:"#64748b"}}>%</span>
-                      {card.manualProgress!=null&&<button onClick={()=>setManual(null)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>↺ Use auto ({autoPct}%)</button>}
+                  {!card&&<div style={{fontSize:".74rem",color:"#94a3b8"}}>This project has no project card yet, so progress can't be set. Assign the team (✏️ Team) to create it.</div>}
+                  {card&&!closed&&isConstructionDeal(deal)&&(()=>{
+                    // Construction: any whole % from 0 to 100 (migration
+                    // 20261111150000); at Punchlist, at least 90.
+                    const min=deal?.stage==="11 · Punchlist"?PUNCHLIST_MIN_PCT:0;
+                    const n=pctDraft===""?null:Math.round(Number(pctDraft));
+                    const lowering=n!=null&&card.manualProgress!=null&&n<card.manualProgress&&role!=="Manager";
+                    const valid=n!=null&&!isNaN(n)&&n>=min&&n<=100&&n!==card.manualProgress&&!lowering;
+                    const save=()=>{if(valid&&setPctRpc(n)) setPctDraft("");};
+                    return(
+                      <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                        <span style={{fontSize:".74rem",color:"#475569",fontWeight:600}}>Current progress on site:</span>
+                        <input type="number" inputMode="numeric" min={min} max={100} step={1} disabled={!canSetPct}
+                          value={pctDraft} placeholder={card.manualProgress!=null?String(card.manualProgress):(min?String(min):"e.g. 45")}
+                          onChange={e=>setPctDraft(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")save();}} aria-label="Progress percent"
+                          style={{width:90,border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 9px",fontFamily:"inherit",fontSize:".9rem",fontWeight:700}}/>
+                        <span style={{fontSize:".8rem",color:"#64748b"}}>%</span>
+                        <button disabled={!valid||!canSetPct} onClick={save}
+                          style={{border:"none",borderRadius:8,padding:"8px 16px",background:valid&&canSetPct?"#1e293b":"#e2e8f0",color:valid&&canSetPct?"#fff":"#94a3b8",fontWeight:700,fontSize:".8rem",cursor:valid&&canSetPct?"pointer":"default",fontFamily:"inherit"}}>Update %</button>
+                        {pctDraft!==""&&!valid&&n!==card.manualProgress&&<span style={{fontSize:".68rem",color:"#ef4444"}}>{lowering?`Only a Manager can lower progress (now ${card.manualProgress}%).`:`Enter a whole number from ${min} to 100${min?" (Punchlist is at least 90%)":""}.`}</span>}
+                      </div>
+                    );
+                  })()}
+                  {card&&!closed&&!isConstructionDeal(deal)&&(
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,maxWidth:420}}>
+                      {[30,60,90,100].map(s=>{
+                        const on=card.manualProgress===s;
+                        const belowPunch=deal?.stage==="11 · Punchlist"&&s<PUNCHLIST_MIN_PCT;
+                        const lowerBlocked=card.manualProgress!=null&&s<card.manualProgress&&role!=="Manager";
+                        const dis=!canSetPct||belowPunch||lowerBlocked;
+                        return(
+                          <button key={s} disabled={dis} aria-pressed={on} onClick={()=>!on&&setPctRpc(s)} title={belowPunch?`A project at Punchlist is at least ${PUNCHLIST_MIN_PCT}%`:lowerBlocked?"Only a Manager can lower progress":undefined}
+                            style={{border:`1.5px solid ${on?STEP_CLR[s]:"#e2e8f0"}`,borderRadius:8,padding:"8px 0",background:on?STEP_CLR[s]:"#fff",color:on?"#fff":"#475569",fontWeight:800,fontSize:".86rem",cursor:dis?"default":"pointer",fontFamily:"inherit",opacity:(belowPunch||lowerBlocked)?.35:1}}>{s}%</button>
+                        );
+                      })}
                     </div>
                   )}
+                  {card&&!closed&&!canSetPct&&<div style={{fontSize:".68rem",color:"#94a3b8",marginTop:6}}>Set by the PM, Operations or a Manager (Coordinators on their own projects).</div>}
+                  {card&&!closed&&canSetPct&&<div style={{fontSize:".66rem",color:"#94a3b8",marginTop:6}}>Every change asks for a short update (work done, next step, issues); it goes to Team Updates and the Operations chat.{role!=="Manager"?" Only a Manager can lower the %.":""}</div>}
+                  {card&&!isConstructionDeal(deal)&&card.manualProgress!=null&&![30,60,90,100].includes(card.manualProgress)&&<div style={{fontSize:".68rem",color:"#8b5cf6",marginTop:6}}>{card.manualProgress}% was typed in before the 30/60/90/100 rule. Pick one of the four.</div>}
                 </div>
                 );
               })()}
@@ -28754,7 +29014,7 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
               {/* ── TAT (collapsible) ── */}
               {card&&(
                 <div style={{background:isOver?"#fef2f2":"#f0fdf4",borderRadius:14,border:`1.5px solid ${isOver?"#fecaca":"#6ee7b7"}`,overflow:"hidden"}}>
-                  <div onClick={()=>setTatOpen(o=>!o)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:isMobile?"12px 14px":"14px 20px",cursor:"pointer"}}>
+                  <div onClick={()=>setTatOpen(o=>!o)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:isMobile?"12px 14px":"10px 20px",cursor:"pointer"}}>
                     <div style={{fontWeight:700,color:isOver?"#dc2626":"#059669",fontSize:".82rem"}}>⏱ Turnaround Time{card.targetDays&&<span style={{fontWeight:400,color:isOver?"#ef4444":dLeft<=7?"#f59e0b":"#059669",marginLeft:6}}>{isOver?`— ⚠ ${Math.abs(dLeft)}d overdue`:`— ${dLeft}d remaining`}</span>}</div>
                     <span style={{color:"#94a3b8",fontSize:".8rem"}}>{tatOpen?"▲":"▼"}</span>
                   </div>
@@ -28788,7 +29048,9 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                   )}
                 </div>
               )}
+              </>}
 
+              {hqTab==="updates"&&<>
               {/* ── Team Updates (single unified feed — posts via the canonical Log Update modal) ── */}
               {(()=>{
                 const allProjUpdates=(actLog||[]).filter(a=>a.dealId===selDeal&&a.action==="PM Update").sort((a,b)=>b.date.localeCompare(a.date)||b.time?.localeCompare(a.time||""));
@@ -28801,7 +29063,7 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                     {canPost&&<button onClick={()=>setPmUpdateModal({dealId:selDeal,dealName:deal?.client||"",stage:deal?.stage||"",pct})} style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.2)",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#4ade80",cursor:"pointer",fontWeight:700}}>+ Post Update</button>}
                   </div>
                   {/* Chat messages */}
-                  <div style={{padding:"12px 16px",display:"flex",flexDirection:"column",gap:10,maxHeight:400,overflowY:"auto"}}>
+                  <div style={{padding:"12px 16px",display:"flex",flexDirection:"column",gap:10,maxHeight:isMobile?420:"max(240px, calc(100vh - 530px))",overflowY:"auto"}}>
                     {allProjUpdates.length===0&&(
                       <div style={{textAlign:"center",padding:"16px 0",color:"#94a3b8",fontSize:".8rem"}}>No updates yet.{canPost&&" Tap + Post Update to add the first one."}</div>
                     )}
@@ -28840,7 +29102,9 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                 </div>
                 );
               })()}
+              </>}
 
+              {hqTab==="checklist"&&<>
               {/* ── Project Checklist ── */}
               <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
                 <div style={{padding:isMobile?"12px 14px":"14px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid #f1f5f9"}}>
@@ -28857,7 +29121,7 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                 {projCl.length===0?(
                   <div style={{padding:"14px 20px",color:"#94a3b8",fontSize:".78rem",textAlign:"center"}}>No checklist tasks yet for this project.</div>
                 ):(
-                  <div style={{display:"flex",flexDirection:"column",gap:0}}>
+                  <div style={{display:"flex",flexDirection:"column",gap:0,maxHeight:isMobile?undefined:"max(240px, calc(100vh - 530px))",overflowY:"auto"}}>
                     {projCl.map((c,i)=>(
                       <div key={c.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 16px",borderBottom:i<projCl.length-1?"1px solid #f8fafc":"none",background:"#fff"}}>
                         <select value={c.status} onChange={e=>clStatusQ&&clStatusQ(c.id,e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:6,padding:"3px 6px",fontFamily:"inherit",fontSize:".68rem",color:"#0f172a",background:"#fff",cursor:"pointer",flexShrink:0}}>
@@ -28881,37 +29145,11 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                   </div>
                 )}
               </div>
+              </>}
 
-              {/* ── Scope Changes (Total Contract roll-up) ──
-                  Finance-facing: shows Initial + Addendums = Total. Hidden from
-                  Operations/PM/Design — they maintain the single project card and
-                  don't need the contract total; scope changes are Sales-owned. */}
-              {!["Operations","ProjectMover","Design"].includes(role)&&(
-              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:projAddenda.length>0?10:0}}>
-                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>⚠️ Scope Changes{projAddenda.length>0&&<span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:400,marginLeft:5}}>({projAddenda.length})</span>}</div>
-                </div>
-                {(projAddenda.length>0||(deals||[]).some(d=>d.parentDealId===deal.id&&!isLostStage(d.stage)))&&<div style={{marginBottom:10}}><ContractBreakdown deal={deal} addenda={addenda} deals={deals}/></div>}
-                {projAddenda.length===0&&!(deals||[]).some(d=>d.parentDealId===deal.id&&!isLostStage(d.stage))&&<div style={{fontSize:".78rem",color:"#94a3b8"}}>No scope changes for this project.</div>}
-                {projAddenda.slice(0,3).map(a=>{
-                  const sc={"Discovered":"#94a3b8","Sales Notified":"#f59e0b","Client Coordinating":"#3b82f6","Approved":"#059669","Billed":"#8b5cf6","Collected":"#10b981","Rejected":"#ef4444"}[a.status]||"#94a3b8";
-                  return(
-                    <div key={a.id} style={{padding:"9px 12px",borderRadius:8,background:"#fffbeb",border:"1px solid #fde68a",marginBottom:6,display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
-                      <div>
-                        <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{a.title}</div>
-                        {Number(a.value)>0&&<div style={{fontSize:".72rem",color:"#92400e",marginTop:1}}>₱{Number(a.value).toLocaleString("en-PH")} additional</div>}
-                      </div>
-                      <span style={{fontSize:".63rem",background:sc+"22",color:sc,border:`1px solid ${sc}44`,borderRadius:20,padding:"2px 8px",fontWeight:700,flexShrink:0}}>{a.status}</span>
-                    </div>
-                  );
-                })}
-                {projAddenda.length>3&&<div style={{fontSize:".72rem",color:"#94a3b8",marginTop:4}}>+{projAddenda.length-3} more — see Scope Changes page</div>}
-              </div>
-              )}
-
-
+              {hqTab==="finance"&&<>
               {/* ── Finance Snapshot ── */}
-              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px",marginBottom:8}}>
+              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,gap:8,flexWrap:"wrap"}}>
                   <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>💰 Finance Snapshot</div>
                   {["Manager","Finance","FinanceAssistant","Accounting","Operations","Sales"].includes(role)&&(
@@ -28957,12 +29195,48 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                 )}
               </div>
 
+              {/* ── Scope Changes (Total Contract roll-up) ──
+                  Finance-facing: shows Initial + Addendums = Total. Hidden from
+                  Operations/PM/Design — they maintain the single project card and
+                  don't need the contract total; scope changes are Sales-owned. */}
+              {!["Operations","ProjectMover","Design"].includes(role)&&(
+              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:projAddenda.length>0?10:0}}>
+                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>⚠️ Scope Changes{projAddenda.length>0&&<span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:400,marginLeft:5}}>({projAddenda.length})</span>}</div>
+                </div>
+                {(projAddenda.length>0||(deals||[]).some(d=>d.parentDealId===deal.id&&!isLostStage(d.stage)))&&<div style={{marginBottom:10}}><ContractBreakdown deal={deal} addenda={addenda} deals={deals}/></div>}
+                {projAddenda.length===0&&!(deals||[]).some(d=>d.parentDealId===deal.id&&!isLostStage(d.stage))&&<div style={{fontSize:".78rem",color:"#94a3b8"}}>No scope changes for this project.</div>}
+                {projAddenda.slice(0,3).map(a=>{
+                  const sc={"Discovered":"#94a3b8","Sales Notified":"#f59e0b","Client Coordinating":"#3b82f6","Approved":"#059669","Billed":"#8b5cf6","Collected":"#10b981","Rejected":"#ef4444"}[a.status]||"#94a3b8";
+                  return(
+                    <div key={a.id} style={{padding:"9px 12px",borderRadius:8,background:"#fffbeb",border:"1px solid #fde68a",marginBottom:6,display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+                      <div>
+                        <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{a.title}</div>
+                        {Number(a.value)>0&&<div style={{fontSize:".72rem",color:"#92400e",marginTop:1}}>₱{Number(a.value).toLocaleString("en-PH")} additional</div>}
+                      </div>
+                      <span style={{fontSize:".63rem",background:sc+"22",color:sc,border:`1px solid ${sc}44`,borderRadius:20,padding:"2px 8px",fontWeight:700,flexShrink:0}}>{a.status}</span>
+                    </div>
+                  );
+                })}
+                {projAddenda.length>3&&<div style={{fontSize:".72rem",color:"#94a3b8",marginTop:4}}>+{projAddenda.length-3} more — see Scope Changes page</div>}
+              </div>
+              )}
+              </>}
+
             </div>
           );
         })()
       )}
     </div>
-    {pmUpdateModal&&<PmUpdateModal deals={deals} role={role} changeDealStage={changeDealStage} setProjectProgress={setProjectProgress} sendTelegramNotification={sendTelegramNotification} pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate} updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())syncProjectCard(dealId,{target_end_date:date});}}/>}
+    {reportPct!==null&&selDeal&&deals.find(d=>d.id===selDeal)&&<ProgressReportModal deal={deals.find(d=>d.id===selDeal)} pc={pcards[selDeal]} initialPct={reportPct} role={role}
+      onClose={()=>setReportPct(null)}
+      onSaved={({pct:np,at,feed})=>{
+        upPcards(ps=>({...ps,[selDeal]:{...ps[selDeal],manualProgress:np,progressSetBy:session?.name||"",progressSetAt:at}}));
+        // The server already wrote this Team Update and sent the Telegram.
+        logActivity(selDeal,"PM Update",feed,session?.name,{localOnly:true,silent:true});
+        setReportPct(null);
+      }}/>}
+    {pmUpdateModal&&<PmUpdateModal deals={deals} role={role} changeDealStage={changeDealStage} sendTelegramNotification={sendTelegramNotification} pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate} updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())syncProjectCard(dealId,{target_end_date:date});}}/>}
     </>
   );
 }

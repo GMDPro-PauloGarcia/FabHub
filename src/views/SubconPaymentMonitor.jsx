@@ -32,6 +32,7 @@ const DEAD_WO=["Cancelled","Void","Rejected"];
 const peso0=v=>"₱"+num(v).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmtD=d=>{if(!d)return"";const x=new Date(String(d).slice(0,10)+"T00:00:00");return isNaN(x)?String(d):x.toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"2-digit"});};
 
+const gKey=v=>String(v||"").trim().replace(/\s+/g," ").toLowerCase();
 const STATUS_CLR={"No bill":C.purple,"Paid outside AP":C.warn,"Fully paid":C.ok,"Not certified":C.bad,"Certified":C.blue,"Down payment":C.blue};
 
 // One monitoring row per Work Order. Exported for tests / other views.
@@ -74,7 +75,9 @@ export function subconMonitorRows({swos=[],payables=[],payPays=[],deals=[]}){
     const dpPct=subconDpAllowPct(w);
     const allowPct=Math.max(certPct,dpPct);
     // …and never more than the subcon has actually billed.
-    const dueNow=allowPct>0&&balance>1?Math.max(0,r2(Math.min(allowPct/100*contract,billed)-gross)):0;
+    // Only approved bills can be paid (2026-11-11: unapproved billings no longer count).
+    const approvedBilled=r2(bills.filter(b=>(b.approvalStatus||"Approved")==="Approved").reduce((s,b)=>s+num(b.amount),0));
+    const dueNow=allowPct>0&&balance>1?Math.max(0,r2(Math.min(allowPct/100*contract,approvedBilled)-gross)):0;
     const status=balance<=1?"Fully paid":woOnlyPaid?"Paid outside AP":!bills.length?"No bill":certBill?"Certified":dpPct>0?"Down payment":"Not certified";
     const d=dealById.get(w.dealId);
     return {id:w.id,wo:w,woNumber:w.woNumber||"—",subcon:w.subcontractor||bills[0]?.vendor||"—",dealId:w.dealId||null,
@@ -90,6 +93,9 @@ export default function SubconPaymentMonitor({swos=[],payables=[],payPays=[],dea
   const[q,setQ]=useState("");
   const[filter,setFilter]=useState("open");
   const[ledger,setLedger]=useState(null);
+  // Grouped by subcontractor (like Supplier Bills) or one flat row per WO.
+  const[byGroup,setByGroup]=useState(true);
+  const[openGroups,setOpenGroups]=useState(()=>new Set());
   const all=useMemo(()=>subconMonitorRows({swos,payables,payPays,deals}),[swos,payables,payPays,deals]);
 
   const FILTERS=[
@@ -104,6 +110,23 @@ export default function SubconPaymentMonitor({swos=[],payables=[],payPays=[],dea
   const needle=q.trim().toLowerCase();
   const rows=all.filter(fx).filter(r=>!needle||[r.subcon,r.project,r.woNumber,r.scope].some(v=>String(v).toLowerCase().includes(needle)));
   const nCols=Math.min(MAX_COLS,Math.max(1,...rows.map(r=>r.progress.length)));
+  // One group per subcontractor (name compared case- and space-insensitively),
+  // biggest balance owed first, like the supplier list on Supplier Bills.
+  const groups=(()=>{
+    const m=new Map();
+    rows.forEach(r=>{const k=gKey(r.subcon);if(!m.has(k))m.set(k,{key:k,name:r.subcon,rows:[]});m.get(k).rows.push(r);});
+    return [...m.values()].map(g=>({...g,
+      contract:r2(g.rows.reduce((t,r)=>t+r.contract,0)),billed:r2(g.rows.reduce((t,r)=>t+r.billed,0)),
+      cash:r2(g.rows.reduce((t,r)=>t+r.cash,0)),retHeld:r2(g.rows.reduce((t,r)=>t+r.retHeld,0)),
+      ewt:r2(g.rows.reduce((t,r)=>t+r.ewt,0)),balance:r2(g.rows.reduce((t,r)=>t+r.balance,0)),
+      dueNow:r2(g.rows.reduce((t,r)=>t+r.dueNow,0)),
+      noBill:g.rows.filter(r=>r.status==="No bill").length,
+      notCert:g.rows.filter(r=>r.status==="Not certified").length}))
+      .sort((a,b)=>b.balance-a.balance||a.name.localeCompare(b.name));
+  })();
+  const isOpen=k=>!!needle||openGroups.has(k);
+  const toggle=k=>setOpenGroups(s=>{const n=new Set(s);n.has(k)?n.delete(k):n.add(k);return n;});
+  const allOpen=groups.length>0&&groups.every(g=>openGroups.has(g.key));
 
   const sum=(rs,k)=>r2(rs.reduce((s,r)=>s+num(r[k]),0));
   const kpis=[
@@ -111,7 +134,7 @@ export default function SubconPaymentMonitor({swos=[],payables=[],payPays=[],dea
     ["Paid to date",php2(sum(all,"cash")),`${all.filter(r=>r.cash>0).length} WOs with a payment`,C.ok],
     ["Billed by subcons",php2(sum(all,"billed")),`${php2(sum(all,"toBill"))} not billed yet`,C.purple],
     ["Balance owed",php2(sum(all,"balance")),"contract − paid − EWT",C.bad],
-    ["Payable now",php2(sum(all,"dueNow")),"within PM certification or the WO down payment",C.blue],
+    ["Payable now",php2(sum(all,"dueNow")),"approved, within PM certification or the WO down payment",C.blue],
     ["Retention held",php2(sum(all,"retHeld")),`released at 100% · ${all.filter(r=>r.status==="No bill").length} WOs with no billing`,C.warn],
   ];
   const ewtMissing=all.filter(r=>r.cash>0&&r.ewt<=0).length;
@@ -150,7 +173,7 @@ export default function SubconPaymentMonitor({swos=[],payables=[],payPays=[],dea
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10,marginBottom:12}}>
         <div>
           <h2 style={{margin:0,fontWeight:800,color:C.ink,fontSize:"1.15rem"}}>🔨 Subcon Payment Monitoring</h2>
-          <div style={{fontSize:".75rem",color:C.muted,marginTop:2,maxWidth:680}}>One row per Work Order, like the client Sales &amp; Collection sheet. Log each subcontractor billing with “+ Billing”; the PM certifies on Subcon Billing; payments are recorded on Supplier Bills.</div>
+          <div style={{fontSize:".75rem",color:C.muted,marginTop:2,maxWidth:680}}>One line per subcontractor (click to see its Work Orders), like Supplier Bills. Log each subcontractor billing with “+ Billing”; the PM certifies on Subcon Billing; payments are recorded on Supplier Bills.</div>
         </div>
         <button onClick={exportCsv} style={{background:C.navy,color:"#fff",border:"none",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,cursor:"pointer"}}>⬇ Export CSV</button>
       </div>
@@ -173,13 +196,24 @@ export default function SubconPaymentMonitor({swos=[],payables=[],payPays=[],dea
           <button key={id} onClick={()=>setFilter(id)} style={{border:`1.5px solid ${filter===id?C.navy:C.line}`,background:filter===id?C.navy:"#fff",color:filter===id?"#fff":C.ink,borderRadius:20,padding:"4px 11px",fontFamily:"inherit",fontSize:".72rem",fontWeight:700,cursor:"pointer"}}>
             {l} <span style={{opacity:.7}}>{all.filter(f).length}</span></button>
         ))}
-        <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search subcon, project, WO…" aria-label="Search" style={{...inp,flex:mob?"1 1 100%":"0 1 260px",marginLeft:mob?0:"auto"}}/>
+        <div style={{display:"flex",border:`1.5px solid ${C.line}`,borderRadius:20,overflow:"hidden",marginLeft:mob?0:"auto"}}>
+          {[[true,"By subcon"],[false,"All WOs"]].map(([v,l])=>(
+            <button key={l} onClick={()=>setByGroup(v)} style={{border:"none",background:byGroup===v?C.navy:"#fff",color:byGroup===v?"#fff":C.ink,padding:"4px 11px",fontFamily:"inherit",fontSize:".72rem",fontWeight:700,cursor:"pointer"}}>{l}</button>))}
+        </div>
+        {byGroup&&!needle&&groups.length>0&&<button onClick={()=>setOpenGroups(allOpen?new Set():new Set(groups.map(g=>g.key)))} style={{...linkBtn,fontSize:".72rem",fontWeight:700}}>{allOpen?"Collapse all":"Expand all"}</button>}
+        <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search subcon, project, WO…" aria-label="Search" style={{...inp,flex:mob?"1 1 100%":"0 1 260px"}}/>
       </div>
 
       {rows.length===0?<div style={{background:"#fff",border:`1px solid ${C.line}`,borderRadius:12,padding:20,color:C.faint,fontSize:".85rem"}}>No Work Orders match.</div>
       :mob?(
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          {rows.map(r=>(
+          {(byGroup?groups:[{key:"",rows}]).map(g=>(
+          <React.Fragment key={g.key||"all"}>
+          {byGroup&&<button onClick={()=>toggle(g.key)} aria-expanded={isOpen(g.key)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,background:"#f1f5f9",border:`1px solid ${C.line}`,borderRadius:10,padding:"9px 12px",fontFamily:"inherit",cursor:"pointer",textAlign:"left"}}>
+            <span style={{minWidth:0}}><span style={{fontWeight:800,color:C.ink,fontSize:".84rem"}}>{isOpen(g.key)?"▾":"▸"} {g.name}</span><span style={{fontSize:".7rem",color:C.muted}}> · {g.rows.length} WO{g.rows.length===1?"":"s"}</span></span>
+            <span style={{fontWeight:800,color:g.balance>1?C.bad:C.ok,fontSize:".8rem",whiteSpace:"nowrap"}}>{php2(g.balance)}</span>
+          </button>}
+          {(!byGroup||isOpen(g.key))&&g.rows.map(r=>(
             <div key={r.id} style={{background:"#fff",border:`1px solid ${C.line}`,borderRadius:10,padding:"10px 12px"}}>
               <div style={{display:"flex",justifyContent:"space-between",gap:8}}>
                 <div style={{minWidth:0}}>
@@ -198,6 +232,8 @@ export default function SubconPaymentMonitor({swos=[],payables=[],payPays=[],dea
               {billBtn(r)}
             </div>
           ))}
+          </React.Fragment>
+          ))}
         </div>
       ):(
         <div style={{background:"#fff",border:`1px solid ${C.line}`,borderRadius:12,overflow:"auto",maxHeight:"70vh"}}>
@@ -210,9 +246,31 @@ export default function SubconPaymentMonitor({swos=[],payables=[],payPays=[],dea
               <th style={spmThR}>Payable now</th><th style={spmTh}>Status</th>
             </tr></thead>
             <tbody>
-              {rows.map(r=>(
+              {(byGroup?groups:[{key:"",rows}]).map(g=>(
+              <React.Fragment key={g.key||"all"}>
+              {byGroup&&(
+                <tr style={{background:"#f8fafc",cursor:"pointer"}} onClick={()=>toggle(g.key)}>
+                  <td style={{...spmTd,borderTop:`1px solid ${C.line}`}} colSpan={3}>
+                    <button onClick={e=>{e.stopPropagation();toggle(g.key);}} aria-expanded={isOpen(g.key)} aria-label={`${isOpen(g.key)?"Collapse":"Expand"} ${g.name}`} style={{border:"none",background:"none",padding:"0 6px 0 0",cursor:"pointer",color:C.muted,fontSize:".8rem"}}>{isOpen(g.key)?"▾":"▸"}</button>
+                    <button style={{...linkBtn,fontWeight:800,fontSize:".8rem"}} onClick={e=>{e.stopPropagation();setLedger({kind:"supplier",id:g.name});}}>{g.name}</button>
+                    <span style={{fontSize:".68rem",color:C.muted,marginLeft:6}}>{g.rows.length} WO{g.rows.length===1?"":"s"}</span>
+                    {g.noBill>0&&<span style={{marginLeft:6}}>{chip(`${g.noBill} no bill`,C.purple)}</span>}
+                    {g.notCert>0&&<span style={{marginLeft:6}}>{chip(`${g.notCert} not certified`,C.bad)}</span>}
+                  </td>
+                  <td style={{...spmTdR,fontWeight:800,borderTop:`1px solid ${C.line}`}}>{php2(g.contract)}</td>
+                  <td style={{...spmTdR,fontWeight:700,borderTop:`1px solid ${C.line}`}}>{g.billed>0?php2(g.billed):"—"}</td>
+                  {Array.from({length:nCols},(_,i)=><td key={i} style={{...spmTdR,borderTop:`1px solid ${C.line}`}}/>)}
+                  <td style={{...spmTdR,fontWeight:800,color:C.ok,borderTop:`1px solid ${C.line}`}}>{g.cash>0?php2(g.cash):"—"}</td>
+                  <td style={{...spmTdR,borderTop:`1px solid ${C.line}`}}>{g.retHeld>0?php2(g.retHeld):"—"}</td>
+                  <td style={{...spmTdR,borderTop:`1px solid ${C.line}`}}>{g.ewt>0?php2(g.ewt):"—"}</td>
+                  <td style={{...spmTdR,fontWeight:800,color:g.balance>1?C.bad:C.ok,borderTop:`1px solid ${C.line}`}}>{php2(g.balance)}</td>
+                  <td style={{...spmTdR,color:C.blue,fontWeight:g.dueNow>1?800:400,borderTop:`1px solid ${C.line}`}}>{g.dueNow>1?php2(g.dueNow):"—"}</td>
+                  <td style={{...spmTd,borderTop:`1px solid ${C.line}`}}/>
+                </tr>
+              )}
+              {(!byGroup||isOpen(g.key))&&g.rows.map(r=>(
                 <tr key={r.id}>
-                  <td style={{...spmTd,maxWidth:180}}><button style={{...linkBtn,fontWeight:600}} onClick={()=>setLedger({kind:"supplier",id:r.subcon})}>{r.subcon}</button></td>
+                  <td style={{...spmTd,maxWidth:180,paddingLeft:byGroup?24:8}}>{byGroup?<span style={{fontSize:".66rem",color:C.faint}}>{r.woStatus}</span>:<button style={{...linkBtn,fontWeight:600}} onClick={()=>setLedger({kind:"supplier",id:r.subcon})}>{r.subcon}</button>}</td>
                   <td style={{...spmTd,maxWidth:220}}>{r.dealId?<button style={linkBtn} onClick={()=>setLedger({kind:"project",id:r.dealId})}>{r.project}</button>:r.project}
                     {r.terms&&<div style={{fontSize:".6rem",color:C.faint}}>{r.terms}</div>}</td>
                   <td style={{...spmTd,fontFamily:"'IBM Plex Mono',monospace",whiteSpace:"nowrap"}} title={r.scope}>{r.woNumber}</td>
@@ -227,9 +285,11 @@ export default function SubconPaymentMonitor({swos=[],payables=[],payPays=[],dea
                   <td style={{...spmTd,whiteSpace:"nowrap"}}>{statusChip(r)}{r.certBy&&<div style={{fontSize:".6rem",color:C.faint}}>by {r.certBy}</div>}{r.woDpPct>0&&<div style={{fontSize:".6rem",color:C.faint}}>DP {r.woDpPct}%{r.dpPct>0?"":" · WO not issued"}</div>}{billBtn(r)}</td>
                 </tr>
               ))}
+              </React.Fragment>
+              ))}
             </tbody>
             <tfoot><tr style={{background:"#f1f5f9",fontWeight:800}}>
-              <td style={{...spmTd,fontWeight:800}} colSpan={3}>Total · {rows.length} WOs</td>
+              <td style={{...spmTd,fontWeight:800}} colSpan={3}>Total · {rows.length} WOs{byGroup?` · ${groups.length} subcontractor${groups.length===1?"":"s"}`:""}</td>
               <td style={{...spmTdR,fontWeight:800}}>{php2(tot("contract"))}</td>
               <td style={{...spmTdR,fontWeight:800}}>{php2(tot("billed"))}</td>
               {Array.from({length:nCols},(_,i)=><td key={i} style={spmTdR}/>)}
