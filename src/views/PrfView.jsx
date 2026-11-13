@@ -1,6 +1,6 @@
 import React,{useState,useEffect,useMemo,useCallback} from "react";
 import {supabase,isSupabaseReady,sbListAll} from "../supabaseClient";
-import {Modal,Fld,Inp,Sel,toastEmit,uiConfirm,uiPrompt,addPrintClose,today} from "../shared";
+import {Modal,Fld,Inp,Sel,toastEmit,uiConfirm,uiPrompt,addPrintClose,today,ProjectSelect} from "../shared";
 import {WON_STAGES,PO_UNITS,PR_CATS,projDisplayName} from "../core";
 
 // ─── PRF — Purchase Request Form ──────────────────────────────────────────────
@@ -359,10 +359,10 @@ function PrfEditor({editing,setEditing,deals,busy,isMobile,onSave,onSubmit}){
       <div style={{display:"flex",flexDirection:"column",gap:12}}>
         <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"2fr 1fr 1fr",gap:10}}>
           <Fld label="Project" required>
-            <Sel value={form.deal_id} onChange={e=>{const d=projects.find(x=>x.id===e.target.value);setF("deal_id",e.target.value);if(d&&!form.location)setF("location",d.location||"");}}>
+            <ProjectSelect value={form.deal_id} onChange={e=>{const d=projects.find(x=>x.id===e.target.value);setF("deal_id",e.target.value);if(d&&!form.location)setF("location",d.location||"");}}>
               <option value="">— Select project —</option>
               {projects.map(d=><option key={d.id} value={d.id}>{projDisplayName(d)}</option>)}
-            </Sel>
+            </ProjectSelect>
           </Fld>
           <Fld label="Required date" required><Inp type="date" value={form.required_date} onChange={e=>setF("required_date",e.target.value)}/></Fld>
           <Fld label="Priority"><Sel value={form.priority} onChange={e=>setF("priority",e.target.value)}>{["Normal","High","Urgent"].map(x=><option key={x}>{x}</option>)}</Sel></Fld>

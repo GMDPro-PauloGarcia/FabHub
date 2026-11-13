@@ -1,5 +1,5 @@
 import React,{useState,useEffect,useLayoutEffect,useRef} from "react";
-import {today,uid,KEYS,Card,uiConfirm,addPrintClose} from "../shared";
+import {today,uid,KEYS,Card,uiConfirm,addPrintClose,ProjectSelect} from "../shared";
 import {supabase,isSupabaseReady,sbInsert,sbUpdate,sbDelete} from "../supabaseClient";
 // Clearing a deal's BOQ is Manager-only, also enforced by migration
 // 20261006010000_deals_boq_safeguards.sql — keep in sync.
@@ -1345,10 +1345,10 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
             </div>
 
             <label style={lbl}>Deal <span style={{color:"#dc2626"}}>*</span></label>
-            <select autoFocus value={xfer.dealId} disabled={xfer.busy} onChange={e=>pickXferDeal(e.target.value)} style={{...inpSt,marginBottom:12}}>
+            <ProjectSelect autoFocus value={xfer.dealId} disabled={xfer.busy} onChange={e=>pickXferDeal(e.target.value)} style={{...inpSt,marginBottom:12}}>
               <option value="">— Pick the deal this BOQ belongs to —</option>
               {xferTargets.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" · "+d.contact:""}{d.ceNo?" ("+d.ceNo+")":" (no CE no.)"}{d.stage?" — "+d.stage:""}</option>)}
-            </select>
+            </ProjectSelect>
 
             {target&&ck&&(ck.loading
               ?<div style={{fontSize:".76rem",color:"#64748b",marginBottom:12}}>⟳ Checking whether this deal already has a BOQ…</div>
