@@ -6241,7 +6241,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       material_requests:["Manager","Sales","Finance","Procurement","Operations","Design","ProjectMover"],
       budget_requests:["Manager","Sales","Finance","Procurement","Operations","Design","ProjectMover"],
       expenses:["Manager","Sales","Finance","Accounting","QS","Procurement","Operations","Design","ProjectMover"],
-      subcon_work_orders:["Manager","Sales","Finance","Accounting","Procurement","Operations","Design","ProjectMover"],
+      subcon_work_orders:["Manager","Sales","Finance","Accounting","Procurement","Operations","Design","ProjectMover","QS"],
       inflows:["Manager"],
       // Calendar/field-board events live in `checklists`. Every audited role must
       // receive these live — a role left off this list only sees items it created
@@ -8127,6 +8127,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[payFilter, setPayFilter]=useState("All");
   const[poViewFilter,setPoViewFilter]=useState("all"); // unified PO view: all | po | wo
   const[poViewSearch,setPoViewSearch]=useState("");
+  const[poViewProj,setPoViewProj]=useState(null); // Purchase Orders: show only this project's orders
   const[apLogSearch,setApLogSearch]=useState("");   // Accounts Payable Log search
   const[supPaySearch,setSupPaySearch]=useState(""); // Supplier Payables (Open POs) search
   const[payPayId,  setPayPayId] =useState(null); // payable id being settled in the Record-Payment modal
@@ -9996,7 +9997,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     QS:[
       {group:"Overview", items:[{id:"home",l:"Dashboard"}]},
       {group:"Sales",    items:[{id:"pipeline",l:"Sales Pipeline"},{id:"boq",l:"BOQ"}]},
-      {group:"Cost Control", items:[{id:"costanalysis",l:"Budget & Costs"},{id:"projectmargins",l:"Project Margins"},{id:"materialreq",l:"Purchase Requests (PRF)"}]},
+      {group:"Cost Control", items:[{id:"costanalysis",l:"Budget & Costs"},{id:"projectmargins",l:"Project Margins"},{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"purchaseorders",l:"Purchase Orders"}]},
       {group:"Operations", items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
     ],
     Operations:[
@@ -18859,9 +18860,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ── Unified Purchase Orders view (Aerwin-style) — Materials POs + Subcontractor
   // WOs in one clean list. Read/launch only: creation stays in the Procurement
   // and Work Order modules so each keeps its own form + features. ──────────────
-  if(page==="purchaseorders"&&(role==="Finance"||role==="Manager"||role==="FinanceAssistant"||role==="Accounting")) return(
+  // Cost Control (QS) sees it view-only (2026-11-12): no create, verify, pay or
+  // open buttons. The database already lets QS read PO lines, WOs and bills and
+  // write none of them; creating and approving stay where they are.
+  if(page==="purchaseorders"&&(role==="Finance"||role==="Manager"||role==="FinanceAssistant"||role==="Accounting"||role==="QS")) return(
     <Wrap>
       {(()=>{
+        const poViewOnly=role==="QS";
         const N=v=>Number(v)||0;
         const projName=(id,fallback)=>{const d=wonDeals.find(x=>x.id===id)||completedDeals.find(x=>x.id===id);return d?projDisplayName(d):(fallback||"—");};
         // Materials POs — group purchase_requests line items by PO number.
@@ -18869,8 +18874,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         prs.forEach(p=>{
           if(!p.poNumber) return;
           const k=p.poNumber;
-          if(!poGroups[k]) poGroups[k]={kind:"po",type:"Materials",no:k,vendor:p.supplier||"—",projectId:p.projectId,date:p.poDate||p.createdDate||"",account:p.accountCode||"",statuses:[],amount:0};
+          if(!poGroups[k]) poGroups[k]={kind:"po",type:"Materials",no:k,vendor:p.supplier||"—",projectId:p.projectId,date:p.poDate||p.createdDate||"",account:p.accountCode||"",statuses:[],amount:0,projectIds:[],looseNames:[],idNames:{}};
           const g=poGroups[k];
+          // A PO can carry lines of several projects (Order Board): keep every
+          // project, not just the first line's. A line with no project keeps
+          // its typed name ("GMD Stocks", or a client never linked to a deal).
+          if(p.status!=="Cancelled"){
+            if(p.projectId){if(!g.projectIds.includes(p.projectId)) g.projectIds.push(p.projectId); if(p.projectName&&!g.idNames[p.projectId]) g.idNames[p.projectId]=p.projectName;}
+            else if(p.projectName&&!g.looseNames.includes(p.projectName)) g.looseNames.push(p.projectName);
+          }
           g.amount+=(N(p.actUnitCost)||N(p.estUnitCost)||N(p.actualCost)||N(p.estimatedCost))*N(p.qty);
           g.statuses.push(p.status);
           if(!g.account&&p.accountCode) g.account=p.accountCode;
@@ -18884,13 +18896,18 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           return {...g,status};
         });
         // Subcontractor WOs — one row each.
-        const woRows=swos.map(w=>({kind:"wo",type:"Subcontractor",no:w.woNumber||"—",vendor:w.subcontractor||"—",projectId:w.dealId||w.projectId,projectName:w.projectName,date:w.woDate||w.createdDate||"",account:w.accountCode||"",amount:N(w.contractAmount),status:w.status||"Issued"}));
+        const woRows=swos.map(w=>({kind:"wo",type:"Subcontractor",no:w.woNumber||"—",vendor:w.subcontractor||"—",projectId:w.dealId||w.projectId,projectName:w.projectName,
+          projectIds:[w.dealId||w.projectId].filter(Boolean),looseNames:(w.dealId||w.projectId)?[]:[w.projectName].filter(Boolean),idNames:(w.dealId||w.projectId)?{[w.dealId||w.projectId]:w.projectName}:{},date:w.woDate||w.createdDate||"",account:w.accountCode||"",amount:N(w.contractAmount),status:w.status||"Issued"}));
         const rows=[...poRows,...woRows].sort((a,b)=>String(b.date).localeCompare(String(a.date)));
         const totalValue=rows.reduce((s,r)=>s+r.amount,0);
         const openCount=rows.filter(r=>!["Delivered","Cancelled","Completed"].includes(r.status)).length;
         const q=poViewSearch.trim().toLowerCase();
+        const projNamesOf=r=>[...(r.projectIds||[]).map(id=>projName(id,(r.idNames||{})[id])),...(r.looseNames||[])];
+        const projLabel=id=>{const r=rows.find(x=>(x.idNames||{})[id]);return projName(id,r&&r.idNames[id]);};
         const visibleRows=rows.filter(r=>(poViewFilter==="all"||(poViewFilter==="po"&&r.kind==="po")||(poViewFilter==="wo"&&r.kind==="wo"))
-          &&(!q||String(r.no).toLowerCase().includes(q)||String(r.vendor).toLowerCase().includes(q)||String(projName(r.projectId,r.projectName)).toLowerCase().includes(q)));
+          &&(!poViewProj||(r.projectIds||[]).includes(poViewProj))
+          &&(!q||String(r.no).toLowerCase().includes(q)||String(r.vendor).toLowerCase().includes(q)||projNamesOf(r).some(n=>String(n).toLowerCase().includes(q))));
+        const projTotal=poViewProj?visibleRows.reduce((s,r)=>s+r.amount,0):0;
         return(
           <div>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16,flexWrap:"wrap",gap:10}}>
@@ -18898,10 +18915,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 <div style={{fontWeight:700,color:ERP.navy,fontSize:16}}>Purchase Orders</div>
                 <div style={{fontSize:12.5,color:ERP.muted,marginTop:2,maxWidth:620}}><strong>Materials POs</strong> are verified by Warehouse and billed in full. <strong>Subcontractor Work Orders</strong> are verified by Operations based on % of project completion — only the verified % reaches Accounts Payable.</div>
               </div>
-              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              {!poViewOnly&&<div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                 <button onClick={()=>setPage("procurement")} style={{background:ERP.navy,border:"none",borderRadius:7,padding:"9px 16px",fontFamily:"inherit",fontSize:13,color:"#fff",cursor:"pointer",fontWeight:600}}>+ Material PO</button>
                 <button onClick={()=>setPage("subconwo")} style={{background:ERP.gold,border:"none",borderRadius:7,padding:"9px 16px",fontFamily:"inherit",fontSize:13,color:ERP.navy,cursor:"pointer",fontWeight:600}}>+ Work Order</button>
-              </div>
+              </div>}
             </div>
             <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(auto-fit,minmax(190px,1fr))",gap:12,marginBottom:20}}>
               <ErpStat label="Total Orders" value={String(rows.length)} foot={poRows.length+" POs · "+woRows.length+" WOs"}/>
@@ -18909,7 +18926,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               <ErpStat label="Purchase Orders" value={fmt(poRows.reduce((s,r)=>s+r.amount,0))} foot="materials value"/>
               <ErpStat tone="purple" label="Work Orders" value={fmt(woRows.reduce((s,r)=>s+r.amount,0))} foot="subcontractor contracts"/>
             </div>
-            <ErpCard title="All Orders" desc="Materials Purchase Orders and Subcontractor Work Orders in one list. Click Open to view or edit in its module.">
+            <ErpCard title="All Orders" desc={poViewOnly?"Materials Purchase Orders and Subcontractor Work Orders in one list. View only.":"Materials Purchase Orders and Subcontractor Work Orders in one list. Click Open to view or edit in its module."}>
               <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
                 {[["all","All",rows.length],["po","Purchase Orders",poRows.length],["wo","Work Orders",woRows.length]].map(([k,l,n])=>{
                   const on=poViewFilter===k;
@@ -18919,6 +18936,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     </button>
                   );
                 })}
+                {poViewProj&&<button onClick={()=>setPoViewProj(null)} title="Show all projects" style={{display:"flex",alignItems:"center",gap:6,background:ERP.gold,color:ERP.navy,border:"none",borderRadius:20,padding:"5px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                  Project: {projLabel(poViewProj)} · {visibleRows.length} order{visibleRows.length!==1?"s":""} · {fmt(projTotal)} ✕
+                </button>}
                 <input value={poViewSearch} onChange={e=>setPoViewSearch(e.target.value)} placeholder="Search no., vendor, or project…" style={{marginLeft:"auto",minWidth:180,flex:"0 1 260px",border:`1px solid ${ERP.line}`,borderRadius:7,padding:"7px 12px",fontFamily:"inherit",fontSize:12.5,outline:"none",color:ERP.ink}}/>
               </div>
               <div style={{overflowX:"auto"}}>
@@ -18947,7 +18967,19 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                         <td style={{...erpTd,whiteSpace:"nowrap"}}><ErpBadge kind={r.type==="Subcontractor"?"approved":"open"}>{r.type}</ErpBadge></td>
                         <td style={{...erpTd,fontVariantNumeric:"tabular-nums",color:ERP.muted,whiteSpace:"nowrap"}}>{r.date||"—"}</td>
                         <td style={{...erpTd,fontWeight:600,color:ERP.ink,maxWidth:180,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={r.vendor}>{r.vendor}</td>
-                        <td style={{...erpTd,color:ERP.muted,maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{projName(r.projectId,r.projectName)}</td>
+                        <td style={{...erpTd,color:ERP.muted,maxWidth:220}}>
+                          {/* Each project is a link: click to list every order for that project. */}
+                          {(r.projectIds||[]).map(id=>(
+                            <button key={id} onClick={()=>setPoViewProj(id)} title="Show every order for this project"
+                              style={{display:"block",maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",background:"none",border:"none",padding:0,margin:"1px 0",color:ERP.navy,fontWeight:600,textDecoration:"underline",cursor:"pointer",fontFamily:"inherit",fontSize:12.5,textAlign:"left"}}>{projName(id,(r.idNames||{})[id])}</button>
+                          ))}
+                          {(r.looseNames||[]).map(n=>(
+                            <div key={n} style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontSize:12,fontStyle:"italic"}}
+                              title={/gmd stock/i.test(n)?"Bought for stock: no project until it is issued":"Typed name only: not linked to a project"}>
+                              {n}{/gmd stock/i.test(n)?" (stock)":" (not linked)"}</div>
+                          ))}
+                          {!(r.projectIds||[]).length&&!(r.looseNames||[]).length&&<span style={{color:"#cbd5e1"}}>—</span>}
+                        </td>
                         <td style={{...erpTd,fontVariantNumeric:"tabular-nums",fontSize:11.5,color:r.account?ERP.ink:"#cbd5e1",whiteSpace:"nowrap"}}>{r.account||"—"}</td>
                         <td style={{...erpTdNum,fontWeight:700,color:ERP.navy,whiteSpace:"nowrap"}}>{fmt(r.amount)}</td>
                         <td style={{...erpTd,whiteSpace:"nowrap"}}><ErpBadge kind={erpStatusKind(r.status)}>{r.status}</ErpBadge></td>
@@ -18959,13 +18991,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                               : <ErpBadge kind="unpaid">{isSub?"Pending (Ops)":"Pending (WH)"}</ErpBadge>}
                         </td>
                         <td style={{...erpTd,whiteSpace:"nowrap"}}>
-                          <div style={{display:"flex",gap:4,justifyContent:"flex-end",alignItems:"center"}}>
+                          {poViewOnly
+                            ? <div style={{display:"flex",justifyContent:"flex-end"}}>{pay&&settled?<span style={{fontSize:11,color:ERP.ok,fontWeight:700}}>Paid</span>:pay&&pay.verified&&payBal>0&&!payApproved(pay)?<span style={{fontSize:11,color:ERP.muted,fontWeight:600}}>Pending approval</span>:null}</div>
+                            : <div style={{display:"flex",gap:4,justifyContent:"flex-end",alignItems:"center"}}>
                             {pay&&!settled&&!pay.verified&&<button onClick={()=>verifyPayable(pay.id)} title={isSub?"Operations: verify % complete":"Warehouse: verify receipt"} style={{background:ERP.gold,border:"none",borderRadius:6,padding:"5px 10px",fontSize:12,color:ERP.navy,cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>✓ Verify</button>}
                             {pay&&!settled&&pay.verified&&payBal>0&&!payApproved(pay)&&<span style={{fontSize:11,color:ERP.muted,fontWeight:600}} title="Awaiting Manager / Finance approval before payment">Pending approval</span>}
                             {pay&&!settled&&pay.verified&&payBal>0&&payApproved(pay)&&<button onClick={()=>{setFinTab("payables");setPage("finance");openPayModal(pay);}} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"5px 12px",fontSize:12,color:"#fff",cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>Pay</button>}
                             {pay&&settled&&<span style={{fontSize:11,color:ERP.ok,fontWeight:700}}>Paid</span>}
                             <button onClick={()=>setPage(r.kind==="wo"?"subconwo":"procurement")} style={{background:"transparent",border:`1px solid ${ERP.line}`,borderRadius:6,padding:"5px 10px",fontSize:12,fontWeight:600,color:ERP.navy,cursor:"pointer",fontFamily:"inherit"}}>Open</button>
-                          </div>
+                          </div>}
                         </td>
                       </tr>
                       );})}
