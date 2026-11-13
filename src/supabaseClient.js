@@ -109,8 +109,16 @@ export const setSbDropHandler = (fn) => { _onWriteDropped = fn }
 // always blaming "you may be offline" — a stale/expired session, a permission
 // error, or a schema mismatch (all common right after a domain/project
 // migration) are not offline issues and won't fix themselves on reconnect.
-const _classifyError = (msg) => {
+const _classifyError = (msg, code) => {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return 'offline'
+  // A FabHub rule refused the change: a trigger's RAISE (P0001) or a check
+  // (23514, also what the guards raise with errcode = 'check_violation'). These
+  // messages are written for people ("CE-2026-1431 is a mother PO and can't
+  // carry a BOQ"), and contain none of the words matched below, so they used to
+  // fall through to 'server': retried 8 times behind a "you may be offline"
+  // toast while the real reason was never shown (Jessica / Jena, 2026-11-13).
+  if (code === 'P0001' || code === '23514') return 'rule'
+  if (code === '42501') return 'auth'
   const m = (msg || '').toLowerCase()
   // An expired login is NOT a permission problem: the same write succeeds as
   // soon as the user logs in again. It used to fall into 'auth' (via 'jwt'),
@@ -135,9 +143,9 @@ const _classifyError = (msg) => {
 // them just wedges the queue (blocking every write queued behind them) and
 // re-fires the "offline" toast forever even though the connection is fine.
 const _isDuplicate = (error) => (error && (error.code === '23505' || /duplicate key/i.test(error.message || '')))
-const _isRetryable = (kind) => kind !== 'auth' && kind !== 'data'
-const _writeFailed = (op, table, msg) => {
-  const kind = _classifyError(msg)
+const _isRetryable = (kind) => kind !== 'auth' && kind !== 'data' && kind !== 'rule'
+const _writeFailed = (op, table, msg, code) => {
+  const kind = _classifyError(msg, code)
   if (kind === 'expired') _notifyExpired()
   try { _onWriteError && _onWriteError(op, table, msg, kind) } catch (_) {}
   return kind
@@ -266,7 +274,7 @@ const _replay = async (op) => {
         continue
       }
       console.warn(`sync replay ${op.kind} ${op.table}:`, error.message)
-      return { ok: false, kind: _classifyError(error.message), message: error.message }
+      return { ok: false, kind: _classifyError(error.message, error.code), message: error.message }
     }
     return { ok: false, kind: 'data', message: 'Write dropped: too many unknown columns for the current schema.' }
   } catch (e) { console.warn(`sync replay threw ${op.kind} ${op.table}:`, e.message); return { ok: false, kind: _classifyError(e.message), message: e.message } }
@@ -361,7 +369,7 @@ if (typeof window !== 'undefined') {
 export const sbInsert = async (table, data) => {
   if (!supabase || _signedOut('INSERT', table)) return null
   const { data: result, error } = await _withTimeout(supabase.from(table).insert(data).select().single())
-  if (error) { console.error(`SB INSERT ${table}:`, error.message); const kind=_writeFailed('insert', table, error.message); if(_isRetryable(kind)) _enqueue({ kind: 'insert', table, data }); else _notifyDropped({ kind: 'insert', table, data }, kind, error.message) }
+  if (error) { console.error(`SB INSERT ${table}:`, error.message); const kind=_writeFailed('insert', table, error.message, error.code); if(_isRetryable(kind)) _enqueue({ kind: 'insert', table, data }); else _notifyDropped({ kind: 'insert', table, data }, kind, error.message) }
   return result
 }
 
@@ -393,7 +401,7 @@ export const sbUpdate = async (table, id, data) => {
         stripped.push(col)
         continue
       }
-      console.error(`SB UPDATE ${table}:`, error.message); const kind=_writeFailed('update', table, error.message); if(_isRetryable(kind)) _enqueue({ kind: 'update', table, id, data }); else _notifyDropped({ kind: 'update', table, id, data }, kind, error.message); return false
+      console.error(`SB UPDATE ${table}:`, error.message); const kind=_writeFailed('update', table, error.message, error.code); if(_isRetryable(kind)) _enqueue({ kind: 'update', table, id, data }); else _notifyDropped({ kind: 'update', table, id, data }, kind, error.message); return false
     }
     if (stripped.length) console.warn(`SB UPDATE ${table}: succeeded after dropping column(s) not in the server schema: ${stripped.join(', ')}`)
     if (!rows || rows.length === 0) {
@@ -420,7 +428,7 @@ export const sbUpdate = async (table, id, data) => {
 export const sbUpsert = async (table, data, conflictCol = 'id', { ignoreDuplicates = false } = {}) => {
   if (!supabase || _signedOut('UPSERT', table)) return false
   const { error } = await _withTimeout(supabase.from(table).upsert(data, { onConflict: conflictCol, ignoreDuplicates }))
-  if (error) { console.error(`SB UPSERT ${table}:`, error.message); const kind=_writeFailed('upsert', table, error.message); if(_isRetryable(kind)) _enqueue({ kind: 'upsert', table, data, conflictCol }); else _notifyDropped({ kind: 'upsert', table, data, conflictCol }, kind, error.message); return false }
+  if (error) { console.error(`SB UPSERT ${table}:`, error.message); const kind=_writeFailed('upsert', table, error.message, error.code); if(_isRetryable(kind)) _enqueue({ kind: 'upsert', table, data, conflictCol }); else _notifyDropped({ kind: 'upsert', table, data, conflictCol }, kind, error.message); return false }
   return true
 }
 
@@ -433,10 +441,11 @@ export const sbUpsertDetailed = async (table, data, conflictCol = 'id') => {
   const { error } = await _withTimeout(supabase.from(table).upsert(data, { onConflict: conflictCol }))
   if (!error) return { ok: true }
   const message = error.message || ''
+  const code = error.code
   const dup = /DUPLICATE_(BLOCK|REVIEW)/.exec(message)
   if (dup) return { ok: false, message, duplicate: dup[1] === 'REVIEW' ? 'review' : 'block' }
   console.error(`SB UPSERT ${table}:`, message)
-  const kind = _writeFailed('upsert', table, message)
+  const kind = _writeFailed('upsert', table, message, code)
   if (_isRetryable(kind)) _enqueue({ kind: 'upsert', table, data, conflictCol }); else _notifyDropped({ kind: 'upsert', table, data, conflictCol }, kind, message)
   return { ok: false, message }
 }
@@ -452,7 +461,7 @@ export const sbInsertIfMissing = async (table, data) => {
   const { error } = await _withTimeout(supabase.from(table).insert(data))
   if (!error || _isDuplicate(error)) return true
   console.error(`SB INSERT-IF-MISSING ${table}:`, error.message)
-  const kind = _writeFailed('insert', table, error.message)
+  const kind = _writeFailed('insert', table, error.message, error.code)
   if (_isRetryable(kind)) _enqueue({ kind: 'insertIfMissing', table, data })
   else _notifyDropped({ kind: 'insertIfMissing', table, data }, kind, error.message)
   return false
@@ -461,7 +470,7 @@ export const sbInsertIfMissing = async (table, data) => {
 export const sbDelete = async (table, id) => {
   if (!supabase || _signedOut('DELETE', table)) return
   const { error } = await _withTimeout(supabase.from(table).delete().eq('id', id))
-  if (error) { console.error(`SB DELETE ${table}:`, error.message); const kind=_writeFailed('delete', table, error.message); if(_isRetryable(kind)) _enqueue({ kind: 'delete', table, id }); else _notifyDropped({ kind: 'delete', table, id }, kind, error.message) }
+  if (error) { console.error(`SB DELETE ${table}:`, error.message); const kind=_writeFailed('delete', table, error.message, error.code); if(_isRetryable(kind)) _enqueue({ kind: 'delete', table, id }); else _notifyDropped({ kind: 'delete', table, id }, kind, error.message) }
 }
 
 // Conditional delete (delete-where) that, like sbDelete, reports failures
@@ -476,7 +485,7 @@ export const sbDeleteWhere = async (table, column, value, op = 'eq') => {
   else q = q.eq(column, value)
   const { error } = await _withTimeout(q)
   if (error) {
-    console.error(`SB DELETE ${table} where ${column}:`, error.message); const kind=_writeFailed('delete', table, error.message)
+    console.error(`SB DELETE ${table} where ${column}:`, error.message); const kind=_writeFailed('delete', table, error.message, error.code)
     // Only re-queue targeted deletes; never replay bulk admin wipes (gte/not_null)
     // later, which could remove data added after the fact.
     if ((op === 'eq' || op === 'in') && _isRetryable(kind)) _enqueue({ kind: 'deleteWhere', table, column, value, op })
@@ -735,7 +744,7 @@ export const sbLoadAll = async () => {
 export const sbClear = async (table) => {
   if (!supabase) return
   const { error } = await _withTimeout(supabase.from(table).delete().not('id', 'is', null))
-  if (error) { console.error(`SB CLEAR ${table}:`, error.message); _writeFailed('delete', table, error.message) }
+  if (error) { console.error(`SB CLEAR ${table}:`, error.message); _writeFailed('delete', table, error.message, error.code) }
 }
 
 export const sbSubscribe = (channel, table, callback) => {
