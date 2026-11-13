@@ -655,7 +655,9 @@ export const costNet = (x={}) => {
 // when the PO is "with VAT"); the same formula the printed PO, the PO list and
 // syncPoPayable use. Cost is taken VAT-ex (net), like every other cost here.
 export const PO_ISSUED_STATUSES = ["PO Issued","Partially Delivered","Delivered"];
-export const WO_COMMITTED_STATUSES = ["Issued","Partially Delivered","Delivered","Completed","For Accounting"];
+// "In Progress" is a committed WO too (SWO_STATUSES); without it a WO dropped out
+// of project cost the moment work started.
+export const WO_COMMITTED_STATUSES = ["Issued","In Progress","Partially Delivered","Delivered","Completed","For Accounting"];
 const poLineGross = i => (_amt(i.actUnitCost)||_amt(i.estUnitCost))*_amt(i.qty);
 export const poTotals = (lines=[]) => {
   const gross=(lines||[]).reduce((s,i)=>s+poLineGross(i),0);
@@ -703,6 +705,24 @@ export const ledgerCosts = (exps=[], payables=[], prs=null, swos=null) => {
     date:e.date||(e.year!=null&&e.month!=null?`${e.year}-${String(Number(e.month)+1).padStart(2,"0")}-01`:null),
     gross:_amt(e.amount), net:costNet(e), vatTracked:!!(e.vatable||_amt(e.inputVat)>0), src:"expense" })),
   ];
+};
+// Cost waiting on approval, per project (VAT-ex, same basis as poCostRows /
+// woCostRows): POs with lines at "Pending Approval" and no issued line, and WOs
+// at "Pending Approval". Project Margins shows it beside the committed cost so a
+// job whose POs haven't been approved yet doesn't read as a 99% margin.
+export const pendingCostByProject = (prs=[], swos=[]) => {
+  const out=new Map(), add=(id,v)=>{ if(id&&v) out.set(id,(out.get(id)||0)+v); };
+  const byPo=new Map();
+  (prs||[]).forEach(p=>{ if(p.poNumber&&p.status!=="Cancelled"){ const a=byPo.get(p.poNumber)||[]; a.push(p); byPo.set(p.poNumber,a); } });
+  byPo.forEach(lines=>{
+    if(lines.some(l=>PO_ISSUED_STATUSES.includes(l.status))) return; // already counted as committed
+    const pend=lines.filter(l=>l.status==="Pending Approval");
+    if(!pend.length) return;
+    const t=poTotals(pend);
+    pend.forEach(l=>{ const share=t.gross>0?poLineGross(l)/t.gross:0; add(realProject(l.projectId||l.dealId),Math.round(t.net*share*100)/100); });
+  });
+  (swos||[]).forEach(w=>{ if(w.status==="Pending Approval") add(realProject(w.projectId||w.dealId),_amt(w.contractAmount)); });
+  return out;
 };
 export const costSummary = (exps=[], payables=[], prs=null, swos=null) => {
   const rows=ledgerCosts(exps,payables,prs,swos), byProject=new Map();
