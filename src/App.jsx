@@ -12,7 +12,7 @@ import {fmt,addPrintClose,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dro
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {projProgressPct, isConstructionDeal, projStageFlow, projStepIndex, projStepLabel, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel, pendingCostByProject, poSplitTotal, canRaiseOrder, woSignStep, WO_SIGN_MSG, arAgeBucket, arCallOrder} from './core';
+import {projProgressPct, isConstructionDeal, projStageFlow, projStepIndex, projStepLabel, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel, pendingCostByProject, poSplitTotal, canRaiseOrder, woSignStep, WO_SIGN_MSG, arAgeBucket, arCallOrder, dealHasBoq, MOTHER_PO_BOQ_MSG} from './core';
 import ProgressReportModal from './views/ProgressReportModal';
 
 // Returns a component whose function IDENTITY is stable across renders while its
@@ -1668,6 +1668,11 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
   const[form,setForm]=useState(initialForm||emptyDeal);
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
   const isWon=WON_STAGES.includes(form.stage);
+  // A deal can't become a standby PO while it still has a BOQ (the database
+  // refuses it, trg_deals_boq_guard). Only blocks turning it ON; an existing
+  // standby PO stays editable.
+  const savedDeal=editId?deals.find(d=>d.id===editId):null;
+  const standbyBlockedByBoq=!form.standbyPO&&!savedDeal?.standbyPO&&dealHasBoq(savedDeal||form);
   const setDrfAcc=(i,v)=>f("drfAccessories",(form.drfAccessories||[]).map((a,ai)=>ai===i?v:a));
   const addDrfAcc=()=>f("drfAccessories",[...(form.drfAccessories||[]),""])
   const remDrfAcc=(i)=>f("drfAccessories",(form.drfAccessories||[]).filter((_,ai)=>ai!==i));
@@ -1807,9 +1812,10 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
           <div style={{gridColumn:"1/-1"}}>
             <div style={{background:form.standbyPO?"#eff6ff":"#f8fafc",borderRadius:12,padding:"12px 14px",border:`1.5px solid ${form.standbyPO?"#bfdbfe":"#e2e8f0"}`}}>
               <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:".82rem",fontWeight:700,color:form.standbyPO?"#1d4ed8":"#475569"}}>
-                <input type="checkbox" checked={!!form.standbyPO} onChange={e=>{const on=e.target.checked;f("standbyPO",on);if(on)f("value",0);}} style={{width:18,height:18,cursor:"pointer",accentColor:"#2563eb"}}/>
+                <input type="checkbox" checked={!!form.standbyPO} disabled={standbyBlockedByBoq} onChange={e=>{const on=e.target.checked;f("standbyPO",on);if(on)f("value",0);}} style={{width:18,height:18,cursor:standbyBlockedByBoq?"not-allowed":"pointer",accentColor:"#2563eb"}}/>
                 💳 Standby PO / Adhoc umbrella
               </label>
+              {standbyBlockedByBoq&&<div style={{fontSize:".72rem",color:"#b45309",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"6px 10px",marginTop:6}}>🔒 {MOTHER_PO_BOQ_MSG(form.ceNo)}</div>}
               <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:4}}>Tick when this is a client PO / standby fund drawn down by individual jobs. The umbrella stays at ₱0 revenue; each linked job counts as it's charged, drawing the PO ceiling down toward ₱0.</div>
               {form.standbyPO&&(
                 <div style={{marginTop:10}}>
@@ -5030,6 +5036,9 @@ export default function App(){
       // Expired login: the write is held in the queue, and the session-expired
       // banner (below) tells the user what to do. No scary "rejected" toast.
       if(kind==="expired") return;
+      // A FabHub rule refused it: the drop toast (below) shows the server's own
+      // reason, so don't also show a generic "offline"/"bad data" one.
+      if(kind==="rule") return;
       const n=Date.now();
       if(n-last>30000){
         last=n;
@@ -5060,7 +5069,7 @@ export default function App(){
   const dropTimerRef=useRef(null);
   useEffect(()=>{
     setSbDropHandler((op,kind,msg)=>{
-      dropBufferRef.current.push({table:op?.table||"the server",msg});
+      dropBufferRef.current.push({table:op?.table||"the server",msg,kind});
       if(dropTimerRef.current) return;
       // Collect drops for a short window instead of firing one toast per
       // item — a single doomed batch (e.g. 20 activity_log entries pointing
@@ -5068,8 +5077,16 @@ export default function App(){
       dropTimerRef.current=setTimeout(()=>{
         const batch=dropBufferRef.current; dropBufferRef.current=[]; dropTimerRef.current=null;
         const byTable={};
-        batch.forEach(({table,msg})=>{ (byTable[table]=byTable[table]||{count:0,msg}).count++; });
-        Object.entries(byTable).forEach(([table,{count,msg}])=>{
+        // A rule refusal is grouped by its own message, so two different
+        // reasons are both shown instead of one hiding the other.
+        batch.forEach(({table,msg,kind})=>{ const k=kind==="rule"?`rule:${msg}`:table; (byTable[k]=byTable[k]||{table,count:0,msg,kind}).count++; });
+        Object.values(byTable).forEach(({table,count,msg,kind})=>{
+          // A FabHub rule refused the change (a database guard). Show its reason
+          // as the server wrote it; "redo it" would just hit the same rule.
+          if(kind==="rule"){
+            toastEmit(`🚫 Not saved: ${msg||"the server refused this change."} ${count>1?`(${count} changes)`:""}`.trim(),"error",15000);
+            return;
+          }
           const low=LOW_STAKES_DROP_TABLES.has(table);
           // "No row matched … it may not exist on the server yet" means the edit
           // was fine — its PARENT record just never reached the server, so the
@@ -8534,6 +8551,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // umbrellas are legitimately ₱0 — their value lives on the drawdown jobs — so
     // exempt them. Applies on edit too, so fixing a bad row means entering the
     // real value, not re-saving the placeholder.
+    // Safety net for the Standby PO gate in DealModal: the database refuses a
+    // deal that becomes a mother PO while it has a BOQ, and that refusal used to
+    // show only as "you may be offline" (CE-2026-1431, 2026-11-13).
+    if(data.standbyPO){
+      const prev=editDeal?deals.find(d=>d.id===editDeal):null;
+      if(!prev?.standbyPO&&dealHasBoq(prev||data)){toastEmit(MOTHER_PO_BOQ_MSG(data.ceNo),"error",12000);return;}
+    }
     if(!data.standbyPO){
       const v=Number(data.value)||0, inv=Number(data.invoiced)||0, paid=Number(data.amountPaid)||0;
       if(v===1){toastEmit("Contract value of ₱1 looks like an import placeholder. Enter the real contract value before saving.","error");return;}

@@ -1039,6 +1039,15 @@ export const scheduleSummary = (terms) => {
 // its own; its sub-projects carry the billing. Anything billed or collected on the
 // mother PO is usually a copy of a sub-project's and double-counts Collected.
 export const isMotherPO = (deal) => !!deal?.standbyPO;
+// A deal "has a BOQ" exactly as the database counts it (boq_has_content(),
+// migration 20261006010000): any items OR any sections. A deal can't become a
+// mother PO while it has one (trg_deals_boq_guard), and only a Manager can clear
+// one. BOQ Builder's Clear Draft, then Standby PO. Keep in sync.
+export const dealHasBoq = (deal) => {
+  const b = deal?.boqData || deal?.boq_data
+  return !!(b && ((Array.isArray(b.items) && b.items.length) || (Array.isArray(b.sections) && b.sections.length)))
+}
+export const MOTHER_PO_BOQ_MSG = (ceNo) => `${ceNo||"This deal"} still has a BOQ, and a standby PO (mother PO) can't carry one. Make sure the BOQ is on its sub-project, then ask a Manager to clear this deal's BOQ in BOQ Builder (Clear Draft). Then tick Standby PO.`
 // "NO DP = NO production": a PO or subcon work order can only be issued on a
 // client deal once the client has paid something, or a Manager has waived the
 // down payment (credit-term clients). A sub-project or addendum is clear when
