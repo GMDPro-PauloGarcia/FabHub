@@ -1,7 +1,7 @@
 import React,{useState,useMemo} from "react";
-import {supabase,isSupabaseReady} from "../supabaseClient";
 import {toastEmit,useIsMobile} from "../shared";
-import {projDisplayName} from "../core";
+import ProgressReportModal from "./ProgressReportModal";
+import {projDisplayName,isConstructionDeal,PUNCHLIST_MIN_PCT} from "../core";
 
 // ─── PROGRESS (Operations › Progress) ───────────────────────────────────────
 // Agreed with Paulo 2026-11-07: instead of PM Updates, Blockers and Scope
@@ -12,6 +12,25 @@ import {projDisplayName} from "../core";
 // Managers set it on any project; Coordinators on the projects they coordinate.
 
 const STEPS=[30,60,90,100];
+// Construction projects (CE type Construction / Retail Fit-Out) take any whole
+// % from 0 to 100 (migration 20261111150000); everything else 30/60/90/100.
+function PctInput({pct,min,disabled,onSave,lowerBlocked}){
+  const[v,setV]=useState("");
+  const n=v===""?null:Math.round(Number(v));
+  const ok=n!=null&&!isNaN(n)&&n>=min&&n<=100&&n!==pct&&!(lowerBlocked&&pct!=null&&n<pct);
+  const save=()=>{if(ok&&onSave(n)) setV("");};
+  return(
+    <div style={{display:"flex",gap:4,alignItems:"center"}}>
+      <input type="number" inputMode="numeric" min={min} max={100} step={1} value={v} disabled={disabled}
+        placeholder={pct!=null?String(pct):"—"} aria-label="Progress percent"
+        onChange={e=>setV(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")save();}}
+        style={{width:70,border:"1.5px solid #e2e8f0",borderRadius:8,padding:"6px 8px",fontFamily:"inherit",fontWeight:800,fontSize:".8rem"}}/>
+      <span style={{fontSize:".78rem",color:"#64748b"}}>%</span>
+      <button disabled={!ok||disabled} onClick={save}
+        style={{border:"none",borderRadius:8,padding:"7px 11px",background:ok&&!disabled?"#0B2545":"#e2e8f0",color:ok&&!disabled?"#fff":"#94a3b8",fontWeight:700,fontSize:".74rem",cursor:ok&&!disabled?"pointer":"default",fontFamily:"inherit"}}>Update</button>
+    </div>
+  );
+}
 const STEP_CLR={30:"#f59e0b",60:"#3b82f6",90:"#8b5cf6",100:"#059669"};
 const C={ink:"#0f172a",muted:"#475569",faint:"#64748b",line:"#e2e8f0",navy:"#0B2545"};
 const pgNorm=s=>String(s||"").replace(/\s*\([^)]*\)\s*$/,"").trim().toLowerCase();
@@ -22,7 +41,6 @@ export default function ProjectProgress({deals=[],pcards={},role,session,upPcard
   const me=pgNorm(session?.name);
   const[scope,setScope]=useState(role==="Manager"||role==="Operations"?"all":"mine");
   const[q,setQ]=useState("");
-  const[busy,setBusy]=useState(null);
 
   const isMine=pc=>!!pc&&me&&[pc.pm1,pc.pm2,pc.pm3,pc.coordinator].some(x=>x&&pgNorm(x)===me);
   const canSet=pc=>["Manager","Operations","ProjectMover"].includes(role)||(role==="Coordinator"&&pc&&pgNorm(pc.coordinator)===me);
@@ -35,27 +53,30 @@ export default function ProjectProgress({deals=[],pcards={},role,session,upPcard
       .sort((a,b)=>(a.pct??-1)-(b.pct??-1)||projDisplayName(a.d).localeCompare(projDisplayName(b.d)));
   },[deals,pcards,scope,q,me]);
 
-  const set=async(d,pct)=>{
-    if(!isSupabaseReady()){toastEmit("Offline: progress not saved","error");return;}
-    setBusy(d.id+":"+pct);
-    const{data,error}=await supabase.rpc("set_project_progress",{p_deal:d.id,p_pct:pct});
-    setBusy(null);
-    if(error){toastEmit("Not saved: "+(error.message||error),"error",9000);return;}
-    upPcards&&upPcards(ps=>({...ps,[d.id]:{...ps[d.id],manualProgress:pct,progressSetBy:session?.name||"",progressSetAt:data||new Date().toISOString()}}));
-    toastEmit(`${projDisplayName(d)}: ${pct}%`,"success");
+  // Every change goes through the Progress update form (work done, next step
+  // + date, issues; why, when lowering); only a Manager lowers it. Saved by
+  // set_project_progress(deal, pct, report), migration 20261111190000.
+  const[report,setReport]=useState(null); // {d, pct}
+  const set=(d,pct)=>{
+    const old=pcards[d.id]?.manualProgress;
+    if(old!=null&&pct<old&&role!=="Manager"){toastEmit(`Only a Manager can lower progress (it is ${old}% now).`,"warning",7000);return false;}
+    setReport({d,pct});
+    return true;
   };
 
-  const counts=STEPS.map(s=>rows.filter(r=>r.pct===s).length);
-  const notSet=rows.filter(r=>!STEPS.includes(r.pct)).length;
+  // Bands, so a construction project at e.g. 45 % counts in 31–60 %.
+  const BANDS=[[0,30],[31,60],[61,90],[91,100]];
+  const counts=BANDS.map(([a,b])=>rows.filter(r=>r.pct!=null&&r.pct>=a&&r.pct<=b).length);
+  const notSet=rows.filter(r=>r.pct==null).length;
   const box={background:"#fff",border:`1px solid ${C.line}`,borderRadius:12};
   return(
     <div>
       <div style={{marginBottom:12}}>
         <div style={{fontWeight:800,color:C.navy,fontSize:"1.15rem"}}>Progress</div>
-        <div style={{fontSize:".78rem",color:C.muted,marginTop:2}}>One estimate per active project: 30, 60, 90 or 100 % done. Pick it when it changes; Managers see it on Project Cards and the dashboard.</div>
+        <div style={{fontSize:".78rem",color:C.muted,marginTop:2}}>One estimate per active project: 30, 60, 90 or 100 % done (construction projects: the actual % on site, 0–100). Each change asks for a short update (work done, next step with a date, issues); it goes to Team Updates and the Operations chat. Only a Manager can lower it.</div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:mob?"repeat(3,1fr)":"repeat(5,1fr)",gap:8,marginBottom:12}}>
-        {[["Not set",notSet,C.faint],...STEPS.map((s,i)=>[`${s}%`,counts[i],STEP_CLR[s]])].map(([l,v,c])=>(
+        {[["Not set",notSet,C.faint],...BANDS.map(([a,b],i)=>[`${a}–${b}%`,counts[i],STEP_CLR[STEPS[i]]])].map(([l,v,c])=>(
           <div key={l} style={{...box,padding:"8px 12px"}}><div style={{fontSize:".62rem",fontWeight:800,color:C.faint,textTransform:"uppercase"}}>{l}</div><div style={{fontSize:"1.15rem",fontWeight:800,color:c}}>{v}</div></div>
         ))}
       </div>
@@ -73,14 +94,21 @@ export default function ProjectProgress({deals=[],pcards={},role,session,upPcard
               <div style={{fontWeight:700,color:C.ink,fontSize:".84rem"}}>{projDisplayName(d)}{d.project?<span style={{color:C.faint,fontWeight:500}}> · {d.project}</span>:null}</div>
               <div style={{fontSize:".7rem",color:C.faint}}>{[pc.pm1,pc.pm2,pc.pm3].filter(Boolean).join(", ")||"No PM"}{pc.targetEndDate?` · due ${pc.targetEndDate}`:""}{pc.progressSetBy?` · set by ${pc.progressSetBy} ${pgAgo(pc.progressSetAt)}`:""}</div>
             </div>
+            {isConstructionDeal(d)?(
+              <PctInput key={pct??"none"} pct={pct} lowerBlocked={role!=="Manager"} min={d.stage==="11 · Punchlist"?PUNCHLIST_MIN_PCT:0} disabled={!canSet(pc)} onSave={v=>set(d,v)}/>
+            ):(
             <div role="group" aria-label="Progress" style={{display:"flex",gap:4}}>
-              {STEPS.map(s=>{const on=pct===s;const dis=!canSet(pc)||!!busy;return(
+              {STEPS.map(s=>{const on=pct===s;const dis=!canSet(pc)||(pct!=null&&s<pct&&role!=="Manager");return(
                 <button key={s} disabled={dis} onClick={()=>!on&&set(d,s)} aria-pressed={on}
-                  style={{minWidth:52,border:`1.5px solid ${on?STEP_CLR[s]:C.line}`,borderRadius:8,padding:"6px 8px",background:on?STEP_CLR[s]:"#fff",color:on?"#fff":C.muted,fontWeight:800,fontSize:".78rem",cursor:dis?"default":"pointer",fontFamily:"inherit",opacity:busy===d.id+":"+s?.6:1}}>{s}%</button>);})}
+                  style={{minWidth:52,border:`1.5px solid ${on?STEP_CLR[s]:C.line}`,borderRadius:8,padding:"6px 8px",background:on?STEP_CLR[s]:"#fff",color:on?"#fff":C.muted,fontWeight:800,fontSize:".78rem",cursor:dis?"default":"pointer",fontFamily:"inherit"}}>{s}%</button>);})}
             </div>
+            )}
           </div>
         ))}
       </div>
+      {report&&<ProgressReportModal deal={report.d} pc={pcards[report.d.id]} initialPct={report.pct} role={role}
+        onClose={()=>setReport(null)}
+        onSaved={({pct,at})=>{upPcards&&upPcards(ps=>({...ps,[report.d.id]:{...ps[report.d.id],manualProgress:pct,progressSetBy:session?.name||"",progressSetAt:at}}));setReport(null);}}/>}
     </div>
   );
 }

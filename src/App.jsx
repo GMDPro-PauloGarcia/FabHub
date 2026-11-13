@@ -10,7 +10,8 @@ import {fmt,addPrintClose,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dro
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine,PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
+import {projProgressPct, isConstructionDeal, projStageFlow, projStepIndex, projStepLabel, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine,PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel} from './core';
+import ProgressReportModal from './views/ProgressReportModal';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -2715,29 +2716,26 @@ function MyAccountPage({session,users,setUsers,upUsers:upUsersExt,setSession:set
 }
 
 
-// Stage / % Complete here are the project's real status: a changed stage goes
-// through changeDealStage (set_deal_stage) and % Complete sets the project
-// card's progress. They used to be stored only as text inside the update, so
-// a PM could report "Installation" while the project still read Fabrication.
-function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logActivityProp,addPmUpdate,updateProjectTurnover,sendTelegramNotification,deals=[],role,changeDealStage,setProjectProgress}){
+// Stage here is the project's real status: a changed stage goes through
+// changeDealStage (set_deal_stage). Progress % is not set here: since
+// 2026-11-11 it needs the full Progress update (ProgressReportModal).
+function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logActivityProp,addPmUpdate,updateProjectTurnover,sendTelegramNotification,deals=[],role,changeDealStage}){
   const deal=pmUpdateModal?.dealId?deals.find(d=>d.id===pmUpdateModal.dealId):null;
   const curStage=deal?.stage||"";
   // Awarded projects only: a pre-award deal enters Kickoff through the Award
   // flow (JO, award date), never from here.
   const canStage=!!(deal&&changeDealStage&&WON_STAGES.includes(curStage)&&canSetDealStage(role,curStage));
-  const canPct=!!(deal&&setProjectProgress&&["Manager","ProjectMover","Operations","SalesOpsAdmin"].includes(role));
   const[saving,setSaving]=useState(false);
   const[updateType,setUpdateType]=useState(pmUpdateModal?.initialType||"General Progress");
   const[note,setNote]=useState("");
   const[nextSteps,setNextSteps]=useState("");
   const[stage,setStage]=useState("");
-  const[pct,setPct]=useState("");
   const[revisedDate,setRevisedDate]=useState("");
   const[blockerDesc,setBlockerDesc]=useState("");
   const[decisionMaker,setDecisionMaker]=useState("");
   const[actionPlan,setActionPlan]=useState("");
   React.useEffect(()=>{
-    if(pmUpdateModal){setUpdateType(pmUpdateModal.initialType||"General Progress");setNote("");setNextSteps("");setStage(curStage);setPct("");setSaving(false);setRevisedDate("");setBlockerDesc("");setDecisionMaker("");setActionPlan("");}
+    if(pmUpdateModal){setUpdateType(pmUpdateModal.initialType||"General Progress");setNote("");setNextSteps("");setStage(curStage);setSaving(false);setRevisedDate("");setBlockerDesc("");setDecisionMaker("");setActionPlan("");}
   },[pmUpdateModal?.dealId]);
   if(!pmUpdateModal) return null;
   const typeColor=PM_TYPE_COLOR[updateType]||"#0ea5e9";
@@ -2770,10 +2768,8 @@ function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logAc
             )}
             {canStage&&stage!==curStage&&<div style={{fontSize:".72rem",color:"#f97316",marginTop:3,fontWeight:600}}>⚠ Moves the project to {stage.replace(/^\d+ · /,"")}.</div>}
           </div>
-          {canPct&&<div>
-            <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>% Complete <span style={{fontWeight:400,color:"#94a3b8"}}>(optional)</span></label>
-            <input type="number" min="0" max="100" value={pct} onChange={e=>setPct(e.target.value)} placeholder="e.g. 45" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box"}}/>
-          </div>}
+          {/* Progress % is not set here: it needs the full Progress update
+              (Project Cards › Progress tab, or Projects › Progress). */}
         </div>
         )}
         <div>
@@ -2812,8 +2808,6 @@ function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logAc
             if(saving) return;
             if(!note.trim()){toastEmit("Please enter what happened.","warning");return;}
             if(isBlocker&&!blockerDesc.trim()){toastEmit("Please describe the blocker.","warning");return;}
-            const pctNum=String(pct).trim()===""?null:Math.round(Number(pct));
-            if(pctNum!=null&&(!Number.isFinite(pctNum)||pctNum<0||pctNum>100)){toastEmit("% Complete must be between 0 and 100.","warning");return;}
             const dealId=pmUpdateModal.dealId;
             const stageChanged=canStage&&!!stage&&stage!==curStage;
             // Stage first: if the server refuses it (or a gate is cancelled),
@@ -2824,8 +2818,7 @@ function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logAc
               setSaving(false);
               if(!ok) return;
             }
-            if(pctNum!=null&&canPct) setProjectProgress(dealId,pctNum);
-            const entry={id:uid(),type:updateType,date:today,time:new Date().toLocaleTimeString("en-PH",{hour:"2-digit",minute:"2-digit"}),by:session?.name||"Team",stage:deal?(stage||curStage):"",pct:pctNum!=null?String(pctNum):"",note:note.trim(),nextSteps:nextSteps.trim(),revisedDate,...(isBlocker?{blockerDesc:blockerDesc.trim(),decisionMaker:decisionMaker.trim(),actionPlan:actionPlan.trim(),blockerStatus:"Open"}:{})};
+            const entry={id:uid(),type:updateType,date:today,time:new Date().toLocaleTimeString("en-PH",{hour:"2-digit",minute:"2-digit"}),by:session?.name||"Team",stage:deal?(stage||curStage):"",pct:"",note:note.trim(),nextSteps:nextSteps.trim(),revisedDate,...(isBlocker?{blockerDesc:blockerDesc.trim(),decisionMaker:decisionMaker.trim(),actionPlan:actionPlan.trim(),blockerStatus:"Open"}:{})};
             // One Telegram per update: skip the generic ops ping when a more
             // specific message (stage change, blocker, materials) goes to ops.
             const silent=stageChanged||isBlocker||updateType==="Materials Needed";
@@ -5558,7 +5551,9 @@ export default function App(){
   const logActivity=(dealId,action,detail,by,opts)=>{
     const entry={id:uid(),dealId,action,detail,by:by||session?.name||"System",date:today,time:new Date().toLocaleTimeString("en-PH",{hour:"2-digit",minute:"2-digit"})};
     setActLog(prev=>{const next=[entry,...prev].slice(0,500);return next;});
-    if(isSupabaseReady()) sbInsert('activity_log',toSbActivity(entry)).catch(()=>{});
+    // localOnly: the server already wrote this row (e.g. set_project_progress);
+    // show it now without inserting a duplicate.
+    if(isSupabaseReady()&&!opts?.localOnly) sbInsert('activity_log',toSbActivity(entry)).catch(()=>{});
     if(action==="PM Update"&&!opts?.silent){
       const deal=deals.find(d=>d.id===dealId);
       sendTelegramNotification("ops",`📝 <b>PM Update</b>\n${deal?.client||dealId}\nBy: ${entry.by} · ${today}\n${detail||""}`);
@@ -7707,14 +7702,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   };
   // PM-reported % complete → the project card's manual progress (the same
   // override the Projects page sets). Only for a project that has a card.
-  const setProjectProgress=(dealId,val)=>{
-    if(!pcards[dealId]) return false;
-    upPcards(ps=>({...ps,[dealId]:{...ps[dealId],manualProgress:val}}));
-    if(isSupabaseReady()) syncProjectCard(dealId,{manual_progress:val});
-    return true;
-  };
+  // Progress % changes only through the Progress update form
+  // (src/views/ProgressReportModal.jsx → set_project_progress with a report).
   // Everything the Log Update modal needs to move the real project status.
-  const pmModalExtra={deals,role,changeDealStage,setProjectProgress,sendTelegramNotification};
+  const pmModalExtra={deals,role,changeDealStage,sendTelegramNotification};
   const addAddendum=(dealId,title,desc,requestedBy)=>{
     const entry={id:uid(),dealId,title,desc,requestedBy,date:today,status:"Pending",notifiedSales:false,notifiedOps:false};
     upDeals(ds=>ds.map(d=>d.id===dealId?{...d,addenda:[entry,...(d.addenda||[])]}:d));
@@ -11956,7 +11947,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     .map((d,i)=>{
                       const jo=dealJo(jos,d.id);
                       const pc=pcards[d.id];
-                      const pct=pc?Math.round(Object.values(pc.departments||{}).filter(dept=>dept.done).length/6*100):0;
+                      const pct=projProgressPct(pc,d);
                       const daysLeft=pc?.targetEndDate?Math.ceil((new Date(pc.targetEndDate)-today2)/(1000*60*60*24)):null;
                       const isOver=daysLeft!==null&&daysLeft<0;
                       const myUpdates=actLog.filter(a=>a.dealId===d.id&&a.action==="PM Update");
@@ -11978,7 +11969,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                             </div>
                             <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
                               <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                                <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:pct===100?"#059669":"#3b82f6"}}>{pct}%</span>
+                                <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:pct===100?"#059669":pct==null?"#94a3b8":"#3b82f6"}}>{pct==null?"—":`${pct}%`}</span>
                                 {daysLeft!==null&&(
                                   <span style={{fontSize:".7rem",fontWeight:700,color:isOver?"#dc2626":daysLeft<=7?"#f59e0b":"#059669",background:isOver?"#fef2f2":daysLeft<=7?"#fffbeb":"#f0fdf4",border:"1px solid",borderColor:isOver?"#fecaca":daysLeft<=7?"#fde68a":"#6ee7b7",borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap"}}>
                                     {isOver?`${Math.abs(daysLeft)}d OVER`:`${daysLeft}d left`}
@@ -12010,14 +12001,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 {otherProjects.slice(0,5).map((d,i)=>{
                   const jo=dealJo(jos,d.id);
                   const pc=pcards[d.id];
-                  const pct=pc?Math.round(Object.values(pc.departments||{}).filter(dept=>dept.done).length/6*100):0;
+                  const pct=projProgressPct(pc,d);
                   return(
                     <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:i<4?"1px solid #f8fafc":""}}>
                       <div>
                         <div style={{fontWeight:600,color:"#475569",fontSize:".85rem"}}>{d.client}</div>
                         <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d.ceNo} · PM: {pc?.pm1||jo?.pm1||"—"}</div>
                       </div>
-                      <span style={{fontSize:".8rem",fontWeight:700,color:"#94a3b8"}}>{pct}%</span>
+                      <span style={{fontSize:".8rem",fontWeight:700,color:"#94a3b8"}}>{pct==null?"—":`${pct}%`}</span>
                     </div>
                   );
                 })}
@@ -17533,14 +17524,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               {myProjects.map(d=>{
                 const jo=dealJo(jos,d.id);
                 const pc=pcards[d.id];
-                const pct=pc?Math.round(Object.values(pc.departments||{}).filter(dept=>dept.done).length/6*100):0;
+                const pct=projProgressPct(pc,d);
                 const myUpdates=actLog.filter(a=>a.dealId===d.id&&a.action==="PM Update").slice(0,3);
                 return(
                   <div key={d.id} style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
                     <div style={{background:"#0ea5e9",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                       <div>
                         <div style={{fontWeight:700,color:"#fff",fontSize:".92rem"}}>{d.client}</div>
-                        <div style={{fontSize:".72rem",color:"rgba(255,255,255,.7)",marginTop:1}}>{d.ceNo} · PM: {pc?.pm1||jo?.pm1||"—"} · {pct}% complete</div>
+                        <div style={{fontSize:".72rem",color:"rgba(255,255,255,.7)",marginTop:1}}>{d.ceNo} · PM: {pc?.pm1||jo?.pm1||"—"} · {pct==null?"progress not set":`${pct}% complete`}</div>
                       </div>
                       <button onClick={()=>setPmUpdateModal({dealId:d.id,dealName:d.client,ceNo:d.ceNo,ae:jo?.aeAssigned||d.salesOwner})}
                         style={{background:"rgba(255,255,255,.2)",border:"1px solid rgba(255,255,255,.3)",borderRadius:8,padding:"7px 14px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>
@@ -17581,7 +17572,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   if(page==="projects") return(
     <Wrap>
-      <ProjectCards changeDealStage={changeDealStage} setProjectProgress={setProjectProgress} syncProjectCard={syncProjectCard}
+      <ProjectCards changeDealStage={changeDealStage} syncProjectCard={syncProjectCard}
         pcards={pcards} wonDeals={wonDeals} completedDeals={completedDeals} deals={deals}
         toggleDeptTask={toggleDeptTask} markDeptDone={markDeptDone}
         setProjectTAT={setProjectTAT} jos={jos}
@@ -27639,7 +27630,7 @@ function TATSetter({deal,card,onSet,refTable,ceType}){
 }
 
 // ─── INVENTORY VIEW ───────────────────────────────────────────────────────────
-function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,prs=[],exps=[],isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,upDeals,ceReqs,toastEmit,sendTelegramNotification,initialDeal,clearJump,initialFilter,clearJumpFilter,loadChecklistTemplate,swos=[],addPmUpdate,setConfirmDel,customMembers=[],setCustomMembers=()=>{},setPage=()=>{},setJumpDeal=()=>{}}){
+function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,prs=[],exps=[],isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,upDeals,ceReqs,toastEmit,sendTelegramNotification,initialDeal,clearJump,initialFilter,clearJumpFilter,loadChecklistTemplate,swos=[],addPmUpdate,setConfirmDel,customMembers=[],setCustomMembers=()=>{},setPage=()=>{},setJumpDeal=()=>{}}){
   const todayStr=new Date().toISOString().split("T")[0];
   const[selDealRaw,setSelDeal]=useState(initialDeal||null);
   // A selection whose deal isn't loaded/won (deleted, moved to a lost stage, or a
@@ -27676,6 +27667,9 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
   const[scopeForm,setScopeForm]=useState({title:"",desc:"",value:"",ceNo:""});
   const fsc=(k,v)=>setScopeForm(p=>({...p,[k]:v}));
   const[showDateEdit,setShowDateEdit]=useState(false);
+  const[hqTab,setHqTab]=useState("progress");
+  const[pctDraft,setPctDraft]=useState("");
+  const[reportPct,setReportPct]=useState(null); // open Progress update form at this %
   const[dateForm,setDateForm]=useState({awardDate:"",targetEndDate:""});
   const fdt=(k,v)=>setDateForm(p=>({...p,[k]:v}));
   const[pmUpdateModal,setPmUpdateModal]=useState(null);
@@ -27707,14 +27701,6 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
   const card=selDeal?pcards[selDeal]:null;
   const jo=dealJo(jos,selDeal);
 
-  const PHASES=[
-    {id:"design",    label:"Design",     icon:"🎨", stgs:["06 · Kickoff","07 · Briefing"]},
-    {id:"fab",       label:"Fabrication",icon:"🔨", stgs:["08 · Fabrication"]},
-    {id:"site",      label:"Site",       icon:"🏗",  stgs:["09 · Site & Billing","10 · Installation"]},
-    {id:"punchlist", label:"Punchlist",  icon:"📋", stgs:["11 · Punchlist"]},
-    {id:"closeout",  label:"Close-Out",  icon:"✅", stgs:["12 · Close-Out","14 · Completed"]},
-  ];
-  const phaseIdx=stg=>PHASES.findIndex(p=>p.stgs.includes(stg));
 
   const fmt=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:0});
   const BUDGET_ONLY_PC=["Design","Operations","ProjectMover"];
@@ -27725,7 +27711,7 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
     return t>0?fmt(t)+" 📊":"Budget Pending";
   };
   const editableDepts={Manager:DEPT_ORDER,Sales:["Sales"],Design:["Design"],QS:["QS"],Procurement:["Procurement"],Operations:["Operations"],Finance:["Finance"],SalesOpsAdmin:DEPT_ORDER}[role]||[];
-  const projPct=(pc,deal=null)=>{if(deal?.stage==="12 · Close-Out"||deal?.stage==="14 · Completed")return 100;return pc?(pc.manualProgress!=null?pc.manualProgress:Math.round(Object.values(pc.departments||{}).filter(d=>d.done).length/6*100)):0;};
+  const projPct=(pc,deal=null)=>projProgressPct(pc,deal);
   const getHealth=(d,pc)=>{
     if(!pc||!d)return "none";
     const end=pc.targetEndDate?new Date(pc.targetEndDate):null;
@@ -27986,7 +27972,7 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
             list=[...list].sort((a,b)=>{
               if(pcSort==="client")return a.client.localeCompare(b.client);
               if(pcSort==="project")return (a.contact||a.client).localeCompare(b.contact||b.client);
-              if(pcSort==="pct")return projPct(pcards[a.id])-projPct(pcards[b.id]);
+              if(pcSort==="pct")return (projPct(pcards[a.id],a)??-1)-(projPct(pcards[b.id],b)??-1);
               if(pcSort==="tat"){
                 const da=pcards[a.id]?.targetEndDate?Math.ceil((new Date(pcards[a.id].targetEndDate)-today2)/86400000):999;
                 const db=pcards[b.id]?.targetEndDate?Math.ceil((new Date(pcards[b.id].targetEndDate)-today2)/86400000):999;
@@ -28057,8 +28043,6 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                   const projTypeC=pc?.tatCategory||d.projType||joC?.projType||"";
                   const pctC=projPct(pc,d);
                   const gradeC=calcCardGrade(d,pc);
-                  const deptStateC=DEPT_ORDER.map(dep=>({dep,done:!!pc?.departments?.[dep]?.done}));
-                  const doneCountC=deptStateC.filter(x=>x.done).length;
                   const lastNoteC=(pc?.pmUpdates||[])[0];
                   const lastNoteTxtC=lastNoteC?(lastNoteC.note||lastNoteC.text||""):"";
                   const[,hLabelC]=HC[h];
@@ -28085,27 +28069,17 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                             <span title={`Card health: ${hLabelC}`} style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:".92rem",lineHeight:1,minWidth:26,height:26,display:"inline-flex",alignItems:"center",justifyContent:"center",borderRadius:6,background:gradeC.gcolor,color:gradeC.color,border:`1px solid ${gradeC.color}55`,padding:"0 5px"}}>{gradeC.grade}</span>
                             {role==="Manager"&&setConfirmDel&&<button onClick={e=>{e.stopPropagation();setConfirmDel(d.id);}} title="Delete project" style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:5,padding:"3px 6px",fontSize:".72rem",lineHeight:1,color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>🗑</button>}
                           </div>
-                          <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:600,letterSpacing:".06em",textTransform:"uppercase",padding:"3px 8px",borderRadius:4,background:hc+"18",color:hc,border:`1px solid ${hc}44`,whiteSpace:"nowrap"}}>{d.stage?.replace(/^\d+ · /,"")||"—"}</span>
+                          <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:600,letterSpacing:".06em",textTransform:"uppercase",padding:"3px 8px",borderRadius:4,background:hc+"18",color:hc,border:`1px solid ${hc}44`,whiteSpace:"nowrap"}}>{projStageLabel(d,pc)}</span>
                         </div>
                       </div>
-                      {/* Progress + department strip */}
+                      {/* Progress: the PM's 30/60/90/100 estimate only */}
                       <div style={{padding:"10px 15px",borderBottom:"1px solid #e2e8f0",background:"#fbfcfe"}}>
                         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
-                          <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".55rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".08em",color:"#94a3b8"}}>Progress · {doneCountC}/6 depts</span>
-                          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:".95rem",color:pctC>=100?"#059669":pctC>=50?"#0f172a":"#64748b"}}>{pctC}%</span>
+                          <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".55rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".08em",color:"#94a3b8"}}>Progress{pc?.progressSetBy?` · ${pc.progressSetBy}`:""}</span>
+                          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:".95rem",color:pctC==null?"#94a3b8":pctC>=100?"#059669":pctC>=50?"#0f172a":"#64748b"}}>{pctC==null?"Not set":`${pctC}%`}</span>
                         </div>
-                        <div style={{height:6,borderRadius:20,background:"#e2e8f0",overflow:"hidden",marginBottom:8}}>
-                          <div style={{height:"100%",width:`${pctC}%`,borderRadius:20,background:pctC>=100?"#10b981":isOverC?"#ef4444":"#3b82f6",transition:"width .3s"}}/>
-                        </div>
-                        <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-                          {deptStateC.map(({dep,done})=>(
-                            <span key={dep} title={`${dep}: ${done?"done":"pending"}`}
-                              style={{fontSize:".55rem",fontWeight:700,padding:"2px 7px",borderRadius:20,whiteSpace:"nowrap",
-                                background:done?(DEPT_CLR[dep]||"#10b981"):"#fff",color:done?"#fff":"#94a3b8",
-                                border:`1px solid ${done?(DEPT_CLR[dep]||"#10b981"):"#e2e8f0"}`}}>
-                              {done?"✓ ":""}{dep.slice(0,4)}
-                            </span>
-                          ))}
+                        <div style={{height:6,borderRadius:20,background:"#e2e8f0",overflow:"hidden"}}>
+                          <div style={{height:"100%",width:`${pctC||0}%`,borderRadius:20,background:pctC>=100?"#10b981":isOverC?"#ef4444":"#3b82f6",transition:"width .3s"}}/>
                         </div>
                       </div>
                       {/* Spec table */}
@@ -28184,7 +28158,7 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                         const pm2L=pcL?.pm2||joL?.pm2||"";
                         const coordL=pcL?.coordinator||joL?.coordinator||"—";
                         const projSwosL=(swos||[]).filter(w=>w.projectId===d.id||w.dealId===d.id);
-                        const stageLabel=d.stage?.replace(/^\d+ · /,"")||"—";
+                        const stageLabel=projStageLabel(d,pcL);
                         return(
                           <tr key={d.id} style={{borderBottom:"1px solid #e2e8f0",cursor:"pointer"}}
                             onClick={()=>{setSelDeal(d.id);setShowTeamEdit(false);}}
@@ -28255,7 +28229,6 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
         (()=>{
           const pct=projPct(card,deal);
           const h=getHealth(deal,card);const[hc,hl]=HC[h];
-          const pi=phaseIdx(deal?.stage);
           const elapsed=card?.awardDate?Math.ceil((today2-new Date(card.awardDate))/86400000):0;
           const end=card?.targetEndDate?new Date(card.targetEndDate):null;
           const dLeft=end?Math.ceil((end-today2)/86400000):null;
@@ -28275,176 +28248,106 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
             return (sta[a.status]-sta[b.status])||(pri[a.priority]-pri[b.priority]);
           });
 
-          return(
-            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          const canEditTeam=role==="Manager"||role==="Operations"||role==="SalesOpsAdmin";
+          const canEditDates=role==="Manager"||role==="Operations"||role==="QS"||role==="SalesOpsAdmin";
+          const hqBtn=(bg,bd,c)=>({background:bg,border:`1px solid ${bd}`,borderRadius:6,padding:"4px 10px",fontSize:".72rem",fontWeight:700,color:c,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"});
+          // Same rule as the Progress page: PMs/Operations/Managers on any project, Coordinators on their own.
+          const pgNormHq=x=>String(x||"").replace(/\s*\([^)]*\)\s*$/,"").trim().toLowerCase();
+          const canSetPct=!!card&&(["Manager","Operations","ProjectMover"].includes(role)||(role==="Coordinator"&&!!session?.name&&pgNormHq(card.coordinator)===pgNormHq(session.name)));
+          // Every % change goes through the Progress update form (work done, next
+          // step + date, issues; why, when lowering). Only a Manager lowers it.
+          const setPctRpc=pctVal=>{
+            const old=card?.manualProgress;
+            if(old!=null&&pctVal<old&&role!=="Manager"){toastEmit(`Only a Manager can lower progress (it is ${old}% now).`,"warning",7000);return false;}
+            setReportPct(pctVal);
+            return true;
+          };
+          const updatesCount=(actLog||[]).filter(a=>a.dealId===selDeal&&a.action==="PM Update").length;
+          const clOpen=projCl.filter(c=>c.status!=="Done").length;
+          const hqTabs=[["progress","Progress",openProjB.length],["updates","Updates",updatesCount],["checklist","Checklist",clOpen],["finance","Finance",0]];
 
-              {/* ── Header card ── */}
-              <div style={{background:"#fff",borderRadius:14,border:`1.5px solid ${hc}44`,padding:isMobile?"14px":"18px 22px"}}>
-                {/* Top row: project name + stage badge */}
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10,marginBottom:10}}>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontWeight:800,color:"#0f172a",fontSize:isMobile?"1rem":"1.15rem"}}>{deal?.contact||deal?.client}</div>
-                    {deal?.contact&&<div style={{fontSize:".72rem",color:"#8b5cf6",marginTop:1}}>📁 {deal?.client}</div>}
-                    <div style={{fontSize:".75rem",color:"#64748b",marginTop:2,display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+          return(
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+
+              {/* ── Header: identity, key facts, team, dates and stage in one card ── */}
+              <div style={{background:"#fff",borderRadius:14,border:`1.5px solid ${hc}44`,padding:isMobile?"12px 14px":"14px 20px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10}}>
+                  <div style={{flex:"1 1 260px",minWidth:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                      <span style={{fontWeight:800,color:"#0f172a",fontSize:isMobile?"1rem":"1.12rem"}}>{deal?.contact||deal?.client}</span>
+                      <span style={{fontSize:".68rem",fontWeight:700,color:hc,background:hc+"18",borderRadius:20,padding:"2px 10px",border:`1px solid ${hc}44`}}>{projStageLabel(deal,card)}</span>
+                      {pct===100&&<span style={{fontSize:".66rem",fontWeight:700,color:"#059669",background:"#f0fdf4",borderRadius:20,padding:"2px 9px"}}>✅ Done</span>}
+                    </div>
+                    <div style={{fontSize:".72rem",color:"#64748b",marginTop:3,display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+                      {deal?.contact&&<span style={{color:"#8b5cf6"}}>📁 {deal?.client}</span>}
                       {deal?.ceNo&&<span>{deal.ceNo}</span>}
                       {jo&&<span style={{color:"#3b82f6"}}>📋 {jo.joNo}</span>}
+                      {deal?.ceType&&<span>· {deal.ceType}</span>}
                       {card?.warehouseOnly&&<span style={{background:"#fef3c7",color:"#92400e",border:"1px solid #fbbf24",borderRadius:20,padding:"1px 8px",fontSize:".65rem",fontWeight:700}}>📦 Warehouse / Procurement Only</span>}
+                      {deal?.salesRepoLink&&<a href={deal.salesRepoLink} target="_blank" rel="noreferrer" style={{color:"#3b82f6",textDecoration:"none",fontWeight:700}}>📁 Sales Repo</a>}
+                      {(card?.commsLink||jo?.commsLink)&&<a href={card?.commsLink||jo?.commsLink} target="_blank" rel="noreferrer" style={{color:"#059669",textDecoration:"none",fontWeight:700}}>📱 Comms Group</a>}
                     </div>
                   </div>
-                  <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0}}>
-                    <span style={{fontSize:".72rem",fontWeight:700,color:hc,background:hc+"18",borderRadius:20,padding:"4px 12px",border:`1px solid ${hc}44`}}>{deal?.stage?.replace(/^\d+ · /,"")||"—"}</span>
-                    {pct===100&&<span style={{fontSize:".68rem",fontWeight:700,color:"#059669",background:"#f0fdf4",borderRadius:20,padding:"2px 9px"}}>✅ Done</span>}
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+                    {canEditTeam&&!showTeamEdit&&selDeal&&(
+                      <button onClick={()=>{
+                        setTeamForm({ae:card?.aeAssigned||jo?.aeAssigned||deal?.salesOwner||"",pm1:card?.pm1||jo?.pm1||"",pm2:card?.pm2||jo?.pm2||"",pm3:card?.pm3||jo?.pm3||"",designer:card?.designer||jo?.designer||"",coordinator:card?.coordinator||jo?.coordinator||"",warehouseOnly:card?.warehouseOnly||false});
+                        setShowDateEdit(false);setShowTeamEdit(true);
+                      }} style={hqBtn("#f1f5f9","#e2e8f0","#475569")}>✏️ Team</button>
+                    )}
+                    {canEditDates&&!showDateEdit&&selDeal&&(
+                      <button onClick={()=>{setDateForm({awardDate:card?.awardDate||"",targetEndDate:card?.targetEndDate||"",location:deal?.location||"",ceType:deal?.ceType||"Fabrication / General"});setShowTeamEdit(false);setShowDateEdit(true);}}
+                        style={hqBtn("#f1f5f9","#e2e8f0","#475569")}>✏️ Dates &amp; Site</button>
+                    )}
                     {/* PRFs for this project — same roles that can read prfs (prf_can_read). */}
                     {deal&&["Manager","ProjectMover","Operations","Coordinator","Warehouse","QS","Procurement","ProcurementManager","Finance","FinanceAssistant","Accounting","SalesOpsAdmin"].includes(role)&&(
                       <button onClick={()=>{setJumpDeal(deal.id);setPage("materialreq");}} title="Purchase requests for this project"
-                        style={{background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:6,padding:"4px 10px",fontSize:".72rem",fontWeight:700,color:"#c2410c",cursor:"pointer",fontFamily:"inherit"}}>📦 PRFs</button>
+                        style={hqBtn("#fff7ed","#fed7aa","#c2410c")}>📦 PRFs</button>
                     )}
-                    {role==="Manager"&&setConfirmDel&&deal&&<button onClick={()=>setConfirmDel(deal.id)} title="Delete this project and all its records" style={{marginTop:2,background:"#fef2f2",border:"1px solid #fecaca",borderRadius:6,padding:"4px 10px",fontSize:".7rem",fontWeight:700,color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>🗑 Delete Project</button>}
+                    {role==="Manager"&&setConfirmDel&&deal&&<button onClick={()=>setConfirmDel(deal.id)} title="Delete this project and all its records" style={hqBtn("#fef2f2","#fecaca","#dc2626")}>🗑 Delete</button>}
                   </div>
                 </div>
 
-                {/* Info grid: location, team, subcons, timeline */}
-                <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:8,marginBottom:10}}>
-                  {/* Location */}
-                  <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px"}}>
-                    <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:2}}>📍 Location</div>
-                    <div style={{fontSize:".82rem",fontWeight:600,color:"#0f172a"}}>{deal?.location||jo?.location||"—"}</div>
-                  </div>
-                  {/* AE */}
-                  <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px"}}>
-                    <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:2}}>🤝 AE</div>
-                    <div style={{fontSize:".82rem",fontWeight:600,color:"#0f172a"}}>{card?.aeAssigned||jo?.aeAssigned||deal?.salesOwner||"—"}</div>
-                  </div>
-                  {/* PM */}
-                  <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px"}}>
-                    <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:2}}>👷 PM</div>
-                    <div style={{fontSize:".82rem",fontWeight:600,color:"#0f172a"}}>{[card?.pm1||jo?.pm1,card?.pm2||jo?.pm2,card?.pm3||jo?.pm3].filter(Boolean).join(", ")||"Unassigned"}</div>
-                  </div>
-                  {/* Coordinator */}
-                  <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px"}}>
-                    <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:2}}>📋 Coordinator</div>
-                    <div style={{fontSize:".82rem",fontWeight:600,color:"#0f172a"}}>{card?.coordinator||jo?.coordinator||"—"}</div>
-                  </div>
-                  {/* Subcontractors */}
-                  {(()=>{
-                    const projSwos=(swos||[]).filter(w=>w.projectId===selDeal||w.dealId===selDeal);
-                    return projSwos.length>0?(
-                      <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px",gridColumn:"1/-1"}}>
-                        <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:4}}>🔧 Subcontractors</div>
-                        <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
-                          {projSwos.map(w=>(
-                            <span key={w.id} style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:20,padding:"2px 10px",fontSize:".75rem",fontWeight:600,color:"#1d4ed8"}}>
-                              {w.subcontractor||"?"}{w.specialty?` · ${w.specialty}`:""}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ):null;
-                  })()}
-                  {/* Timeline */}
-                  <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px",gridColumn:"1/-1"}}>
-                    <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:4}}>📅 Timeline</div>
-                    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-                      <span style={{fontSize:".78rem",color:"#64748b"}}>{jo?.startDate||deal?.awardDate||"—"}</span>
-                      <span style={{color:"#94a3b8",fontSize:".7rem"}}>→</span>
-                      <span style={{fontSize:".78rem",fontWeight:700,color:isOver?"#ef4444":dLeft<=7?"#f59e0b":"#059669"}}>
-                        {card?.targetEndDate||"No turnover date set"}
-                      </span>
-                      {card?.targetDays&&(
-                        <span style={{fontSize:".7rem",fontWeight:700,color:isOver?"#ef4444":dLeft<=7?"#f59e0b":"#64748b",background:isOver?"#fef2f2":dLeft<=7?"#fffbeb":"#f1f5f9",borderRadius:20,padding:"2px 8px"}}>
-                          {isOver?`⚠ ${Math.abs(dLeft)}d overdue`:`${dLeft}d left`}
+                {/* Key facts: each shown once (location, team, dates, TAT) */}
+                <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(auto-fit,minmax(150px,1fr))",gap:6,marginTop:10}}>
+                  {[
+                    {l:"📍 Location",v:deal?.location||jo?.location||"—"},
+                    {l:"🤝 AE",v:card?.aeAssigned||jo?.aeAssigned||deal?.salesOwner||"—"},
+                    {l:"👷 PM",v:[card?.pm1||jo?.pm1,card?.pm2||jo?.pm2,card?.pm3||jo?.pm3].filter(Boolean).join(", ")||"Unassigned"},
+                    {l:"📋 Coordinator",v:card?.coordinator||jo?.coordinator||"—"},
+                    {l:"🎨 Designer",v:card?.designer||jo?.designer||"—"},
+                    {l:"📅 Start → Turnover",v:<>
+                      <span style={{color:"#64748b",fontWeight:500,whiteSpace:"nowrap"}}>{card?.awardDate||jo?.startDate||deal?.awardDate||"—"}</span>
+                      <span style={{color:"#94a3b8"}}> → </span>
+                      <span style={{color:dLeft===null?"#94a3b8":isOver?"#ef4444":dLeft<=7?"#f59e0b":"#059669",whiteSpace:"nowrap"}}>{card?.targetEndDate||"not set"}</span>
+                      {dLeft!==null&&<span style={{marginLeft:6,fontSize:".66rem",fontWeight:700,color:isOver?"#ef4444":dLeft<=7?"#f59e0b":"#64748b",background:isOver?"#fef2f2":dLeft<=7?"#fffbeb":"#f1f5f9",borderRadius:20,padding:"1px 7px",whiteSpace:"nowrap"}}>{isOver?`⚠ ${Math.abs(dLeft)}d overdue`:`${dLeft}d left`}</span>}
+                      {card?.targetDays&&card?.awardDate&&<span style={{marginLeft:6,fontSize:".64rem",color:"#94a3b8",fontWeight:500,whiteSpace:"nowrap"}}>day {elapsed}/{card.targetDays}</span>}
+                    </>,wide:true},
+                  ].map(({l,v,wide})=>(
+                    <div key={l} style={{background:"#f8fafc",borderRadius:8,padding:"6px 10px",minWidth:0,gridColumn:wide?(isMobile?"1/-1":"span 2"):undefined}}>
+                      <div style={{fontSize:".56rem",textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",marginBottom:1}}>{l}</div>
+                      <div style={{fontSize:".78rem",fontWeight:600,color:"#0f172a",overflow:"hidden",textOverflow:wide?undefined:"ellipsis",whiteSpace:wide?"normal":"nowrap"}} title={typeof v==="string"?v:undefined}>{v}</div>
+                    </div>
+                  ))}
+                </div>
+                {(()=>{
+                  const projSwos=(swos||[]).filter(w=>w.projectId===selDeal||w.dealId===selDeal);
+                  return projSwos.length>0?(
+                    <div style={{display:"flex",flexWrap:"wrap",gap:5,alignItems:"center",marginTop:8}}>
+                      <span style={{fontSize:".56rem",textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8"}}>🔧 Subcons</span>
+                      {projSwos.map(w=>(
+                        <span key={w.id} style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:20,padding:"1px 9px",fontSize:".7rem",fontWeight:600,color:"#1d4ed8"}}>
+                          {w.subcontractor||"?"}{w.specialty?` · ${w.specialty}`:""}
                         </span>
-                      )}
+                      ))}
                     </div>
-                  </div>
-                </div>
-                {/* Stage selector */}
-                {["Manager","Sales","Operations","ProjectMover","SalesOpsAdmin"].includes(role)&&deal&&changeDealStage&&canSetDealStage(role,deal.stage)&&(()=>{
-                  const changeStage=async st=>{
-                    if(!(await changeDealStage(selDeal,st))) return;
-                    if(st==="14 · Completed"){
-                      setPcFilter("completed");
-                      setSelDeal(null);
-                      toastEmit(`✅ ${deal.client} marked Completed — showing Completed tab`,"success");
-                    } else {
-                      toastEmit(`Stage → ${st}`,"success");
-                    }
-                  };
-                  const ACTIVE_STAGES=["06 · Kickoff","07 · Briefing","08 · Fabrication","09 · Site & Billing","10 · Installation","11 · Punchlist"];
-                  const isAlreadyDone=deal.stage==="12 · Close-Out"||deal.stage==="14 · Completed";
-                  return(
-                    <div style={{marginTop:12,borderTop:"1px solid #f1f5f9",paddingTop:12}}>
-                      <div style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".08em",color:"#94a3b8",marginBottom:8}}>Stage — tap to change</div>
-                      <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-                        {ACTIVE_STAGES.map(s=>{
-                          const isActive=deal.stage===s;
-                          const stageColors={"06 · Kickoff":"#8b5cf6","07 · Briefing":"#6366f1","08 · Fabrication":"#f59e0b","09 · Site & Billing":"#f97316","10 · Installation":"#3b82f6","11 · Punchlist":"#ef4444"};
-                          const sc=stageColors[s]||"#64748b";
-                          const label=s.replace(/^\d+ · /,"");
-                          return(
-                            <button key={s} onClick={()=>changeStage(s)}
-                              style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".62rem",fontWeight:600,letterSpacing:".04em",padding:"4px 11px",borderRadius:20,cursor:"pointer",transition:"all .12s",
-                                background:isActive?sc:"transparent",
-                                color:isActive?"#fff":sc,
-                                border:`1.5px solid ${isActive?sc:sc+"55"}`}}>
-                              {label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      {/* Complete project button — shown when stage is 06-11 */}
-                      {!isAlreadyDone&&(
-                        <div style={{marginTop:10,display:"flex",gap:8,flexWrap:"wrap"}}>
-                          <button onClick={async ()=>{if((await uiConfirm(`Move "${deal.contact||deal.client}" to Close-Out?\n\nUse this when the project is finishing up (final billing, punch items, handover).`))) changeStage("12 · Close-Out");}}
-                            style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".62rem",fontWeight:700,letterSpacing:".04em",padding:"5px 14px",borderRadius:20,cursor:"pointer",background:"transparent",color:"#059669",border:"1.5px solid #059669"}}>
-                            🔒 Move to Close-Out
-                          </button>
-                          {canSetDealStage(role,deal.stage,"14 · Completed")&&(
-                          <button onClick={async ()=>{if((await uiConfirm(`Mark "${deal.contact||deal.client}" as Completed?\n\nUse this only when all work is done and the project is fully closed.`))) changeStage("14 · Completed");}}
-                            style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".62rem",fontWeight:700,letterSpacing:".04em",padding:"5px 14px",borderRadius:20,cursor:"pointer",background:"#059669",color:"#fff",border:"1.5px solid #059669"}}>
-                            ✅ Mark as Completed
-                          </button>
-                          )}
-                        </div>
-                      )}
-                      {/* If already done, show badge + reopen option */}
-                      {isAlreadyDone&&(
-                        <div style={{marginTop:10,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-                          <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".62rem",fontWeight:700,padding:"4px 12px",borderRadius:20,background:"#ecfdf5",color:"#059669",border:"1px solid #a7f3d0"}}>
-                            {deal.stage==="14 · Completed"?"✅ Completed":"🔒 Close-Out"}
-                          </span>
-                          <button onClick={async ()=>{if((await uiConfirm("Reopen this project? It will be moved back to 11 · Punchlist."))) changeStage("11 · Punchlist");}}
-                            style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:600,padding:"3px 10px",borderRadius:20,cursor:"pointer",background:"transparent",color:"#94a3b8",border:"1px solid #e2e8f0"}}>
-                            ↩ Reopen
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
+                  ):null;
                 })()}
-                {/* All-depts-done celebration banner */}
-                {pct===100&&deal&&deal.stage!=="12 · Close-Out"&&deal.stage!=="14 · Completed"&&(
-                  <div style={{marginTop:10,background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:10,padding:"10px 14px"}}>
-                    <span style={{fontSize:".8rem",fontWeight:700,color:"#059669"}}>🎉 All departments complete! Use the buttons above to close out or complete this project.</span>
-                  </div>
-                )}
-                {/* Scope changes are logged by Sales as a linked deal
-                    (+ Add New Deal -> Link to Parent Deal), not from the project
-                    card, so there is no "Log Scope Change" form here. */}
-              </div>
 
-              {/* ── Project Team ── */}
-              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>👥 Project Team</div>
-                  {(role==="Manager"||role==="Operations"||role==="SalesOpsAdmin")&&!showTeamEdit&&selDeal&&(
-                    <button onClick={()=>{
-                      setTeamForm({ae:card?.aeAssigned||jo?.aeAssigned||deal?.salesOwner||"",pm1:card?.pm1||jo?.pm1||"",pm2:card?.pm2||jo?.pm2||"",pm3:card?.pm3||jo?.pm3||"",designer:card?.designer||jo?.designer||"",coordinator:card?.coordinator||jo?.coordinator||"",warehouseOnly:card?.warehouseOnly||false});
-                      setShowTeamEdit(true);
-                    }} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>✏️ Edit</button>
-                  )}
-                </div>
-                {showTeamEdit?(
+                {/* Inline editors (open one at a time) */}
+                {showTeamEdit&&(
+                  <div style={{marginTop:10,background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"12px 14px"}}>
+                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".8rem",marginBottom:8}}>👥 Project Team</div>
                   <div style={{display:"flex",flexDirection:"column",gap:8}}>
                     {[["ae","AE (Account Executive)",SALES_TEAM],["pm1","PM 1",OPS_TEAM],["pm2","PM 2",OPS_TEAM],["pm3","PM 3",OPS_TEAM],["designer","Designer",DESIGN_MEMBERS],["coordinator","Coordinator",OPS_TEAM]].map(([k,l,opts])=>{
                       const sugg=[...new Set([...opts,...customMembers])];
@@ -28493,33 +28396,10 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                       <button onClick={()=>setShowTeamEdit(false)} style={{flex:1,background:"#f1f5f9",border:"none",borderRadius:8,padding:"8px",fontFamily:"inherit",fontSize:".82rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>Cancel</button>
                     </div>
                   </div>
-                ):(
-                  <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:6}}>
-                    {[
-                      {l:"AE",v:card?.aeAssigned||jo?.aeAssigned||deal?.salesOwner||"—"},
-                      {l:"Designer",v:card?.designer||jo?.designer||"—"},
-                      {l:"PM",v:[card?.pm1||jo?.pm1,card?.pm2||jo?.pm2,card?.pm3||jo?.pm3].filter(Boolean).join(", ")||"—"},
-                      {l:"Coordinator",v:card?.coordinator||jo?.coordinator||"—"},
-                    ].map(({l,v})=>(
-                      <div key={l} style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px"}}>
-                        <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:2}}>{l}</div>
-                        <div style={{fontSize:".82rem",fontWeight:600,color:"#0f172a"}}>{v}</div>
-                      </div>
-                    ))}
                   </div>
                 )}
-              </div>
-
-              {/* ── Vitals ── */}
-              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>📌 Project Vitals</div>
-                  {(role==="Manager"||role==="Operations"||role==="QS"||role==="SalesOpsAdmin")&&selDeal&&!showDateEdit&&(
-                    <button onClick={()=>{setDateForm({awardDate:card?.awardDate||"",targetEndDate:card?.targetEndDate||"",location:deal?.location||"",ceType:deal?.ceType||"Fabrication / General"});setShowDateEdit(true);}}
-                      style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>✏️ Edit</button>
-                  )}
-                </div>
-                {showDateEdit?(
+                {showDateEdit&&(
+                  <div style={{marginTop:10}}>
                   <div style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"14px",marginBottom:10}}>
                     <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10,marginBottom:12}}>
                       <div>
@@ -28575,115 +28455,171 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                         style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"8px 14px",fontFamily:"inherit",fontSize:".82rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>Cancel</button>
                     </div>
                   </div>
-                ):(
-                  <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(3,1fr)",gap:8,marginBottom:10}}>
-                    {[{l:"Location",v:deal?.location||"—"},{l:"Award Date",v:card?.awardDate||"—"},{l:"Target Due",v:card?.targetEndDate||"Not set"},{l:"CE Type",v:deal?.ceType||"—"},{l:"Elapsed",v:card?.awardDate?elapsed+"d":"—"},{l:"TAT",v:card?.targetDays?card.targetDays+"d target":"Not set"}].map(({l,v})=>(
-                      <div key={l} style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px"}}>
-                        <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:2}}>{l}</div>
-                        <div style={{fontSize:".82rem",fontWeight:600,color:"#0f172a"}}>{v}</div>
-                      </div>
-                    ))}
                   </div>
                 )}
-                {!showDateEdit&&<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                  {deal?.salesRepoLink&&<a href={deal.salesRepoLink} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:".72rem",color:"#3b82f6",textDecoration:"none",fontWeight:700,background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 10px"}}>📁 Sales Repo</a>}
-                  {(card?.commsLink||jo?.commsLink)&&<a href={card?.commsLink||jo?.commsLink} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:".72rem",color:"#059669",textDecoration:"none",fontWeight:700,background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:6,padding:"4px 10px"}}>📱 Comms Group</a>}
-                </div>}
+
+                {/* Stage: one stepper (replaces the old Phase timeline + stage buttons).
+                    Clickable only where canSetDealStage allows the move. */}
+                {deal&&(()=>{
+                  const FLOW=projStageFlow(deal);
+                  const cur=projStepIndex(deal);
+                  const canStage=["Manager","Sales","Operations","ProjectMover","SalesOpsAdmin"].includes(role)&&!!changeDealStage&&canSetDealStage(role,deal.stage);
+                  const isAlreadyDone=deal.stage==="12 · Close-Out"||deal.stage==="14 · Completed";
+                  const stepCan=step=>canStage&&deal.stage!==step.target&&!step.stages.includes(deal.stage)&&canSetDealStage(role,deal.stage,step.target);
+                  const changeStage=async st=>{
+                    if(!(await changeDealStage(selDeal,st))) return false;
+                    if(st==="14 · Completed"){
+                      setPcFilter("completed");
+                      setSelDeal(null);
+                      toastEmit(`✅ ${deal.client} marked Completed — showing Completed tab`,"success");
+                    } else {
+                      toastEmit(`Stage → ${projStageLabel({...deal,stage:st},card)}`,"success");
+                    }
+                    return true;
+                  };
+                  const pick=async st=>{
+                    if(st==="12 · Close-Out"&&!(await uiConfirm(`Mark "${deal.contact||deal.client}" as Done?\n\nDone means every punchlist item is completed and the project is ready to receive retention.`))) return;
+                    if(st==="14 · Completed"&&!(await uiConfirm(`Mark "${deal.contact||deal.client}" as Completed?\n\nUse this only when all work is done and the project is fully closed.`))) return;
+                    if(st==="11 · Punchlist"&&!(await uiConfirm(`Move "${deal.contact||deal.client}" to Punchlist?\n\nPunchlist means the project has reached ${PUNCHLIST_MIN_PCT}%. You will be asked for a progress update at ${PUNCHLIST_MIN_PCT}%.`))) return;
+                    const moved=await changeStage(st);
+                    // Punchlist = 90 %: record it as the project's progress (audited
+                    // through set_project_progress) when the user may set progress.
+                    if(moved&&st==="11 · Punchlist"&&card&&canSetPct&&(card.manualProgress==null||card.manualProgress<PUNCHLIST_MIN_PCT)) setPctRpc(PUNCHLIST_MIN_PCT);
+                  };
+                  return(
+                    <div style={{marginTop:10,borderTop:"1px solid #f1f5f9",paddingTop:10}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginBottom:6}}>
+                        <span style={{fontSize:".58rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".08em",color:"#94a3b8"}}>Stage{canStage?" — tap to change":""}</span>
+                        {isAlreadyDone&&canStage&&canSetDealStage(role,deal.stage,"11 · Punchlist")&&(
+                          <button onClick={async ()=>{if((await uiConfirm("Reopen this project? It will be moved back to Punchlist."))) changeStage("11 · Punchlist");}}
+                            style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:600,padding:"2px 10px",borderRadius:20,cursor:"pointer",background:"transparent",color:"#64748b",border:"1px solid #e2e8f0"}}>↩ Reopen</button>
+                        )}
+                      </div>
+                      {isMobile?(
+                        // Phone: one dropdown instead of a bar that scrolls sideways.
+                        <select value={cur>=0?FLOW[cur].key:""} disabled={!FLOW.some(st=>stepCan(st))}
+                          onChange={e=>{const st=FLOW.find(x=>x.key===e.target.value);if(st&&stepCan(st)) pick(st.target);}}
+                          aria-label="Project stage"
+                          style={{width:"100%",border:`1.5px solid ${cur>=0?FLOW[cur].color:"#e2e8f0"}`,borderRadius:8,padding:"9px 10px",fontFamily:"inherit",fontSize:".88rem",fontWeight:700,color:"#0f172a",background:"#fff"}}>
+                          {cur<0&&<option value="">{deal.stage||"—"}</option>}
+                          {FLOW.map((step,i)=>(
+                            <option key={step.key} value={step.key} disabled={i!==cur&&!stepCan(step)}>
+                              {i<cur?"✓ ":""}{i+1}. {projStepLabel(step,card)}{step.hint?` (${step.hint.split(";")[0]})`:""}
+                            </option>
+                          ))}
+                        </select>
+                      ):(
+                      <div style={{display:"flex",alignItems:"center",overflowX:"auto",paddingBottom:2}}>
+                        {FLOW.map((step,i)=>{
+                          const {key,target:s,color:sc}=step;
+                          const isActive=i===cur; const isPast=cur>=0&&i<cur;
+                          const clickable=!isActive&&stepCan(step);
+                          return(
+                            <React.Fragment key={key}>
+                              <button disabled={!clickable} onClick={()=>pick(s)} aria-current={isActive?"step":undefined}
+                                title={[step.hint,clickable?`Move to ${step.label}`:""].filter(Boolean).join(" · ")||undefined}
+                                style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".63rem",fontWeight:isActive?800:600,letterSpacing:".03em",padding:"5px 12px",borderRadius:20,whiteSpace:"nowrap",flexShrink:0,
+                                  cursor:clickable?"pointer":"default",
+                                  background:isActive?sc:isPast?"#ecfdf5":"#fff",
+                                  color:isActive?"#fff":isPast?"#059669":clickable?sc:"#94a3b8",
+                                  border:`1.5px solid ${isActive?sc:isPast?"#a7f3d0":clickable?sc+"66":"#e2e8f0"}`}}>
+                                {isPast?"✓ ":""}{i+1}. {isActive?projStepLabel(step,card):step.label}
+                              </button>
+                              {i<FLOW.length-1&&<div style={{flex:"1 0 6px",height:2,background:isPast?"#10b981":"#e2e8f0",minWidth:6}}/>}
+                            </React.Fragment>
+                          );
+                        })}
+                      </div>
+                      )}
+                      {cur>=0&&FLOW[cur].hint&&<div style={{fontSize:".66rem",color:"#64748b",marginTop:5}}>{FLOW[cur].label}: {FLOW[cur].hint}.</div>}
+                    </div>
+                  );
+                })()}
+                {/* All-depts-done banner */}
+                {pct===100&&deal&&deal.stage!=="12 · Close-Out"&&deal.stage!=="14 · Completed"&&(
+                  <div style={{marginTop:8,background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:8,padding:"6px 12px",fontSize:".74rem",fontWeight:700,color:"#059669"}}>🎉 PM reports 100%. When every punchlist item is completed, mark it Done on the stage bar.</div>
+                )}
+                {/* Scope changes are logged by Sales as a linked deal
+                    (+ Add New Deal -> Link to Parent Deal), not from the project
+                    card, so there is no "Log Scope Change" form here. */}
               </div>
 
-              {/* ── Phase Timeline ── */}
-              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
-                <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:12}}>🗺 Project Phases</div>
-                <div style={{display:"flex",alignItems:"center",overflowX:"auto",paddingBottom:4}}>
-                  {PHASES.map((phase,i)=>{
-                    const isActive=i===pi; const isPast=i<pi;
-                    return(
-                      <React.Fragment key={phase.id}>
-                        <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,minWidth:64}}>
-                          <div style={{width:38,height:38,borderRadius:"50%",background:isActive?"#1e293b":isPast?"#10b981":"#f1f5f9",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1rem",border:isActive?"2.5px solid #f59e0b":"2.5px solid transparent",boxShadow:isActive?"0 0 0 3px rgba(245,158,11,.2)":undefined}}>
-                            {isPast?"✓":phase.icon}
-                          </div>
-                          <div style={{fontSize:".58rem",fontWeight:isActive?800:500,color:isActive?"#f59e0b":isPast?"#10b981":"#94a3b8",textAlign:"center",whiteSpace:"nowrap"}}>{phase.label}</div>
-                        </div>
-                        {i<PHASES.length-1&&<div style={{flex:1,height:2,background:i<pi?"#10b981":"#e2e8f0",minWidth:8}}/>}
-                      </React.Fragment>
-                    );
-                  })}
-                </div>
+              {/* ── Section tabs: one section at a time so the page fits the screen ── */}
+              <div role="tablist" aria-label="Project sections" style={{display:"flex",gap:2,background:"#f1f5f9",borderRadius:10,padding:3,overflowX:"auto",alignSelf:"flex-start",maxWidth:"100%"}}>
+                {hqTabs.map(([k,l,n])=>(
+                  <button key={k} role="tab" aria-selected={hqTab===k} onClick={()=>setHqTab(k)}
+                    style={{border:"none",borderRadius:8,padding:"6px 14px",background:hqTab===k?"#1e293b":"transparent",color:hqTab===k?"#fff":"#475569",fontWeight:hqTab===k?700:600,fontSize:".78rem",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
+                    {l}{n>0&&<span style={{marginLeft:6,fontSize:".64rem",fontWeight:800,borderRadius:20,padding:"0 6px",background:hqTab===k?"rgba(255,255,255,.2)":"#e2e8f0",color:hqTab===k?"#fff":"#475569"}}>{n}</span>}
+                  </button>
+                ))}
               </div>
 
-              {/* ── Department Progress (click to toggle done / expand tasks) ── */}
-              {card&&(()=>{
-                const doneDepts=DEPT_ORDER.filter(d=>card.departments?.[d]?.done).length;
-                const autoPct=Math.round(doneDepts/6*100);
-                const canEditManual=role==="Manager"||role==="Operations"||role==="SalesOpsAdmin";
-                const setManual=(val)=>{
-                  upPcards(ps=>({...ps,[selDeal]:{...ps[selDeal],manualProgress:val}}));
-                  if(isSupabaseReady()) syncProjectCard(selDeal,{manual_progress:val});
-                };
+              {hqTab==="progress"&&<>
+              {/* ── Progress: one number, the PM's 30 / 60 / 90 / 100 % estimate ──
+                  Saved through set_project_progress (who + when, every change in
+                  audit_log). Same roles as the Progress page. Department
+                  checkboxes are gone from this page (never used: 0 of 3,627
+                  sub-tasks ticked). */}
+              {(()=>{
+                const STEP_CLR={30:"#f59e0b",60:"#3b82f6",90:"#8b5cf6",100:"#059669"};
+                const closed=deal?.stage==="12 · Close-Out"||deal?.stage==="14 · Completed";
+                const barClr=pct==null?"#e2e8f0":pct>=100?"#059669":isOver?"#ef4444":"#3b82f6";
                 return(
                 <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
-                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>🏗 Department Progress</div>
-                    <div style={{display:"flex",alignItems:"center",gap:8}}>
-                      <span style={{fontSize:".72rem",fontWeight:700,color:pct>=100?"#059669":"#64748b"}}>{pct}%{card.manualProgress!=null&&<span style={{color:"#8b5cf6",fontWeight:600}}> (manual)</span>}</span>
-                      <span style={{fontSize:".66rem",color:"#94a3b8"}}>{doneDepts}/6 done</span>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8,flexWrap:"wrap",marginBottom:8}}>
+                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>📊 Progress</div>
+                    <div style={{fontSize:".7rem",color:"#94a3b8"}}>
+                      {closed?"Closed out: counts as 100%"
+                        :card?.progressSetBy?`Set by ${card.progressSetBy}${card.progressSetAt?` · ${String(card.progressSetAt).slice(0,10)}`:""}`
+                        :pct==null?"Not set yet":""}
                     </div>
                   </div>
-                  {/* progress bar */}
-                  <div style={{height:7,background:"#f1f5f9",borderRadius:4,overflow:"hidden",marginBottom:12}}>
-                    <div style={{height:"100%",width:pct+"%",background:pct>=100?"#059669":pct>=50?"#10b981":"#f59e0b",borderRadius:4,transition:"width .2s"}}/>
+                  <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:12}}>
+                    <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"2.2rem",lineHeight:1,color:pct==null?"#cbd5e1":pct>=100?"#059669":"#0f172a",minWidth:84}}>{pct==null?"—":`${pct}%`}</span>
+                    <div style={{flex:1,height:10,background:"#f1f5f9",borderRadius:6,overflow:"hidden"}}>
+                      <div style={{height:"100%",width:(pct||0)+"%",background:barClr,borderRadius:6,transition:"width .2s"}}/>
+                    </div>
                   </div>
-                  {/* department rows */}
-                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                    {DEPT_ORDER.map(dept=>{
-                      const dd=card.departments?.[dept]||{done:false,tasks:[]};
-                      const canEditDept=editableDepts.includes(dept);
-                      const clr=DEPT_CLR[dept]||"#64748b";
-                      const tasks=dd.tasks||[];
-                      const doneTasks=tasks.filter(t=>t.done).length;
-                      return(
-                        <details key={dept} style={{background:dd.done?"#f0fdf4":"#f8fafc",border:`1px solid ${dd.done?"#a7f3d0":"#e2e8f0"}`,borderRadius:10,padding:"8px 12px"}}>
-                          <summary style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer",listStyle:"none"}}>
-                            <input type="checkbox" checked={!!dd.done} disabled={!canEditDept}
-                              onChange={e=>{e.stopPropagation();markDeptDone(selDeal,dept,e.target.checked);}}
-                              onClick={e=>e.stopPropagation()}
-                              style={{width:17,height:17,accentColor:clr,cursor:canEditDept?"pointer":"not-allowed",flexShrink:0}}/>
-                            <span style={{width:8,height:8,borderRadius:"50%",background:clr,flexShrink:0}}/>
-                            <span style={{fontWeight:700,fontSize:".8rem",color:dd.done?"#059669":"#0f172a",flex:1}}>{dept}</span>
-                            {tasks.length>0&&<span style={{fontSize:".66rem",color:"#94a3b8"}}>{doneTasks}/{tasks.length} tasks</span>}
-                            {dd.done&&dd.doneBy&&<span style={{fontSize:".62rem",color:"#059669"}}>✓ {dd.doneBy}</span>}
-                            {tasks.length>0&&<span style={{fontSize:".7rem",color:"#94a3b8"}}>▾</span>}
-                          </summary>
-                          {tasks.length>0&&(
-                            <div style={{marginTop:8,paddingLeft:27,display:"flex",flexDirection:"column",gap:5}}>
-                              {tasks.map(t=>(
-                                <label key={t.id} style={{display:"flex",alignItems:"center",gap:8,cursor:canEditDept?"pointer":"default"}}>
-                                  <input type="checkbox" checked={!!t.done} disabled={!canEditDept}
-                                    onChange={()=>toggleDeptTask(selDeal,dept,t.id)}
-                                    style={{width:14,height:14,accentColor:clr,cursor:canEditDept?"pointer":"not-allowed",flexShrink:0}}/>
-                                  <span style={{fontSize:".76rem",color:t.done?"#94a3b8":"#334155",textDecoration:t.done?"line-through":"none"}}>{t.text}</span>
-                                </label>
-                              ))}
-                            </div>
-                          )}
-                          {tasks.length===0&&<div style={{marginTop:6,paddingLeft:27,fontSize:".72rem",color:"#94a3b8"}}>No sub-tasks — use the checkbox to mark this department done.</div>}
-                        </details>
-                      );
-                    })}
-                  </div>
-                  {/* manual progress override */}
-                  {canEditManual&&(
-                    <div style={{marginTop:12,paddingTop:10,borderTop:"1px solid #f1f5f9",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-                      <span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:600}}>Manual override:</span>
-                      <input type="number" min={0} max={100} value={card.manualProgress!=null?card.manualProgress:""}
-                        placeholder={`auto ${autoPct}`}
-                        onChange={e=>{const v=e.target.value===""?null:Math.max(0,Math.min(100,Number(e.target.value)));setManual(v);}}
-                        style={{width:72,border:"1.5px solid #e2e8f0",borderRadius:8,padding:"5px 8px",fontFamily:"inherit",fontSize:".8rem"}}/>
-                      <span style={{fontSize:".72rem",color:"#64748b"}}>%</span>
-                      {card.manualProgress!=null&&<button onClick={()=>setManual(null)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>↺ Use auto ({autoPct}%)</button>}
+                  {!card&&<div style={{fontSize:".74rem",color:"#94a3b8"}}>This project has no project card yet, so progress can't be set. Assign the team (✏️ Team) to create it.</div>}
+                  {card&&!closed&&isConstructionDeal(deal)&&(()=>{
+                    // Construction: any whole % from 0 to 100 (migration
+                    // 20261111150000); at Punchlist, at least 90.
+                    const min=deal?.stage==="11 · Punchlist"?PUNCHLIST_MIN_PCT:0;
+                    const n=pctDraft===""?null:Math.round(Number(pctDraft));
+                    const lowering=n!=null&&card.manualProgress!=null&&n<card.manualProgress&&role!=="Manager";
+                    const valid=n!=null&&!isNaN(n)&&n>=min&&n<=100&&n!==card.manualProgress&&!lowering;
+                    const save=()=>{if(valid&&setPctRpc(n)) setPctDraft("");};
+                    return(
+                      <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                        <span style={{fontSize:".74rem",color:"#475569",fontWeight:600}}>Current progress on site:</span>
+                        <input type="number" inputMode="numeric" min={min} max={100} step={1} disabled={!canSetPct}
+                          value={pctDraft} placeholder={card.manualProgress!=null?String(card.manualProgress):(min?String(min):"e.g. 45")}
+                          onChange={e=>setPctDraft(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")save();}} aria-label="Progress percent"
+                          style={{width:90,border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 9px",fontFamily:"inherit",fontSize:".9rem",fontWeight:700}}/>
+                        <span style={{fontSize:".8rem",color:"#64748b"}}>%</span>
+                        <button disabled={!valid||!canSetPct} onClick={save}
+                          style={{border:"none",borderRadius:8,padding:"8px 16px",background:valid&&canSetPct?"#1e293b":"#e2e8f0",color:valid&&canSetPct?"#fff":"#94a3b8",fontWeight:700,fontSize:".8rem",cursor:valid&&canSetPct?"pointer":"default",fontFamily:"inherit"}}>Update %</button>
+                        {pctDraft!==""&&!valid&&n!==card.manualProgress&&<span style={{fontSize:".68rem",color:"#ef4444"}}>{lowering?`Only a Manager can lower progress (now ${card.manualProgress}%).`:`Enter a whole number from ${min} to 100${min?" (Punchlist is at least 90%)":""}.`}</span>}
+                      </div>
+                    );
+                  })()}
+                  {card&&!closed&&!isConstructionDeal(deal)&&(
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,maxWidth:420}}>
+                      {[30,60,90,100].map(s=>{
+                        const on=card.manualProgress===s;
+                        const belowPunch=deal?.stage==="11 · Punchlist"&&s<PUNCHLIST_MIN_PCT;
+                        const lowerBlocked=card.manualProgress!=null&&s<card.manualProgress&&role!=="Manager";
+                        const dis=!canSetPct||belowPunch||lowerBlocked;
+                        return(
+                          <button key={s} disabled={dis} aria-pressed={on} onClick={()=>!on&&setPctRpc(s)} title={belowPunch?`A project at Punchlist is at least ${PUNCHLIST_MIN_PCT}%`:lowerBlocked?"Only a Manager can lower progress":undefined}
+                            style={{border:`1.5px solid ${on?STEP_CLR[s]:"#e2e8f0"}`,borderRadius:8,padding:"8px 0",background:on?STEP_CLR[s]:"#fff",color:on?"#fff":"#475569",fontWeight:800,fontSize:".86rem",cursor:dis?"default":"pointer",fontFamily:"inherit",opacity:(belowPunch||lowerBlocked)?.35:1}}>{s}%</button>
+                        );
+                      })}
                     </div>
                   )}
+                  {card&&!closed&&!canSetPct&&<div style={{fontSize:".68rem",color:"#94a3b8",marginTop:6}}>Set by the PM, Operations or a Manager (Coordinators on their own projects).</div>}
+                  {card&&!closed&&canSetPct&&<div style={{fontSize:".66rem",color:"#94a3b8",marginTop:6}}>Every change asks for a short update (work done, next step, issues); it goes to Team Updates and the Operations chat.{role!=="Manager"?" Only a Manager can lower the %.":""}</div>}
+                  {card&&!isConstructionDeal(deal)&&card.manualProgress!=null&&![30,60,90,100].includes(card.manualProgress)&&<div style={{fontSize:".68rem",color:"#8b5cf6",marginTop:6}}>{card.manualProgress}% was typed in before the 30/60/90/100 rule. Pick one of the four.</div>}
                 </div>
                 );
               })()}
@@ -28730,7 +28666,7 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
               {/* ── TAT (collapsible) ── */}
               {card&&(
                 <div style={{background:isOver?"#fef2f2":"#f0fdf4",borderRadius:14,border:`1.5px solid ${isOver?"#fecaca":"#6ee7b7"}`,overflow:"hidden"}}>
-                  <div onClick={()=>setTatOpen(o=>!o)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:isMobile?"12px 14px":"14px 20px",cursor:"pointer"}}>
+                  <div onClick={()=>setTatOpen(o=>!o)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:isMobile?"12px 14px":"10px 20px",cursor:"pointer"}}>
                     <div style={{fontWeight:700,color:isOver?"#dc2626":"#059669",fontSize:".82rem"}}>⏱ Turnaround Time{card.targetDays&&<span style={{fontWeight:400,color:isOver?"#ef4444":dLeft<=7?"#f59e0b":"#059669",marginLeft:6}}>{isOver?`— ⚠ ${Math.abs(dLeft)}d overdue`:`— ${dLeft}d remaining`}</span>}</div>
                     <span style={{color:"#94a3b8",fontSize:".8rem"}}>{tatOpen?"▲":"▼"}</span>
                   </div>
@@ -28764,7 +28700,9 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                   )}
                 </div>
               )}
+              </>}
 
+              {hqTab==="updates"&&<>
               {/* ── Team Updates (single unified feed — posts via the canonical Log Update modal) ── */}
               {(()=>{
                 const allProjUpdates=(actLog||[]).filter(a=>a.dealId===selDeal&&a.action==="PM Update").sort((a,b)=>b.date.localeCompare(a.date)||b.time?.localeCompare(a.time||""));
@@ -28777,7 +28715,7 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                     {canPost&&<button onClick={()=>setPmUpdateModal({dealId:selDeal,dealName:deal?.client||"",stage:deal?.stage||"",pct})} style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.2)",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#4ade80",cursor:"pointer",fontWeight:700}}>+ Post Update</button>}
                   </div>
                   {/* Chat messages */}
-                  <div style={{padding:"12px 16px",display:"flex",flexDirection:"column",gap:10,maxHeight:400,overflowY:"auto"}}>
+                  <div style={{padding:"12px 16px",display:"flex",flexDirection:"column",gap:10,maxHeight:isMobile?420:"max(240px, calc(100vh - 530px))",overflowY:"auto"}}>
                     {allProjUpdates.length===0&&(
                       <div style={{textAlign:"center",padding:"16px 0",color:"#94a3b8",fontSize:".8rem"}}>No updates yet.{canPost&&" Tap + Post Update to add the first one."}</div>
                     )}
@@ -28816,7 +28754,9 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                 </div>
                 );
               })()}
+              </>}
 
+              {hqTab==="checklist"&&<>
               {/* ── Project Checklist ── */}
               <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
                 <div style={{padding:isMobile?"12px 14px":"14px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid #f1f5f9"}}>
@@ -28833,7 +28773,7 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                 {projCl.length===0?(
                   <div style={{padding:"14px 20px",color:"#94a3b8",fontSize:".78rem",textAlign:"center"}}>No checklist tasks yet for this project.</div>
                 ):(
-                  <div style={{display:"flex",flexDirection:"column",gap:0}}>
+                  <div style={{display:"flex",flexDirection:"column",gap:0,maxHeight:isMobile?undefined:"max(240px, calc(100vh - 530px))",overflowY:"auto"}}>
                     {projCl.map((c,i)=>(
                       <div key={c.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 16px",borderBottom:i<projCl.length-1?"1px solid #f8fafc":"none",background:"#fff"}}>
                         <select value={c.status} onChange={e=>clStatusQ&&clStatusQ(c.id,e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:6,padding:"3px 6px",fontFamily:"inherit",fontSize:".68rem",color:"#0f172a",background:"#fff",cursor:"pointer",flexShrink:0}}>
@@ -28857,37 +28797,11 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                   </div>
                 )}
               </div>
+              </>}
 
-              {/* ── Scope Changes (Total Contract roll-up) ──
-                  Finance-facing: shows Initial + Addendums = Total. Hidden from
-                  Operations/PM/Design — they maintain the single project card and
-                  don't need the contract total; scope changes are Sales-owned. */}
-              {!["Operations","ProjectMover","Design"].includes(role)&&(
-              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:projAddenda.length>0?10:0}}>
-                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>⚠️ Scope Changes{projAddenda.length>0&&<span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:400,marginLeft:5}}>({projAddenda.length})</span>}</div>
-                </div>
-                {(projAddenda.length>0||(deals||[]).some(d=>d.parentDealId===deal.id&&!isLostStage(d.stage)))&&<div style={{marginBottom:10}}><ContractBreakdown deal={deal} addenda={addenda} deals={deals}/></div>}
-                {projAddenda.length===0&&!(deals||[]).some(d=>d.parentDealId===deal.id&&!isLostStage(d.stage))&&<div style={{fontSize:".78rem",color:"#94a3b8"}}>No scope changes for this project.</div>}
-                {projAddenda.slice(0,3).map(a=>{
-                  const sc={"Discovered":"#94a3b8","Sales Notified":"#f59e0b","Client Coordinating":"#3b82f6","Approved":"#059669","Billed":"#8b5cf6","Collected":"#10b981","Rejected":"#ef4444"}[a.status]||"#94a3b8";
-                  return(
-                    <div key={a.id} style={{padding:"9px 12px",borderRadius:8,background:"#fffbeb",border:"1px solid #fde68a",marginBottom:6,display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
-                      <div>
-                        <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{a.title}</div>
-                        {Number(a.value)>0&&<div style={{fontSize:".72rem",color:"#92400e",marginTop:1}}>₱{Number(a.value).toLocaleString("en-PH")} additional</div>}
-                      </div>
-                      <span style={{fontSize:".63rem",background:sc+"22",color:sc,border:`1px solid ${sc}44`,borderRadius:20,padding:"2px 8px",fontWeight:700,flexShrink:0}}>{a.status}</span>
-                    </div>
-                  );
-                })}
-                {projAddenda.length>3&&<div style={{fontSize:".72rem",color:"#94a3b8",marginTop:4}}>+{projAddenda.length-3} more — see Scope Changes page</div>}
-              </div>
-              )}
-
-
+              {hqTab==="finance"&&<>
               {/* ── Finance Snapshot ── */}
-              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px",marginBottom:8}}>
+              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,gap:8,flexWrap:"wrap"}}>
                   <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>💰 Finance Snapshot</div>
                   {["Manager","Finance","FinanceAssistant","Accounting","Operations","Sales"].includes(role)&&(
@@ -28933,12 +28847,48 @@ function ProjectCards({changeDealStage,setProjectProgress,syncProjectCard,pcards
                 )}
               </div>
 
+              {/* ── Scope Changes (Total Contract roll-up) ──
+                  Finance-facing: shows Initial + Addendums = Total. Hidden from
+                  Operations/PM/Design — they maintain the single project card and
+                  don't need the contract total; scope changes are Sales-owned. */}
+              {!["Operations","ProjectMover","Design"].includes(role)&&(
+              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:projAddenda.length>0?10:0}}>
+                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>⚠️ Scope Changes{projAddenda.length>0&&<span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:400,marginLeft:5}}>({projAddenda.length})</span>}</div>
+                </div>
+                {(projAddenda.length>0||(deals||[]).some(d=>d.parentDealId===deal.id&&!isLostStage(d.stage)))&&<div style={{marginBottom:10}}><ContractBreakdown deal={deal} addenda={addenda} deals={deals}/></div>}
+                {projAddenda.length===0&&!(deals||[]).some(d=>d.parentDealId===deal.id&&!isLostStage(d.stage))&&<div style={{fontSize:".78rem",color:"#94a3b8"}}>No scope changes for this project.</div>}
+                {projAddenda.slice(0,3).map(a=>{
+                  const sc={"Discovered":"#94a3b8","Sales Notified":"#f59e0b","Client Coordinating":"#3b82f6","Approved":"#059669","Billed":"#8b5cf6","Collected":"#10b981","Rejected":"#ef4444"}[a.status]||"#94a3b8";
+                  return(
+                    <div key={a.id} style={{padding:"9px 12px",borderRadius:8,background:"#fffbeb",border:"1px solid #fde68a",marginBottom:6,display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+                      <div>
+                        <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{a.title}</div>
+                        {Number(a.value)>0&&<div style={{fontSize:".72rem",color:"#92400e",marginTop:1}}>₱{Number(a.value).toLocaleString("en-PH")} additional</div>}
+                      </div>
+                      <span style={{fontSize:".63rem",background:sc+"22",color:sc,border:`1px solid ${sc}44`,borderRadius:20,padding:"2px 8px",fontWeight:700,flexShrink:0}}>{a.status}</span>
+                    </div>
+                  );
+                })}
+                {projAddenda.length>3&&<div style={{fontSize:".72rem",color:"#94a3b8",marginTop:4}}>+{projAddenda.length-3} more — see Scope Changes page</div>}
+              </div>
+              )}
+              </>}
+
             </div>
           );
         })()
       )}
     </div>
-    {pmUpdateModal&&<PmUpdateModal deals={deals} role={role} changeDealStage={changeDealStage} setProjectProgress={setProjectProgress} sendTelegramNotification={sendTelegramNotification} pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate} updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())syncProjectCard(dealId,{target_end_date:date});}}/>}
+    {reportPct!==null&&selDeal&&deals.find(d=>d.id===selDeal)&&<ProgressReportModal deal={deals.find(d=>d.id===selDeal)} pc={pcards[selDeal]} initialPct={reportPct} role={role}
+      onClose={()=>setReportPct(null)}
+      onSaved={({pct:np,at,feed})=>{
+        upPcards(ps=>({...ps,[selDeal]:{...ps[selDeal],manualProgress:np,progressSetBy:session?.name||"",progressSetAt:at}}));
+        // The server already wrote this Team Update and sent the Telegram.
+        logActivity(selDeal,"PM Update",feed,session?.name,{localOnly:true,silent:true});
+        setReportPct(null);
+      }}/>}
+    {pmUpdateModal&&<PmUpdateModal deals={deals} role={role} changeDealStage={changeDealStage} sendTelegramNotification={sendTelegramNotification} pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate} updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())syncProjectCard(dealId,{target_end_date:date});}}/>}
     </>
   );
 }

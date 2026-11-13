@@ -113,6 +113,44 @@ export const isActivePipeline = (stage)=>!WON_STAGES.includes(stage)&&!isLostSta
 // Kickoff and Close-Out; Completed (financial gate) and reopening a Completed
 // project stay with the deal editors. Mirrors set_deal_stage() (migration
 // 20261027090000_set_deal_stage_rpc.sql) — keep them in sync.
+// Project stages as shown on Project Cards (agreed with Paulo 2026-11-11).
+// Two flows, picked by the deal's CE type. Each step is one stored stage
+// value (or two), so the database keeps its detailed stages (set_deal_stage,
+// jo_awarded_stage, PRF and coordinator rules treat 06..12 as one set).
+// Construction tracks progress as the PM's % (Progress tab), not as steps.
+// Every WON_STAGES value must be in one step of each flow.
+export const CONSTRUCTION_CE_TYPES=["Construction","Retail Fit-Out"];
+export const isConstructionDeal=d=>CONSTRUCTION_CE_TYPES.includes(d?.ceType);
+const _K={key:"kickoff", label:"Kickoff",     target:"06 · Kickoff",     color:"#8b5cf6",stages:["06 · Kickoff"]};
+const _P={key:"punch",   label:"Punchlist",   target:"11 · Punchlist",   color:"#ef4444",stages:["11 · Punchlist"]};
+const _D={key:"done",    label:"Done",        target:"12 · Close-Out",   color:"#059669",stages:["12 · Close-Out"],
+  hint:"All punchlist items completed; ready to receive retention"};
+const _C={key:"complete",label:"Completed",   target:"14 · Completed",   color:"#047857",stages:["14 · Completed"]};
+export const PROJECT_STAGE_FLOWS={
+  fabrication:[_K,
+    {key:"briefing",label:"Briefing",    target:"07 · Briefing",    color:"#6366f1",stages:["07 · Briefing"]},
+    {key:"fab",     label:"Fabrication", target:"08 · Fabrication", color:"#f59e0b",stages:["08 · Fabrication"]},
+    {key:"install", label:"Installation",target:"10 · Installation",color:"#3b82f6",stages:["09 · Site & Billing","10 · Installation"]},
+    _P,_D,_C],
+  construction:[_K,
+    {key:"briefing",label:"Briefing",    target:"07 · Briefing",    color:"#6366f1",stages:["07 · Briefing","08 · Fabrication"]},
+    {key:"mob",     label:"Mobilization",target:"09 · Site & Billing",color:"#f97316",stages:["09 · Site & Billing"]},
+    {key:"works",   label:"Works",       target:"10 · Installation",color:"#3b82f6",stages:["10 · Installation"],showPct:true,
+      hint:"Construction under way: the PM updates the % on the Progress tab"},
+    _P,_D,_C],
+};
+export const projStageFlow=deal=>PROJECT_STAGE_FLOWS[isConstructionDeal(deal)?"construction":"fabrication"];
+// Index of the deal's current step in its flow (-1 if its stage isn't a project stage).
+export const projStepIndex=deal=>projStageFlow(deal).findIndex(s=>s.stages.includes(deal?.stage));
+// "Works · 45%" for a construction project under way; otherwise the step name.
+export const projStepLabel=(step,pc)=>step.showPct&&pc?.manualProgress!=null?`${step.label} · ${pc.manualProgress}%`:step.label;
+export const projStageLabel=(deal,pc)=>{
+  const f=projStageFlow(deal)[projStepIndex(deal)];
+  return f?projStepLabel(f,pc):(String(deal?.stage||"").replace(/^\d+ · /,"")||"—");
+};
+// Punchlist is the sign a project has reached 90 %.
+export const PUNCHLIST_MIN_PCT=90;
+
 export const STAGE_EDITOR_ROLES = ["Manager","Sales","SalesOpsAdmin","QS"];
 export const PM_STAGE_ROLES     = ["ProjectMover","Operations"];
 export const PM_SETTABLE_STAGES = WON_STAGES.filter(s=>s!=="14 · Completed");
@@ -722,6 +760,20 @@ const _joPlain=j=>/^JO-\d+$/.test(j.joNo||"")?0:1;
 const _joCmp=(a,b)=>_joPlain(a)-_joPlain(b)
   ||String(a.created_at||"").localeCompare(String(b.created_at||""))
   ||String(a.joNo||"").localeCompare(String(b.joNo||""));
+// Project progress is ONE number: the PM's 30 / 60 / 90 / 100 % estimate
+// (project_cards.manual_progress, set only through set_project_progress,
+// migration 20261107020000). Close-Out / Completed count as 100. null = not set.
+// Department checkboxes no longer count (0 of 3,627 sub-tasks were ever ticked;
+// the only ticks were Finance, auto-set when billing is fully paid).
+export const projProgressPct=(pc,deal=null)=>{
+  if(deal?.stage==="12 · Close-Out"||deal?.stage==="14 · Completed") return 100;
+  const v=pc?.manualProgress;
+  const n=v==null||v===""||isNaN(Number(v))?null:Number(v);
+  // A project at Punchlist is at least 90 %, even before the PM picks it.
+  if(deal?.stage==="11 · Punchlist") return Math.max(n||0,PUNCHLIST_MIN_PCT);
+  return n;
+};
+
 export const dealJo=(jos,dealId)=>{
   let best=null;
   for(const j of jos||[]) if(j.dealId===dealId&&j.status!=="Void"&&(!best||_joCmp(j,best)<0)) best=j;
