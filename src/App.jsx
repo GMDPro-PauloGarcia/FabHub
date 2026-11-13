@@ -18167,45 +18167,6 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         canPay={["Manager","Finance","FinanceAssistant","SalesOpsAdmin"].includes(role)}
         onReceive={(dealId,msId)=>{setArDrill(null);setBillingJumpPay(msId);setBillingJumpDeal(dealId);}}
         onClose={()=>setArDrill(null)}/>}
-      {/* Priority call list */}
-      {(()=>{
-        const today2=new Date();
-        const callList=wonDeals.map(d=>{
-          const ms=billings.filter(b=>b.dealId===d.id&&b.status!=="Cancelled"&&b.status!=="Fully Paid");
-          const totalDue=ms.reduce((s,m)=>s+milestoneBalance(m,d),0);
-          const mostOverdue=ms.filter(m=>m.dueDate&&m.dueDate<today).sort((a,b)=>new Date(a.dueDate)-new Date(b.dueDate))[0];
-          const daysOverdue=mostOverdue?Math.floor((today2-new Date(mostOverdue.dueDate))/(1000*60*60*24)):null;
-          return{d,totalDue,daysOverdue,msCount:ms.length};
-        }).filter(x=>x.totalDue>0).sort((a,b)=>((b.daysOverdue||0)-(a.daysOverdue||0))||(b.totalDue-a.totalDue));
-        if(!callList.length) return null;
-        return(
-          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",marginBottom:16,overflow:"hidden"}}>
-            <div style={{background:"#1e293b",padding:"12px 18px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"4px 12px"}}>
-              <span style={{fontWeight:700,color:"#f59e0b",fontSize:".88rem"}}>📞 Priority Call List — ₱{callList.reduce((s,x)=>s+x.totalDue,0).toLocaleString("en-PH",{minimumFractionDigits:0})} outstanding</span>
-              <span style={{fontSize:".72rem",color:"rgba(255,255,255,.5)"}}>{callList.length} clients to follow up</span>
-            </div>
-            {callList.slice(0,8).map(({d,totalDue,daysOverdue,msCount})=>(
-              <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 18px",borderBottom:"1px solid #f8fafc",flexWrap:"wrap",gap:8}}>
-                <div>
-                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{d.client}</div>
-                  <div style={{fontSize:".72rem",color:"#64748b",marginTop:1}}>{d.ceNo||"No CE"} · {msCount} milestone{msCount!==1?"s":""}</div>
-                </div>
-                <div style={{display:"flex",gap:12,alignItems:"center"}}>
-                  <div style={{textAlign:"right"}}>
-                    <div style={{fontWeight:800,color:"#ef4444",fontSize:".92rem"}}>₱{totalDue.toLocaleString("en-PH",{minimumFractionDigits:0})}</div>
-                    <div style={{fontSize:".68rem",color:"#94a3b8"}}>outstanding</div>
-                  </div>
-                  {daysOverdue!==null&&(
-                    <span style={{background:daysOverdue>60?"#fef2f2":daysOverdue>30?"#fff7ed":"#fffbeb",color:daysOverdue>60?"#dc2626":daysOverdue>30?"#c2410c":"#d97706",border:`1px solid ${daysOverdue>60?"#fecaca":daysOverdue>30?"#fed7aa":"#fde68a"}`,borderRadius:20,padding:"2px 9px",fontSize:".72rem",fontWeight:700}}>
-                      {daysOverdue}d overdue
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        );
-      })()}
       <BillingView
         billings={billings} wonDeals={wonDeals} completedDeals={completedDeals} deals={deals} addenda={addenda}
         addMilestone={addMilestone} updateMilestone={updateMilestone} applyDeduction={applyDeduction}
@@ -25933,6 +25894,11 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     return arSummary(billings,id=>byId.get(id)).outstanding;
   },[billings,deals]);
   const overdue=useMemo(()=>billings.filter(m=>isBillingOverdue(m,today)),[billings]);
+  // Days an invoice is past due, and its aging bucket. One rule for the Aging
+  // Summary cards, the "age:*" list filter and the 📞 call line on each row.
+  const odDays=m=>Math.floor((Date.now()-new Date(m.dueDate))/(1000*60*60*24));
+  const ageKey=days=>days<=30?"d30":days<=60?"d60":days<=90?"d90":"d90p";
+  const AGE_LABEL={d30:"1–30 days",d60:"31–60 days",d90:"61–90 days",d90p:"90+ days"};
   // Drafts past their due date: never sent to the client, so not "overdue" — but
   // the money is late all the same. Shown apart so Finance sends them or re-dates them.
   const unsentLate=useMemo(()=>billings.filter(m=>isBillingUnsentLate(m,today)),[billings]);
@@ -26507,18 +26473,21 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     const grossBase=tot.gross, vat=tot.vat, total=tot.total, collectible=tot.collectible;
     const collected=ms.reduce((s,m)=>s+(m.payments||[]).filter(p=>!p.bounced).reduce((ps,p)=>ps+n(p.amount),0),0);
     const balance  =Math.max(0,collectible-collected);
-    const hasOverdue=ms.some(m=>isBillingOverdue(m,today));
+    const odMs=ms.filter(m=>isBillingOverdue(m,today));
+    const hasOverdue=odMs.length>0;
+    const maxOverdue=odMs.reduce((x,m)=>Math.max(x,odDays(m)),0);
+    const ageKeys=new Set(odMs.map(m=>ageKey(odDays(m))));
     const hasUnsent=ms.some(m=>isBillingUnsentLate(m,today));
     const fullyPaid=total>0&&balance===0;
     const toBill=ms.filter(m=>m.status==="Draft"&&m.plannedDate&&m.plannedDate<today).length;
-    return{d,ms,grossBase,vat,total,collected,collectible,balance,hasOverdue,hasUnsent,fullyPaid,toBill,milestoneCount:ms.length};
+    return{d,ms,grossBase,vat,total,collected,collectible,balance,hasOverdue,maxOverdue,odCount:odMs.length,ageKeys,hasUnsent,fullyPaid,toBill,milestoneCount:ms.length};
   });
   // Count of awarded projects with no billing set up yet — hidden by default.
   const notBilledCount=_allSummaries.filter(s=>s.milestoneCount===0).length;
-  const projectSummaries=_allSummaries.filter(({d,total,collected,balance,hasOverdue,hasUnsent,fullyPaid,milestoneCount})=>{
+  const projectSummaries=_allSummaries.filter(({d,total,collected,balance,hasOverdue,ageKeys,hasUnsent,fullyPaid,milestoneCount})=>{
     const q=billingSearch.toLowerCase();
     const matchSearch=!q||(d.client||"").toLowerCase().includes(q)||(d.ceNo||"").toLowerCase().includes(q)||(d.contact||"").toLowerCase().includes(q);
-    const matchFilter=billingFilter==="all"||(billingFilter==="outstanding"&&balance>0&&!fullyPaid)||(billingFilter==="paid"&&fullyPaid)||(billingFilter==="overdue"&&hasOverdue)||(billingFilter==="unsent"&&hasUnsent)||(billingFilter==="collected"&&collected>0)||(billingFilter==="uncollected"&&total>0&&collected===0);
+    const matchFilter=billingFilter==="all"||(billingFilter==="outstanding"&&balance>0&&!fullyPaid)||(billingFilter==="paid"&&fullyPaid)||(billingFilter==="overdue"&&hasOverdue)||(billingFilter.startsWith("age:")&&ageKeys.has(billingFilter.slice(4)))||(billingFilter==="unsent"&&hasUnsent)||(billingFilter==="collected"&&collected>0)||(billingFilter==="uncollected"&&total>0&&collected===0);
     // Hide "Not billed" (0-milestone) projects unless the toggle is on or the user is searching.
     const matchNotBilled=milestoneCount>0||showNotBilled||!!q;
     return matchSearch&&matchFilter&&matchNotBilled;
@@ -26531,7 +26500,13 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const _kidsOf=new Map();
   _allSummaries.forEach(x=>{if(x.d.parentDealId&&_baseIds.has(x.d.parentDealId)){if(!_kidsOf.has(x.d.parentDealId))_kidsOf.set(x.d.parentDealId,[]);_kidsOf.get(x.d.parentDealId).push(x);}});
   const billingRows=[];
-  _allSummaries.filter(x=>!(x.d.parentDealId&&_baseIds.has(x.d.parentDealId))).forEach(parent=>{
+  // Overdue views list the client to call first at the top: oldest overdue
+  // invoice (across the project and its addenda), then the biggest balance.
+  const _overdueView=billingFilter==="overdue"||billingFilter.startsWith("age:");
+  const _grpOd=x=>Math.max(x.maxOverdue,...(_kidsOf.get(x.d.id)||[]).map(k=>k.maxOverdue));
+  const _parents=_allSummaries.filter(x=>!(x.d.parentDealId&&_baseIds.has(x.d.parentDealId)));
+  if(_overdueView) _parents.sort((a,b)=>(_grpOd(b)-_grpOd(a))||(b.balance-a.balance));
+  _parents.forEach(parent=>{
     const kids=(_kidsOf.get(parent.d.id)||[]).filter(k=>k.milestoneCount>0||showNotBilled||_matchIds.has(k.d.id));
     if(!_matchIds.has(parent.d.id)&&!kids.some(k=>_matchIds.has(k.d.id))) return;
     const groupOverdue=parent.hasOverdue||kids.some(k=>k.hasOverdue);
@@ -26713,25 +26688,32 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
 
       {/* Overdue alert + Aging Summary */}
       {overdue.length>0&&(()=>{
-        const today2=new Date();
-        const age=ms=>{const d=new Date(ms.dueDate);return Math.floor((today2-d)/(1000*60*60*24));};
-        const d30 =overdue.filter(m=>age(m)<=30);
-        const d60 =overdue.filter(m=>age(m)>30&&age(m)<=60);
-        const d90 =overdue.filter(m=>age(m)>60&&age(m)<=90);
-        const d90p=overdue.filter(m=>age(m)>90);
+        const age=odDays;
+        const d30 =overdue.filter(m=>ageKey(age(m))==="d30");
+        const d60 =overdue.filter(m=>ageKey(age(m))==="d60");
+        const d90 =overdue.filter(m=>ageKey(age(m))==="d90");
+        const d90p=overdue.filter(m=>ageKey(age(m))==="d90p");
         return(
           <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:12,padding:"14px 18px",marginBottom:12}}>
-            <div style={{fontWeight:700,color:"#dc2626",marginBottom:10,fontSize:".88rem"}}>🚨 Overdue Invoice Aging Summary</div>
+            <div style={{fontWeight:700,color:"#dc2626",marginBottom:10,fontSize:".88rem"}}>🚨 Overdue Invoice Aging Summary <span style={{fontWeight:500,color:"#f87171",fontSize:".72rem"}}>· tap a card to list those projects</span></div>
             <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:10}}>
-              {[[d30,"1–30 days","#f59e0b","#fffbeb"],[d60,"31–60 days","#f97316","#fff7ed"],[d90,"61–90 days","#ef4444","#fef2f2"],[d90p,"90+ days","#dc2626","#fef2f2"]].map(([grp,lbl,clr,bg])=>(
-                <div key={lbl} style={{background:bg,borderRadius:8,padding:"10px 12px",textAlign:"center",border:`1px solid ${clr}33`}}>
+              {[[d30,"d30","#f59e0b","#fffbeb"],[d60,"d60","#f97316","#fff7ed"],[d90,"d90","#ef4444","#fef2f2"],[d90p,"d90p","#dc2626","#fef2f2"]].map(([grp,key,clr,bg])=>{
+                const lbl=AGE_LABEL[key], f="age:"+key, on=billingFilter===f, can=grp.length>0;
+                return(
+                <div key={key}
+                  {...(can?clickable(()=>{setBillingFilter(on?"all":f);if(!on){const el=document.getElementById("billing-list-top");if(el)el.scrollIntoView({behavior:"smooth",block:"start"});}}):{})}
+                  aria-label={can?(on?`Clear the ${lbl} filter`:`Show projects with invoices ${lbl} overdue`):undefined}
+                  title={can?(on?"Tap again to show all projects":`Show projects with invoices ${lbl} overdue`):undefined}
+                  style={{background:bg,borderRadius:8,padding:"10px 12px",textAlign:"center",border:on?`2px solid ${clr}`:`1px solid ${clr}33`,boxShadow:on?`0 0 0 3px ${clr}22`:"none",cursor:can?"pointer":"default"}}>
                   <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.4rem",color:clr}}>{grp.length}</div>
                   <div style={{fontSize:".65rem",textTransform:"uppercase",letterSpacing:"1px",color:clr,marginTop:3}}>{lbl}</div>
                   <div style={{fontSize:".72rem",color:clr,fontWeight:600,marginTop:2}}>
                     ₱{grp.reduce((s,m)=>{const p=(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0);const md=deals.find(x=>x.id===m.dealId);return s+Math.max(0,calcTax(m.amount,m.receiptType??md?.receiptType??"OR",m.withholding??md?.withholding??false).netReceivable-p);},0).toLocaleString("en-PH",{minimumFractionDigits:0})}
                   </div>
+                  {on&&<div style={{fontSize:".6rem",color:clr,fontWeight:700,marginTop:4}}>✓ Filtering · tap to clear</div>}
                 </div>
-              ))}
+                );
+              })}
             </div>
             <div style={{fontSize:".78rem",color:"#dc2626"}}>
               {overdue.slice(0,4).map(m=>{const d=deals.find(x=>x.id===m.dealId);return`${d?.client||"?"} (${m.invoiceNo}, ${age(m)}d overdue)`;}).join(" · ")}
@@ -26755,6 +26737,12 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
               {l}
             </button>
           ))}
+          {billingFilter.startsWith("age:")&&(
+            <button onClick={()=>setBillingFilter("all")} title="Clear the aging filter"
+              style={{padding:"7px 13px",borderRadius:20,border:"1.5px solid #dc2626",background:"#dc2626",color:"#fff",fontFamily:"inherit",fontSize:".75rem",fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>
+              Overdue {AGE_LABEL[billingFilter.slice(4)]} ✕
+            </button>
+          )}
         </div>
         {notBilledCount>0&&(
           <button onClick={()=>setShowNotBilled(v=>!v)}
@@ -26797,7 +26785,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
               </div>
             );
           }
-          const {d,ms,grossBase,vat,total,collected,collectible,balance,hasOverdue,hasUnsent,fullyPaid,toBill,milestoneCount,groupOverdue,childOf,addendumCount}=row;
+          const {d,ms,grossBase,vat,total,collected,collectible,balance,hasOverdue,maxOverdue,odCount,hasUnsent,fullyPaid,toBill,milestoneCount,groupOverdue,childOf,addendumCount}=row;
           const statusBadge=(
             <>
               {hasOverdue&&<span style={{fontSize:".68rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Overdue</span>}
@@ -26863,6 +26851,10 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                 {toBill>0&&<span title="Draft milestones past their Bill-on date" style={{color:"#d97706",fontWeight:700,marginLeft:6}}>⏰ {toBill} to bill</span>}
                 {fullyPaid&&<span style={{color:"#059669",fontWeight:700,marginLeft:6}}>✓ Fully Paid</span>}
               </div>
+              {hasOverdue&&(()=>{const c=maxOverdue>60?["#fef2f2","#dc2626","#fecaca"]:maxOverdue>30?["#fff7ed","#c2410c","#fed7aa"]:["#fffbeb","#b45309","#fde68a"];return(
+                <div title="Follow up with the client: an invoice sent to them is past its due date" style={{display:"inline-flex",alignItems:"center",gap:5,marginTop:4,background:c[0],color:c[1],border:`1px solid ${c[2]}`,borderRadius:20,padding:"2px 9px",fontSize:".7rem",fontWeight:700,whiteSpace:"nowrap"}}>
+                  📞 Call client · {maxOverdue}d overdue{odCount>1?` · ${odCount} invoices`:""}
+                </div>);})()}
             </div>
           );
           const dash=<span style={{color:"#e2e8f0",fontSize:".78rem"}}>—</span>;
