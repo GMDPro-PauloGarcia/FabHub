@@ -47,9 +47,14 @@ const fmtQty=q=>{const n=Number(q);return Number.isFinite(n)?n.toLocaleString("e
 // long-standing default so an un-decided draft reads the same as before.
 //
 // General Notes can be edited per quotation (boqData.notes, a string array;
-// null = the standard wording below). The VAT
-// line is never editable: it always follows the VAT toggle and is inserted at
-// BOQ_VAT_NOTE_AT, so a VAT-exempt quote can't say "Inclusive of VAT".
+// null = the standard wording below). Two lines are never editable and are
+// always printed:
+//  - the VAT line follows the VAT toggle (inserted at BOQ_VAT_NOTE_AT), so a
+//    VAT-exempt quote can't say "Inclusive of VAT";
+//  - the NO DP & NO Signed Contract = NO Production policy (BOQ_NODP_NOTE,
+//    inserted at BOQ_NODP_NOTE_AT), GMD's collection protection (Paulo, 2026-11-11).
+//    Any copy of it in edited notes (e.g. saved before it was locked) is
+//    dropped so it never prints twice.
 // Bank details are fixed on purpose (no editable bank account on a quote).
 const BOQ_DEFAULT_NOTES=[
   "Inclusive of Labor Fees (Inclusive of Night Differential)",
@@ -59,10 +64,14 @@ const BOQ_DEFAULT_NOTES=[
   "If the quotation is approved, Quotation Number must be indicated at Purchase Orders (PO)",
   "Any alteration of the design and additional items not included in the contract will be billed accordingly.",
   "GMD reserves the right to hold, pullout, suspend delivery if payments and other conditions are not met.",
-  "GMD Productions has a NO DP & NO Signed Contract = NO Production Policy.",
   "Cost is based on specified requirements; additional requirements other than stated above shall be billed separately.",
 ];
 const BOQ_VAT_NOTE_AT=3;
+const BOQ_NODP_NOTE="GMD Productions has a NO DP & NO Signed Contract = NO Production Policy.";
+const BOQ_NODP_NOTE_AT=7;   // position in the editable list (before "Cost is based…")
+const isNoDpNote=t=>{const n=String(t??"").toLowerCase().replace(/\s+/g," ");return n.includes("no dp")&&n.includes("production");};
+// Edited notes as loaded, minus any copy of the locked NO DP line.
+const editableNotes=a=>Array.isArray(a)?a.filter(x=>!isNoDpNote(x)):null;
 // Edited text is kept exactly as typed (one line per note); blank lines are
 // dropped and lines trimmed only here, for display / print / export.
 const cleanLines=a=>(Array.isArray(a)?a:[]).map(x=>String(x??"").trim()).filter(Boolean);
@@ -70,7 +79,9 @@ const boqGeneralNotes=(vatEnabled,custom)=>{
   const vatNote=vatEnabled===false
     ? "VAT Exclusive (VATEX) — quotation is exclusive of Value Added Tax"
     : "Inclusive of Value Added Taxes";
-  const base=Array.isArray(custom)?cleanLines(custom):BOQ_DEFAULT_NOTES;
+  const edited=Array.isArray(custom)?cleanLines(custom).filter(x=>!isNoDpNote(x)):BOQ_DEFAULT_NOTES;
+  const d=Math.min(BOQ_NODP_NOTE_AT,edited.length);
+  const base=[...edited.slice(0,d),BOQ_NODP_NOTE,...edited.slice(d)];
   const at=Math.min(BOQ_VAT_NOTE_AT,base.length);
   return [...base.slice(0,at),vatNote,...base.slice(at)];
 };
@@ -566,7 +577,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       setDiscount("");
     }
     if(src.markupPct!==undefined) setMarkupPct(src.markupPct);
-    setCustomNotes(Array.isArray(src.notes)?src.notes:null);
+    setCustomNotes(editableNotes(src.notes));
     setNotesEditing(false);
   };
 
@@ -1806,7 +1817,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
             </div>
             {notesEditing?(
               <div style={{marginBottom:18}}>
-                <div style={{fontSize:".7rem",color:"#64748b",marginBottom:4}}>One note per line. The VAT line is added automatically from the VAT setting.</div>
+                <div style={{fontSize:".7rem",color:"#64748b",marginBottom:4}}>One note per line. Always added automatically: the VAT line (from the VAT setting) and the NO DP &amp; NO Signed Contract = NO Production Policy.</div>
                 <textarea value={(customNotes||BOQ_DEFAULT_NOTES).join("\n")} rows={Math.max(6,(customNotes||BOQ_DEFAULT_NOTES).length+1)}
                   onChange={e=>{markEdited();setCustomNotes(e.target.value.split("\n"));}}
                   style={{width:"100%",boxSizing:"border-box",fontFamily:"inherit",fontSize:".78rem",lineHeight:1.6,border:"1.5px solid #cbd5e1",borderRadius:8,padding:"8px 10px",color:"#334155",resize:"vertical"}}/>
