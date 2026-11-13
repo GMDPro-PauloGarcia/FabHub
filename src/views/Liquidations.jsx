@@ -9,7 +9,7 @@ import {chip,linkBtn} from "./Ledgers";
 // Anyone submits what they spent, one line per receipt. Finance checks it
 // (not their own), a Manager approves it with the Friday payment run, Finance
 // pays it on Friday. The database keeps every rule and stamp (migration
-// 20261114050000_liquidations_and_friday_run.sql); this screen only mirrors it.
+// 20261114080000_liquidations_and_friday_run.sql); this screen only mirrors it.
 // Saves use insert / update, never a full-row upsert.
 
 const C={ink:"#0f172a",muted:"#64748b",faint:"#94a3b8",line:"#e2e8f0",ok:"#059669",warn:"#d97706",bad:"#dc2626",navy:"#0B2545",blue:"#2563eb"};
