@@ -3,7 +3,7 @@ import {today as TODAY,addDaysLocalISO,useIsMobile} from "../shared";
 import {projDisplayName,costSummary,milestoneBalance} from "../core";
 import {supabase,isSupabaseReady} from "../supabaseClient";
 import {num,r2,php2,payBalance,payIsOpen,deliveryOf} from "../data/ledger";
-import {runThursday,latestCash} from "./PaymentRun";
+import {runFriday,latestCash} from "./PaymentRun";
 import {expected2307,key2307,quarterOf} from "./Bir2307";
 import {LedgerHost} from "./Ledgers";
 
@@ -39,7 +39,7 @@ export default function MonitoringBoard({payables=[],payPays=[],prs=[],swos=[],e
   const[ledger,setLedger]=useState(null);
   useEffect(()=>{
     if(!isSupabaseReady()){setRun(null);return;}
-    const thu=runThursday(today);
+    const thu=runFriday(today);
     supabase.from("payment_runs").select("*").gte("release_date",addDaysLocalISO(today,-21)).then(({data})=>{
       const rs=data||[];setRuns(rs);setRun(rs.find(r=>r.release_date===thu&&r.status!=="Cancelled")||null);
     });
@@ -51,7 +51,7 @@ export default function MonitoringBoard({payables=[],payPays=[],prs=[],swos=[],e
     const dealById=new Map(deals.map(d=>[d.id,d]));
     const name=id=>{const d=dealById.get(id);return d?projDisplayName(d):"—";};
     // ── Payments ──
-    const thu=runThursday(today);
+    const thu=runFriday(today);
     const cash=latestCash(cashPositions,today);
     const runTotal=run?r2((run.items||[]).reduce((s,i)=>s+num(i.amount),0)):r2(payables.filter(p=>payIsOpen(p)&&p.dueDate&&p.dueDate<=thu).reduce((s,p)=>s+payBalance(p),0));
     out.run={label:"This week's run covered by cash",
