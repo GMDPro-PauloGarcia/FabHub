@@ -25762,6 +25762,9 @@ function ClientPoField({deal,inherited,canEdit,onSave}){
     </div>
   );
 }
+// Statement of Account: settled projects stay on it for this many months
+// after their last payment, in a separate "Settled" table.
+const SOA_SETTLED_MONTHS=3;
 function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMilestone,updateMilestone,applyDeduction,deleteMilestone,deleteProjectBilling,createMilestoneSchedule,logBillingPayment,deleteBillingPayment,setConfirmDel,canDeleteDeal,session,role,cocDeals,clientProfiles,initialDeal,clearInitialDeal,initialPayMs,clearInitialPayMs,upDeals,onSaveOnboarding,onOpenPayTerms,projs,overallProg,toastEmit,sendTelegramNotification}){
   const mob=window.innerWidth<768;
   const[selDeal,  setSelDeal]  =useState(initialDeal||null);
@@ -25852,18 +25855,23 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       [ms.invoiceNo,d?.client,"Billing Statement"].filter(Boolean).join(" - "),
       {draft:billingPdfDraft,draftNote:"Only Finance's or a Manager's copy is clean to send."});
   };
+  const soaPdfRow=(r)=>{
+    const po=dealClientPo(r.d,deals);
+    return{client:r.d.client||"",project:r.d.contact||r.d.product||r.d.ceNo||"—",
+      ref:[r.d.ceNo&&(r.d.contact||r.d.product)?r.d.ceNo:"",po?"PO# "+po:""].filter(Boolean).join(" · "),
+      vatable:r.vatable,vat:r.vat,gross:r.gross,payments:r.payments,ewt:r.ewt,due:r.due,balance:r.balance,
+      lastPaid:r.lastPaid,awaiting2307:r.awaiting2307};
+  };
   const shareSoaPdf=(clientName)=>{
     const sd=soaData(clientName);
     if(!sd){toastEmit&&toastEmit("No billing data found for "+clientName,"warning");return;}
     const model={
       draft:billingPdfDraft,clientName,address:sd.soaAddr,dateStr:sd.dateStr,refNos:sd.invoiceNos,amtLbl:sd.amtLbl,
       preparedBy:sd.preparedBy,
-      rows:sd.rows.map(r=>{
-        const po=dealClientPo(r.d,deals);
-        return{client:r.d.client||"",project:r.d.contact||r.d.product||r.d.ceNo||"—",
-          ref:[r.d.ceNo&&(r.d.contact||r.d.product)?r.d.ceNo:"",po?"PO# "+po:""].filter(Boolean).join(" · "),
-          vatable:r.vatable,vat:r.vat,gross:r.gross,payments:r.payments,ewt:r.ewt,due:r.due,balance:r.balance};
-      }),
+      rows:sd.rows.map(soaPdfRow),
+      settledRows:sd.settledRows.map(soaPdfRow),
+      settledSince:sd.settledSince,settledMonths:SOA_SETTLED_MONTHS,
+      settledTotals:{gross:sd.sG,payments:sd.sP},
       totals:{vatable:sd.tV,vat:sd.tVat,gross:sd.tG,payments:sd.tP,ewt:sd.tE,due:sd.tD,balance:sd.tB},
     };
     billingPdf.make(async()=>{const {buildSoaPdf}=await import("./views/billingPdf");return buildSoaPdf(model);},
@@ -26295,7 +26303,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   // (billingPdf.js), so the two can't disagree. null = nothing billed yet.
   const soaData=(clientName)=>{
     const clientDeals=[...wonDeals,...(completedDeals||[]),...deals.filter(d=>d.parentDealId&&new Set([...wonDeals,...(completedDeals||[])].map(x=>x.id)).has(d.parentDealId))].filter((d,i,a)=>a.findIndex(x=>x.id===d.id)===i).filter(d=>clientKey(d.client)===clientKey(clientName));
-    const rows=clientDeals.map(d=>{
+    const allRows=clientDeals.map(d=>{
       const ms=billings.filter(b=>b.dealId===d.id);
       const rt=d.receiptType||"OR",wh=d.withholding||false;
       const active=ms.filter(m=>m.status!=="Cancelled");
@@ -26308,9 +26316,24 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       const ewt=active.reduce((s,m)=>s+calcTax(m.amount,m.receiptType??rt,m.withholding??wh).ewt,0);
       const due=Math.max(0,gross-payments-ewt);
       const balance=Math.max(0,gross-payments);
-      return{d,vatable,vat,gross,payments,ewt,due,balance};
+      // Last payment date: when a settled project leaves the SOA (below).
+      const lastPaid=ms.reduce((mx,m)=>(m.payments||[]).filter(p=>!p.bounced&&p.date).reduce((x,p)=>String(p.date)>x?String(p.date):x,mx),"");
+      // Settled = nothing left on the balance. Due 0 with a balance left means
+      // the client withheld tax and we still need their BIR 2307: that stays
+      // outstanding, labelled, because the SOA is how Finance chases it.
+      const settled=balance<0.01;
+      const awaiting2307=!settled&&due<0.01;
+      return{d,vatable,vat,gross,payments,ewt,due,balance,lastPaid,settled,awaiting2307};
     }).filter(r=>r.vatable>0||r.payments>0);
-    if(!rows.length) return null;
+    if(!allRows.length) return null;
+    // Outstanding projects carry the statement's totals. Settled ones are shown
+    // in their own table, only those fully paid in the last 3 months, so a
+    // long-standing client's SOA doesn't list every project ever done.
+    const sc=new Date(today+"T00:00:00");sc.setMonth(sc.getMonth()-SOA_SETTLED_MONTHS);
+    const settledSince=`${sc.getFullYear()}-${String(sc.getMonth()+1).padStart(2,"0")}-${String(sc.getDate()).padStart(2,"0")}`;
+    const rows=allRows.filter(r=>!r.settled);
+    const settledRows=allRows.filter(r=>r.settled&&r.lastPaid&&r.lastPaid>=settledSince).sort((a,b)=>b.lastPaid.localeCompare(a.lastPaid));
+    const sG=settledRows.reduce((s,r)=>s+r.gross,0),sP=settledRows.reduce((s,r)=>s+r.payments,0);
     const tV=rows.reduce((s,r)=>s+r.vatable,0),tVat=rows.reduce((s,r)=>s+r.vat,0);
     const tG=rows.reduce((s,r)=>s+r.gross,0),tP=rows.reduce((s,r)=>s+r.payments,0);
     const tE=rows.reduce((s,r)=>s+r.ewt,0),tD=rows.reduce((s,r)=>s+r.due,0);
@@ -26322,20 +26345,32 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     const cpSoa=(clientProfiles||{})[clientName]||(clientProfiles||{})[clientDeals[0]?.client||""]||{};
     const soaAddr=[cpSoa.billingAddress,cpSoa.city,cpSoa.province,cpSoa.zipCode].filter(Boolean).join(", ");
     // AR (no VAT) projects have no "vatable" amount; don't label them as such.
-    const amtLbl=tVat>0?"VATABLE AMOUNT":"AMOUNT (NO VAT)";
-    const invoiceNos=[...new Set(billings.filter(b=>clientDeals.some(d=>d.id===b.dealId)&&b.invoiceNo&&b.status!=="Cancelled").map(b=>b.invoiceNo))].join(", ");
-    return{clientDeals,rows,tV,tVat,tG,tP,tE,tD,tB,dateStr,preparedBy,cpSoa,soaAddr,amtLbl,invoiceNos};
+    const amtLbl=(rows.length?tVat:allRows.reduce((s,r)=>s+r.vat,0))>0?"VATABLE AMOUNT":"AMOUNT (NO VAT)";
+    // Reference numbers of the projects actually on this statement.
+    const shownIds=new Set([...rows,...settledRows].map(r=>r.d.id));
+    const invoiceNos=[...new Set(billings.filter(b=>shownIds.has(b.dealId)&&b.invoiceNo&&b.status!=="Cancelled").map(b=>b.invoiceNo))].join(", ");
+    return{clientDeals,rows,settledRows,settledSince,sG,sP,tV,tVat,tG,tP,tE,tD,tB,dateStr,preparedBy,cpSoa,soaAddr,amtLbl,invoiceNos};
   };
   const printSOA=(clientName)=>{
     const esc=(s)=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
     const f=(v)=>Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
     const sd=soaData(clientName);
     if(!sd){alert("No billing data found for "+clientName);return;}
-    const{rows,tV,tVat,tG,tP,tE,tD,tB,dateStr,preparedBy,soaAddr,amtLbl,invoiceNos}=sd;
+    const{rows,settledRows,settledSince,sG,sP,tV,tVat,tG,tP,tE,tD,tB,dateStr,preparedBy,soaAddr,amtLbl,invoiceNos}=sd;
+    const fd=(iso)=>iso?new Date(iso+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):"—";
+    const projCell=(r)=>`<td style="text-align:left"><div style="color:#2563eb;font-weight:600">${esc(r.d.contact||r.d.product||r.d.ceNo||"—")}</div>${(()=>{const po=dealClientPo(r.d,deals);const ref=[r.d.ceNo&&(r.d.contact||r.d.product)?r.d.ceNo:"",po?"PO# "+po:""].filter(Boolean).join(" · ");return ref?`<div style="color:#64748b;font-size:8.5px;margin-top:1px">${esc(ref)}</div>`:"";})()}${r.awaiting2307?`<div style="color:#b45309;font-size:8.5px;font-weight:700;margin-top:1px">Awaiting BIR Form 2307</div>`:""}</td>`;
+    const settledHtml=settledRows.map((r,i)=>`<tr>
+      <td style="text-align:center;color:#64748b">${i+1}</td>
+      ${projCell(r)}
+      <td style="text-align:right">${f(r.gross)}</td>
+      <td style="text-align:right;color:#2563eb">${f(r.payments)}</td>
+      <td style="text-align:right">${esc(fd(r.lastPaid))}</td>
+      <td style="text-align:right;color:#059669;font-weight:700">PAID</td>
+    </tr>`).join("");
     const rowsHtml=rows.map((r,i)=>`<tr>
       <td style="text-align:center;color:#64748b">${i+1}</td>
       <td style="color:#2563eb;font-weight:600">${esc(r.d.client)}</td>
-      <td style="text-align:left"><div style="color:#2563eb;font-weight:600">${esc(r.d.contact||r.d.product||r.d.ceNo||"—")}</div>${(()=>{const po=dealClientPo(r.d,deals);const ref=[r.d.ceNo&&(r.d.contact||r.d.product)?r.d.ceNo:"",po?"PO# "+po:""].filter(Boolean).join(" · ");return ref?`<div style="color:#64748b;font-size:8.5px;margin-top:1px">${esc(ref)}</div>`:"";})()}</td>
+      ${projCell(r)}
       <td style="text-align:right">${f(r.vatable)}</td>
       <td style="text-align:right">${f(r.vat)}</td>
       <td style="text-align:right">${f(r.gross)}</td>
@@ -26377,6 +26412,14 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       tfoot td{color:#fff;font-weight:700;padding:9px 10px;font-size:10px;text-align:right}
       tfoot td:nth-child(1),tfoot td:nth-child(2){text-align:center;color:rgba(255,255,255,.7);font-size:9px;font-weight:400}
       .total-due{color:#f97316!important;font-size:13px!important;font-weight:900!important}
+      .tbl-title{font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#0f172a;margin:4px 0 6px}
+      .paid-full{border:2px solid #059669;color:#059669;background:#ecfdf5;font-weight:900;font-size:13px;letter-spacing:1px;text-align:center;padding:10px;margin-bottom:14px}
+      table.settled thead tr,table.settled tfoot tr{background:#475569}
+      table.settled thead th:nth-child(n+3){text-align:right}
+      table.settled thead th:nth-child(-n+2),table.settled tbody td:nth-child(-n+2){text-align:left}
+      table.settled tbody td:first-child{text-align:center}
+      table.settled tbody td:nth-child(n+3){text-align:right}
+      .none{font-size:9.5px;color:#64748b;font-style:italic;margin-bottom:14px}
       .notes{border:1px solid #e2e8f0;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:9px;color:#475569}
       .notes b{color:#0f172a;font-size:9px}
       .notes .nt{font-weight:700;font-size:10px;color:#0f172a;margin-bottom:6px}
@@ -26406,13 +26449,15 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         <span class="cl">BILLING ADDRESS:</span>
         <span class="cv">${soaAddr?esc(soaAddr):"&nbsp;"}</span>
       </div>
-      <div class="summary">
+      ${rows.length?`<div class="summary">
         <div class="sb"><div class="sl">TOTAL ${amtLbl}</div><div class="sv">${f(tV)}</div></div>
         <div class="sb"><div class="sl">TOTAL VAT</div><div class="sv">${f(tVat)}</div></div>
         <div class="sb"><div class="sl">TOTAL PAYMENTS MADE</div><div class="sv">${f(tP)}</div></div>
         <div class="sb"><div class="sl">TOTAL BALANCE</div><div class="sv">${f(tB)}</div></div>
         <div class="sb"><div class="sl">TOTAL AMOUNT DUE</div><div class="sv">${f(tD)}</div></div>
-      </div>
+      </div>`:""}
+      ${rows.length?"":`<div class="paid-full">PAID IN FULL — no outstanding balance as of ${esc(dateStr)}</div>`}
+      ${rows.length?`<div class="tbl-title">Outstanding</div>
       <table>
         <thead><tr>
           <th style="width:30px;text-align:center">#</th>
@@ -26427,7 +26472,16 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
           <td>${f(tP)}</td><td>${f(tE)}</td>
           <td class="total-due">${f(tD)}</td><td>${f(tB)}</td>
         </tr></tfoot>
-      </table>
+      </table>`:""}
+      <div class="tbl-title">Settled — fully paid since ${esc(fd(settledSince))}</div>
+      ${settledRows.length?`<table class="settled">
+        <thead><tr>
+          <th style="width:30px;text-align:center">#</th>
+          <th>PROJECT NAME</th><th>SALES AMOUNT</th><th>PAYMENT MADE</th><th>LAST PAYMENT</th><th>Status</th>
+        </tr></thead>
+        <tbody>${settledHtml}</tbody>
+        <tfoot><tr><td></td><td style="text-align:left">TOTAL SETTLED</td><td>${f(sG)}</td><td>${f(sP)}</td><td></td><td></td></tr></tfoot>
+      </table>`:`<div class="none">No projects fully paid in the last ${SOA_SETTLED_MONTHS} months.</div>`}
       <div class="notes">
         <div class="nt">NOTES</div>
         <p style="margin-bottom:6px">Thank you for your business! Please send or email (<b>finance@gmd.ph</b>) us a copy of the payment for proper recording.</p>
