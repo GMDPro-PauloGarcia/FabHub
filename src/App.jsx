@@ -12,7 +12,7 @@ import {fmt,addPrintClose,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dro
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {projProgressPct, isConstructionDeal, projStageFlow, projStepIndex, projStepLabel, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel, pendingCostByProject, poSplitTotal, canRaiseOrder, woSignStep, WO_SIGN_MSG, arAgeBucket, arCallOrder, dealHasBoq, MOTHER_PO_BOQ_MSG} from './core';
+import {projProgressPct, isConstructionDeal, projStageFlow, projStepIndex, projStepLabel, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, canRecordDeduction, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel, pendingCostByProject, poSplitTotal, canRaiseOrder, woSignStep, WO_SIGN_MSG, arAgeBucket, arCallOrder, dealHasBoq, MOTHER_PO_BOQ_MSG} from './core';
 import ProgressReportModal from './views/ProgressReportModal';
 
 // Returns a component whose function IDENTITY is stable across renders while its
@@ -6898,14 +6898,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     sendTelegramNotification("management",msg);
     logActivity(dealId,"Billing Setup Requested",`Jessica notified to set up billing milestones for ${client||"the awarded project"}.`,session?.name||role);
   };
-  // Screen-only update after record/reverse_billing_deduction: the database has
-  // already changed the amount and written the deduction row, so mirror that
-  // locally without re-saving the milestone.
+  // Screen-only update after record/approve/reject/reverse_billing_deduction:
+  // the database has already changed the amount and written the deduction row,
+  // so mirror that locally without re-saving the milestone. A Pending or
+  // Rejected request never changed the amount.
   const applyDeduction=(msId,row)=>{
     const ded=deductionFromSb(row);
     upBillings(bs=>bs.map(b=>{
       if(b.id!==msId) return b;
       const others=(b.deductions||[]).filter(x=>x.id!==ded.id);
+      if(ded.status!=="Approved") return{...b,deductions:[...others,ded]};
       const amount=ded.reversedAt?Math.round((Number(b.amount||0)+ded.amount)*100)/100:ded.amountAfter;
       const d=deals.find(x=>x.id===b.dealId);
       const paid=(b.payments||[]).filter(p=>!p.bounced).reduce((s,p)=>s+Number(p.amount||0),0);
@@ -25861,40 +25863,51 @@ function PMFeedView({projs,wonDeals,deals,session,role,upProj}){
   );
 }
 
-function DeductionForm({ms,applyDeduction,session,today,toastEmit,sendTelegramNotification,deal}){
+function DeductionForm({ms,applyDeduction,session,today,toastEmit,sendTelegramNotification,deal,isMgr}){
   const[showDed,setShowDed]=useState(false);
   const[dedForm,setDedForm]=useState({reason:"",amount:""});
   const[saving,setSaving]=useState(false);
   if(!showDed) return(
-    <button onClick={()=>setShowDed(true)} style={{background:"none",border:"1px dashed #f97316",borderRadius:6,padding:"3px 10px",fontSize:".68rem",color:"#c2410c",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>+ Record Deduction</button>
+    <button onClick={()=>setShowDed(true)} style={{background:"none",border:"1px dashed #f97316",borderRadius:6,padding:"3px 10px",fontSize:".68rem",color:"#c2410c",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>{isMgr?"+ Record Deduction":"+ Request Deduction"}</button>
   );
-  // The database lowers the amount and keeps the record in one step
-  // (record_billing_deduction, migration 20261020060000): Manager only, reason
-  // required, never more than the invoice or below what has been paid.
+  // record_billing_deduction (migrations 20261020060000 / 20261022010000 /
+  // 20261115010000): a Manager's deduction lowers the amount and keeps the
+  // record in one step; a DEDUCTION_USERS request is saved Pending and changes
+  // nothing until another Manager approves it. Reason required, never more than
+  // the invoice or below what has been paid, never on the requester's own deal.
   const save=async()=>{
     const amt=Number(dedForm.amount);
     if(!String(dedForm.reason).trim()){toastEmit&&toastEmit("Give the reason for the deduction.","warning");return;}
     if(!isFinite(amt)||amt<=0){toastEmit&&toastEmit("Enter a deduction amount greater than zero.","warning");return;}
     if(amt>Number(ms.amount||0)+0.005){toastEmit&&toastEmit(`Deduction is more than the milestone amount (₱${Number(ms.amount||0).toLocaleString("en-PH")}).`,"warning");return;}
+    const paidSoFar=(ms.payments||[]).filter(p=>!p.bounced).reduce((s,p)=>s+Number(p.amount||0),0);
+    const netAfter=calcTax(Math.round((Number(ms.amount||0)-amt)*100)/100,ms.receiptType??deal?.receiptType??"OR",ms.withholding??deal?.withholding??false).netReceivable;
+    if(netAfter<paidSoFar-0.01){toastEmit&&toastEmit(`After this deduction the invoice would be worth ₱${netAfter.toLocaleString("en-PH")} but ₱${paidSoFar.toLocaleString("en-PH")} has already been paid on it.`,"warning",9000);return;}
     if(!isSupabaseReady()){toastEmit&&toastEmit("No server connection — a deduction can only be recorded online.","error",8000);return;}
     setSaving(true);
     const{data,error}=await _rpcWithTimeout(supabase.rpc('record_billing_deduction',{p_milestone_id:ms.id,p_amount:amt,p_reason:String(dedForm.reason).trim()}));
     setSaving(false);
     if(error){toastEmit&&toastEmit("Deduction not recorded: "+error.message,"error",9000);return;}
     applyDeduction(ms.id,data);
-    sendTelegramNotification&&sendTelegramNotification("financialcontrol",`📉 <b>Billing Deduction Approved — ${deal?.client||""}</b>\nMilestone: ${ms.name}${ms.invoiceNo?` (${ms.invoiceNo})`:""}\nDeduction: ₱${amt.toLocaleString("en-PH")}\nAmount: ₱${Number(data.amount_before).toLocaleString("en-PH")} → ₱${Number(data.amount_after).toLocaleString("en-PH")}\nReason: ${data.reason}\nApproved by: ${session?.name||data.recorded_by} · ${today}`);
-    toastEmit&&toastEmit("Deduction recorded — Finance notified","success");
+    if(data.status==="Pending"){
+      sendTelegramNotification&&sendTelegramNotification("management",`⏳ <b>Billing Deduction — Approval Needed — ${deal?.client||""}</b>\nMilestone: ${ms.name}${ms.invoiceNo?` (${ms.invoiceNo})`:""}\nDeduction: ₱${amt.toLocaleString("en-PH")}\nWould change amount: ₱${Number(data.amount_before).toLocaleString("en-PH")} → ₱${Number(data.amount_after).toLocaleString("en-PH")}\nReason: ${data.reason}\nRequested by: ${session?.name||data.recorded_by} · ${today}\n\n👉 Approve or reject it in <b>Billing</b>. The invoice is unchanged until then.`);
+      toastEmit&&toastEmit("Deduction request sent to management for approval","success");
+    }else{
+      sendTelegramNotification&&sendTelegramNotification("financialcontrol",`📉 <b>Billing Deduction Approved — ${deal?.client||""}</b>\nMilestone: ${ms.name}${ms.invoiceNo?` (${ms.invoiceNo})`:""}\nDeduction: ₱${amt.toLocaleString("en-PH")}\nAmount: ₱${Number(data.amount_before).toLocaleString("en-PH")} → ₱${Number(data.amount_after).toLocaleString("en-PH")}\nReason: ${data.reason}\nApproved by: ${session?.name||data.recorded_by} · ${today}`);
+      toastEmit&&toastEmit("Deduction recorded — Finance notified","success");
+    }
     setShowDed(false);setDedForm({reason:"",amount:""});
   };
   return(
     <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"10px 12px"}}>
-      <div style={{fontWeight:700,color:"#c2410c",fontSize:".76rem",marginBottom:8}}>📉 Record Deduction</div>
+      <div style={{fontWeight:700,color:"#c2410c",fontSize:".76rem",marginBottom:isMgr?8:4}}>📉 {isMgr?"Record Deduction":"Request Deduction"}</div>
+      {!isMgr&&<div style={{fontSize:".68rem",color:"#9a3412",marginBottom:8}}>A Manager must approve this before the invoice amount changes.</div>}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
         <Fld label="Reason" required><Inp value={dedForm.reason} onChange={e=>setDedForm(p=>({...p,reason:e.target.value}))} placeholder="e.g. Penalty, Incomplete works"/></Fld>
         <Fld label="Amount (₱, VAT-ex)" required><Inp type="number" value={dedForm.amount} onChange={e=>setDedForm(p=>({...p,amount:e.target.value}))} placeholder="0.00"/></Fld>
       </div>
       <div style={{display:"flex",gap:6}}>
-        <button onClick={save} disabled={saving} style={{background:"#c2410c",border:"none",borderRadius:6,padding:"5px 14px",fontSize:".74rem",color:"#fff",cursor:saving?"wait":"pointer",fontFamily:"inherit",fontWeight:700,opacity:saving?.6:1}}>{saving?"Saving…":"Approve & Record"}</button>
+        <button onClick={save} disabled={saving} style={{background:"#c2410c",border:"none",borderRadius:6,padding:"5px 14px",fontSize:".74rem",color:"#fff",cursor:saving?"wait":"pointer",fontFamily:"inherit",fontWeight:700,opacity:saving?.6:1}}>{saving?"Saving…":isMgr?"Approve & Record":"Send for Approval"}</button>
         <button onClick={()=>setShowDed(false)} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 10px",fontSize:".74rem",color:"#64748b",cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
       </div>
     </div>
@@ -26108,6 +26121,10 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   // billingIntegrityIssues in core.js). Recomputed whenever billing data changes.
   const[showCheck,setShowCheck]=useState(false);
   const checkIssues=useMemo(()=>billingIntegrityIssues({deals,billings,addenda,today}),[deals,billings,addenda]);
+  // Deduction requests (Jessica / Jerwin) waiting for a Manager. They change no
+  // amount until approved; listed at the top of Billing for Managers.
+  const pendingDeds=useMemo(()=>billings.flatMap(ms=>(ms.deductions||[]).filter(d=>d.status==="Pending").map(d=>({d,ms}))),[billings]);
+  const[showPendingDeds,setShowPendingDeds]=useState(false);
   const[showNotBilled,setShowNotBilled]=useState(false);  // hide 0-milestone "Not billed" projects by default
   const[billRowMenu,setBillRowMenu]=useState(null);       // ⋯ row-actions menu {id,client,canDeleteSchedule,canRemoveProject,top,right}
   const[forecastRange,setForecastRange]=useState("week"); // today | week | month — collection forecast horizon
@@ -26925,6 +26942,30 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
           </button>
         </div>
       </div>
+
+      {/* Deduction requests awaiting a Manager (record_billing_deduction by DEDUCTION_USERS) */}
+      {pendingDeds.length>0&&(canonRole(role)==="Manager"||canRecordDeduction(role,session?.username))&&(
+        <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:12,padding:"10px 14px",marginBottom:16}}>
+          <button onClick={()=>setShowPendingDeds(v=>!v)} aria-expanded={showPendingDeds}
+            style={{background:"none",border:"none",padding:0,fontFamily:"inherit",fontSize:".82rem",fontWeight:800,color:"#92400e",cursor:"pointer",textAlign:"left"}}>
+            ⏳ {pendingDeds.length} billing deduction{pendingDeds.length===1?"":"s"} awaiting Manager approval · ₱{pendingDeds.reduce((s,x)=>s+Number(x.d.amount||0),0).toLocaleString("en-PH")} {showPendingDeds?"▴":"▾"}
+          </button>
+          <div style={{fontSize:".7rem",color:"#a16207",marginTop:2}}>No invoice amount changes until a Manager approves.{canonRole(role)==="Manager"?" Open the project to approve or reject.":""}</div>
+          {showPendingDeds&&(
+            <div style={{marginTop:8,display:"flex",flexDirection:"column",gap:6}}>
+              {pendingDeds.map(({d,ms})=>{const dd=deals.find(z=>z.id===ms.dealId);return(
+                <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap",background:"#fff",border:"1px solid #fde68a",borderRadius:8,padding:"6px 10px",fontSize:".74rem",color:"#78350f"}}>
+                  <div>
+                    <strong>₱{Number(d.amount).toLocaleString("en-PH")}</strong> · {dd?.client||"—"}{dd?.ceNo?` (${dd.ceNo})`:""} · {ms.name}{ms.invoiceNo?` (${ms.invoiceNo})`:""}
+                    <div style={{fontSize:".68rem",color:"#a16207"}}>{d.reason} — requested by {d.requestedBy} · {d.requestedOn}</div>
+                  </div>
+                  <button onClick={()=>setSelDeal(ms.dealId)} style={{background:"#1e293b",border:"none",borderRadius:6,padding:"4px 10px",fontFamily:"inherit",fontSize:".72rem",fontWeight:700,color:"#fff",cursor:"pointer"}}>Open →</button>
+                </div>
+              );})}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Billing Check panel */}
       {showCheck&&(
@@ -27836,11 +27877,19 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                           </div>
                         </div>
                       )}
-                    {/* Deductions (Manager-only; kept in billing_deductions, reversed rows stay listed) */}
+                    {/* Deductions: a Manager records directly; DEDUCTION_USERS request and another
+                        Manager approves/rejects; reverse is Manager only. Kept in billing_deductions:
+                        pending, rejected and reversed rows stay listed. */}
                     {(()=>{
                       const deds=(ms.deductions||[]);
-                      const totalDed=deds.filter(d=>!d.reversedAt).reduce((s,d)=>s+Number(d.amount||0),0);
+                      const isApplied=d=>(d.status||"Approved")==="Approved"&&!d.reversedAt;
+                      const totalDed=deds.filter(isApplied).reduce((s,d)=>s+Number(d.amount||0),0);
+                      const pendingDed=deds.filter(d=>d.status==="Pending").length;
                       const isMgrB=canonRole(role)==="Manager";
+                      const msDeal=deals.find(x=>x.id===ms.dealId)||deal;
+                      const canDedB=canRecordDeduction(role,session?.username,msDeal,session?.name);
+                      const ownDealB=!isMgrB&&canRecordDeduction(role,session?.username,null,session?.name)&&!canDedB;
+                      const myReq=d=>{const r=String(d.requestedBy||"").trim().toLowerCase();return !!r&&(r===String(session?.username||"").trim().toLowerCase()||r===String(session?.name||"").trim().toLowerCase());};
                       const reverseDed=async(d)=>{
                         const why=await uiPrompt(`Reverse the ₱${Number(d.amount).toLocaleString("en-PH")} deduction ("${d.reason}")?\n\nThe amount goes back on ${ms.name||"this milestone"}. The deduction stays on record, marked reversed.\nReason (required):`,"");
                         if(why==null) return;
@@ -27851,26 +27900,56 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                         sendTelegramNotification&&sendTelegramNotification("financialcontrol",`↺ <b>Billing Deduction Reversed — ${deal?.client||""}</b>\nMilestone: ${ms.name}${ms.invoiceNo?` (${ms.invoiceNo})`:""}\nRestored: ₱${Number(d.amount).toLocaleString("en-PH")}\nOriginal reason: ${d.reason}\nWhy reversed: ${data.reverse_reason}\nBy: ${session?.name||data.reversed_by} · ${today}`);
                         toastEmit&&toastEmit("Deduction reversed — amount restored","success");
                       };
+                      const decideDed=async(d,approve)=>{
+                        if(!isSupabaseReady()){toastEmit&&toastEmit("No server connection — try again online.","error",8000);return;}
+                        let why="";
+                        if(approve){
+                          if(!await uiConfirm(`Approve the ₱${Number(d.amount).toLocaleString("en-PH")} deduction requested by ${d.requestedBy} ("${d.reason}")?\n\n${ms.name||"This milestone"} goes from ₱${Number(ms.amount||0).toLocaleString("en-PH")} to ₱${(Number(ms.amount||0)-Number(d.amount)).toLocaleString("en-PH")}.`)) return;
+                        }else{
+                          why=await uiPrompt(`Reject the ₱${Number(d.amount).toLocaleString("en-PH")} deduction requested by ${d.requestedBy} ("${d.reason}")?\n\nThe invoice stays as it is. Reason (required):`,"");
+                          if(why==null) return;
+                          if(!String(why).trim()){toastEmit&&toastEmit("A reason is required to reject a deduction.","warning");return;}
+                        }
+                        const{data,error}=await _rpcWithTimeout(approve?supabase.rpc('approve_billing_deduction',{p_id:d.id}):supabase.rpc('reject_billing_deduction',{p_id:d.id,p_reason:String(why).trim()}));
+                        if(error){toastEmit&&toastEmit(`Deduction not ${approve?"approved":"rejected"}: `+error.message,"error",9000);return;}
+                        applyDeduction(ms.id,data);
+                        sendTelegramNotification&&sendTelegramNotification("financialcontrol",approve
+                          ?`📉 <b>Billing Deduction Approved — ${msDeal?.client||""}</b>\nMilestone: ${ms.name}${ms.invoiceNo?` (${ms.invoiceNo})`:""}\nDeduction: ₱${Number(data.amount).toLocaleString("en-PH")}\nAmount: ₱${Number(data.amount_before).toLocaleString("en-PH")} → ₱${Number(data.amount_after).toLocaleString("en-PH")}\nReason: ${data.reason}\nRequested by: ${data.recorded_by}\nApproved by: ${session?.name||data.decided_by} · ${today}`
+                          :`✋ <b>Billing Deduction Rejected — ${msDeal?.client||""}</b>\nMilestone: ${ms.name}${ms.invoiceNo?` (${ms.invoiceNo})`:""}\nRequested: ₱${Number(data.amount).toLocaleString("en-PH")} (${data.reason}) by ${data.recorded_by}\nWhy rejected: ${data.decide_note}\nBy: ${session?.name||data.decided_by} · ${today}\nInvoice unchanged.`);
+                        toastEmit&&toastEmit(approve?"Deduction approved — amount lowered":"Deduction rejected — invoice unchanged","success");
+                      };
                       return(
                         <div style={{marginTop:8}}>
                           {deds.length>0&&(
                             <div style={{background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:8,padding:"8px 12px",marginBottom:6}}>
-                              <div style={{fontSize:".67rem",fontWeight:700,color:"#c2410c",marginBottom:5,textTransform:"uppercase",letterSpacing:".5px"}}>Deductions — ₱{totalDed.toLocaleString("en-PH")} in effect</div>
-                              {deds.map((d,di)=>(
-                                <div key={d.id||di} style={{display:"flex",justifyContent:"space-between",fontSize:".72rem",color:d.reversedAt?"#94a3b8":"#78350f",marginBottom:3,gap:8,alignItems:"center"}}>
+                              <div style={{fontSize:".67rem",fontWeight:700,color:"#c2410c",marginBottom:5,textTransform:"uppercase",letterSpacing:".5px"}}>Deductions — ₱{totalDed.toLocaleString("en-PH")} in effect{pendingDed>0&&<span style={{color:"#b45309",marginLeft:6}}>· {pendingDed} awaiting approval (not applied)</span>}</div>
+                              {deds.map((d,di)=>{
+                                const struck=d.reversedAt||d.status==="Rejected";
+                                return(
+                                <div key={d.id||di} style={{display:"flex",justifyContent:"space-between",fontSize:".72rem",color:struck?"#94a3b8":"#78350f",marginBottom:3,gap:8,alignItems:"center",flexWrap:"wrap"}}>
                                   <div>
-                                    <span style={{fontWeight:700,textDecoration:d.reversedAt?"line-through":"none"}}>₱{Number(d.amount).toLocaleString("en-PH")}</span>
+                                    <span style={{fontWeight:700,textDecoration:struck?"line-through":"none"}}>₱{Number(d.amount).toLocaleString("en-PH")}</span>
                                     <span style={{margin:"0 5px",color:"#c2410c"}}>·</span>
-                                    <span style={{textDecoration:d.reversedAt?"line-through":"none"}}>{d.reason}</span>
-                                    {d.approvedBy&&<span style={{color:"#059669",fontWeight:600,marginLeft:6}}>✓ {d.approvedBy} · {d.approvedOn}</span>}
+                                    <span style={{textDecoration:struck?"line-through":"none"}}>{d.reason}</span>
+                                    {d.status==="Pending"&&<span style={{color:"#b45309",fontWeight:600,marginLeft:6}}>⏳ Awaiting Manager approval — requested by {d.requestedBy} · {d.requestedOn}</span>}
+                                    {d.status==="Rejected"&&<span style={{color:"#64748b",fontWeight:600,marginLeft:6}}>✋ Rejected by {d.decidedBy} — {d.decideNote} (requested by {d.requestedBy})</span>}
+                                    {d.approvedBy&&<span style={{color:"#059669",fontWeight:600,marginLeft:6}}>✓ {d.approvedBy} · {d.approvedOn}{d.requestedBy&&d.requestedBy!==d.approvedBy?` (requested by ${d.requestedBy})`:""}</span>}
                                     {d.reversedAt&&<span style={{color:"#64748b",fontWeight:600,marginLeft:6}}>↺ Reversed by {d.reversedBy} · {String(d.reversedAt).slice(0,10)} — {d.reverseReason}</span>}
                                   </div>
-                                  {isMgrB&&!d.reversedAt&&<button onClick={()=>reverseDed(d)} title="Put the amount back (the record is kept)" style={{background:"none",border:"1px solid #fed7aa",borderRadius:5,color:"#c2410c",cursor:"pointer",fontSize:".65rem",padding:"1px 7px",fontFamily:"inherit",fontWeight:600}}>↺ Reverse</button>}
+                                  {isMgrB&&d.status==="Pending"&&(myReq(d)
+                                    ?<span style={{fontSize:".65rem",color:"#94a3b8",fontStyle:"italic"}}>You requested this — another Manager approves it</span>
+                                    :<div style={{display:"flex",gap:4,flexShrink:0}}>
+                                      <button onClick={()=>decideDed(d,true)} title="Lower the invoice by this amount" style={{background:"#15803d",border:"none",borderRadius:5,color:"#fff",cursor:"pointer",fontSize:".65rem",padding:"2px 8px",fontFamily:"inherit",fontWeight:700}}>✓ Approve</button>
+                                      <button onClick={()=>decideDed(d,false)} title="Keep the invoice as it is (the request stays on record)" style={{background:"none",border:"1px solid #e2e8f0",borderRadius:5,color:"#64748b",cursor:"pointer",fontSize:".65rem",padding:"1px 7px",fontFamily:"inherit",fontWeight:600}}>✋ Reject</button>
+                                    </div>)}
+                                  {isMgrB&&isApplied(d)&&<button onClick={()=>reverseDed(d)} title="Put the amount back (the record is kept)" style={{background:"none",border:"1px solid #fed7aa",borderRadius:5,color:"#c2410c",cursor:"pointer",fontSize:".65rem",padding:"1px 7px",fontFamily:"inherit",fontWeight:600}}>↺ Reverse</button>}
                                 </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           )}
-                          {isMgrB&&ms.status!=="Cancelled"&&<DeductionForm ms={ms} applyDeduction={applyDeduction} session={session} today={today} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} deal={deal}/>}
+                          {canDedB&&ms.status!=="Cancelled"&&<DeductionForm ms={ms} applyDeduction={applyDeduction} session={session} today={today} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} deal={msDeal} isMgr={isMgrB}/>}
+                          {ownDealB&&ms.status!=="Cancelled"&&<div style={{fontSize:".68rem",color:"#94a3b8",fontStyle:"italic"}}>You are the Sales Owner of this deal, so a Manager enters any deduction on it.</div>}
                         </div>
                       );
                     })()}
