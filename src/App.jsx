@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback, useRef, useContext, c
 const WrapCtx = createContext(false);
 // Roles that must never see contract value — they get the QS budget instead.
 const BUDGET_ONLY=["Design","Operations","ProjectMover"];
-import {deductionFromSb,supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbUpsertDetailed,sbInsertIfMissing,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbPendingIds,sbOnQueueChange,appLogin,appLogout,restoreAppToken,hasAppToken,appTokenExpired,setSessionExpiredHandler,logClientError} from './supabaseClient';
+import {deductionFromSb,supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbUpsertDetailed,sbInsertIfMissing,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbPendingIds,sbOnQueueChange,appLogin,appLogout,restoreAppToken,restoreOrRefreshAppToken,hasAppToken,appTokenExpired,refreshAppToken,setSessionExpiredHandler,setTokenRenewedHandler,logClientError} from './supabaseClient';
 import{idbGetMany,idbSetMany}from'./idb.js';
 import {useSharePdf} from "./views/SharePdf";
 import SupplierDocsPanel from "./views/SupplierDocsPanel";
@@ -4707,7 +4707,9 @@ export default function App(){
         const s=localStorage.getItem(KEYS.session);
         // Only restore a session if we still hold a valid role token (RLS needs it).
         // Offline (no Supabase) we allow the cached session so the app still opens.
-        const hasToken = isSupabaseReady() ? restoreAppToken() : true;
+        // An expired token from last night is renewed here (if still inside the
+        // 24h window), so reopening FabHub doesn't land on the login screen.
+        const hasToken = isSupabaseReady() ? await restoreOrRefreshAppToken() : true;
         if(s && hasToken){ const sess=JSON.parse(s); setSession(sess); setRole(sess.role||"Sales"); const lp=sessionStorage.getItem("gmd:lastPage"); if(lp)setPage(lp); }
         else if(s){ localStorage.removeItem(KEYS.session); localStorage.removeItem(KEYS.role); }
         // Session (KEYS.session) is the single source of truth for role — don't
@@ -5125,8 +5127,24 @@ export default function App(){
   const[sessionExpired,setSessionExpired]=useState(false);
   useEffect(()=>{
     setSessionExpiredHandler(()=>setSessionExpired(true));
-    const t=setInterval(()=>{ if(appTokenExpired()) setSessionExpired(true); },60000);
-    return ()=>{ setSessionExpiredHandler(null); clearInterval(t); };
+    // Clock says expired: try a silent renewal before asking the user to log in.
+    const t=setInterval(()=>{ if(appTokenExpired()) refreshAppToken().then(ok=>{ if(!ok) setSessionExpired(true); }); },60000);
+    // A renewal re-reads the account, so a role a Manager changed applies at the
+    // next renewal (the database already enforces the new role from that token):
+    // show the matching screens instead of the old role's.
+    setTokenRenewedHandler(user=>{
+      setSessionExpired(false);
+      try{
+        const cur=JSON.parse(localStorage.getItem(KEYS.session)||"null");
+        if(!cur||!user||!user.role||cur.username!==user.username||cur.role===user.role) return;
+        const ns={...cur,role:user.role,title:user.title||user.role};
+        localStorage.setItem(KEYS.session,JSON.stringify(ns));
+        localStorage.setItem(KEYS.role,user.role);
+        setSession(ns); setRole(user.role);
+        toastEmit(`Your role is now ${user.role}.`,"info",6000);
+      }catch{}
+    });
+    return ()=>{ setSessionExpiredHandler(null); setTokenRenewedHandler(null); clearInterval(t); };
   },[]);
   useEffect(()=>{
     const off=sbOnQueueChange(n=>setPendingSync(n));
