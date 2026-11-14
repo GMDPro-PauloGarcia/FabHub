@@ -670,12 +670,43 @@ export const arSummary = (billings=[], dealOf=()=>undefined) => {
 // a row flagged vatable without an amount is grossed down by 1.12, and a row
 // with neither is taken as-is (no VAT to strip).
 const _amt = v => Number(String(v==null?0:v).replace(/,/g,""))||0;
-export const costNet = (x={}) => {
+// `vatPos` (optional, from poVatSet) is the set of PO numbers issued "with VAT":
+// a bill against one of those POs carries 12% VAT even when the bill itself
+// records no VAT, so it is grossed down too. Every other bill with no VAT info
+// is taken as-is (VAT unknown; see costVatUnknown).
+export const costNet = (x={}, vatPos=null) => {
   const amt=_amt(x.amount), iv=_amt(x.inputVat!=null?x.inputVat:x.input_vat);
   if(iv>0) return Math.round((amt-iv)*100)/100;
   if(x.vatable) return Math.round(amt/1.12*100)/100;
+  const po=x.poId||x.po_id;
+  if(vatPos&&po&&vatPos.has(po)) return Math.round(amt/1.12*100)/100;
   return amt;
 };
+// PO numbers whose PO is "with VAT" (any non-cancelled line flagged withVat).
+export const poVatSet = (prs=[]) => {
+  const s=new Set();
+  (prs||[]).forEach(p=>{ if(p.poNumber&&p.status!=="Cancelled"&&p.withVat) s.add(p.poNumber); });
+  return s;
+};
+// True when a cost row's VAT can't be known: no input VAT, not flagged vatable,
+// not on a with-VAT PO. Such amounts are taken as-is (may still include VAT).
+export const costVatUnknown = (x={}, vatPos=null) => {
+  if(_amt(x.inputVat!=null?x.inputVat:x.input_vat)>0||x.vatable) return false;
+  const po=x.poId||x.po_id;
+  return !(vatPos&&po&&vatPos.has(po));
+};
+// Revenue recognised on the billing basis: a milestone counts once it is
+// invoiced. A Draft hasn't been sent, so it isn't revenue yet; Cancelled never is.
+export const isBilledRevenue = (b={}) => !["Draft","Cancelled"].includes(b.status);
+// Cash collected on a milestone restated to its VAT-ex base (cash x base/receivable),
+// so collections compare with VAT-ex revenue. Bounced payments and offsets excluded.
+export const paymentBaseFactor = (b={}, deal) => {
+  const rcv=milestoneReceivable(b,deal);
+  return rcv>0 ? (Number(b.amount)||0)/rcv : 1;
+};
+// A project's completion % for margin screens: the one progress rule (projProgressPct),
+// with "not set yet" counted as 0.
+export const projectProgressPct = (card, deal) => projProgressPct(card, deal) ?? 0;
 // ── PO / Work Order totals: the project-cost basis ──────────────────────────
 // A project's cost is what GMD has committed to: every issued PO (status in
 // PO_ISSUED_STATUSES) and every committed subcon Work Order, whether or not the
@@ -719,15 +750,16 @@ export const woCostRows = (swos=[]) => (swos||[]).filter(w=>w.woNumber&&WO_COMMI
 // With prs/swos given, issued POs and committed WOs are the cost, and a payable
 // counts only when it isn't one of them (manual bills, or a bill whose PO is no
 // longer issued). Without them, the legacy AP-ledger basis applies.
-export const ledgerCosts = (exps=[], payables=[], prs=null, swos=null) => {
+export const ledgerCosts = (exps=[], payables=[], prs=null, swos=null, vatPos=null) => {
   const poBasis=Array.isArray(prs);
+  if(!vatPos&&poBasis) vatPos=poVatSet(prs);
   const commit=poBasis?[...poCostRows(prs),...woCostRows(swos||[])]:[];
   const covered=new Set(commit.map(r=>r.ref));
   return [
   ...commit,
   ...(payables||[]).filter(p=>!["Cancelled","Void"].includes(p.status)&&!(poBasis&&p.poId&&covered.has(p.poId))).map(p=>({
     projectId:p.projectId||p.project_id||null, date:p.invoiceDate||p.invoice_date||p.createdAt||p.created_at||null,
-    gross:_amt(p.amount), net:costNet(p), vatTracked:!!(p.vatable||_amt(p.inputVat!=null?p.inputVat:p.input_vat)>0), src:"payable" })),
+    gross:_amt(p.amount), net:costNet(p,vatPos), vatTracked:!costVatUnknown(p,vatPos), src:"payable" })),
   ...(exps||[]).filter(e=>!e.payableId&&!e.cvId).map(e=>({
     projectId:e.projectId||e.dealId||null,
     date:e.date||(e.year!=null&&e.month!=null?`${e.year}-${String(Number(e.month)+1).padStart(2,"0")}-01`:null),
@@ -752,8 +784,8 @@ export const pendingCostByProject = (prs=[], swos=[]) => {
   (swos||[]).forEach(w=>{ if(w.status==="Pending Approval") add(realProject(w.projectId||w.dealId),_amt(w.contractAmount)); });
   return out;
 };
-export const costSummary = (exps=[], payables=[], prs=null, swos=null) => {
-  const rows=ledgerCosts(exps,payables,prs,swos), byProject=new Map();
+export const costSummary = (exps=[], payables=[], prs=null, swos=null, vatPos=null) => {
+  const rows=ledgerCosts(exps,payables,prs,swos,vatPos), byProject=new Map();
   let gross=0, net=0, tracked=0;
   rows.forEach(r=>{ gross+=r.gross; net+=r.net; if(r.vatTracked) tracked++;
     if(r.projectId) byProject.set(r.projectId,(byProject.get(r.projectId)||0)+r.net); });
@@ -858,6 +890,19 @@ export const OFFSET_METHOD="Offset / Credit Note";
 export const isOffsetPayment=(p)=>!!p&&(p.method??p.payment_method)===OFFSET_METHOD;
 // Money that actually reached GMD: not bounced, not an offset.
 export const isCashPayment=(p)=>!!p&&!p.bounced&&!isOffsetPayment(p);
+// Who may enter a billing deduction: Managers (applied at once) plus the users
+// below (Jessica, SalesOpsAdmin; Jerwin, FinanceAssistant — Paulo's decision),
+// whose entry is only a request until another Manager approves it. Approving,
+// rejecting and reversing stay Manager only. A non-Manager can't request one on
+// a deal where they are the Sales Owner (pass the deal; see ownsDealCommission).
+// Mirrors record_billing_deduction (migrations 20261022010000 /
+// 20261115010000); keep the lists in sync.
+export const DEDUCTION_USERS=["jessica","jerwin"];
+export const canRecordDeduction=(role,username,deal,userName)=>{
+  if(canonRole(role)==="Manager") return true;
+  if(!DEDUCTION_USERS.includes(String(username||"").trim().toLowerCase())) return false;
+  return !ownsDealCommission(deal,userName,role);
+};
 export const CHEQUE_CLEAR_DAYS=3; // banking days a cheque takes to clear
 // Add N banking days (skip Sat/Sun) to an ISO date string.
 export const addBankingDaysISO=(fromISO,n)=>{

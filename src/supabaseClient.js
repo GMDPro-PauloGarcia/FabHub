@@ -670,9 +670,14 @@ const _mapLimit = async (thunks, limit) => {
 }
 
 // billing_deductions row → the shape BillingView's Deductions list uses.
+// status: 'Approved' (applied), 'Pending' (requested by a DEDUCTION_USERS user,
+// amount unchanged until a Manager approves) or 'Rejected' (migration 20261022010000).
 export const deductionFromSb = d => ({
   id: d.id, amount: Number(d.amount) || 0, reason: d.reason || '',
-  approvedBy: d.recorded_by || '', approvedOn: String(d.recorded_at || '').slice(0, 10),
+  status: d.status || 'Approved', requestedBy: d.recorded_by || '', requestedOn: String(d.recorded_at || '').slice(0, 10),
+  approvedBy: (d.status || 'Approved') === 'Approved' ? (d.decided_by || d.recorded_by || '') : '',
+  approvedOn: (d.status || 'Approved') === 'Approved' ? String(d.decided_at || d.recorded_at || '').slice(0, 10) : '',
+  decidedBy: d.decided_by || '', decideNote: d.decide_note || '',
   amountBefore: Number(d.amount_before) || 0, amountAfter: Number(d.amount_after) || 0,
   reversedAt: d.reversed_at || null, reversedBy: d.reversed_by || '', reverseReason: d.reverse_reason || '',
 })
@@ -746,8 +751,9 @@ export const sbLoadAll = async () => {
       () => sbList('tools',              { order: 'created_at', limit: 2000 }),
       () => sbList('delivery_receipts',  { order: 'dr_date', limit: 2000 }),
       () => sbListAll('payable_payments', { order: 'pay_date' }),
-      // Written only by the record/reverse_billing_deduction RPCs (migration
-      // 20261020060000); kept forever, reversed rows included.
+      // Written only by the record/approve/reject/reverse_billing_deduction RPCs
+      // (migrations 20261020060000 / 20261022010000); kept forever, pending,
+      // rejected and reversed rows included.
       () => sbList('billing_deductions', { order: 'recorded_at', asc: true, limit: 5000 }),
     ], 6)
 
