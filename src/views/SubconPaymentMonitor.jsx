@@ -173,7 +173,7 @@ export default function SubconPaymentMonitor({swos=[],payables=[],payPays=[],dea
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10,marginBottom:12}}>
         <div>
           <h2 style={{margin:0,fontWeight:800,color:C.ink,fontSize:"1.15rem"}}>🔨 Subcon Payment Monitoring</h2>
-          <div style={{fontSize:".75rem",color:C.muted,marginTop:2,maxWidth:680}}>One line per subcontractor (click to see its Work Orders), like Supplier Bills. Log each subcontractor billing with “+ Billing”; the PM certifies on Subcon Billing; payments are recorded on Supplier Bills.</div>
+          <div style={{fontSize:".75rem",color:C.muted,marginTop:2,maxWidth:680}}>One line per subcontractor (click to see its Work Orders), like To pay. Log each subcontractor billing with “+ Billing”; the PM certifies on Subcon Billing; payments are recorded under Bills › To pay or the weekly run.</div>
         </div>
         <button onClick={exportCsv} style={{background:C.navy,color:"#fff",border:"none",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,cursor:"pointer"}}>⬇ Export CSV</button>
       </div>

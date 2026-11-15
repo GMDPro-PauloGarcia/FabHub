@@ -67,6 +67,14 @@ const NAV_FIN_TAB={payables:"payables",aplog:"aplog",payments:"payments",cashpos
   expmon:"expmon",payrun:"payrun",bir2307:"bir2307",monboard:"monboard",subconmon:"subconmon"};
 const FIN_TAB_NAV={payables:"payables",aplog:"aplog",payments:"payments",cash:"cashposition",bills:"supplierbills",overview:"executive",pl:"executive",loans:"executive",txns:"executive",
   expmon:"expmon",payrun:"payrun",bir2307:"bir2307",monboard:"monboard",subconmon:"subconmon"};
+// Payables hub = Bills · Payments · Liquidations (Paulo, 2026-11-15: fewer tabs).
+// AP Log and Subcon Payments are views inside Bills; paid history is a view inside
+// Payments (Payment Run). They keep their finTab, but are not nav items, so the
+// hub strip highlights the parent tab. Accounting has no Payment Run, so it keeps
+// "payments" as its own item.
+const PAY_VIEW_PARENT={aplog:"payables",subconmon:"payables",payments:"payrun"};
+const PAY_VIEWS={payables:[["payables","To pay"],["aplog","AP Log"],["subconmon","Subcon"]],
+  payrun:[["payrun","Weekly run"],["payments","Paid"]]};
 
 // ─── CODE-SPLIT VIEWS ────────────────────────────────────────────────────────
 // Each of these pages ships as its own chunk, downloaded the first time the
@@ -8317,6 +8325,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[poViewSearch,setPoViewSearch]=useState("");
   const[poViewProj,setPoViewProj]=useState(null); // Purchase Orders: show only this project's orders
   const[apLogSearch,setApLogSearch]=useState("");   // Accounts Payable Log search
+  const[liqNewSeq,setLiqNewSeq]=useState(0);   // Cash Out › Liquidation: open a new liquidation form on the Liquidations page
   const[supPaySearch,setSupPaySearch]=useState(""); // Supplier Payables (Open POs) search
   const[payPayId,  setPayPayId] =useState(null); // payable id being settled in the Record-Payment modal
   const[payPayAmt, setPayPayAmt]=useState("");
@@ -10193,7 +10202,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                                    {id:"materialreq",l:"PRF"},{id:"orderboard",l:"Order Board"},{id:"purchasing",l:"Purchasing"},{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"deliveries",l:"Deliveries"},{id:"inventory",l:"Inventory"},{id:"masters",l:"Suppliers"}]},
       {group:"Money",       items:[{id:"executive",l:"Overview"},...[["exectxns","txns","Transactions"],["execpl","pl","P&L"],["execloans","loans","Loans"]].filter(([,t])=>!HIDDEN_FIN_TABS.has(t)).map(([id,,l])=>({id,l})),{id:"monboard",l:"Monitoring Board"},...(OWNER_USERS.includes(session?.username)?[{id:"projectmargins",l:"Project Margins"}]:[]),{id:"costanalysis",l:"Budget & Costs"},{id:"finance-reports",l:"Reports"},
                                    {id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},
-                                   {id:"payables",l:"Supplier Bills"},{id:"aplog",l:"AP Log"},{id:"payments",l:"Payments"},{id:"payrun",l:"Payment Run"},{id:"checkvouchers",l:"Check Vouchers"},{id:"subconmon",l:"Subcon Payments"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills (old)"}]:[]),
+                                   {id:"payables",l:"Bills"},{id:"payrun",l:"Payments"},{id:"checkvouchers",l:"Check Vouchers"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills (old)"}]:[]),
                                    {id:"finance",l:"Accounting Home"},{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
       {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"audit",l:"Audit"},{id:"syshealth",l:"System Health"},{id:"botsettings",l:"Bot Settings"},{id:"tvboard",l:"Office TV Board"},{id:"activity",l:"Team Activity"}]},
     ],
@@ -10207,7 +10216,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     Finance:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"boq",l:"BOQ"},{id:"clients",l:"Clients"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"purchasing",l:"Purchasing"},{id:"payables",l:"Supplier Bills"},{id:"aplog",l:"AP Log"},{id:"payments",l:"Payments"},{id:"payrun",l:"Payment Run"},{id:"checkvouchers",l:"Check Vouchers"},{id:"subconmon",l:"Subcon Payments"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills (old)"}]:[]),{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"monboard",l:"Monitoring Board"},{id:"finance-reports",l:"Reports"},{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"purchasing",l:"Purchasing"},{id:"payables",l:"Bills"},{id:"payrun",l:"Payments"},{id:"checkvouchers",l:"Check Vouchers"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills (old)"}]:[]),{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"monboard",l:"Monitoring Board"},{id:"finance-reports",l:"Reports"},{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"},{id:"subconcert",l:"Subcon Billing"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
       {group:"Procurement", items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Suppliers"}]},
@@ -10226,7 +10235,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     Accounting:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"purchasing",l:"Purchasing"},{id:"payables",l:"Supplier Bills"},{id:"aplog",l:"AP Log"},{id:"payments",l:"Payments"},{id:"checkvouchers",l:"Check Vouchers"},{id:"subconmon",l:"Subcon Payments"},{id:"purchaseorders",l:"Purchase Orders"},{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"purchasing",l:"Purchasing"},{id:"payables",l:"Bills"},{id:"payments",l:"Payments"},{id:"checkvouchers",l:"Check Vouchers"},{id:"purchaseorders",l:"Purchase Orders"},{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
       {group:"Procurement", items:[{id:"subconwo",l:"SWO For Accounting"}]},
     ],
     Procurement:[
@@ -10282,7 +10291,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     FinanceAssistant:[
       {group:"Overview",   items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
-      {group:"Finance",    items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"purchasing",l:"Purchasing"},{id:"payables",l:"Supplier Bills"},{id:"aplog",l:"AP Log"},{id:"payments",l:"Payments"},{id:"payrun",l:"Payment Run"},{id:"checkvouchers",l:"Check Vouchers"},{id:"subconmon",l:"Subcon Payments"},{id:"purchaseorders",l:"Purchase Orders"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills (old)"}]:[]),{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"monboard",l:"Monitoring Board"},{id:"finance-reports",l:"Reports"},{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
+      {group:"Finance",    items:[{id:"finance",l:"Finance"},{id:"executive",l:"Executive"},{id:"billing",l:"Billing"},{id:"purchasing",l:"Purchasing"},{id:"payables",l:"Bills"},{id:"payrun",l:"Payments"},{id:"checkvouchers",l:"Check Vouchers"},{id:"purchaseorders",l:"Purchase Orders"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills (old)"}]:[]),{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"monboard",l:"Monitoring Board"},{id:"finance-reports",l:"Reports"},{id:"expmon",l:"Expense Monitoring"},{id:"bir2307",l:"BIR 2307"},{id:"coa",l:"Chart of Accounts"}]},
     ],
     // Procurement Manager sees the same workspace as Procurement — the only
     // difference is authority (they approve POs), not navigation.
@@ -10324,7 +10333,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // One active-item rule for the desktop sidebar and the phone nav (virtual
   // Finance items open the Finance page on a tab; a hub is active on any of its pages).
   // navLoc: the nav item for where the user is now (a Finance tab maps to its item).
-  const navLoc=page==="finance"?((role==="Manager"&&MGR_FIN_TAB_NAV[finTab])||FIN_TAB_NAV[finTab]||"finance:"+finTab):page==="acctdash"?"finance":page;
+  const navLocRaw=page==="finance"?((role==="Manager"&&MGR_FIN_TAB_NAV[finTab])||FIN_TAB_NAV[finTab]||"finance:"+finTab):page==="acctdash"?"finance":page;
+  const navLoc=PAY_VIEW_PARENT[navLocRaw]&&!visibleNav(role).some(g=>g.items.some(it=>it.id===navLocRaw))?PAY_VIEW_PARENT[navLocRaw]:navLocRaw;
   const navIsActive=(id,hub)=>hub?hubOf(role,navLoc)===hub:navLoc===id;
   // navGo: open a nav item (virtual Finance items open the Finance page on their tab).
   const navGo=(id)=>{
@@ -10715,6 +10725,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             canApprove={canApprovePayables} enteredByMe={enteredByMe} canPay={roleCanInsert("payable_payments")}
             onApprove={approvePayable} onPay={(id,amt,o)=>recordPayablePayment(id,amt,o)} onPayMany={recordPayments} onCancelPay={cancelPayablePayment}/>},
   ].filter(Boolean);
+  // A refill (liquidation) is money leaving GMD too (2026-11-15). It opens the
+  // Liquidations page's own form, so its rules stay there. Added only for roles
+  // that already have Cash Out; everyone else submits from My Liquidations.
+  if(cashOutKinds.length&&pageOn("liquidations")) cashOutKinds.splice(cashOutKinds.findIndex(k=>k.group==="pay")<0?cashOutKinds.length:cashOutKinds.findIndex(k=>k.group==="pay"),0,
+    {id:"liq",group:"bill",icon:"🧾",label:"Liquidation (refill)",
+      desc:"Cash someone spent for GMD, one line per receipt. Finance checks it; it's paid from the weekly run.",
+      go:()=>{setLiqNewSeq(n=>n+1);navGo("liquidations");}});
 
   // Wrap is the shared page shell (side nav + global modals + fade-in content).
   // It closes over ~15 modal-open states (confirmDel, dealModal, expModal,
@@ -15642,9 +15659,24 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             dashboard (overview/P&L/Loans) and Cash Position — are their own pages. */}
         {/* Weekly Dues board toggle — always reachable from anywhere in Finance
             (hidden with the AP while the new AP/AR system is built). */}
-        {!AP_HIDDEN&&["payables","aplog","payments","duesboard"].includes(finTab)&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:12}}>
-          <button onClick={()=>setFinTab(finTab==="duesboard"?"payables":"duesboard")} style={{whiteSpace:"nowrap",padding:"6px 14px",borderRadius:20,border:`1px solid ${finTab==="duesboard"?ERP.navy:ERP.line}`,background:finTab==="duesboard"?ERP.navy:"#fff",color:finTab==="duesboard"?"#fff":ERP.muted,cursor:"pointer",fontSize:".78rem",fontWeight:600,fontFamily:"inherit"}}>📅 Weekly Dues</button>
-        </div>}
+        {/* Views inside a Payables tab (2026-11-15): one small switch instead of
+            extra tabs in the hub strip. PAY_VIEWS / PAY_VIEW_PARENT at the top. */}
+        {(()=>{
+          const parent=PAY_VIEWS[finTab]?finTab:PAY_VIEW_PARENT[finTab];
+          const views=parent==="payrun"&&role==="Accounting"?null:PAY_VIEWS[parent];
+          const dues=!AP_HIDDEN&&["payables","aplog","payments","duesboard"].includes(finTab);
+          if(!views&&!dues) return null;
+          return(
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:12}}>
+              {views?<div role="radiogroup" aria-label="View" style={{display:"inline-flex",background:"#f1f5f9",borderRadius:20,padding:3,gap:2}}>
+                {views.map(([t,l])=>{const on=finTab===t;return(
+                  <button key={t} role="radio" aria-checked={on} onClick={()=>setFinTab(t)} style={{whiteSpace:"nowrap",border:"none",borderRadius:17,padding:"5px 13px",background:on?"#fff":"transparent",boxShadow:on?"0 1px 3px rgba(15,23,42,.15)":"none",color:on?ERP.navy:ERP.muted,cursor:"pointer",fontSize:".76rem",fontWeight:on?700:600,fontFamily:"inherit"}}>{l}</button>
+                );})}
+              </div>:<span/>}
+              {dues&&<button onClick={()=>setFinTab(finTab==="duesboard"?"payables":"duesboard")} style={{whiteSpace:"nowrap",padding:"6px 14px",borderRadius:20,border:`1px solid ${finTab==="duesboard"?ERP.navy:ERP.line}`,background:finTab==="duesboard"?ERP.navy:"#fff",color:finTab==="duesboard"?"#fff":ERP.muted,cursor:"pointer",fontSize:".78rem",fontWeight:600,fontFamily:"inherit"}}>📅 Weekly Dues</button>}
+            </div>
+          );
+        })()}
         {finTab==="duesboard"&&(
           <FinanceWeeklyDues billings={billings} payables={payables} wonDeals={wonDeals} deals={deals} completedDeals={completedDeals} today={today} setPage={setPage} setFinTab={setFinTab} role={role}/>
         )}
@@ -15981,7 +16013,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               const total=open.reduce((s,p)=>s+bal(p),0);
               return(
                 <button onClick={()=>setFinTab("bills")} style={{display:"block",width:"100%",textAlign:"left",marginBottom:14,padding:"10px 14px",border:"1px solid #e2e8f0",borderRadius:10,background:"#fff",cursor:"pointer",fontFamily:"inherit",fontSize:".8rem",color:"#475569"}}>
-                  📦 <b style={{color:"#0f172a"}}>{open.length} open supplier bill{open.length>1?"s":""}</b> · ₱{total.toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2})} — mark paid ones before closing the day <span style={{color:"#3b82f6",fontWeight:700}}>→ Supplier Bills</span>
+                  📦 <b style={{color:"#0f172a"}}>{open.length} open supplier bill{open.length>1?"s":""}</b> · ₱{total.toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2})} — mark paid ones before closing the day <span style={{color:"#3b82f6",fontWeight:700}}>→ Bills</span>
                 </button>
               );
             })()}
@@ -16150,7 +16182,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,flexWrap:"wrap"}}>
                 <div>
                   <div style={{fontWeight:700,color:ERP.navy,fontSize:16}}>AP Log</div>
-                  <div style={{fontSize:12.5,color:ERP.muted,marginTop:2}}>Every supplier bill, one line each. Approve bills on Supplier Bills.</div>
+                  <div style={{fontSize:12.5,color:ERP.muted,marginTop:2}}>Every supplier bill, one line each. Approve bills under To pay.</div>
                 </div>
                 <div style={{marginLeft:"auto",display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
                   {roleCanInsert("payable_payments")&&<button onClick={()=>setMultiPay({vendor:"",sel:{},date:today,method:"Check",bank:"",ref:""})} title="One check or transfer that pays several bills of the same supplier" style={{background:ERP.navy,color:"#fff",border:"none",borderRadius:7,padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Pay several bills</button>}
@@ -16741,7 +16773,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ─── SALES ────────────────────────────────────────────────────────────────
   // Progress (30/60/90/100), replaces PM Updates / Scope Changes (2026-11-07).
   if(page==="liquidations") return(
-    <Wrap><Liquidations deals={wonDeals} role={canonRole(role)} session={session} today={today}/></Wrap>
+    <Wrap><Liquidations deals={wonDeals} role={canonRole(role)} session={session} today={today} newSeq={liqNewSeq}/></Wrap>
   );
   if(page==="progress"&&["Manager","Operations","ProjectMover","Coordinator"].includes(role)) return(
     <Wrap><ProjectProgress deals={wonDeals} pcards={pcards} role={role} session={session} upPcards={upPcards}/></Wrap>
