@@ -159,7 +159,7 @@ export default function ExpenseMonitoring({cashPositions={},saveDayPos,cashDayIs
         </Card>
       )}
 
-      <Card title="Payables" desc="PO and work-order bills are raised automatically when the order is issued. Enter everything else (utilities, rent, government, labor, other suppliers) with + New payable. Pay from Supplier Bills, or by linking a disbursement above.">
+      <Card title="Payables" desc="PO and work-order bills are raised automatically when the order is issued. Enter everything else (utilities, rent, government, labor, other suppliers) with + New payable. Pay from Payables › Bills, or by linking a disbursement above.">
         <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center",marginBottom:10}}>
           <select value={due} onChange={e=>{setDue(e.target.value);setLimit(80);}} style={inp} aria-label="Due filter">
             <option value="open">All open</option><option value="overdue">Overdue</option><option value="week">Due within 7 days (incl. overdue)</option><option value="nodate">No due date</option><option value="paid">Paid</option><option value="all">Everything</option>
@@ -250,7 +250,7 @@ export function LinkModal({m,r={status:"none"},onClose,payables,payPays,cashPosi
     if(noBill&&!canSheet){await uiAlert("Only Managers and the cash-position preparer can tag the cash sheet, and only on an open day.");return;}
     if(!canSheet&&!willRecord){await uiAlert("You can't change this cash-position day, and there's no payment to record.");return;}
     if(willRecord&&method==="Check"&&!ref.trim()){await uiAlert("Enter the check number.");return;}
-    if(willRecord&&notApproved.length){await uiAlert(`${notApproved.map(billLabel).join(", ")} ${notApproved.length>1?"aren't":"isn't"} approved yet. A Manager or Finance Manager approves it in Supplier Bills first.`);return;}
+    if(willRecord&&notApproved.length){await uiAlert(`${notApproved.map(billLabel).join(", ")} ${notApproved.length>1?"aren't":"isn't"} approved yet. A Manager or Finance Manager approves it in Payables › Bills first.`);return;}
     let pastEdit=null;
     if(!onSheetLink&&canSheet&&locked&&isMgr){
       const why=await uiPrompt({title:`${m.date} is locked`,tone:"warning",confirmLabel:"Link on locked day",message:"This cash-position day has locked. As a Manager you can still link the disbursement; the reason is kept in the Audit Trail and sent to management.\n\nWhy?"});
@@ -329,7 +329,7 @@ export function LinkModal({m,r={status:"none"},onClose,payables,payPays,cashPosi
           <div>Selected: <b>{picked.length}</b> bill(s) · open balance {php2(openBal)} · already recorded in AP near {m.date}: {php2(nearPaid)}</div>
           {toRecord<=0.005&&<div style={{color:C.ok,marginTop:4}}>✓ The AP payment is already recorded. Linking only tags the cash-sheet row.</div>}
           {toRecord>0.005&&!openPicked.length&&<div style={{color:C.muted,marginTop:4}}>The selected bill(s) are already fully paid in AP. Linking only tags the cash-sheet row; check it isn't a second payment.</div>}
-          {toRecord>0.005&&entries===null&&<div style={{color:C.warn,marginTop:4}}>⚠ {php2(toRecord)} to record doesn't equal the selected bills' balance ({php2(openBal)}). Link them only, and record the payment per bill in Supplier Bills.</div>}
+          {toRecord>0.005&&entries===null&&<div style={{color:C.warn,marginTop:4}}>⚠ {php2(toRecord)} to record doesn't equal the selected bills' balance ({php2(openBal)}). Link them only, and record the payment per bill in Payables › Bills.</div>}
           {toRecord>0.005&&entries&&entries.length>0&&canPay&&(
             <div style={{marginTop:6}}>
               <label style={{display:"flex",gap:6,alignItems:"center",fontWeight:700,cursor:"pointer"}}><input type="checkbox" checked={record} onChange={e=>setRecord(e.target.checked)}/> Also record the AP payment: {php2(entries.reduce((s,e)=>s+e.amount,0))} on {m.date} from {bankLabel(m.bank)}</label>

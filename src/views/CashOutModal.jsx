@@ -19,7 +19,8 @@ const emit = () => subs.forEach(f => f());
 const subscribe = f => { subs.add(f); return () => subs.delete(f); };
 const snap = () => store;
 
-// kind: null (show the picker) | "po" | "wo" | "bill" | "subcon" | "prv" | "pay"
+// kind: null (show the picker) | "po" | "wo" | "bill" | "subcon" | "prv" | "liq" | "pay"
+// A kind with go() instead of render() closes the modal and opens its page (liq).
 // payload: {form, id} to open the bill form pre-filled or to edit a bill
 // (id set = editing; the picker is hidden).
 export const openCashOut = (kind = null, payload = null) => {
@@ -68,7 +69,7 @@ export default function CashOutModal({ kinds = [] }) {
           <button onClick={closeCashOut} aria-label="Close" style={{ background: "#f1f5f9", border: "none", borderRadius: 8, width: 32, height: 32, cursor: "pointer", color: "#64748b", fontSize: "1rem", flexShrink: 0 }}>✕</button>
         </div>
         {!cur ? <Picker kinds={kinds} /> : (
-          <div key={s.seq}>{cur.render(s.payload, closeCashOut)}</div>
+          <div key={s.seq}>{cur.go ? <button onClick={() => { closeCashOut(); cur.go(); }} style={{ background: "#0B2545", color: "#fff", border: "none", borderRadius: 8, padding: "10px 16px", fontFamily: "inherit", fontWeight: 700, cursor: "pointer" }}>Open {cur.label}</button> : cur.render(s.payload, closeCashOut)}</div>
         )}
       </div>
     </div>
@@ -87,7 +88,7 @@ function Picker({ kinds }) {
             <div style={{ fontSize: ".66rem", fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 8 }}>{g.l}</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(230px,1fr))", gap: 10 }}>
               {ks.map(k => (
-                <button key={k.id} onClick={() => switchKind(k.id)}
+                <button key={k.id} onClick={() => { if (k.go) { closeCashOut(); k.go(); } else switchKind(k.id); }}
                   style={{ textAlign: "left", background: "#f8fafc", border: "1.5px solid #e2e8f0", borderRadius: 12, padding: "12px 14px", cursor: "pointer", fontFamily: "inherit" }}>
                   <div style={{ fontWeight: 800, color: "#0f172a", fontSize: ".9rem" }}>{k.icon} {k.label}</div>
                   <div style={{ fontSize: ".74rem", color: "#64748b", marginTop: 4, lineHeight: 1.45 }}>{k.desc}</div>

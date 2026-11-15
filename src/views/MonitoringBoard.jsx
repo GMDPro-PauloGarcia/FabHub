@@ -58,7 +58,7 @@ export default function MonitoringBoard({payables=[],payPays=[],prs=[],swos=[],e
       light:cash.amount==null?"na":cash.amount>=runTotal?"ok":cash.amount>0?"watch":"act",
       value:cash.amount==null?"No cash position":cash.amount>=runTotal?"Fully":cash.amount>0?"Partly":"No",
       foot:`${run?`Run ${run.status}`:"No run yet: bills due by "+thu} · ${php2(runTotal)} vs cash ${cash.amount==null?"—":php2(cash.amount)}`,
-      detail:run?null:"Start the run in Finance › Payment Run."};
+      detail:run?null:"Start the run in Payables › Payments."};
     const cost=costSummary(exps,payables,prs,swos).byProject;
     const bud=wonDeals.map(d=>{const b=budgets[d.id];const total=b?num(b.Materials)+num(b.Labor)+num(b.Overhead)+num(b.Subcon):0;const c=cost.get(d.id)||0;return {id:d.id,name:name(d.id),budget:total,cost:c,pct:total>0?Math.round(c/total*100):null};}).filter(x=>x.pct!=null);
     const worst=bud.slice().sort((a,b)=>b.pct-a.pct);
