@@ -77,7 +77,7 @@ const FIN_TAB_NAV={payables:"payables",aplog:"aplog",payments:"payments",cash:"c
 // hub strip highlights the parent tab. Accounting has no Payment Run, so it keeps
 // "payments" as its own item.
 const PAY_VIEW_PARENT={aplog:"payables",subconmon:"payables",payments:"payrun"};
-const PAY_VIEWS={payables:[["payables","To pay"],["aplog","AP Log"],["subconmon","Subcon"]],
+const PAY_VIEWS={payables:[["payables","To pay"],["subconmon","Subcon"]],
   payrun:[["payrun","Weekly run"],["payments","Paid"]]};
 
 // ─── CODE-SPLIT VIEWS ────────────────────────────────────────────────────────
@@ -16094,7 +16094,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         )}
 
         {/* ── PAYABLES TAB ── */}
-        {(finTab==="payables"||finTab==="aplog")&&(()=>{
+        {(finTab==="payables"||finTab==="aplog")&&(()=>{ /* "aplog" (old links) shows To pay */
           const n=v=>Number(v)||0;
           const fmtM=v=>"₱"+Number(v).toLocaleString("en-PH",{maximumFractionDigits:0});
           // PO-derived payables — group by supplier
@@ -16152,7 +16152,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           return(
             <div>
               {/* ERP bar is already rendered once at the top of the finance page — no duplicate here. */}
-              {finTab==="payables"&&<>
+              {(finTab==="payables"||finTab==="aplog")&&<>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
                 <div>
                   <div style={{fontWeight:700,color:ERP.navy,fontSize:16}}>Accounts Payable</div>
@@ -16175,112 +16175,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               {/* AP home, per supplier (Finance, 2026-11-04): one line per supplier with
                   what is owed, its bills underneath, issued POs / WOs with no bill
                   flagged, and the supplier's payment history one click away. The
-                  per-bill AP Log is its own tab (finTab "aplog"). */}
+                  per-bill AP Log was removed 2026-11-15 (Paulo: "we don't use it"); its edit,
+                  delete and release-retention buttons moved onto these rows. */}
               <CashPositionPayables payables={payables} payPays={payPays} prs={prs} swos={swos} exps={exps} deals={deals} today={today}
                 canApprove={canApprovePayables} enteredByMe={enteredByMe} canPay={roleCanInsert("payable_payments")}
-                onApprove={approvePayable} onPay={(id,amt,o)=>recordPayablePayment(id,amt,o)} onPayMany={recordPayments} onCancelPay={cancelPayablePayment}/>
-              </>}
-              {/* ── AP Log (own tab, 2026-11-09) ── one line per bill, 6 columns instead
-                  of 14: AP / PO / invoice no. in one cell, the account and docs status
-                  under it, amount / paid / balance as one figure, status + approval +
-                  receipt in one cell. Open bills by default, 50 at a time. */}
-              {finTab==="aplog"&&<>
-              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,flexWrap:"wrap"}}>
-                <div>
-                  <div style={{fontWeight:700,color:ERP.navy,fontSize:16}}>AP Log</div>
-                  <div style={{fontSize:12.5,color:ERP.muted,marginTop:2}}>Every supplier bill, one line each. Approve bills under To pay.</div>
-                </div>
-                <div style={{marginLeft:"auto",display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-                  {roleCanInsert("payable_payments")&&<button onClick={()=>setMultiPay({vendor:"",sel:{},date:today,method:"Check",bank:"",ref:""})} title="One check or transfer that pays several bills of the same supplier" style={{background:ERP.navy,color:"#fff",border:"none",borderRadius:7,padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Pay several bills</button>}
-                  <input value={apLogSearch} onChange={e=>{setApLogSearch(e.target.value);setApLogShow(50);}} placeholder="Search AP/PO no., supplier, invoice…" style={{minWidth:200,flex:"0 1 260px",border:`1px solid ${ERP.line}`,borderRadius:7,padding:"6px 11px",fontFamily:"inherit",fontSize:12,outline:"none",color:ERP.ink}}/>
-                  <div style={{display:"flex",gap:5}}>
-                    {["Open","Partial","Paid","All"].map(f=>(
-                      <button key={f} onClick={()=>{setPayFilter(f);setApLogShow(50);}} style={{background:apFilter===f?ERP.navy:"#fff",color:apFilter===f?"#fff":ERP.muted,border:`1px solid ${apFilter===f?ERP.navy:ERP.line}`,borderRadius:7,padding:"5px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{f}</button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              {apRows.length===0&&<div style={{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:".84rem"}}>No bills logged yet.</div>}
-              {apRows.length>0&&(
-                <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16}}>
-                  <div style={{overflowX:"auto"}}>
-                    <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:isMobile?640:0}}>
-                      <thead>
-                        <tr>
-                          {["Bill","Supplier","Due","Balance","Status",""].map((h,i)=>(
-                            <th key={h+i} style={i===3?erpThNum:erpTh}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {apVisible.length===0&&<tr><td colSpan={6} style={{padding:"20px",textAlign:"center",color:"#94a3b8",fontSize:".8rem"}}>No {apFilter==="All"?"":apFilter.toLowerCase()+" "}bills{apQ?" match the search":""}.</td></tr>}
-                        {apVisible.slice(0,apLogShow).map(p=>{
-                          const ag=payableAging(p);
-                          const settled=isSettled(p);
-                          const balance=bal(p);
-                          const paidAmt=Number(p.paidAmount)||0;
-                          const stTxt=settled?"Paid":p.status==="Partial"?"Partial":p.status==="Check Issued"?"Check Issued":"Unpaid";
-                          const pn=projName(p.projectId);
-                          const acct=chartOfAccounts.find(a=>String(a.code)===String(p.accountCode));
-                          const inv=p.invoiceNumber||p.invoiceRef||"";
-                          const needV=payNeedsVerify(p),isSub=payIsSubcon(p);
-                          const ds=!settled?supplierDocsStatus(p,{prs,drs,suppliers}):null;
-                          const sub={fontSize:11,color:ERP.muted,marginTop:2};
-                          return(
-                            <tr key={p.id}
-                              onMouseEnter={ev=>ev.currentTarget.style.background="#FAFBFD"} onMouseLeave={ev=>ev.currentTarget.style.background=""}>
-                              <td style={{...erpTd,whiteSpace:"nowrap"}} title={acct?`Account ${acct.code} · ${acct.name}`:p.accountCode?`Account ${p.accountCode}`:""}>
-                                <div style={{fontVariantNumeric:"tabular-nums",fontWeight:700,color:ERP.navy}}>{p.poNumber||p.apNumber||"—"}{p.docType==="PRV"&&<span style={{fontSize:10.5,color:ERP.purple,fontWeight:700,marginLeft:6}}>Payment request</span>}</div>
-                                <div style={sub}>{p.poNumber?(p.apNumber||"AP no. pending"):""}{inv&&inv!==p.poNumber?`${p.poNumber?" · ":""}Inv ${inv}`:""}
-                                  {ds&&(ds.applies||ds.overridden)&&(()=>{const k=ds.items.filter(i=>i.ok).length;return <span title={ds.overridden?"Docs overridden by a Manager":ds.ok?"All payment documents on file":"Missing: "+ds.missing.join(", ")} style={{marginLeft:6,fontWeight:700,color:ds.overridden?"#7c3aed":ds.ok?ERP.ok:"#b45309"}}>{ds.overridden?"Docs overridden":ds.ok?"Docs ✓":`Docs ${k}/${ds.items.length}`}</span>;})()}</div>
-                              </td>
-                              <td style={{...erpTd,maxWidth:220}}>
-                                <div style={{fontWeight:600,color:ERP.ink,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={p.vendor}>{p.vendor||"—"}</div>
-                                {pn&&<div style={{...sub,color:ERP.purple,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={pn}>{pn}</div>}
-                              </td>
-                              <td style={{...erpTd,whiteSpace:"nowrap"}}>
-                                <div style={{fontVariantNumeric:"tabular-nums",color:p.dueDate?ERP.ink:"#94a3b8"}}>{p.dueDate||"No date"}</div>
-                                {!settled&&p.dueDate&&<div style={{...sub,fontWeight:700,color:ag.clr}}>{ag.label}</div>}
-                              </td>
-                              <td style={{...erpTdNum,whiteSpace:"nowrap"}}>
-                                <div style={{fontWeight:700,color:balance>0?ERP.danger:ERP.muted}}>{fmtM(balance)}</div>
-                                <div style={sub}>{paidAmt>0
-                                  ?<button onClick={()=>setPayHistId(p.id)} title="Payment history" style={{background:"none",border:"none",padding:0,cursor:"pointer",color:ERP.ok,font:"inherit"}}>{Number(p.amount)>0?Math.round(paidAmt/Number(p.amount)*100):0}% paid</button>
-                                  :null}{paidAmt>0?" of ":"of "}{fmtM(p.amount)}</div>
-                                {(Number(p.retentionHeld)||0)>0&&<div style={{fontSize:10.5,color:"#b45309",fontWeight:700}} title="Retention held back from progress payments">Ret. {fmtM(Number(p.retentionHeld))}</div>}
-                              </td>
-                              <td style={{...erpTd,whiteSpace:"nowrap"}}>
-                                <ErpBadge kind={erpStatusKind(stTxt)}>{stTxt}</ErpBadge>
-                                <div style={{fontSize:10.5,fontWeight:700,marginTop:3,color:ERP.muted}}>
-                                  {!settled&&p.approvalStatus==="Pending"&&<span style={{color:"#b45309"}}>⏳ For approval</span>}
-                                  {p.approvalStatus==="Rejected"&&<span style={{color:ERP.danger}} title={p.notes||""}>✕ Rejected</span>}
-                                  {p.approvalStatus==="Approved"&&p.approvedBy&&<span title={`Approved by ${p.approvedBy}${p.approvedAt?" · "+p.approvedAt:""}`}>✓ {p.approvedBy}</span>}
-                                  {!settled&&needV&&<span style={{marginLeft:6,color:p.verified?ERP.ok:"#b45309"}}>{p.verified?(isSub?`· ${Number(p.verificationPct||0)}% certified`:"· Received"):(isSub?"· Not certified":"· Not received")}</span>}
-                                </div>
-                              </td>
-                              <td style={{...erpTd,whiteSpace:"nowrap"}}>
-                                <div style={{display:"flex",gap:4,justifyContent:"flex-end",alignItems:"center"}}>
-                                  {!settled&&needV&&!p.verified&&<button onClick={()=>verifyPayable(p.id)} title={isSub?"Operations: verify % complete":"Warehouse: verify receipt"} style={{background:ERP.gold,border:"none",borderRadius:6,padding:"4px 10px",fontSize:".7rem",color:ERP.navy,cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>✓ Verify</button>}
-                                  {!settled&&balance>0&&payApproved(p)&&(!needV||p.verified)&&(!isSub||(Number(p.amount)||0)-payableClaimed(p)>0.005)&&<button onClick={()=>openPayModal(p)} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"4px 12px",fontSize:".7rem",color:"#fff",cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>Pay</button>}
-                                  {(Number(p.retentionHeld)||0)>0&&payApproved(p)&&(!needV||(Number(p.verificationPct)||0)>=100)&&<button onClick={()=>openRetentionRelease(p)} title="Release the retention held on this subcontractor bill" style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#b45309",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>Release ret.</button>}
-                                  {pageOn("checkvouchers")&&!settled&&payApproved(p)&&(!needV||p.verified)&&!(p.cvId||p.status==="Check Issued")&&<button onClick={()=>payableToCheck(p.id)} title="Route to Check Voucher" style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#2563eb",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🖊 CV</button>}
-                                  <button onClick={()=>openBillHistory(p)} title="History: who entered, approved, paid or changed this bill" aria-label="Bill history" style={{background:"#eef2ff",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#3730a3",cursor:"pointer",fontFamily:"inherit"}}>🕘</button>
-                                  <button onClick={()=>openBillForm({...p},p.id)} title="Edit bill" aria-label="Edit bill" style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
-                                  <button onClick={()=>delPayable(p.id)} title="Delete bill" aria-label="Delete bill" style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                  {apVisible.length>apLogShow&&<div style={{padding:"10px 14px",borderTop:`1px solid ${ERP.line}`,display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:12,color:ERP.muted}}>
-                    <span>Showing {apLogShow} of {apVisible.length}</span>
-                    <button onClick={()=>setApLogShow(n=>n+50)} style={{background:"#fff",border:`1px solid ${ERP.line}`,borderRadius:7,padding:"5px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",color:ERP.navy}}>Show 50 more</button>
-                  </div>}
-                </div>
-              )}
+                onApprove={approvePayable} onPay={(id,amt,o)=>recordPayablePayment(id,amt,o)} onPayMany={recordPayments} onCancelPay={cancelPayablePayment}
+                onEdit={p=>openBillForm({...p},p.id)} onDelete={canonRole(role)==="Manager"?p=>delPayable(p.id):null}
+                onReleaseRetention={openRetentionRelease} canReleaseRetention={p=>(Number(p.retentionHeld)||0)>0&&payApproved(p)&&(!payNeedsVerify(p)||(Number(p.verificationPct)||0)>=100)}
+                onPayFull={openPayModal}/>
               </>}
               {/* Record-Payment modal: full / partial payment, subcontractor progress
                   claim with retention, or retention release. Every save is a row in

@@ -29,7 +29,7 @@ const pesoAmt=v=>"₱"+num(v).toLocaleString("en-PH",{minimumFractionDigits:2,ma
 const METHODS=["Check","Bank transfer","Online","Cash"];
 const PAGE=60;
 
-export default function CashPositionPayables({payables=[],payPays=[],prs=[],swos=[],exps=[],deals=[],today=TODAY,canApprove=false,enteredByMe=()=>false,canPay=false,onApprove,onPay,onPayMany,onCancelPay}){
+export default function CashPositionPayables({payables=[],payPays=[],prs=[],swos=[],exps=[],deals=[],today=TODAY,canApprove=false,enteredByMe=()=>false,canPay=false,onApprove,onPay,onPayMany,onCancelPay,onEdit,onDelete,onReleaseRetention,canReleaseRetention=()=>false,onPayFull}){
   const mob=typeof window!=="undefined"&&window.innerWidth<860;
   const[open,setOpen]=useState(true);
   const[q,setQ]=useState("");
@@ -65,7 +65,7 @@ export default function CashPositionPayables({payables=[],payPays=[],prs=[],swos
     return payables
       .filter(p=>showPaid?(p.status==="Paid"&&(p.paidDate||"")>=paidCutoff):isOpen(p))
       .filter(p=>src==="All"||sourceOf(p)===src)
-      .filter(p=>!qq||[p.vendor,p.poId,p.poNumber,p.apNumber,p.invoiceRef,dealName(p.projectId)].some(v=>String(v||"").toLowerCase().includes(qq)))
+      .filter(p=>!qq||[p.vendor,p.poId,p.poNumber,p.apNumber,p.invoiceRef,p.invoiceNumber,dealName(p.projectId)].some(v=>String(v||"").toLowerCase().includes(qq)))
       .sort((a,b)=>showPaid?String(b.paidDate||"").localeCompare(String(a.paidDate||"")):(a.dueDate||"9999").localeCompare(b.dueDate||"9999")||String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
   },[payables,prs,deals,q,src,showPaid,paidCutoff]);
 
@@ -190,7 +190,15 @@ export default function CashPositionPayables({payables=[],payPays=[],prs=[],swos
         <td style={{padding:"8px 10px",verticalAlign:"top",textAlign:"right"}}>
           {showPaid?(canPay&&btn("Undo",()=>undo(p),"#64748b"))
             :!approved(p)?(canApprove&&p.approvalStatus!=="Rejected"&&(enteredByMe(p)?<span style={{fontSize:".68rem",color:"#94a3b8"}} title="Another Manager approves bills you entered">You entered this</span>:btn("Approve",()=>onApprove(p.id),"#d97706")))
-            :(canPay&&btn("Mark paid",()=>startPay(p),"#059669"))}
+            :(canPay&&btn("Mark paid",()=>(onPayFull&&sourceOf(p)==="WO")?onPayFull(p):startPay(p),"#059669"))}
+          {/* Bill tools (moved from the AP Log, 2026-11-15): edit, release retention, delete. */}
+          {(onEdit||onDelete||(onReleaseRetention&&canReleaseRetention(p)))&&(
+            <div style={{display:"flex",gap:4,justifyContent:"flex-end",marginTop:5}}>
+              {onReleaseRetention&&canReleaseRetention(p)&&<button onClick={()=>onReleaseRetention(p)} title="Release the retention held on this subcontractor bill" style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:6,padding:"3px 7px",fontSize:".66rem",color:"#b45309",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>Release ret.</button>}
+              {onEdit&&<button onClick={()=>onEdit(p)} title="Edit bill" aria-label="Edit bill" style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"3px 7px",fontSize:".66rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>}
+              {onDelete&&<button onClick={()=>onDelete(p)} title="Delete bill (a Manager only; kept in Audit Trail)" aria-label="Delete bill" style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"3px 7px",fontSize:".66rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
+            </div>
+          )}
         </td>
       </tr>
     );
@@ -207,7 +215,7 @@ export default function CashPositionPayables({payables=[],payPays=[],prs=[],swos
       </button>
       {open&&<div style={{padding:"0 18px 16px"}}>
         <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center",marginBottom:10}}>
-          <input value={q} onChange={e=>{setQ(e.target.value);setLimit(PAGE);}} placeholder="Search supplier, PO, project…" style={{flex:"1 1 200px",minWidth:0,border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 11px",fontFamily:"inherit",fontSize:".82rem"}}/>
+          <input value={q} onChange={e=>{setQ(e.target.value);setLimit(PAGE);}} placeholder="Search supplier, PO, invoice no., project…" style={{flex:"1 1 200px",minWidth:0,border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 11px",fontFamily:"inherit",fontSize:".82rem"}}/>
           {["All","PO","WO","Other"].map(s=>(
             <button key={s} onClick={()=>{setSrc(s);setLimit(PAGE);}} style={{padding:"5px 12px",borderRadius:20,border:`1px solid ${src===s?"#1e293b":"#e2e8f0"}`,background:src===s?"#1e293b":"#fff",color:src===s?"#fff":"#64748b",cursor:"pointer",fontSize:".74rem",fontWeight:600,fontFamily:"inherit"}}>{s}</button>
           ))}
