@@ -105,6 +105,11 @@ For the smoke test locally, run `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers
 - `ap_health_alert()` runs daily at 7:52 AM Manila (pg_cron `fabhub-ap-health`) and posts problems to the Telegram management chat; runs are logged in `ap_health_log`.
 - `opex_review_alert()` runs every Monday at 8:06 AM Manila (pg_cron `fabhub-opex-review`, migration `20261105010000`, applied 2026-11-05). It lists cost-center bills of ₱10,000 or more from the past 7 days, and any cost-center bill with no "what it was used for" note, for Managers to check that project materials aren't hidden in OPEX. `opex_review_alert(false)` is a dry run. Runs are logged in `ap_health_log` (`details->>'kind' = 'opex_review'`).
 
+## Bill and payment history (database-kept, 2026-11-15)
+- Every insert, real edit and delete on `payables`, `payable_payments` and `payment_runs` goes to `audit_log` (`trg_audit_payables` / `trg_audit_payable_payments` / `trg_audit_payment_runs` → `audit_money_change()`): who (from the login token), the row before and after, the changed fields. An `updated_at`-only save is skipped; a bill change caused by a payment is labelled "updated by a payment". Migration `20261115020000_bills_payments_audit.sql`, applied 2026-11-15. Before it, payments had no audit at all and bills kept only special events.
+- The app may insert only `delete` / `restore` rows into `audit_log` (policy `audit_log_ins`), and `audit_log_stamp_client` sets `performed_by` / `performed_at` from the server on those, so nobody can forge an entry or sign it as someone else. Database functions are unaffected. Never widen the policy.
+- Screen: 🕘 History on each bill (AP Log row, To pay row) → `src/views/BillHistory.jsx` (`openBillHistory(bill)`, mounted once in Wrap next to Cash Out). Read-only; `audit_log` is readable by Manager, Finance, Accounting, FinanceAssistant. Deletes also show in Audit Trail with Restore.
+
 ## AP numbers (database-issued, unique)
 - The server issues every AP / PRV number on insert (`payables_assign_number`); the app always sends a blank one for a new bill.
 - An issued number never changes: `trg_payables_lock_ap_number` silently keeps the old number on any update, so a stale device save can't undo it. A partial unique index (`payables_ap_number_unique`) refuses duplicates. Migration `20261104090000_ap_number_unique.sql`, applied 2026-11-04.
