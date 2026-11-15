@@ -622,9 +622,11 @@
     "interest_rate",
     "kind",
     "lender",
+    "lender_type",
     "monthly_payment",
     "name",
     "notes",
+    "paid_from",
     "principal",
     "status",
     "term_months",
@@ -1018,5 +1020,16 @@
   "wo_counter": [
     "id",
     "last_no"
+  ],
+  "loan_schedule": [
+    "amount",
+    "created_at",
+    "due_date",
+    "id",
+    "interest",
+    "loan_id",
+    "note",
+    "principal",
+    "seq"
   ]
 }
