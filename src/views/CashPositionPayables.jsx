@@ -2,6 +2,7 @@ import React,{useState,useMemo} from "react";
 import {today as TODAY,BANKS,Modal,Fld,Inp,Sel,uiConfirm,uiAlert} from "../shared";
 import {vendorKey,buildOrders} from "../data/ledger";
 import {LedgerHost,linkBtn} from "./Ledgers";
+import {openBillHistory} from "./BillHistory";
 
 // ─── SUPPLIER BILLS TO PAY (Finance → Supplier Bills) ──────────────────────
 // Stand-in for the hidden Accounts Payable while the new AP/AR system is built.
@@ -171,6 +172,7 @@ export default function CashPositionPayables({payables=[],payPays=[],prs=[],swos
           <div style={{fontWeight:700,color:"#0f172a"}}>{s} {p.poId||p.invoiceRef||"—"}</div>
           <div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:3}}>
             {p.apNumber&&<span style={{fontSize:".66rem",color:"#94a3b8"}}>{p.apNumber}</span>}
+            <button onClick={()=>openBillHistory(p)} title="History: who entered, approved, paid or changed this bill" style={{...linkBtn,fontSize:".66rem",color:"#3730a3",fontWeight:700}}>🕘 History</button>
             {rc&&chip(rc,RC_CLR[rc])}
             {!showPaid&&!approved(p)&&chip(p.approvalStatus==="Rejected"?"Rejected":"Awaiting approval",p.approvalStatus==="Rejected"?"#dc2626":"#d97706")}
           </div>

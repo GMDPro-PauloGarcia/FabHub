@@ -27,7 +27,11 @@ const btnS=(clr,ghost)=>({background:ghost?"#fff":clr,color:ghost?clr:"#fff",bor
 export const liqFromSb=r=>({...r,items:Array.isArray(r.items)?r.items:[],amount:num(r.amount)});
 const blankLine=()=>({date:TODAY,supplier:"",description:"",amount:"",receipt_path:"",no_receipt:""});
 
-export default function Liquidations({deals=[],role="",session,today=TODAY}){
+// Cash Out › Liquidation bumps newSeq; each new value opens one blank form,
+// whether the page was already open or mounts now. Module-level so a later
+// remount with the same value doesn't reopen it.
+let lastNewSeq=0;
+export default function Liquidations({deals=[],role="",session,today=TODAY,newSeq=0}){
   const mob=useIsMobile();
   const me=session?.username||"";
   const myName=session?.name||"";
@@ -79,6 +83,7 @@ export default function Liquidations({deals=[],role="",session,today=TODAY}){
   };
 
   const startNew=()=>setForm({payee:myName,purpose:"",project_id:"",charge_to:"",items:[blankLine()]});
+  useEffect(()=>{if(newSeq>lastNewSeq){lastNewSeq=newSeq;setForm({payee:myName,purpose:"",project_id:"",charge_to:"",items:[blankLine()]});}},[newSeq,myName]);
   const startEdit=r=>setForm({id:r.id,status:r.status,payee:r.payee,purpose:r.purpose,project_id:r.project_id||"",charge_to:r.charge_to||"",
     items:(r.items||[]).map(it=>({...blankLine(),...it,amount:String(it.amount??"")}))});
   const setF=(k,v)=>setForm(f=>({...f,[k]:v}));

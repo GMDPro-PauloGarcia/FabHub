@@ -158,7 +158,7 @@ export default function PurchasingHub({prs=[],swos=[],payables=[],payPays=[],dea
     if(can("finance")&&onNewBilling&&r.billed<r.ordered-1&&!r.done) a.push({l:r.isWO?"+ Log subcon billing":"+ Enter supplier invoice",f:()=>onNewBilling(r),primary:true});
     const payable=r.bills.find(b=>(b.approvalStatus||"Approved")==="Approved"&&payBalance(b)>0);
     if(can("finance")&&onPayBill&&payable&&r.payNow>1) a.push({l:`Pay ${payable.apNumber||"bill"}`,f:()=>onPayBill(payable),primary:!a.length});
-    if(can("approveBill")&&onGo&&r.bills.some(b=>(b.approvalStatus||"Approved")!=="Approved")) a.push({l:"Approve in Supplier Bills",f:()=>onGo("bills")});
+    if(can("approveBill")&&onGo&&r.bills.some(b=>(b.approvalStatus||"Approved")!=="Approved")) a.push({l:"Approve in Bills",f:()=>onGo("bills")});
     if(can("pm")&&onGo&&r.isWO) a.push({l:"Certify in Subcon Billing",f:()=>onGo("subconcert")});
     if(onGo) a.push({l:r.isWO?"Open in Subcon Work Orders":"Open in Purchase Orders",f:()=>onGo(r.isWO?"subconwo":"procurement")});
     return a;
@@ -198,7 +198,7 @@ export default function PurchasingHub({prs=[],swos=[],payables=[],payPays=[],dea
   // Bills waiting for approval: approvers jump to Supplier Bills, where approving happens.
   const approveBtn=g=>{
     if(!onGo||!myKeys.includes("approveBill")||!g.toApprove) return null;
-    return <button onClick={e=>{e.stopPropagation();onGo("bills");}} title="Approve in Supplier Bills"
+    return <button onClick={e=>{e.stopPropagation();onGo("bills");}} title="Approve in Bills"
       style={{border:"1.5px solid #7c3aed",background:"#fff",color:"#5b21b6",borderRadius:6,padding:"2px 8px",fontFamily:"inherit",fontSize:".7rem",fontWeight:800,cursor:"pointer",whiteSpace:"nowrap"}}>Approve</button>;
   };
   const raiseBtns=g=>{
@@ -337,7 +337,7 @@ export default function PurchasingHub({prs=[],swos=[],payables=[],payPays=[],dea
         }):shown.map(orderRow)}
         {(groupBy==="supplier"?groups.length>limit:rows.length>shown.length)&&<div style={{padding:12,textAlign:"center"}}><button onClick={()=>setLimit(l=>l+200)} style={btn(false)}>Show more ({groupBy==="supplier"?`${groups.length-limit} more suppliers`:`${rows.length-shown.length} more`})</button></div>}
       </div>}
-      <div style={{fontSize:".7rem",color:PHC.faint}}>Payable now: subcon WOs up to the higher of PM-certified % and down payment %, never past what was billed; supplier POs once fully received and the bill is approved. A Manager can still pay a partly received PO from Supplier Bills.</div>
+      <div style={{fontSize:".7rem",color:PHC.faint}}>Payable now: subcon WOs up to the higher of PM-certified % and down payment %, never past what was billed; supplier POs once fully received and the bill is approved. A Manager can still pay a partly received PO from Bills.</div>
       <LedgerHost open={ledger} setOpen={setLedger} prs={prs} swos={swos} payables={payables} payPays={payPays} deals={deals} exps={exps} today={today}/>
     </div>
   );
