@@ -13,7 +13,7 @@ import {fmt,addPrintClose,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dro
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {projProgressPct, isConstructionDeal, projStageFlow, projStepIndex, projStepLabel, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, canRecordDeduction, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel, pendingCostByProject, poSplitTotal, canRaiseOrder, woSignStep, WO_SIGN_MSG, arAgeBucket, arCallOrder, dealHasBoq, MOTHER_PO_BOQ_MSG, ledgerCosts, poVatSet, isBilledRevenue, paymentBaseFactor, invoiceContractProgress, projectProgressPct} from './core';
+import {projProgressPct, isConstructionDeal, projStageFlow, projStepIndex, projStepLabel, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, canRecordDeduction, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel, pendingCostByProject, poSplitTotal, canRaiseOrder, woSignStep, WO_SIGN_MSG, arAgeBucket, arCallOrder, dealHasBoq, MOTHER_PO_BOQ_MSG, ledgerCosts, poVatSet, isBilledRevenue, paymentBaseFactor, invoiceContractProgress, billingDueTerms, billingDefaultNetDays, billingTermsLabel, projectProgressPct} from './core';
 import ProgressReportModal from './views/ProgressReportModal';
 
 // Returns a component whose function IDENTITY is stable across renders while its
@@ -26062,14 +26062,14 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const billingPdf=useSharePdf(toastEmit);
   const billingPdfDraft=!["Manager","Finance","FinanceAssistant","Accounting"].includes(role);
   const shareInvoicePdf=(ms)=>{
-    const{d,tx,totalPaid,balance,cp,clientAddr,prog}=invoiceData(ms);
+    const{d,tx,totalPaid,balance,cp,clientAddr,prog,due}=invoiceData(ms);
     const model={
       progress:prog,asOf:today,
       draft:billingPdfDraft,
       docTitle:"Billing Statement",
       invoiceNo:ms.invoiceNo||"",invoiceDate:ms.invoiceDate||today,
-      dueDate:ms.dueDate||ms.invoiceDate||today,overdue:!!(ms.dueDate&&ms.dueDate<today),
-      terms:cp.paymentTerms||"Due on receipt",poNo:dealClientPo(d,deals),
+      dueDate:due.dueDate,overdue:due.overdue,
+      terms:due.label,poNo:dealClientPo(d,deals),
       billTo:{name:d?.client||"—",contact:cp.contactPerson||"",address:clientAddr,email:cp.email||"",tin:cp.tin||""},
       line:{date:ms.invoiceDate||today,service:ms.name||"",tax:tx.vat>0?"12% S":"—",
         description:[d?.contact||"",d?.location?`Location: ${d.location}`:"",ms.description||""].filter(Boolean)},
@@ -26084,14 +26084,14 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     return{client:r.d.client||"",project:r.d.contact||r.d.product||r.d.ceNo||"—",
       ref:[r.d.ceNo&&(r.d.contact||r.d.product)?r.d.ceNo:"",po?"PO# "+po:""].filter(Boolean).join(" · "),
       vatable:r.vatable,vat:r.vat,gross:r.gross,payments:r.payments,ewt:r.ewt,due:r.due,balance:r.balance,
-      lastPaid:r.lastPaid,awaiting2307:r.awaiting2307};
+      lastPaid:r.lastPaid,awaiting2307:r.awaiting2307,nextDue:r.nextDue,overdueAmt:r.overdueAmt,progress:r.progress};
   };
   const shareSoaPdf=(clientName)=>{
     const sd=soaData(clientName);
     if(!sd){toastEmit&&toastEmit("No billing data found for "+clientName,"warning");return;}
     const model={
       draft:billingPdfDraft,clientName,address:sd.soaAddr,dateStr:sd.dateStr,refNos:sd.invoiceNos,amtLbl:sd.amtLbl,
-      preparedBy:sd.preparedBy,
+      preparedBy:sd.preparedBy,termsLbl:sd.termsLbl,today,overdue:sd.tOver,
       rows:sd.rows.map(soaPdfRow),
       settledRows:sd.settledRows.map(soaPdfRow),
       settledSince:sd.settledSince,settledMonths:SOA_SETTLED_MONTHS,
@@ -26332,10 +26332,12 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     // Contract progress bar (billed / paid of the whole contract). None on a
     // mother PO: it earns ₱0 itself, its sub-projects carry the billing.
     const prog=isMotherPO(d)?null:invoiceContractProgress({deal:d,milestones:billings,ms});
-    return{d,tx,totalPaid,balance,cp,clientAddr,prog};
+    // TERMS and DUE DATE from one rule (billingDueTerms) so they can't disagree.
+    const due=billingDueTerms({ms,deal:d,clientTerms:cp.paymentTerms,today});
+    return{d,tx,totalPaid,balance,cp,clientAddr,prog,due};
   };
   const printInvoice=(ms)=>{
-    const{d,tx,totalPaid,balance,cp,clientAddr,prog}=invoiceData(ms);
+    const{d,tx,totalPaid,balance,cp,clientAddr,prog,due}=invoiceData(ms);
     // Contract summary: one bar (paid / billed, unpaid / this statement / not yet
     // billed) and the four figures. Same numbers as the Share PDF (billingPdf.js).
     const progHtml=(()=>{
@@ -26361,9 +26363,12 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     const win=window.open("","_blank");
     win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Billing Statement ${ms.invoiceNo}</title>
 <style>
-  @page{size:A4;margin:12mm 14mm}
+  /* margin 0 leaves the browser no room for its date / about:blank / page
+     header and footer; the page spacing comes from .pg below instead. */
+  @page{size:A4;margin:0}
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:Arial,Helvetica,sans-serif;color:#0f172a;font-size:11px;background:#fff;}
+  @media print{.pg{padding:12mm 14mm}}
   /* Print button */
   .print-btn{text-align:center;padding:12px;background:#f8fafc;border-bottom:1px solid #e2e8f0;}
   .print-btn button{background:#1e293b;color:#fff;border:none;border-radius:6px;padding:8px 24px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:700;}
@@ -26437,6 +26442,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
 </style>
 </head><body>
 <div class="print-btn"><button onclick="window.print()">🖨 Print / Save as PDF</button></div>
+<div class="pg">
 
 <!-- Header -->
 <div class="header">
@@ -26472,8 +26478,8 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       <tr><td class="label">BILLING NO.</td><td class="val">${ms.invoiceNo||"—"}</td></tr>
       ${dealClientPo(d,deals)?`<tr><td class="label">PO #</td><td class="val">${String(dealClientPo(d,deals)).replace(/&/g,"&amp;").replace(/</g,"&lt;")}</td></tr>`:""}
       <tr><td class="label">DATE</td><td class="val">${ms.invoiceDate||today}</td></tr>
-      <tr><td class="label">TERMS</td><td class="val">${cp.paymentTerms||"Due on receipt"}</td></tr>
-      <tr><td class="label">DUE DATE</td><td class="val" style="color:${ms.dueDate&&ms.dueDate<today?"#dc2626":"inherit"}">${ms.dueDate||ms.invoiceDate||today}</td></tr>
+      <tr><td class="label">TERMS</td><td class="val">${due.label}</td></tr>
+      <tr><td class="label">DUE DATE</td><td class="val" style="color:${due.overdue?"#dc2626":"inherit"}">${due.dueDate}</td></tr>
     </table>
   </div>
 
@@ -26506,10 +26512,6 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   <!-- Footer: payment terms + totals -->
   <div class="footer-row">
     <div class="terms">
-      <strong>We require the ff payment terms:</strong>
-      1) 50% DP to start project<br/>
-      2) Billing of 40% up until installation<br/>
-      3) Retention of 10% upon certificate of completion<br/><br/>
       <strong>Account Name: GMD PRODUCTIONS INC</strong>
       BDO CHECKING — 012758000370<br/>
       BPI CHECKING — 6011 04 82 03<br/>
@@ -26559,6 +26561,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
 
   <div style="text-align:center;margin-top:10px;font-size:9px;color:#cbd5e1">Page 1 of 1</div>
 </div>
+</div>
 </body></html>`);
     win.document.close();addPrintClose(win);
   };
@@ -26570,7 +26573,9 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     const allRows=clientDeals.map(d=>{
       const ms=billings.filter(b=>b.dealId===d.id);
       const rt=d.receiptType||"OR",wh=d.withholding||false;
-      const active=ms.filter(m=>m.status!=="Cancelled");
+      // Sent billings only: a Draft hasn't gone to the client, so it is not
+      // owed yet (it used to be counted, asking clients for unsent billings).
+      const active=ms.filter(m=>m.status!=="Cancelled"&&m.status!=="Draft");
       const vatable=active.reduce((s,m)=>s+calcTax(m.amount,m.receiptType??rt,m.withholding??wh).base,0);
       const vat=active.reduce((s,m)=>s+calcTax(m.amount,m.receiptType??rt,m.withholding??wh).vat,0);
       const gross=vatable+vat;
@@ -26587,7 +26592,14 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       // outstanding, labelled, because the SOA is how Finance chases it.
       const settled=balance<0.01;
       const awaiting2307=!settled&&due<0.01;
-      return{d,vatable,vat,gross,payments,ewt,due,balance,lastPaid,settled,awaiting2307};
+      // Due date of each open billing (billingDueTerms: the same rule as the
+      // billing statement), the earliest one shown, and what is past due.
+      const cpD=(clientProfiles||{})[d.client||""]||{};
+      const open=active.map(m=>({m,bal:milestoneBalance(m,d),t:billingDueTerms({ms:m,deal:d,clientTerms:cpD.paymentTerms,today})})).filter(x=>x.bal>0.01);
+      const nextDue=open.reduce((mn,x)=>x.t.dueDate&&(!mn||x.t.dueDate<mn)?x.t.dueDate:mn,"");
+      const overdueAmt=open.filter(x=>x.t.overdue).reduce((s,x)=>s+x.bal,0);
+      const progress=isMotherPO(d)?null:invoiceContractProgress({deal:d,milestones:billings});
+      return{d,vatable,vat,gross,payments,ewt,due,balance,lastPaid,settled,awaiting2307,nextDue,overdueAmt,progress};
     }).filter(r=>r.vatable>0||r.payments>0);
     if(!allRows.length) return null;
     // Outstanding projects carry the statement's totals. Settled ones are shown
@@ -26602,27 +26614,31 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     const tG=rows.reduce((s,r)=>s+r.gross,0),tP=rows.reduce((s,r)=>s+r.payments,0);
     const tE=rows.reduce((s,r)=>s+r.ewt,0),tD=rows.reduce((s,r)=>s+r.due,0);
     const tB=rows.reduce((s,r)=>s+r.balance,0);
+    const tOver=rows.reduce((s,r)=>s+r.overdueAmt,0);
     const dateStr=new Date().toLocaleDateString("en-US",{month:"numeric",day:"numeric",year:"numeric"});
     const preparedBy=session?.name||"";
     // Billing address from the client's profile (Clients → Profile), the same
     // source the invoice uses. It used to print blank for every client.
     const cpSoa=(clientProfiles||{})[clientName]||(clientProfiles||{})[clientDeals[0]?.client||""]||{};
     const soaAddr=[cpSoa.billingAddress,cpSoa.city,cpSoa.province,cpSoa.zipCode].filter(Boolean).join(", ");
+    // The client's standard terms for the header line; each row's due date
+    // still follows its own billing.
+    const termsLbl=billingTermsLabel(billingDefaultNetDays(null,cpSoa.paymentTerms))+" from billing date";
     // AR (no VAT) projects have no "vatable" amount; don't label them as such.
     const amtLbl=(rows.length?tVat:allRows.reduce((s,r)=>s+r.vat,0))>0?"VATABLE AMOUNT":"AMOUNT (NO VAT)";
     // Reference numbers of the projects actually on this statement.
     const shownIds=new Set([...rows,...settledRows].map(r=>r.d.id));
     const invoiceNos=[...new Set(billings.filter(b=>shownIds.has(b.dealId)&&b.invoiceNo&&b.status!=="Cancelled").map(b=>b.invoiceNo))].join(", ");
-    return{clientDeals,rows,settledRows,settledSince,sG,sP,tV,tVat,tG,tP,tE,tD,tB,dateStr,preparedBy,cpSoa,soaAddr,amtLbl,invoiceNos};
+    return{clientDeals,rows,settledRows,settledSince,sG,sP,tV,tVat,tG,tP,tE,tD,tB,tOver,termsLbl,dateStr,preparedBy,cpSoa,soaAddr,amtLbl,invoiceNos};
   };
   const printSOA=(clientName)=>{
     const esc=(s)=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
     const f=(v)=>Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
     const sd=soaData(clientName);
     if(!sd){alert("No billing data found for "+clientName);return;}
-    const{rows,settledRows,settledSince,sG,sP,tV,tVat,tG,tP,tE,tD,tB,dateStr,preparedBy,soaAddr,amtLbl,invoiceNos}=sd;
+    const{rows,settledRows,settledSince,sG,sP,tV,tVat,tG,tP,tE,tD,tB,tOver,termsLbl,dateStr,preparedBy,soaAddr,amtLbl,invoiceNos}=sd;
     const fd=(iso)=>iso?new Date(iso+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):"—";
-    const projCell=(r)=>`<td style="text-align:left"><div style="color:#2563eb;font-weight:600">${esc(r.d.contact||r.d.product||r.d.ceNo||"—")}</div>${(()=>{const po=dealClientPo(r.d,deals);const ref=[r.d.ceNo&&(r.d.contact||r.d.product)?r.d.ceNo:"",po?"PO# "+po:""].filter(Boolean).join(" · ");return ref?`<div style="color:#64748b;font-size:8.5px;margin-top:1px">${esc(ref)}</div>`:"";})()}${r.awaiting2307?`<div style="color:#b45309;font-size:8.5px;font-weight:700;margin-top:1px">Awaiting BIR Form 2307</div>`:""}</td>`;
+    const projCell=(r)=>`<td style="text-align:left"><div style="color:#2563eb;font-weight:600">${esc(r.d.contact||r.d.product||r.d.ceNo||"—")}</div>${(()=>{const po=dealClientPo(r.d,deals);const ref=[r.d.ceNo&&(r.d.contact||r.d.product)?r.d.ceNo:"",po?"PO# "+po:""].filter(Boolean).join(" · ");return ref?`<div style="color:#64748b;font-size:8.5px;margin-top:1px">${esc(ref)}</div>`:"";})()}${!r.settled&&r.nextDue?`<div style="font-size:8.5px;margin-top:1px;font-weight:700;color:${r.overdueAmt>0?"#dc2626":"#475569"}">${r.overdueAmt>0?`Past due since ${esc(fd(r.nextDue))}`:`Due ${esc(fd(r.nextDue))}`}</div>`:""}${r.awaiting2307?`<div style="color:#b45309;font-size:8.5px;font-weight:700;margin-top:1px">Awaiting BIR Form 2307</div>`:""}</td>`;
     const settledHtml=settledRows.map((r,i)=>`<tr>
       <td style="text-align:center;color:#64748b">${i+1}</td>
       ${projCell(r)}
@@ -26643,8 +26659,31 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       <td style="text-align:right;color:#ea580c;font-weight:700">${f(r.due)}</td>
       <td style="text-align:right;font-weight:700">${f(r.balance)}</td>
     </tr>`).join("");
+    // Contract progress: one bar per outstanding project (same figures as the
+    // billing statement's Contract Summary, invoiceContractProgress).
+    const progRows=rows.filter(r=>r.progress);
+    const progHtml=progRows.length?`<div class="tbl-title">Contract progress</div>
+      <table class="prog"><thead><tr><th>PROJECT NAME</th><th>CONTRACT AMOUNT</th><th>BILLED</th><th>PAID</th><th style="width:34%">PROGRESS</th></tr></thead><tbody>
+      ${progRows.map(r=>{const p=r.progress;const tot=Math.max(100,p.paidPct+p.prevUnpaidPct+p.unbilledPct);
+        return `<tr><td style="color:#2563eb;font-weight:600">${esc(r.d.contact||r.d.product||r.d.ceNo||"—")}</td><td>${f(p.contract)}</td><td>${f(p.billed)} <span style="color:#64748b">(${p.billedPct}%)</span></td><td style="color:#059669">${f(p.paid)} <span style="color:#64748b">(${p.paidPct}%)</span></td>
+        <td><div class="bar"><div style="width:${(p.paidPct/tot*100).toFixed(2)}%;background:#059669"></div><div style="width:${(p.prevUnpaidPct/tot*100).toFixed(2)}%;background:#f59e0b"></div></div></td></tr>`;}).join("")}
+      </tbody></table>
+      <div class="leg"><span><i style="background:#059669"></i>Paid</span><span><i style="background:#f59e0b"></i>Billed, unpaid</span><span><i style="background:#e2e8f0"></i>Not yet billed</span>${progRows.some(r=>r.progress.vatable)?`<span style="color:#94a3b8">Amounts incl. VAT where VAT applies</span>`:""}${progRows.some(r=>r.progress.withholding)?`<span style="color:#94a3b8">Paid includes tax withheld (BIR Form 2307)</span>`:""}</div>`:"";
     const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>SOA — ${esc(clientName)}</title><style>
-      @page{size:A4 landscape;margin:12mm 15mm}
+      /* margin 0 leaves the browser no room for its date / about:blank / page
+         header and footer; .pg-t's repeating head/foot rows space every page. */
+      @page{size:A4 landscape;margin:0}
+      table.pg-t{margin:0;font-size:11px}table.pg-t>thead>tr,table.pg-t>tfoot>tr,table.pg-t>tbody>tr{background:none}
+      table.pg-t>thead>tr>td,table.pg-t>tfoot>tr>td,table.pg-t>tbody>tr>td{padding:0;border:none;text-align:left;color:inherit;font-weight:400}
+      .pg-sp{height:0}
+      @media print{.pg-sp{height:11mm}table.pg-t>tbody>tr>td.pg-side{padding:0 14mm}}
+      table.prog thead th:nth-child(5){text-align:left}
+      table.prog thead th:nth-child(n+2){text-align:right}table.prog tbody td:nth-child(2),table.prog tbody td:nth-child(3),table.prog tbody td:nth-child(4){text-align:right}
+      table.prog tbody td:nth-child(5){text-align:left}
+      .bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:#e2e8f0}.bar div{height:100%}
+      .leg{display:flex;gap:14px;font-size:8.5px;color:#475569;margin:-8px 0 14px}.leg i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+      .terms{font-size:9.5px;color:#475569;margin:-8px 0 14px}.terms b{color:#0f172a}
+      .pastdue{border:1.5px solid #fecaca;background:#fef2f2;color:#b91c1c;font-weight:700;font-size:10.5px;padding:8px 12px;margin-bottom:14px}
       *{box-sizing:border-box;margin:0;padding:0;print-color-adjust:exact;-webkit-print-color-adjust:exact}
       body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#0f172a;background:#fff;padding:0}
       .print-btn{text-align:center;padding:12px;background:#f8fafc;border-bottom:1px solid #e2e8f0}
@@ -26693,6 +26732,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       .sc{font-size:9px;color:#64748b}
     </style></head><body>
     <div class="print-btn"><button onclick="window.print()">🖨 Print / Save as PDF</button></div>
+    <table class="pg-t"><thead><tr><td><div class="pg-sp"></div></td></tr></thead><tfoot><tr><td><div class="pg-sp"></div></td></tr></tfoot><tbody><tr><td class="pg-side">
     <div class="header">
       <div class="co-name">GMD PRODUCTIONS INC.</div>
       <div style="text-align:right">
@@ -26713,6 +26753,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         <span class="cl">BILLING ADDRESS:</span>
         <span class="cv">${soaAddr?esc(soaAddr):"&nbsp;"}</span>
       </div>
+      <div class="terms"><b>PAYMENT TERMS:</b> ${esc(termsLbl)}. Each project shows when its open billing is due.</div>
       ${rows.length?`<div class="summary">
         <div class="sb"><div class="sl">TOTAL ${amtLbl}</div><div class="sv">${f(tV)}</div></div>
         <div class="sb"><div class="sl">TOTAL VAT</div><div class="sv">${f(tVat)}</div></div>
@@ -26720,6 +26761,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         <div class="sb"><div class="sl">TOTAL BALANCE</div><div class="sv">${f(tB)}</div></div>
         <div class="sb"><div class="sl">TOTAL AMOUNT DUE</div><div class="sv">${f(tD)}</div></div>
       </div>`:""}
+      ${tOver>0.01?`<div class="pastdue">PAST DUE: ${f(tOver)} is past its due date as of ${esc(dateStr)}.</div>`:""}
       ${rows.length?"":`<div class="paid-full">PAID IN FULL — no outstanding balance as of ${esc(dateStr)}</div>`}
       ${rows.length?`<div class="tbl-title">Outstanding</div>
       <table>
@@ -26737,15 +26779,16 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
           <td class="total-due">${f(tD)}</td><td>${f(tB)}</td>
         </tr></tfoot>
       </table>`:""}
-      <div class="tbl-title">Settled — fully paid since ${esc(fd(settledSince))}</div>
-      ${settledRows.length?`<table class="settled">
+      ${progHtml}
+      ${settledRows.length?`<div class="tbl-title">Settled — fully paid since ${esc(fd(settledSince))}</div>
+      <table class="settled">
         <thead><tr>
           <th style="width:30px;text-align:center">#</th>
           <th>PROJECT NAME</th><th>SALES AMOUNT</th><th>PAYMENT MADE</th><th>LAST PAYMENT</th><th>Status</th>
         </tr></thead>
         <tbody>${settledHtml}</tbody>
         <tfoot><tr><td></td><td style="text-align:left">TOTAL SETTLED</td><td>${f(sG)}</td><td>${f(sP)}</td><td></td><td></td></tr></tfoot>
-      </table>`:`<div class="none">No projects fully paid in the last ${SOA_SETTLED_MONTHS} months.</div>`}
+      </table>`:""}
       <div class="notes">
         <div class="nt">NOTES</div>
         <p style="margin-bottom:6px">Thank you for your business! Please send or email (<b>finance@gmd.ph</b>) us a copy of the payment for proper recording.</p>
@@ -26760,6 +26803,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         <div><div class="sl2">Approved by:</div><div class="sn">Paulo Garcia</div><div class="sc">GMD Productions Inc.</div></div>
       </div>
     </div>
+    </td></tr></tbody></table>
     </body></html>`;
     const w=window.open("","_blank","width=1100,height=780");
     if(!w){toastEmit&&toastEmit("Popup blocked — please allow popups for this site","warning");return;}

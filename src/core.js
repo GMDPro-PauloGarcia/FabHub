@@ -704,6 +704,30 @@ export const paymentBaseFactor = (b={}, deal) => {
   const rcv=milestoneReceivable(b,deal);
   return rcv>0 ? (Number(b.amount)||0)/rcv : 1;
 };
+// ── Billing terms and due date (one rule, so they never contradict) ────────
+// The statement's TERMS line is worked out from its due date, never typed
+// separately: 0 days = "Due on receipt", otherwise "Net N days". A milestone
+// with no due date gets one from, in order: the project's payment period
+// (deal.paymentTerms.netDays), a number in the client profile's terms, or
+// DEFAULT_BILLING_NET_DAYS, counted from the billing date.
+export const DEFAULT_BILLING_NET_DAYS = 15;
+const _isoDays = (a, b) => Math.round((Date.parse(String(b).slice(0, 10) + "T00:00:00Z") - Date.parse(String(a).slice(0, 10) + "T00:00:00Z")) / 86400000);
+export const billingTermsLabel = (days) => Number(days) <= 0 ? "Due on receipt" : `Net ${Number(days)} days`;
+export const billingDefaultNetDays = (deal, clientTerms) => {
+  const nd = deal && deal.paymentTerms && deal.paymentTerms.netDays;
+  if (nd != null && nd !== "" && Number.isFinite(Number(nd))) return Math.max(0, Number(nd));
+  const t = String(clientTerms || "").toLowerCase();
+  if (/\b(cod|cash|cwo|upon receipt|on receipt)\b/.test(t)) return 0;
+  const m = t.match(/(\d+)/);
+  return m ? parseInt(m[1], 10) : DEFAULT_BILLING_NET_DAYS;
+};
+export const billingDueTerms = ({ ms = {}, deal, clientTerms, today } = {}) => {
+  const billDate = String(ms.invoiceDate || today || "").slice(0, 10);
+  let days, dueDate;
+  if (ms.dueDate && billDate) { dueDate = String(ms.dueDate).slice(0, 10); days = Math.max(0, _isoDays(billDate, dueDate)); }
+  else { days = billingDefaultNetDays(deal, clientTerms); dueDate = billDate ? addDaysISO(billDate, days) : ""; }
+  return { days, label: billingTermsLabel(days), dueDate, overdue: !!(dueDate && today && dueDate < today) };
+};
 // Contract progress for a billing statement: how much of the contract has been
 // billed and paid, for the bar on the printed statement and the Share PDF.
 // Worked out VAT-exclusive (contract value and milestone amounts are VAT-ex;
@@ -713,22 +737,24 @@ export const paymentBaseFactor = (b={}, deal) => {
 // milestone dated on or before this statement, plus this one; "paid" = every
 // payment recorded to date (offsets count, bounced don't). null when there is
 // no contract value to measure against (e.g. a mother PO).
-export const invoiceContractProgress = ({ deal, milestones = [], ms } = {}) => {
+// Without `ms` (the Statement of Account) "billed" is every sent milestone and
+// there is no "this billing" slice.
+export const invoiceContractProgress = ({ deal, milestones = [], ms = null } = {}) => {
   const contractBase = Number(deal && deal.value) || 0;
-  if (!(contractBase > 0) || !ms) return null;
+  if (!(contractBase > 0) || !deal) return null;
   const r2 = x => Math.round((Number(x) || 0) * 100) / 100;
   const vatable = calcTax(100, (deal && deal.receiptType) || "OR").vat > 0;
   const k = vatable ? 1.12 : 1;
-  const own = milestones.filter(b => b.dealId === ms.dealId && b.status !== "Cancelled");
-  const asOf = ms.invoiceDate || "";
-  const billedMs = own.filter(b => b.id === ms.id ||
+  const own = milestones.filter(b => b.dealId === deal.id && b.status !== "Cancelled");
+  const asOf = (ms && ms.invoiceDate) || "";
+  const billedMs = own.filter(b => (ms && b.id === ms.id) ||
     (isBilledRevenue(b) && (!asOf || !b.invoiceDate || String(b.invoiceDate) <= asOf)));
-  if (!billedMs.some(b => b.id === ms.id)) billedMs.push(ms);
+  if (ms && !billedMs.some(b => b.id === ms.id)) billedMs.push(ms);
   const paidBaseOf = b => milestonePaid(b) * paymentBaseFactor(b, deal);
   const billedBase = billedMs.reduce((s, b) => s + (Number(b.amount) || 0), 0);
-  const thisBase = Number(ms.amount) || 0;
+  const thisBase = ms ? Number(ms.amount) || 0 : 0;
   const paidBase = Math.min(own.reduce((s, b) => s + paidBaseOf(b), 0), Math.max(billedBase, contractBase));
-  const thisUnpaidBase = Math.max(0, thisBase - paidBaseOf(ms));
+  const thisUnpaidBase = ms ? Math.max(0, thisBase - paidBaseOf(ms)) : 0;
   const prevUnpaidBase = Math.max(0, billedBase - paidBase - thisUnpaidBase);
   const unbilledBase = Math.max(0, contractBase - billedBase);
   const pct = x => Math.round(x / contractBase * 1000) / 10;
