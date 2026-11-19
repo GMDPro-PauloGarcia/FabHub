@@ -11,6 +11,7 @@
 // quantity already formatted: nothing here does BOQ math.
 import autoTable from "jspdf-autotable";
 import {F,SLATE,INK,NAVY,LINE,hexRgb,tint,pdfPeso,newDoc,stampPages} from "./pdfKit";
+import {LOGO_PNG,LOGO_RATIO} from "./pdfLogo";
 
 export function buildBoqPdf(m){
   const doc=newDoc();
@@ -19,8 +20,12 @@ export function buildBoqPdf(m){
 
   // ── Header ───────────────────────────────────────────────────────────────
   let y=16;
-  doc.setFont(F,"bold");doc.setFontSize(17);doc.setTextColor(NAVY);doc.text("GMD Productions Inc.",L,y);
-  doc.setFont(F,"normal");doc.setFontSize(8);doc.setTextColor(SLATE);doc.text("Fabrication & Project Management",L,y+4.5);
+  // Logo (colour, white page), then the company name beside it.
+  const lh=13,lw=lh*LOGO_RATIO;
+  doc.addImage(LOGO_PNG,"PNG",L-1,y-9.5,lw,lh);
+  const nx=L+lw+2;
+  doc.setFont(F,"bold");doc.setFontSize(17);doc.setTextColor(NAVY);doc.text("GMD Productions Inc.",nx,y);
+  doc.setFont(F,"normal");doc.setFontSize(8);doc.setTextColor(SLATE);doc.text("Fabrication & Project Management",nx,y+4.5);
   doc.setFontSize(7);doc.setTextColor("#94a3b8");doc.text("BILL OF QUANTITIES",R,y-4.5,{align:"right"});
   doc.setFont(F,"bold");doc.setFontSize(14);doc.setTextColor(NAVY);doc.text(m.draft?"QUOTATION — DRAFT":"QUOTATION",R,y+1,{align:"right"});
   doc.setFont(F,"normal");doc.setFontSize(8.5);doc.setTextColor(SLATE);

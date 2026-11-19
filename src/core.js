@@ -745,8 +745,28 @@ export const billingPosition = ({ deal, milestones = [], ms } = {}) => {
     kind: billingKindLabel(ms), seq: idx >= 0 ? idx + 1 : null, count: fullSchedule ? seqList.length : null,
     contract, gross, amount, retentionHeld,
     retentionPct: retentionHeld > 0 && gross > 0 ? r1(retentionHeld / gross * 100) : 0,
+    pctExact: contract > 0 ? Math.round(gross / contract * 10000) / 100 : null,
     pct, namePct, workPct, pctMismatch: pct != null && namePct != null && Math.abs(namePct - pct) > 0.5,
   };
+};
+
+// The statement's line item, billed as a share of the contract: QTY = the %,
+// RATE = the contract price, AMOUNT = this billing (gross of any retention).
+// Falls back to QTY 1 when the % can't reproduce the amount to the peso (no
+// contract value, or an odd amount).
+export const statementLine = (pos, ms = {}) => {
+  const title = s => s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+  const name = String(ms.name || "").trim();
+  const gross = pos ? pos.gross : Number(ms.amount) || 0;
+  const service = pos && pos.kind !== "BILLING" ? title(pos.kind) : (name || "Billing");
+  const asPct = !!(pos && pos.contract > 0 && pos.pctExact != null &&
+    Math.abs(pos.contract * pos.pctExact / 100 - gross) < 1);
+  const desc = [];
+  if (name && name.toLowerCase() !== service.toLowerCase()) desc.push(name);
+  if (pos && pos.pct != null) desc.push(`${asPct ? pos.pctExact : pos.pct}% of the contract price`);
+  const d2 = String(ms.description || "").trim();
+  if (d2 && d2.toLowerCase() !== name.toLowerCase()) desc.push(d2);
+  return { service, qty: asPct ? `${pos.pctExact}%` : "1", rate: asPct ? pos.contract : gross, amount: gross, description: desc };
 };
 
 // ── Billing terms and due date (one rule, so they never contradict) ────────

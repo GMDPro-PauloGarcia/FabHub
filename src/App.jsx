@@ -13,7 +13,7 @@ import {fmt,addPrintClose,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dro
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {projProgressPct, isConstructionDeal, projStageFlow, projStepIndex, projStepLabel, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, canRecordDeduction, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel, pendingCostByProject, poSplitTotal, canRaiseOrder, woSignStep, WO_SIGN_MSG, arAgeBucket, arCallOrder, dealHasBoq, MOTHER_PO_BOQ_MSG, ledgerCosts, poVatSet, isBilledRevenue, paymentBaseFactor, invoiceContractProgress, billingPosition, billingDueTerms, billingDefaultNetDays, billingTermsLabel, projectProgressPct} from './core';
+import {projProgressPct, isConstructionDeal, projStageFlow, projStepIndex, projStepLabel, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, canRecordDeduction, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel, pendingCostByProject, poSplitTotal, canRaiseOrder, woSignStep, WO_SIGN_MSG, arAgeBucket, arCallOrder, dealHasBoq, MOTHER_PO_BOQ_MSG, ledgerCosts, poVatSet, isBilledRevenue, paymentBaseFactor, invoiceContractProgress, billingPosition, statementLine, billingDueTerms, billingDefaultNetDays, billingTermsLabel, projectProgressPct} from './core';
 import ProgressReportModal from './views/ProgressReportModal';
 
 // Returns a component whose function IDENTITY is stable across renders while its
@@ -26061,20 +26061,24 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   // everyone else's is watermarked DRAFT (same rule as the BOQ quotation).
   const billingPdf=useSharePdf(toastEmit);
   const billingPdfDraft=!["Manager","Finance","FinanceAssistant","Accounting"].includes(role);
-  const shareInvoicePdf=(ms)=>{
-    const{d,tx,totalPaid,balance,cp,clientAddr,prog,due,pos}=invoiceData(ms);
-    const model={
+  const invoiceModel=(ms)=>{
+    const{d,tx,totalPaid,balance,cp,clientAddr,prog,due,pos,line}=invoiceData(ms);
+    return{
       progress:prog,asOf:today,position:pos,
       draft:billingPdfDraft,
       docTitle:"Billing Statement",
       invoiceNo:ms.invoiceNo||"",invoiceDate:ms.invoiceDate||today,
       dueDate:due.dueDate,overdue:due.overdue,
       terms:due.label,poNo:dealClientPo(d,deals),
-      billTo:{name:d?.client||"—",contact:cp.contactPerson||"",address:clientAddr,email:cp.email||"",tin:cp.tin||""},
-      line:{date:ms.invoiceDate||today,service:ms.name||"",tax:tx.vat>0?"12% S":"—",
-        description:[d?.contact||"",d?.location?`Location: ${d.location}`:"",ms.description||""].filter(Boolean)},
+      billTo:{name:d?.client||"—",project:d?.contact||d?.product||"",location:d?.location||"",ceNo:d?.ceNo||"",
+        contact:cp.contactPerson||"",address:clientAddr,email:cp.email||"",tin:cp.tin||""},
+      line:{date:ms.invoiceDate||today,service:line.service,tax:tx.vat>0?"12% S":"—",qty:line.qty,rate:line.rate,amount:line.amount,
+        description:line.description},
       subtotal:Number(ms.amount)||0,vat:tx.vat,gross:tx.gross,ewt:tx.ewt,paid:totalPaid,balance,
     };
+  };
+  const shareInvoicePdf=(ms)=>{
+    const model=invoiceModel(ms),d=deals.find(x=>x.id===ms.dealId);
     billingPdf.make(async()=>{const {buildInvoicePdf}=await import("./views/billingPdf");return buildInvoicePdf(model);},
       [ms.invoiceNo,d?.client,"Billing Statement"].filter(Boolean).join(" - "),
       {draft:billingPdfDraft,draftNote:"Only Finance's or a Manager's copy is clean to send."});
@@ -26084,12 +26088,13 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     return{client:r.d.client||"",project:r.d.contact||r.d.product||r.d.ceNo||"—",
       ref:[r.d.ceNo&&(r.d.contact||r.d.product)?r.d.ceNo:"",po?"PO# "+po:""].filter(Boolean).join(" · "),
       vatable:r.vatable,vat:r.vat,gross:r.gross,payments:r.payments,ewt:r.ewt,due:r.due,balance:r.balance,
-      lastPaid:r.lastPaid,awaiting2307:r.awaiting2307,nextDue:r.nextDue,overdueAmt:r.overdueAmt,progress:r.progress};
+      lastPaid:r.lastPaid,awaiting2307:r.awaiting2307,nextDue:r.nextDue,overdueAmt:r.overdueAmt,progress:r.progress,lines:r.lines,
+      location:r.d.location||""};
   };
-  const shareSoaPdf=(clientName)=>{
+  const soaModel=(clientName)=>{
     const sd=soaData(clientName);
-    if(!sd){toastEmit&&toastEmit("No billing data found for "+clientName,"warning");return;}
-    const model={
+    if(!sd){toastEmit&&toastEmit("No billing data found for "+clientName,"warning");return null;}
+    return{
       draft:billingPdfDraft,clientName,address:sd.soaAddr,dateStr:sd.dateStr,refNos:sd.invoiceNos,amtLbl:sd.amtLbl,
       preparedBy:sd.preparedBy,termsLbl:sd.termsLbl,today,overdue:sd.tOver,
       rows:sd.rows.map(soaPdfRow),
@@ -26098,6 +26103,10 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       settledTotals:{gross:sd.sG,payments:sd.sP},
       totals:{vatable:sd.tV,vat:sd.tVat,gross:sd.tG,payments:sd.tP,ewt:sd.tE,due:sd.tD,balance:sd.tB},
     };
+  };
+  const shareSoaPdf=(clientName)=>{
+    const model=soaModel(clientName);
+    if(!model) return;
     billingPdf.make(async()=>{const {buildSoaPdf}=await import("./views/billingPdf");return buildSoaPdf(model);},
       [clientName,"Statement of Account",today].join(" - "),
       {draft:billingPdfDraft,draftNote:"Only Finance's or a Manager's copy is clean to send."});
@@ -26338,244 +26347,30 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     // read from the name). A name that says another % gets a warning first.
     const pos=billingPosition({deal:isMotherPO(d)?null:d,milestones:billings,ms});
     if(pos?.pctMismatch) toastEmit&&toastEmit(`Check ${ms.invoiceNo||"this billing"}: its name says ${pos.namePct}% but the amount is ${pos.pct}% of the contract. Fix the name or the amount before sending.`,"warning",12000);
-    return{d,tx,totalPaid,balance,cp,clientAddr,prog,due,pos};
+    const line=statementLine(pos,ms);
+    return{d,tx,totalPaid,balance,cp,clientAddr,prog,due,pos,line};
+  };
+  // 🖨 opens the same PDF as Share PDF in a new tab, to print or save from
+  // the browser's PDF viewer. One layout for both (they used to be two copies
+  // that drifted), and no browser date / about:blank lines on the printout.
+  // The tab is opened inside the tap, so popup blockers allow it.
+  const openPdfTab=async(build,title)=>{
+    const w=window.open("","_blank");
+    if(w){try{w.document.write(`<title>${String(title).replace(/</g,"")}</title><p style="font:14px Arial;padding:24px;color:#475569">Preparing ${String(title).replace(/</g,"")}…</p>`);}catch(e){}}
+    try{
+      const blob=await build();
+      const url=URL.createObjectURL(blob);
+      if(w&&!w.closed) w.location.href=url;
+      else window.open(url,"_blank")||(toastEmit&&toastEmit("Popup blocked: allow popups for FabHub, or use Share PDF.","warning",8000));
+      setTimeout(()=>URL.revokeObjectURL(url),120000);
+    }catch(err){
+      if(w&&!w.closed) w.close();
+      toastEmit&&toastEmit("Couldn't make the PDF: "+(err.message||err),"error");
+    }
   };
   const printInvoice=(ms)=>{
-    const{d,tx,totalPaid,balance,cp,clientAddr,prog,due,pos}=invoiceData(ms);
-    const kindHtml=pos?`<div class="kind"><span class="kind-pill">${pos.kind}</span>${[pos.seq?`Billing ${pos.seq}${pos.count?` of ${pos.count}`:""}`:"",pos.workPct!=null?`Work ${pos.workPct}% complete`:"",pos.pct!=null?`<b>${pos.workPct!=null?"This billing: ":""}${pos.pct}% of contract price</b> (${fmt(pos.gross)} of ${fmt(pos.contract)}${tx.vat>0?", before VAT":""})`:""].filter(Boolean).join(" &nbsp;·&nbsp; ")}</div>`:"";
-    const retHtml=pos&&pos.retentionHeld>0?`<tr><td class="label">THIS BILLING (GROSS)</td><td style="text-align:right">${fmt(pos.gross)}</td></tr>
-      <tr><td class="label" style="color:#dc2626">Less: retention ${pos.retentionPct}%</td><td style="text-align:right;color:#dc2626">(${fmt(pos.retentionHeld)})</td></tr>`:"";
-    // Contract summary: one bar (paid / billed, unpaid / this statement / not yet
-    // billed) and the four figures. Same numbers as the Share PDF (billingPdf.js).
-    const progHtml=(()=>{
-      if(!prog) return "";
-      const segs=[["#059669",prog.paidPct],["#f59e0b",prog.prevUnpaidPct],["#ea580c",prog.thisUnpaidPct],["#e2e8f0",prog.unbilledPct]];
-      const tot=Math.max(100,segs.reduce((s,[,v])=>s+v,0));
-      const bar=segs.filter(([,v])=>v>0).map(([c,v])=>`<div style="width:${(v/tot*100).toFixed(2)}%;background:${c}"></div>`).join("");
-      const leg=[["#059669","Paid",prog.paidPct],["#f59e0b","Billed, unpaid",prog.prevUnpaidPct],["#ea580c","This billing",prog.thisUnpaidPct],["#e2e8f0","Not yet billed",prog.unbilledPct]]
-        .filter(([,,v])=>v>0).map(([c,l,v])=>`<span><i style="background:${c}"></i>${l} ${v}%</span>`).join("");
-      const box=(l,v,sub,c)=>`<div class="cp-box"><div class="cp-l">${l}</div><div class="cp-v" style="color:${c}">${fmt(v)}</div>${sub?`<div class="cp-s">${sub}</div>`:""}</div>`;
-      return `<div class="cp">
-  <div class="cp-head"><span class="cp-title">Contract Summary</span><span class="cp-asof">as of ${today}${prog.vatable?" · amounts incl. VAT":""}</span></div>
-  <div class="cp-grid">
-    ${box("Contract amount",prog.contract,"","#0f172a")}
-    ${box("Billed to date",prog.billed,`${prog.billedPct}% of contract, incl. this billing`,"#2563eb")}
-    ${box("Paid to date",prog.paid,`${prog.paidPct}% of contract${prog.withholding?", incl. tax withheld":""}`,"#059669")}
-    ${box("Remaining on contract",prog.remaining,`${Math.max(0,Math.round((100-prog.paidPct)*10)/10)}% of contract`,"#ea580c")}
-  </div>
-  <div class="cp-bar">${bar}</div>
-  <div class="cp-leg">${leg}</div>
-</div>`;
-    })();
-    const win=window.open("","_blank");
-    win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Billing Statement ${ms.invoiceNo}</title>
-<style>
-  /* margin 0 leaves the browser no room for its date / about:blank / page
-     header and footer; the page spacing comes from .pg below instead. */
-  @page{size:A4;margin:0}
-  *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:Arial,Helvetica,sans-serif;color:#0f172a;font-size:11px;background:#fff;}
-  @media print{.pg{padding:12mm 14mm}}
-  /* Print button */
-  .print-btn{text-align:center;padding:12px;background:#f8fafc;border-bottom:1px solid #e2e8f0;}
-  .print-btn button{background:#1e293b;color:#fff;border:none;border-radius:6px;padding:8px 24px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:700;}
-  /* Header — matches Statement of Account template */
-  .header{background:#1e293b;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;}
-  .co-name{font-size:22px;font-weight:900;color:#fff;letter-spacing:-.5px;}
-  .sub-bar{background:#1e293b;padding:2px 20px 10px;display:flex;justify-content:space-between;border-bottom:3px solid #ea580c;}
-  .tagline{color:rgba(255,255,255,.45);font-size:9.5px;}
-  .wrap{padding:16px 20px 8px;}
-  /* Doc title */
-  .doc-title{font-size:16px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;}
-  .kind{font-size:11px;color:#475569;margin-bottom:14px;}
-  .kind b{color:#0f172a;}
-  .kind-pill{display:inline-block;background:#ea580c;color:#fff;font-weight:800;font-size:9.5px;letter-spacing:.8px;border-radius:4px;padding:3px 8px;margin-right:8px;print-color-adjust:exact;-webkit-print-color-adjust:exact;}
-  /* Bill-to + meta grid */
-  .meta-row{display:grid;grid-template-columns:1fr auto;gap:40px;margin-bottom:16px;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;padding:12px 0;}
-  .bill-label{font-size:9px;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px;letter-spacing:.5px;}
-  .bill-name{font-weight:700;font-size:13px;color:#0f172a;}
-  .bill-addr{font-size:11px;color:#475569;margin-top:3px;line-height:1.6;}
-  .meta-table td{font-size:11px;padding:2px 0 2px 24px;vertical-align:top;}
-  .meta-table .label{color:#64748b;padding-left:0;white-space:nowrap;text-transform:uppercase;font-size:9px;font-weight:700;letter-spacing:.5px;}
-  .meta-table .val{font-weight:600;}
-  /* Items table — navy header like SOA */
-  table.items{width:100%;border-collapse:collapse;margin-bottom:0;}
-  table.items thead tr{background:#1e293b;}
-  table.items th{padding:8px 10px;font-size:8px;font-weight:700;text-transform:uppercase;color:rgba(255,255,255,.8);text-align:left;letter-spacing:.5px;}
-  table.items th.r{text-align:right;}
-  table.items td{padding:9px 10px;font-size:11px;border-bottom:1px solid #f1f5f9;vertical-align:top;}
-  table.items tbody tr:nth-child(even){background:#f9fafb;}
-  table.items td.r{text-align:right;white-space:nowrap;}
-  table.items td.bold{font-weight:700;}
-  /* Footer row: terms left, totals right */
-  .footer-row{display:grid;grid-template-columns:1fr auto;gap:24px;margin-top:0;border-top:1px dashed #cbd5e1;padding-top:14px;}
-  .terms{font-size:11px;color:#475569;line-height:1.7;}
-  .terms strong{display:block;margin-bottom:4px;font-size:11px;color:#0f172a;}
-  .totals-tbl{width:270px;}
-  .totals-tbl td{font-size:11px;padding:3px 0 3px 16px;}
-  .totals-tbl .label{color:#64748b;padding-left:0;}
-  .totals-tbl .sep{border-top:1px dashed #cbd5e1;}
-  .totals-tbl .grand-sep td{border-top:2px solid #1e293b;font-weight:900;font-size:13px;padding-top:8px;}
-  .totals-tbl .grand-sep .label{color:#0f172a;text-transform:uppercase;letter-spacing:.5px;}
-  /* Tax summary — navy header like SOA */
-  .tax-summary{margin-top:20px;}
-  .tax-summary .ts-title{font-weight:700;font-size:11px;margin-bottom:5px;text-transform:uppercase;letter-spacing:.8px;color:#0f172a;}
-  table.ts{width:100%;border-collapse:collapse;}
-  table.ts thead tr{background:#1e293b;}
-  table.ts th{padding:6px 10px;font-size:8px;font-weight:700;text-transform:uppercase;color:rgba(255,255,255,.8);text-align:right;letter-spacing:.5px;}
-  table.ts th:first-child{text-align:center;}
-  table.ts td{padding:6px 10px;font-size:11px;text-align:right;border-bottom:1px solid #f1f5f9;}
-  table.ts td:first-child{text-align:center;}
-  /* Contract summary + progress bar */
-  .cp{margin-top:18px;border:1px solid #e2e8f0;border-radius:6px;padding:12px 14px;}
-  .cp-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;}
-  .cp-title{font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:#0f172a;}
-  .cp-asof{font-size:9px;color:#94a3b8;}
-  .cp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px;}
-  .cp-l{font-size:8px;font-weight:700;text-transform:uppercase;color:#64748b;letter-spacing:.5px;}
-  .cp-v{font-size:13px;font-weight:800;margin-top:2px;white-space:nowrap;}
-  .cp-s{font-size:8.5px;color:#64748b;margin-top:1px;}
-  .cp-bar{display:flex;height:12px;border-radius:6px;overflow:hidden;background:#e2e8f0;}
-  .cp-bar div{height:100%;}
-  .cp-leg{display:flex;flex-wrap:wrap;gap:14px;margin-top:6px;font-size:9px;color:#475569;}
-  .cp-leg i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:-1px;}
-  /* Signature */
-  .sig-row{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:32px;padding-top:16px;}
-  .sig-block{font-size:11px;color:#64748b;}
-  .sig-line{border-top:1px solid #94a3b8;margin-top:28px;padding-top:4px;}
-  /* Company footer */
-  .co-footer{text-align:center;margin-top:22px;padding-top:10px;border-top:1px solid #e2e8f0;font-size:9px;color:#94a3b8;line-height:1.7;}
-  @media print{
-    .print-btn{display:none;}
-    .header,.sub-bar,table.items thead tr,table.ts thead tr,.cp-bar div,.cp-leg i{print-color-adjust:exact;-webkit-print-color-adjust:exact;}
-  }
-</style>
-</head><body>
-<div class="print-btn"><button onclick="window.print()">🖨 Print / Save as PDF</button></div>
-<div class="pg">
-
-<!-- Header -->
-<div class="header">
-  <div class="co-name">GMD PRODUCTIONS INC.</div>
-  <div style="text-align:right">
-    <span style="color:rgba(255,255,255,.6);font-size:10px">DATE: </span>
-    <span style="color:#f97316;font-weight:700;font-size:12px">${ms.invoiceDate||today}</span>
-  </div>
-</div>
-<div class="sub-bar">
-  <span class="tagline">Retail Design &amp; Build | Construction | Modular Fit-outs | Signage | POP Displays</span>
-  <span class="tagline">BILLING NO.: ${ms.invoiceNo||"—"}</span>
-</div>
-
-<div class="wrap">
-  <!-- Document title -->
-  <!-- Never "Tax Invoice": GMD issues its official BIR invoice / receipt
-       separately, so this document is a billing statement only (Paulo,
-       2026-10-26). Same title and note on the Share PDF (billingPdf.js). -->
-  <div class="doc-title">Billing Statement</div>
-  ${kindHtml}
-
-  <!-- Bill-to + Invoice meta -->
-  <div class="meta-row">
-    <div>
-      <div class="bill-label">Bill To</div>
-      <div class="bill-name">${d?.client||"—"}</div>
-      ${cp.contactPerson?`<div class="bill-addr">${cp.contactPerson}</div>`:""}
-      ${clientAddr?`<div class="bill-addr">${clientAddr}</div>`:""}
-      ${cp.email?`<div class="bill-addr">${cp.email}</div>`:""}
-      ${cp.tin?`<div class="bill-addr">TIN: ${cp.tin}</div>`:""}
-    </div>
-    <table class="meta-table">
-      <tr><td class="label">BILLING NO.</td><td class="val">${ms.invoiceNo||"—"}</td></tr>
-      ${dealClientPo(d,deals)?`<tr><td class="label">PO #</td><td class="val">${String(dealClientPo(d,deals)).replace(/&/g,"&amp;").replace(/</g,"&lt;")}</td></tr>`:""}
-      <tr><td class="label">DATE</td><td class="val">${ms.invoiceDate||today}</td></tr>
-      <tr><td class="label">TERMS</td><td class="val">${due.label}</td></tr>
-      <tr><td class="label">DUE DATE</td><td class="val" style="color:${due.overdue?"#dc2626":"inherit"}">${due.dueDate}</td></tr>
-    </table>
-  </div>
-
-  <!-- Line items -->
-  <table class="items">
-    <thead>
-      <tr>
-        <th style="width:80px">DATE</th>
-        <th style="width:130px">SERVICE</th>
-        <th>DESCRIPTION</th>
-        <th class="r" style="width:60px">TAX</th>
-        <th class="r" style="width:40px">QTY</th>
-        <th class="r" style="width:100px">RATE</th>
-        <th class="r" style="width:100px">AMOUNT</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>${ms.invoiceDate||today}</td>
-        <td class="bold">${ms.name}</td>
-        <td>${[d?.contact?`${d.contact}`:"",d?.location?`Location: ${d.location}`:"",ms.description||""].filter(Boolean).join("<br/>")}</td>
-        <td class="r">${tx.vat>0?"12% S":"—"}</td>
-        <td class="r">1</td>
-        <td class="r">${fmt(ms.amount)}</td>
-        <td class="r">${fmt(ms.amount)}</td>
-      </tr>
-    </tbody>
-  </table>
-
-  <!-- Footer: payment terms + totals -->
-  <div class="footer-row">
-    <div class="terms">
-      <strong>Account Name: GMD PRODUCTIONS INC</strong>
-      BDO CHECKING — 012758000370<br/>
-      BPI CHECKING — 6011 04 82 03<br/>
-      METROBANK — 382-7-38202059-2
-    </div>
-    <table class="totals-tbl">
-      ${retHtml}
-      <tr><td class="label">SUBTOTAL</td><td style="text-align:right">${fmt(ms.amount)}</td></tr>
-      <tr><td class="label sep">TAX</td><td style="text-align:right" class="sep">${fmt(tx.vat)}</td></tr>
-      <tr><td class="label">TOTAL</td><td style="text-align:right">${fmt(tx.gross)}</td></tr>
-      ${tx.ewt>0?`<tr><td class="label" style="color:#dc2626">Less: EWT</td><td style="text-align:right;color:#dc2626">(${fmt(tx.ewt)})</td></tr>`:""}
-      ${totalPaid>0?`<tr><td class="label" style="color:#2563eb">AMOUNT PAID</td><td style="text-align:right;color:#2563eb">(${fmt(totalPaid)})</td></tr>`:""}
-      <tr class="grand-sep">
-        <td class="label">BALANCE DUE</td>
-        <td style="text-align:right;color:${balance>0?"#ea580c":"#059669"}">PHP ${balance>0?Number(balance).toLocaleString("en-PH",{minimumFractionDigits:2}):"0.00"}</td>
-      </tr>
-    </table>
-  </div>
-
-  ${progHtml}
-
-  <!-- Tax summary -->
-  ${tx.vat>0?`
-  <div class="tax-summary">
-    <div class="ts-title">Tax Summary</div>
-    <table class="ts">
-      <thead><tr><th>RATE</th><th>TAX</th><th>NET</th></tr></thead>
-      <tbody><tr><td>VAT @ 12%</td><td>${fmt(tx.vat)}</td><td>${fmt(ms.amount)}</td></tr></tbody>
-    </table>
-  </div>`:""}
-
-  <!-- Signature -->
-  <div class="sig-row">
-    <div class="sig-block">
-      <div class="sig-line">Accepted By</div>
-    </div>
-    <div class="sig-block">
-      <div class="sig-line">Accepted Date</div>
-    </div>
-  </div>
-
-  <!-- Company footer -->
-  <div style="text-align:center;margin-top:18px;font-size:10px;font-weight:700;color:#475569">This is a billing statement, not an official receipt or BIR invoice. The official invoice is issued separately.</div>
-  <div class="co-footer">
-    GMD PRODUCTIONS INC &nbsp;·&nbsp; 32 Santan Unit H Brgy Fortune, Marikina, NCR 1802 PH &nbsp;·&nbsp; TIN 010-063-229-000<br/>
-    +63 9189338436 &nbsp;·&nbsp; sales@gmd.ph &nbsp;·&nbsp; www.gmd.ph
-  </div>
-
-  <div style="text-align:center;margin-top:10px;font-size:9px;color:#cbd5e1">Page 1 of 1</div>
-</div>
-</div>
-</body></html>`);
-    win.document.close();addPrintClose(win);
+    const model=invoiceModel(ms);
+    openPdfTab(async()=>{const {buildInvoicePdf}=await import("./views/billingPdf");return buildInvoicePdf(model);},`Billing Statement ${ms.invoiceNo||""}`.trim());
   };
 
   // One client's SOA figures — used by the print page AND the Share PDF copy
@@ -26611,7 +26406,18 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       const nextDue=open.reduce((mn,x)=>x.t.dueDate&&(!mn||x.t.dueDate<mn)?x.t.dueDate:mn,"");
       const overdueAmt=open.filter(x=>x.t.overdue).reduce((s,x)=>s+x.bal,0);
       const progress=isMotherPO(d)?null:invoiceContractProgress({deal:d,milestones:billings});
-      return{d,vatable,vat,gross,payments,ewt,due,balance,lastPaid,settled,awaiting2307,nextDue,overdueAmt,progress};
+      // One line per sent billing, oldest first, in plain terms: what was
+      // billed, the tax the client withholds, what they paid, what is still due.
+      const lines=active.slice().sort((a,b)=>String(a.invoiceDate||"").localeCompare(String(b.invoiceDate||""))).map(m=>{
+        const tx=calcTax(m.amount,m.receiptType??rt,m.withholding??wh);
+        const paid=(m.payments||[]).filter(p=>!p.bounced).reduce((s2,p)=>s2+Number(p.amount||0),0);
+        const amtDue=Math.max(0,tx.netReceivable-paid);
+        const t=billingDueTerms({ms:m,deal:d,clientTerms:cpD.paymentTerms,today});
+        const pos=isMotherPO(d)?null:billingPosition({deal:d,milestones:billings,ms:m});
+        const status=amtDue<0.01?(tx.ewt>0&&awaiting2307?"Paid · BIR 2307 to follow":"Paid"):t.overdue?"Past due":paid>0?"Partly paid":"Due";
+        return{no:m.invoiceNo||"",date:m.invoiceDate||"",what:m.name||"",pct:pos?.pct??null,billed:tx.gross,ewt:tx.ewt,paid,amtDue,dueDate:t.dueDate,status};
+      });
+      return{d,vatable,vat,gross,payments,ewt,due,balance,lastPaid,settled,awaiting2307,nextDue,overdueAmt,progress,lines};
     }).filter(r=>r.vatable>0||r.payments>0);
     if(!allRows.length) return null;
     // Outstanding projects carry the statement's totals. Settled ones are shown
@@ -26644,184 +26450,9 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     return{clientDeals,rows,settledRows,settledSince,sG,sP,tV,tVat,tG,tP,tE,tD,tB,tOver,termsLbl,dateStr,preparedBy,cpSoa,soaAddr,amtLbl,invoiceNos};
   };
   const printSOA=(clientName)=>{
-    const esc=(s)=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-    const f=(v)=>Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
-    const sd=soaData(clientName);
-    if(!sd){alert("No billing data found for "+clientName);return;}
-    const{rows,settledRows,settledSince,sG,sP,tV,tVat,tG,tP,tE,tD,tB,tOver,termsLbl,dateStr,preparedBy,soaAddr,amtLbl,invoiceNos}=sd;
-    const fd=(iso)=>iso?new Date(iso+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):"—";
-    const projCell=(r)=>`<td style="text-align:left"><div style="color:#2563eb;font-weight:600">${esc(r.d.contact||r.d.product||r.d.ceNo||"—")}</div>${(()=>{const po=dealClientPo(r.d,deals);const ref=[r.d.ceNo&&(r.d.contact||r.d.product)?r.d.ceNo:"",po?"PO# "+po:""].filter(Boolean).join(" · ");return ref?`<div style="color:#64748b;font-size:8.5px;margin-top:1px">${esc(ref)}</div>`:"";})()}${!r.settled&&r.nextDue?`<div style="font-size:8.5px;margin-top:1px;font-weight:700;color:${r.overdueAmt>0?"#dc2626":"#475569"}">${r.overdueAmt>0?`Past due since ${esc(fd(r.nextDue))}`:`Due ${esc(fd(r.nextDue))}`}</div>`:""}${r.awaiting2307?`<div style="color:#b45309;font-size:8.5px;font-weight:700;margin-top:1px">Awaiting BIR Form 2307</div>`:""}</td>`;
-    const settledHtml=settledRows.map((r,i)=>`<tr>
-      <td style="text-align:center;color:#64748b">${i+1}</td>
-      ${projCell(r)}
-      <td style="text-align:right">${f(r.gross)}</td>
-      <td style="text-align:right;color:#2563eb">${f(r.payments)}</td>
-      <td style="text-align:right">${esc(fd(r.lastPaid))}</td>
-      <td style="text-align:right;color:#059669;font-weight:700">PAID</td>
-    </tr>`).join("");
-    const rowsHtml=rows.map((r,i)=>`<tr>
-      <td style="text-align:center;color:#64748b">${i+1}</td>
-      <td style="color:#2563eb;font-weight:600">${esc(r.d.client)}</td>
-      ${projCell(r)}
-      <td style="text-align:right">${f(r.vatable)}</td>
-      <td style="text-align:right">${f(r.vat)}</td>
-      <td style="text-align:right">${f(r.gross)}</td>
-      <td style="text-align:right;color:#2563eb">${f(r.payments)}</td>
-      <td style="text-align:right">${f(r.ewt)}</td>
-      <td style="text-align:right;color:#ea580c;font-weight:700">${f(r.due)}</td>
-      <td style="text-align:right;font-weight:700">${f(r.balance)}</td>
-    </tr>`).join("");
-    // Contract progress: one bar per outstanding project (same figures as the
-    // billing statement's Contract Summary, invoiceContractProgress).
-    const progRows=rows.filter(r=>r.progress);
-    const progHtml=progRows.length?`<div class="tbl-title">Contract progress</div>
-      <table class="prog"><thead><tr><th>PROJECT NAME</th><th>CONTRACT AMOUNT</th><th>BILLED</th><th>PAID</th><th style="width:34%">PROGRESS</th></tr></thead><tbody>
-      ${progRows.map(r=>{const p=r.progress;const tot=Math.max(100,p.paidPct+p.prevUnpaidPct+p.unbilledPct);
-        return `<tr><td style="color:#2563eb;font-weight:600">${esc(r.d.contact||r.d.product||r.d.ceNo||"—")}</td><td>${f(p.contract)}</td><td>${f(p.billed)} <span style="color:#64748b">(${p.billedPct}%)</span></td><td style="color:#059669">${f(p.paid)} <span style="color:#64748b">(${p.paidPct}%)</span></td>
-        <td><div class="bar"><div style="width:${(p.paidPct/tot*100).toFixed(2)}%;background:#059669"></div><div style="width:${(p.prevUnpaidPct/tot*100).toFixed(2)}%;background:#f59e0b"></div></div></td></tr>`;}).join("")}
-      </tbody></table>
-      <div class="leg"><span><i style="background:#059669"></i>Paid</span><span><i style="background:#f59e0b"></i>Billed, unpaid</span><span><i style="background:#e2e8f0"></i>Not yet billed</span>${progRows.some(r=>r.progress.vatable)?`<span style="color:#94a3b8">Amounts incl. VAT where VAT applies</span>`:""}${progRows.some(r=>r.progress.withholding)?`<span style="color:#94a3b8">Paid includes tax withheld (BIR Form 2307)</span>`:""}</div>`:"";
-    const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>SOA — ${esc(clientName)}</title><style>
-      /* margin 0 leaves the browser no room for its date / about:blank / page
-         header and footer; .pg-t's repeating head/foot rows space every page. */
-      @page{size:A4 landscape;margin:0}
-      table.pg-t{margin:0;font-size:11px}table.pg-t>thead>tr,table.pg-t>tfoot>tr,table.pg-t>tbody>tr{background:none}
-      table.pg-t>thead>tr>td,table.pg-t>tfoot>tr>td,table.pg-t>tbody>tr>td{padding:0;border:none;text-align:left;color:inherit;font-weight:400}
-      .pg-sp{height:0}
-      @media print{.pg-sp{height:11mm}table.pg-t>tbody>tr>td.pg-side{padding:0 14mm}}
-      table.prog thead th:nth-child(5){text-align:left}
-      table.prog thead th:nth-child(n+2){text-align:right}table.prog tbody td:nth-child(2),table.prog tbody td:nth-child(3),table.prog tbody td:nth-child(4){text-align:right}
-      table.prog tbody td:nth-child(5){text-align:left}
-      .bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:#e2e8f0}.bar div{height:100%}
-      .leg{display:flex;gap:14px;font-size:8.5px;color:#475569;margin:-8px 0 14px}.leg i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:-1px}
-      .terms{font-size:9.5px;color:#475569;margin:-8px 0 14px}.terms b{color:#0f172a}
-      .pastdue{border:1.5px solid #fecaca;background:#fef2f2;color:#b91c1c;font-weight:700;font-size:10.5px;padding:8px 12px;margin-bottom:14px}
-      *{box-sizing:border-box;margin:0;padding:0;print-color-adjust:exact;-webkit-print-color-adjust:exact}
-      body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#0f172a;background:#fff;padding:0}
-      .print-btn{text-align:center;padding:12px;background:#f8fafc;border-bottom:1px solid #e2e8f0}
-      .print-btn button{background:#1e293b;color:#fff;border:none;border-radius:6px;padding:8px 24px;font-size:13px;cursor:pointer;font-family:inherit}
-      @media print{.print-btn{display:none}}
-      .header{background:#1e293b;padding:12px 20px;display:flex;justify-content:space-between;align-items:center}
-      .co-name{font-size:22px;font-weight:900;color:#fff;letter-spacing:-.5px}
-      .sub-bar{background:#1e293b;padding:2px 20px 10px;display:flex;justify-content:space-between;border-bottom:3px solid #ea580c}
-      .tagline{color:rgba(255,255,255,.45);font-size:9.5px}
-      .soa-wrap{padding:12px 20px 8px}
-      .soa-title{font-size:15px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px}
-      .client-grid{display:grid;grid-template-columns:auto 1fr 40px auto 1fr;gap:6px 10px;align-items:end;margin-bottom:16px}
-      .cl{font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;white-space:nowrap}
-      .cv{border-bottom:1.5px solid #0f172a;padding-bottom:2px;font-weight:600;font-size:11px;color:#1e40af}
-      .summary{display:grid;grid-template-columns:repeat(5,1fr);border:1.5px solid #e2e8f0;margin-bottom:16px}
-      .sb{padding:10px 14px;background:#f8fafc;border-right:1px solid #e2e8f0;text-align:center}
-      .sb:last-child{border-right:none;background:#fff7ed}
-      .sl{font-size:8px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px}
-      .sv{font-size:16px;font-weight:800;color:#0f172a}
-      .sb:last-child .sv{color:#ea580c}
-      table{width:100%;border-collapse:collapse;margin:0 0 14px;font-size:10px}
-      thead tr{background:#1e293b}
-      thead th{color:rgba(255,255,255,.8);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:8px 10px;text-align:left}
-      thead th:nth-child(n+4){text-align:right}
-      tbody tr:nth-child(even){background:#f9fafb}
-      tbody td{padding:8px 10px;border-bottom:1px solid #f1f5f9}
-      tbody td:nth-child(n+4){text-align:right}
-      tfoot tr{background:#1e293b}
-      tfoot td{color:#fff;font-weight:700;padding:9px 10px;font-size:10px;text-align:right}
-      tfoot td:nth-child(1),tfoot td:nth-child(2){text-align:center;color:rgba(255,255,255,.7);font-size:9px;font-weight:400}
-      .total-due{color:#f97316!important;font-size:13px!important;font-weight:900!important}
-      .tbl-title{font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#0f172a;margin:4px 0 6px}
-      .paid-full{border:2px solid #059669;color:#059669;background:#ecfdf5;font-weight:900;font-size:13px;letter-spacing:1px;text-align:center;padding:10px;margin-bottom:14px}
-      table.settled thead tr,table.settled tfoot tr{background:#475569}
-      table.settled thead th:nth-child(n+3){text-align:right}
-      table.settled thead th:nth-child(-n+2),table.settled tbody td:nth-child(-n+2){text-align:left}
-      table.settled tbody td:first-child{text-align:center}
-      table.settled tbody td:nth-child(n+3){text-align:right}
-      .none{font-size:9.5px;color:#64748b;font-style:italic;margin-bottom:14px}
-      .notes{border:1px solid #e2e8f0;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:9px;color:#475569}
-      .notes b{color:#0f172a;font-size:9px}
-      .notes .nt{font-weight:700;font-size:10px;color:#0f172a;margin-bottom:6px}
-      .sig{display:grid;grid-template-columns:1fr 1fr;gap:40px;padding:10px 0}
-      .sl2{font-size:9px;color:#64748b;margin-bottom:18px}
-      .sn{font-size:11px;font-weight:700}
-      .sc{font-size:9px;color:#64748b}
-    </style></head><body>
-    <div class="print-btn"><button onclick="window.print()">🖨 Print / Save as PDF</button></div>
-    <table class="pg-t"><thead><tr><td><div class="pg-sp"></div></td></tr></thead><tfoot><tr><td><div class="pg-sp"></div></td></tr></tfoot><tbody><tr><td class="pg-side">
-    <div class="header">
-      <div class="co-name">GMD PRODUCTIONS INC.</div>
-      <div style="text-align:right">
-        <span style="color:rgba(255,255,255,.6);font-size:10px">DATE: </span>
-        <span style="color:#f97316;font-weight:700;font-size:12px">${dateStr}</span>
-      </div>
-    </div>
-    <div class="sub-bar">
-      <span class="tagline">Retail Design &amp; Build | Construction | Modular Fit-outs | Signage | POP Displays</span>
-      <span class="tagline">REF NO.: ${esc(invoiceNos)||"—"}</span>
-    </div>
-    <div class="soa-wrap">
-      <div class="soa-title">Statement of Account</div>
-      <div class="client-grid">
-        <span class="cl">CLIENT NAME:</span>
-        <span class="cv">${esc(clientName)}</span>
-        <span></span>
-        <span class="cl">BILLING ADDRESS:</span>
-        <span class="cv">${soaAddr?esc(soaAddr):"&nbsp;"}</span>
-      </div>
-      <div class="terms"><b>PAYMENT TERMS:</b> ${esc(termsLbl)}. Each project shows when its open billing is due.</div>
-      ${rows.length?`<div class="summary">
-        <div class="sb"><div class="sl">TOTAL ${amtLbl}</div><div class="sv">${f(tV)}</div></div>
-        <div class="sb"><div class="sl">TOTAL VAT</div><div class="sv">${f(tVat)}</div></div>
-        <div class="sb"><div class="sl">TOTAL PAYMENTS MADE</div><div class="sv">${f(tP)}</div></div>
-        <div class="sb"><div class="sl">TOTAL BALANCE</div><div class="sv">${f(tB)}</div></div>
-        <div class="sb"><div class="sl">TOTAL AMOUNT DUE</div><div class="sv">${f(tD)}</div></div>
-      </div>`:""}
-      ${tOver>0.01?`<div class="pastdue">PAST DUE: ${f(tOver)} is past its due date as of ${esc(dateStr)}.</div>`:""}
-      ${rows.length?"":`<div class="paid-full">PAID IN FULL — no outstanding balance as of ${esc(dateStr)}</div>`}
-      ${rows.length?`<div class="tbl-title">Outstanding</div>
-      <table>
-        <thead><tr>
-          <th style="width:30px;text-align:center">#</th>
-          <th>CLIENT NAME</th><th>PROJECT NAME</th>
-          <th>${amtLbl}</th><th>VAT</th><th>SALES AMOUNT</th>
-          <th>PAYMENT MADE</th><th>WHT</th><th>TOTAL AMOUNT DUE</th><th>BALANCE</th>
-        </tr></thead>
-        <tbody>${rowsHtml}</tbody>
-        <tfoot><tr>
-          <td></td><td colspan="2">TOTAL AMOUNT DUE</td>
-          <td>${f(tV)}</td><td>${f(tVat)}</td><td>${f(tG)}</td>
-          <td>${f(tP)}</td><td>${f(tE)}</td>
-          <td class="total-due">${f(tD)}</td><td>${f(tB)}</td>
-        </tr></tfoot>
-      </table>`:""}
-      ${progHtml}
-      ${settledRows.length?`<div class="tbl-title">Settled — fully paid since ${esc(fd(settledSince))}</div>
-      <table class="settled">
-        <thead><tr>
-          <th style="width:30px;text-align:center">#</th>
-          <th>PROJECT NAME</th><th>SALES AMOUNT</th><th>PAYMENT MADE</th><th>LAST PAYMENT</th><th>Status</th>
-        </tr></thead>
-        <tbody>${settledHtml}</tbody>
-        <tfoot><tr><td></td><td style="text-align:left">TOTAL SETTLED</td><td>${f(sG)}</td><td>${f(sP)}</td><td></td><td></td></tr></tfoot>
-      </table>`:""}
-      <div class="notes">
-        <div class="nt">NOTES</div>
-        <p style="margin-bottom:6px">Thank you for your business! Please send or email (<b>finance@gmd.ph</b>) us a copy of the payment for proper recording.</p>
-        <p style="margin-top:8px;font-weight:700">Payment Details:</p>
-        <p style="margin-top:4px"><b>Account Name:</b>&nbsp; GMD PRODUCTIONS INC</p>
-        <p style="margin-top:3px"><b>BDO CHECKING</b>&nbsp;—&nbsp;012758000370</p>
-        <p style="margin-top:3px"><b>BPI CHECKING</b>&nbsp;—&nbsp;6011 04 82 03</p>
-        <p style="margin-top:3px"><b>METROBANK</b>&nbsp;—&nbsp;382-7-38202059-2</p>
-      </div>
-      <div class="sig">
-        <div><div class="sl2">Prepared by:</div><div class="sn">${esc(preparedBy)||"&nbsp;"}</div><div class="sc">GMD Productions Inc.</div></div>
-        <div><div class="sl2">Approved by:</div><div class="sn">Paulo Garcia</div><div class="sc">GMD Productions Inc.</div></div>
-      </div>
-    </div>
-    </td></tr></tbody></table>
-    </body></html>`;
-    const w=window.open("","_blank","width=1100,height=780");
-    if(!w){toastEmit&&toastEmit("Popup blocked — please allow popups for this site","warning");return;}
-    w.document.write(html);
-    w.document.close();addPrintClose(w);
-    setTimeout(()=>w.print(),600);
+    const model=soaModel(clientName);
+    if(!model) return;
+    openPdfTab(async()=>{const {buildSoaPdf}=await import("./views/billingPdf");return buildSoaPdf(model);},`SOA — ${clientName}`);
   };
 
   // Per-project summary for list — includes addendum child deals
