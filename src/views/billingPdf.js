@@ -5,29 +5,13 @@
 // SAME figures its print pages use, so the PDF and the printout can't
 // disagree. Nothing here does billing math.
 import autoTable from "jspdf-autotable";
-import {F,SLATE,INK,NAVY,LINE,pdfNum,newDoc,stampPages} from "./pdfKit";
+import {F,SLATE,INK,NAVY,LINE,pdfNum,newDoc,stampPages,docHeader} from "./pdfKit";
 
 const ORANGE="#ea580c",BLUE="#2563eb",GREEN="#059669",RED="#dc2626";
-const TAGLINE="Retail Design & Build | Construction | Modular Fit-outs | Signage | POP Displays";
 const BANKS=["Account Name: GMD PRODUCTIONS INC","BDO CHECKING — 012758000370","BPI CHECKING — 6011 04 82 03","METROBANK — 382-7-38202059-2"];
 const CO_FOOTER="GMD PRODUCTIONS INC · 32 Santan Unit H Brgy Fortune, Marikina, NCR 1802 PH · TIN 010-063-229-000";
 
-// Navy band with the company name and date, then a slate sub-bar, like the
-// print pages' header.
-const header=(doc,{dateStr,rightLabel})=>{
-  const W=doc.internal.pageSize.getWidth();
-  doc.setFillColor(NAVY);doc.rect(0,0,W,20,"F");
-  doc.setFont(F,"bold");doc.setFontSize(15);doc.setTextColor(255);doc.text("GMD PRODUCTIONS INC.",12,13);
-  doc.setFont(F,"bold");doc.setFontSize(9.5);doc.setTextColor("#f97316");doc.text(dateStr||"",W-12,13,{align:"right"});
-  const dw=doc.getTextWidth(dateStr||"");
-  doc.setFont(F,"normal");doc.setFontSize(8);doc.setTextColor("#cbd5e1");doc.text("DATE:",W-12-dw-2,13,{align:"right"});
-  doc.setFillColor("#334155");doc.rect(0,20,W,7,"F");
-  doc.setFillColor(ORANGE);doc.rect(0,27,W,0.8,"F");
-  doc.setFont(F,"normal");doc.setFontSize(7);doc.setTextColor("#cbd5e1");
-  doc.text(TAGLINE,12,24.6);
-  if(rightLabel) doc.text(rightLabel,W-12,24.6,{align:"right"});
-  return 36;
-};
+const header=docHeader;
 
 // ── Billing statement (a milestone's invoice; never titled "Tax Invoice") ──
 export function buildInvoicePdf(m){
@@ -39,6 +23,20 @@ export function buildInvoicePdf(m){
   doc.setFont(F,"bold");doc.setFontSize(16);doc.setTextColor(INK);
   doc.text((m.draft?`${m.docTitle} — DRAFT`:m.docTitle).toUpperCase(),L,y+2);
   y+=9;
+  // Kind of billing + its % of the contract (billingPosition, src/core.js).
+  const pos=m.position;
+  if(pos){
+    doc.setFont(F,"bold");doc.setFontSize(7.5);
+    const pw=doc.getTextWidth(pos.kind)+5;
+    doc.setFillColor(ORANGE);doc.roundedRect(L,y-3.6,pw,5.2,1,1,"F");
+    doc.setTextColor(255);doc.text(pos.kind,L+2.5,y);
+    let x=L+pw+3;
+    const seg=(t,bold)=>{doc.setFont(F,bold?"bold":"normal");doc.setFontSize(8.5);doc.setTextColor(bold?INK:"#475569");doc.text(t,x,y);x+=doc.getTextWidth(t);};
+    const sep="  ·  ";
+    if(pos.seq) seg(`Billing ${pos.seq}${pos.count?` of ${pos.count}`:""}`+(pos.workPct!=null?sep:""),false);
+    if(pos.workPct!=null) seg(`Work ${pos.workPct}% complete`,false);
+    y+=8;
+  }
 
   // Bill to (left) and invoice details (right)
   const topY=y;
@@ -46,6 +44,11 @@ export function buildInvoicePdf(m){
   y+=4.5;
   doc.setFont(F,"bold");doc.setFontSize(10.5);doc.setTextColor(INK);
   doc.splitTextToSize(m.billTo.name||"—",100).forEach(l=>{doc.text(l,L,y);y+=4.6;});
+  // Project right under the client, then where it is.
+  if(m.billTo.project){doc.setFont(F,"bold");doc.setFontSize(9.5);doc.setTextColor(BLUE);
+    doc.splitTextToSize(m.billTo.project,100).forEach(l=>{doc.text(l,L,y);y+=4.4;});}
+  const where=[m.billTo.location?`Location: ${m.billTo.location}`:"",m.billTo.ceNo?`Ref: ${m.billTo.ceNo}`:""].filter(Boolean).join(" · ");
+  if(where){doc.setFont(F,"normal");doc.setFontSize(8.5);doc.setTextColor("#475569");doc.splitTextToSize(where,100).forEach(l=>{doc.text(l,L,y);y+=4;});}
   doc.setFont(F,"normal");doc.setFontSize(8.5);doc.setTextColor("#475569");
   [m.billTo.contact,m.billTo.address,m.billTo.email,m.billTo.tin?`TIN: ${m.billTo.tin}`:""].filter(Boolean).forEach(t=>{
     doc.splitTextToSize(t,100).forEach(l=>{doc.text(l,L,y);y+=4;});
@@ -60,23 +63,23 @@ export function buildInvoicePdf(m){
   });
   y=Math.max(y,my)+4;
 
+  const asPct=m.line.qty&&m.line.qty!=="1";
   autoTable(doc,{
     startY:y,margin:{left:L,right:W-R,bottom:16},theme:"plain",
-    head:[["DATE","SERVICE","DESCRIPTION","TAX","QTY","RATE","AMOUNT"]],
-    body:[[m.line.date,m.line.service,m.line.description.join("\n"),m.line.tax,"1",pdfNum(m.subtotal),pdfNum(m.subtotal)]],
+    // Billed as a share of the contract: % BILLED x CONTRACT PRICE = AMOUNT
+    // (statementLine, src/core.js); QTY 1 when the % can't reproduce it.
+    head:[["DATE","SERVICE","DESCRIPTION","TAX",asPct?"% BILLED":"QTY",asPct?"CONTRACT PRICE":"RATE","AMOUNT"]],
+    body:[[m.line.date,m.line.service,m.line.description.join("\n"),m.line.tax,m.line.qty??"1",pdfNum(m.line.rate??m.subtotal),pdfNum(m.line.amount??m.subtotal)]],
     styles:{font:F,fontSize:8.5,textColor:INK,cellPadding:2.2,valign:"top",lineColor:"#f1f5f9",lineWidth:{bottom:0.2}},
     headStyles:{font:F,fontStyle:"bold",fillColor:NAVY,textColor:255,fontSize:6.5},
-    columnStyles:{0:{cellWidth:22},1:{cellWidth:34,fontStyle:"bold"},3:{cellWidth:14,halign:"right"},4:{cellWidth:10,halign:"right"},5:{cellWidth:25,halign:"right"},6:{cellWidth:25,halign:"right"}},
+    columnStyles:{0:{cellWidth:22},1:{cellWidth:34,fontStyle:"bold"},3:{cellWidth:15,halign:"right"},4:{cellWidth:asPct?17:10,halign:"right",fontStyle:"bold"},5:{cellWidth:asPct?27:25,halign:"right"},6:{cellWidth:25,halign:"right"}},
     didParseCell:d=>{if(d.section==="head"&&d.column.index>=3)d.cell.styles.halign="right";},
   });
   y=doc.lastAutoTable.finalY+7;
 
-  // Payment terms + bank details (left), totals (right)
+  // Bank details (left), totals (right)
   const leftY=y;
-  doc.setFont(F,"bold");doc.setFontSize(8.5);doc.setTextColor(INK);doc.text("We require the ff payment terms:",L,y);y+=4.3;
-  doc.setFont(F,"normal");doc.setFontSize(8);doc.setTextColor("#475569");
-  ["1) 50% DP to start project","2) Billing of 40% up until installation","3) Retention of 10% upon certificate of completion"].forEach(t=>{doc.text(t,L,y);y+=3.9;});
-  y+=2;
+  doc.setFontSize(8);
   BANKS.forEach((t,i)=>{doc.setFont(F,i===0?"bold":"normal");doc.setTextColor(i===0?INK:"#475569");doc.text(t,L,y);y+=3.9;});
 
   let ty=leftY;const tx=R-62;
@@ -84,6 +87,10 @@ export function buildInvoicePdf(m){
     doc.setFont(F,bold?"bold":"normal");doc.setFontSize(big?10.5:8.5);doc.setTextColor(bold?color:SLATE);doc.text(label,tx,ty);
     doc.setTextColor(color);doc.text(val,R,ty,{align:"right"});ty+=big?6:4.8;
   };
+  if(pos&&pos.retentionHeld>0){
+    trow("THIS BILLING (GROSS)",pdfNum(pos.gross));
+    trow(`Less: retention ${pos.retentionPct}%`,`(${pdfNum(pos.retentionHeld)})`,{color:RED});
+  }
   trow("SUBTOTAL",pdfNum(m.subtotal));
   trow("TAX",pdfNum(m.vat));
   trow("TOTAL",pdfNum(m.gross));
@@ -92,6 +99,46 @@ export function buildInvoicePdf(m){
   doc.setDrawColor(NAVY);doc.setLineWidth(0.6);doc.line(tx,ty-2,R,ty-2);ty+=2.5;
   trow("BALANCE DUE",`PHP ${pdfNum(m.balance)}`,{color:m.balance>0?ORANGE:GREEN,bold:true,big:true});
   y=Math.max(y,ty)+5;
+
+  // Contract summary: four figures and one bar (paid / billed, unpaid / this
+  // billing / not yet billed). Same numbers as the print page (invoiceData).
+  const p=m.progress;
+  if(p){
+    if(y>215){doc.addPage();y=24;}
+    const boxH=40;
+    doc.setDrawColor(LINE);doc.setLineWidth(0.3);doc.roundedRect(L,y,R-L,boxH,1.5,1.5,"S");
+    let cy=y+6;
+    doc.setFont(F,"bold");doc.setFontSize(8.5);doc.setTextColor(INK);doc.text("CONTRACT SUMMARY",L+4,cy);
+    doc.setFont(F,"normal");doc.setFontSize(7);doc.setTextColor("#94a3b8");
+    doc.text(`as of ${m.asOf||""}${p.vatable?" · amounts incl. VAT":""}`,R-4,cy,{align:"right"});
+    cy+=6;
+    const cw=(R-L-8)/4;
+    [["CONTRACT AMOUNT",p.contract,"",INK],
+     ["BILLED TO DATE",p.billed,`${p.billedPct}% of contract, incl. this billing`,BLUE],
+     ["PAID TO DATE",p.paid,`${p.paidPct}% of contract${p.withholding?", incl. tax withheld":""}`,GREEN],
+     ["REMAINING ON CONTRACT",p.remaining,`${Math.max(0,Math.round((100-p.paidPct)*10)/10)}% of contract`,ORANGE]].forEach(([k,v,sub,c],i)=>{
+      const x=L+4+i*cw;
+      doc.setFont(F,"bold");doc.setFontSize(6.5);doc.setTextColor(SLATE);doc.text(k,x,cy);
+      doc.setFontSize(10.5);doc.setTextColor(c);doc.text(pdfNum(v),x,cy+5.5);
+      if(sub){doc.setFont(F,"normal");doc.setFontSize(6.5);doc.setTextColor(SLATE);doc.text(doc.splitTextToSize(sub,cw-3)[0],x,cy+9.5);}
+    });
+    cy+=14;
+    const segs=[[GREEN,"Paid",p.paidPct],["#f59e0b","Billed, unpaid",p.prevUnpaidPct],[ORANGE,p.thisUnpaidPct<p.thisPct-0.05?"This billing, unpaid":"This billing",p.thisUnpaidPct],["#e2e8f0","Not yet billed",p.unbilledPct]];
+    const tot=Math.max(100,segs.reduce((s,a)=>s+a[2],0));
+    const bx=L+4,bw=R-L-8,bh=4.5;
+    doc.setFillColor("#e2e8f0");doc.roundedRect(bx,cy,bw,bh,2,2,"F");
+    let sx=bx;
+    segs.forEach(([c,,v])=>{if(v<=0)return;const w=bw*v/tot;doc.setFillColor(c);doc.rect(sx,cy,w,bh,"F");sx+=w;});
+    cy+=bh+5;
+    let lx=bx;
+    doc.setFont(F,"normal");doc.setFontSize(7);
+    segs.filter(a=>a[2]>0).forEach(([c,l,v])=>{
+      doc.setFillColor(c);doc.rect(lx,cy-2.3,2.6,2.6,"F");
+      const t=`${l} ${v}%`;doc.setTextColor("#475569");doc.text(t,lx+3.8,cy);
+      lx+=3.8+doc.getTextWidth(t)+6;
+    });
+    y+=boxH+6;
+  }
 
   if(m.vat>0){
     doc.setFont(F,"bold");doc.setFontSize(8.5);doc.setTextColor(INK);doc.text("TAX SUMMARY",L,y);
@@ -127,10 +174,11 @@ export function buildSoaPdf(m){
   const doc=newDoc("landscape");
   const W=doc.internal.pageSize.getWidth(),L=12,R=W-12;
   doc.setProperties({title:`Statement of Account — ${m.clientName}`,author:"GMD Productions Inc.",creator:"FabHub"});
-  let y=header(doc,{dateStr:m.dateStr,rightLabel:m.refNos?`REF NO.: ${m.refNos}`:""});
+  let y=header(doc,{dateStr:m.dateStr,rightLabel:""});
 
   doc.setFont(F,"bold");doc.setFontSize(14);doc.setTextColor(INK);
   doc.text(m.draft?"STATEMENT OF ACCOUNT — DRAFT":"STATEMENT OF ACCOUNT",L,y+2);
+  doc.setFont(F,"normal");doc.setFontSize(8.5);doc.setTextColor(SLATE);doc.text(`As of ${m.dateStr||""}`,R,y+2,{align:"right"});
   y+=10;
   const half=(R-L)/2;
   const field=(label,val,x,w)=>{
@@ -143,65 +191,110 @@ export function buildSoaPdf(m){
   field("CLIENT NAME:",m.clientName,L,half);
   field("BILLING ADDRESS:",m.address,L+half,half);
   y+=7;
-
-  // Summary boxes (outstanding projects only; skipped when nothing is
-  // outstanding, where every box would read 0.00 next to a paid client)
-  if(m.rows.length){
-  const boxes=[[`TOTAL ${m.amtLbl}`,m.totals.vatable],["TOTAL VAT",m.totals.vat],["TOTAL PAYMENTS MADE",m.totals.payments],["TOTAL BALANCE",m.totals.balance],["TOTAL AMOUNT DUE",m.totals.due]];
-  const bw=(R-L)/boxes.length;
-  boxes.forEach(([k,v],i)=>{
-    const x=L+i*bw,last=i===boxes.length-1;
-    doc.setFillColor(last?"#fff7ed":"#f8fafc");doc.setDrawColor(LINE);doc.setLineWidth(0.3);doc.rect(x,y,bw,15,"FD");
-    doc.setFont(F,"bold");doc.setFontSize(6.5);doc.setTextColor(SLATE);doc.text(k,x+bw/2,y+5,{align:"center"});
-    doc.setFontSize(12);doc.setTextColor(last?ORANGE:INK);doc.text(pdfNum(v),x+bw/2,y+11.5,{align:"center"});
-  });
-  y+=20;
+  if(m.termsLbl){
+    doc.setFont(F,"bold");doc.setFontSize(7.5);doc.setTextColor(INK);doc.text("PAYMENT TERMS:",L,y);
+    const tw=doc.getTextWidth("PAYMENT TERMS:")+2;
+    doc.setFont(F,"normal");doc.setTextColor("#475569");doc.text(`${m.termsLbl}. Each billing below shows its own due date.`,L+tw,y);
+    y+=6;
   }
 
-  const projText=r=>r.project+(r.ref?`\n${r.ref}`:"")+(r.awaiting2307?"\nAwaiting BIR Form 2307":"");
-  const fd=ds=>ds?new Date(ds+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):"—";
-  const tableTitle=t=>{doc.setFont(F,"bold");doc.setFontSize(8.5);doc.setTextColor(INK);doc.text(t.toUpperCase(),L,y);y+=2.5;};
+  // Every outstanding project's billings, one line each (soaData's lines).
+  const lines=m.rows.flatMap(r=>r.lines||[]);
+  const sum=k=>lines.reduce((s,x)=>s+(Number(x[k])||0),0);
+  const T={billed:sum("billed"),ewt:sum("ewt"),paid:sum("paid"),due:sum("amtDue")};
+  const anyEwt=T.ewt>0.004;
 
-  // Nothing outstanding: say so plainly instead of an orange 0.00.
-  if(!m.rows.length){
+  if(m.rows.length){
+    // Summary: what was billed, what was paid, what to pay now.
+    const boxes=[["TOTAL BILLED",T.billed,INK,"#f8fafc"],
+      ...(anyEwt?[["LESS: TAX YOU WITHHELD",T.ewt,INK,"#f8fafc"]]:[]),
+      ["LESS: PAYMENTS RECEIVED",T.paid,GREEN,"#f8fafc"],
+      ["AMOUNT DUE NOW",T.due,ORANGE,"#fff7ed"],
+      ["OF WHICH PAST DUE",m.overdue||0,(m.overdue||0)>0.01?RED:SLATE,(m.overdue||0)>0.01?"#fef2f2":"#f8fafc"]];
+    const bw=(R-L)/boxes.length;
+    boxes.forEach(([k,v,c,bg],i)=>{
+      const x=L+i*bw;
+      doc.setFillColor(bg);doc.setDrawColor(LINE);doc.setLineWidth(0.3);doc.rect(x,y,bw,16,"FD");
+      doc.setFont(F,"bold");doc.setFontSize(6.5);doc.setTextColor(SLATE);doc.text(k,x+bw/2,y+5,{align:"center"});
+      doc.setFontSize(12.5);doc.setTextColor(c);doc.text(pdfNum(v),x+bw/2,y+12,{align:"center"});
+    });
+    y+=20;
+    doc.setFont(F,"italic");doc.setFontSize(7.5);doc.setTextColor(SLATE);
+    doc.text(`How to read this: amount due now = total billed${anyEwt?", less the tax you withheld (please send us BIR Form 2307)":""}, less payments received. Amounts include VAT where VAT applies.`,L,y);
+    y+=6;
+  } else {
     doc.setFillColor("#ecfdf5");doc.setDrawColor(GREEN);doc.setLineWidth(0.6);doc.rect(L,y,R-L,11,"FD");
     doc.setFont(F,"bold");doc.setFontSize(11);doc.setTextColor(GREEN);
     doc.text(`PAID IN FULL — no outstanding balance as of ${m.dateStr||""}`,W/2,y+7.2,{align:"center"});
     y+=17;
   }
 
-  if(m.rows.length){
-  tableTitle("Outstanding");
-  const body=m.rows.map((r,i)=>[
-    String(i+1),r.client,
-    {content:projText(r),styles:{}},
-    pdfNum(r.vatable),pdfNum(r.vat),pdfNum(r.gross),pdfNum(r.payments),pdfNum(r.ewt),pdfNum(r.due),pdfNum(r.balance),
-  ]);
-  autoTable(doc,{
-    startY:y,margin:{left:L,right:W-R,bottom:18},theme:"plain",
-    head:[["#","CLIENT NAME","PROJECT NAME",m.amtLbl,"VAT","SALES AMOUNT","PAYMENT MADE","WHT","TOTAL AMOUNT DUE","BALANCE"]],
-    body,
-    foot:[["","",{content:"TOTAL AMOUNT DUE",styles:{halign:"center"}},pdfNum(m.totals.vatable),pdfNum(m.totals.vat),pdfNum(m.totals.gross),pdfNum(m.totals.payments),pdfNum(m.totals.ewt),pdfNum(m.totals.due),pdfNum(m.totals.balance)]],
-    styles:{font:F,fontSize:8,textColor:INK,cellPadding:2,valign:"top",lineColor:"#f1f5f9",lineWidth:{bottom:0.2}},
-    headStyles:{font:F,fontStyle:"bold",fillColor:NAVY,textColor:255,fontSize:6.5},
-    footStyles:{font:F,fontStyle:"bold",fillColor:NAVY,textColor:255,fontSize:8.5,halign:"right"},
-    columnStyles:{0:{cellWidth:8,halign:"center",textColor:SLATE},1:{cellWidth:44,textColor:BLUE,fontStyle:"bold"},3:{halign:"right"},4:{halign:"right",cellWidth:18},5:{halign:"right"},6:{halign:"right",textColor:BLUE},7:{halign:"right",cellWidth:18},8:{halign:"right",textColor:ORANGE,fontStyle:"bold"},9:{halign:"right",fontStyle:"bold"}},
-    didParseCell:d=>{
-      if(d.section==="head"&&d.column.index>=3)d.cell.styles.halign="right";
-      if(d.section==="foot"&&d.column.index===8)d.cell.styles.textColor=[249,115,22];
-      if(d.section==="body"&&d.column.index===2){d.cell.styles.textColor=BLUE;d.cell.styles.fontStyle="bold";}
-    },
-  });
-  y=doc.lastAutoTable.finalY+8;
-  }
+  const fd=ds=>ds?new Date(ds+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):"—";
+  const tableTitle=t=>{doc.setFont(F,"bold");doc.setFontSize(8.5);doc.setTextColor(INK);doc.text(t.toUpperCase(),L,y);y+=2.5;};
 
-  // Settled projects: fully paid within the last few months, for reference only.
-  if(y>170){doc.addPage();y=20;}
-  tableTitle(`Settled — fully paid since ${fd(m.settledSince)}`);
-  if(m.settledRows&&m.settledRows.length){
+  if(m.rows.length){
+    tableTitle("Billings not yet fully paid, by project");
+    const cols=["BILLING NO.","DATE","DESCRIPTION","AMOUNT BILLED",...(anyEwt?["TAX WITHHELD"]:[]),"PAID","AMOUNT DUE","DUE DATE","STATUS"];
+    const nC=cols.length,ci=k=>cols.indexOf(k);
+    const body=[],meta=[];
+    m.rows.forEach(r=>{
+      const p=r.progress;
+      const ref=[r.ref,r.location].filter(Boolean).join(" · ");
+      body.push([{content:r.project+(ref?`\n${ref}`:""),colSpan:nC,styles:{fillColor:"#eff6ff",textColor:BLUE,fontStyle:"bold",fontSize:8.5,cellPadding:{top:2.2,bottom:2.2,left:3,right:3},minCellHeight:11}}]);
+      meta.push({kind:"proj",p});
+      (r.lines||[]).forEach(x=>{
+        body.push([x.no||"—",fd(x.date),x.what+(x.pct!=null?`\n${x.pct}% of the contract`:""),pdfNum(x.billed),...(anyEwt?[x.ewt>0?`(${pdfNum(x.ewt)})`:"—"]:[]),x.paid>0?`(${pdfNum(x.paid)})`:"—",pdfNum(x.amtDue),fd(x.dueDate),x.status]);
+        meta.push({kind:"line",x});
+      });
+    });
     autoTable(doc,{
       startY:y,margin:{left:L,right:W-R,bottom:18},theme:"plain",
-      head:[["#","PROJECT NAME","SALES AMOUNT","PAYMENT MADE","LAST PAYMENT","STATUS"]],
+      head:[cols],body,
+      foot:[[{content:"TOTAL AMOUNT DUE NOW",colSpan:ci("AMOUNT DUE"),styles:{halign:"right"}},{content:pdfNum(T.due),styles:{halign:"right",textColor:[249,115,22],fontSize:10}},{content:(m.overdue||0)>0.01?`Past due: ${pdfNum(m.overdue)}`:"",colSpan:2,styles:{halign:"left",textColor:[252,165,165],fontSize:8}}]],
+      styles:{font:F,fontSize:8,textColor:INK,cellPadding:2,valign:"top",lineColor:"#e2e8f0",lineWidth:{bottom:0.2}},
+      headStyles:{font:F,fontStyle:"bold",fillColor:NAVY,textColor:255,fontSize:6.5},
+      footStyles:{font:F,fontStyle:"bold",fillColor:NAVY,textColor:255,fontSize:9},
+      columnStyles:{[ci("BILLING NO.")]:{cellWidth:24,fontStyle:"bold"},[ci("DATE")]:{cellWidth:22},[ci("AMOUNT BILLED")]:{halign:"right",cellWidth:28},
+        ...(anyEwt?{[ci("TAX WITHHELD")]:{halign:"right",cellWidth:25,textColor:SLATE}}:{}),
+        [ci("PAID")]:{halign:"right",cellWidth:28,textColor:GREEN},[ci("AMOUNT DUE")]:{halign:"right",cellWidth:28,fontStyle:"bold",textColor:ORANGE},
+        [ci("DUE DATE")]:{cellWidth:22},[ci("STATUS")]:{cellWidth:32,fontStyle:"bold"}},
+      didParseCell:d=>{
+        if(d.section==="head"&&[ci("AMOUNT BILLED"),ci("TAX WITHHELD"),ci("PAID"),ci("AMOUNT DUE")].includes(d.column.index))d.cell.styles.halign="right";
+        if(d.section==="body"&&meta[d.row.index]?.kind==="line"&&d.column.index===ci("STATUS")){
+          const st=meta[d.row.index].x.status;
+          d.cell.styles.textColor=st==="Past due"?RED:st.startsWith("Paid")?GREEN:st==="Partly paid"?"#b45309":INK;
+        }
+      },
+      didDrawCell:d=>{
+        // Project row: contract progress at the right (Paid / billed, unpaid / not yet billed).
+        if(d.section!=="body"||meta[d.row.index]?.kind!=="proj")return;
+        const p=meta[d.row.index].p;if(!p)return;
+        const bw=70,bh=3,bx=d.cell.x+d.cell.width-bw-3,by=d.cell.y+d.cell.height-bh-2.4;
+        doc.setFont(F,"normal");doc.setFontSize(7);doc.setTextColor("#475569");
+        doc.text(`Contract ${pdfNum(p.contract)}  ·  Billed ${p.billedPct}%  ·  Paid ${p.paidPct}%`,bx+bw,by-1.6,{align:"right"});
+        const tot=Math.max(100,p.paidPct+p.prevUnpaidPct+p.unbilledPct);
+        doc.setFillColor("#e2e8f0");doc.roundedRect(bx,by,bw,bh,1.4,1.4,"F");
+        let sx=bx;[[GREEN,p.paidPct],["#f59e0b",p.prevUnpaidPct]].forEach(([c,v])=>{if(v<=0)return;const w=bw*v/tot;doc.setFillColor(c);doc.rect(sx,by,w,bh,"F");sx+=w;});
+      },
+    });
+    y=doc.lastAutoTable.finalY+4;
+    let lx=L;doc.setFont(F,"normal");doc.setFontSize(7);
+    [[GREEN,"Paid"],["#f59e0b","Billed, not yet paid"],["#e2e8f0","Not yet billed"]].forEach(([c,l])=>{
+      doc.setFillColor(c);doc.rect(lx,y-2.3,2.6,2.6,"F");doc.setTextColor("#475569");doc.text(l,lx+3.8,y);lx+=3.8+doc.getTextWidth(l)+6;});
+    doc.setTextColor("#94a3b8");doc.text("Contract bar: share of each project's contract price"+(m.rows.some(r=>r.progress?.withholding)?"; paid includes tax withheld":""),lx,y);
+    y+=8;
+  }
+
+  // Settled projects: fully paid within the last few months, for reference
+  // only. Left out when there are none (it only said so before).
+  if(m.settledRows&&m.settledRows.length){
+    // Keep the table together: new page when it won't fit below.
+    if(y+22+m.settledRows.length*9>doc.internal.pageSize.getHeight()-18){doc.addPage();y=20;}
+    tableTitle(`Fully paid — settled since ${fd(m.settledSince)} (for your reference)`);
+    const projText=r=>r.project+(r.ref?`\n${r.ref}`:"");
+    autoTable(doc,{
+      startY:y,margin:{left:L,right:W-R,bottom:18},theme:"plain",
+      head:[["#","PROJECT NAME","AMOUNT BILLED","PAID","LAST PAYMENT","STATUS"]],
       body:m.settledRows.map((r,i)=>[String(i+1),projText(r),pdfNum(r.gross),pdfNum(r.payments),fd(r.lastPaid),"PAID"]),
       foot:[["","TOTAL SETTLED",pdfNum(m.settledTotals.gross),pdfNum(m.settledTotals.payments),"",""]],
       styles:{font:F,fontSize:8,textColor:INK,cellPadding:2,valign:"top",lineColor:"#f1f5f9",lineWidth:{bottom:0.2}},
@@ -215,28 +308,27 @@ export function buildSoaPdf(m){
       },
     });
     y=doc.lastAutoTable.finalY+6;
-  } else {
-    doc.setFont(F,"italic");doc.setFontSize(8);doc.setTextColor(SLATE);
-    doc.text(`No projects fully paid in the last ${m.settledMonths||3} months.`,L,y+3);
-    y+=9;
   }
 
-  if(y>150){doc.addPage();y=20;}
-  const notesH=36;
-  doc.setDrawColor(LINE);doc.setLineWidth(0.3);doc.roundedRect(L,y,R-L,notesH,1.5,1.5,"S");
-  let ny=y+6;
-  doc.setFont(F,"bold");doc.setFontSize(8.5);doc.setTextColor(INK);doc.text("NOTES",L+5,ny);ny+=5;
+  // Notes (left) and signatures (right) side by side, so a one-project SOA
+  // stays on one page; new page only when they don't fit.
+  const notesH=35,nw=(R-L)*0.6;
+  if(y+notesH>doc.internal.pageSize.getHeight()-9){doc.addPage();y=20;}
+  doc.setDrawColor(LINE);doc.setLineWidth(0.3);doc.roundedRect(L,y,nw,notesH,1.5,1.5,"S");
+  let ny=y+5.5;
+  doc.setFont(F,"bold");doc.setFontSize(8.5);doc.setTextColor(INK);doc.text("NOTES",L+5,ny);ny+=4.8;
   doc.setFont(F,"normal");doc.setFontSize(8);doc.setTextColor("#475569");
-  doc.text("Thank you for your business! Please send or email (finance@gmd.ph) us a copy of the payment for proper recording.",L+5,ny);ny+=5.5;
-  doc.setFont(F,"bold");doc.setTextColor(INK);doc.text("Payment Details:",L+5,ny);ny+=4.2;
-  BANKS.forEach(t=>{doc.setFont(F,"normal");doc.setTextColor("#475569");doc.text(t,L+5,ny);ny+=4;});
-  y+=notesH+9;
+  doc.splitTextToSize("Thank you for your business! Please send or email (finance@gmd.ph) us a copy of the payment for proper recording.",nw-10).forEach(l=>{doc.text(l,L+5,ny);ny+=3.8;});ny+=1;
+  doc.setFont(F,"bold");doc.setTextColor(INK);doc.text("Payment Details:",L+5,ny);ny+=4;
+  BANKS.forEach(t=>{doc.setFont(F,"normal");doc.setTextColor("#475569");doc.text(t,L+5,ny);ny+=3.6;});
 
+  const sx=L+nw+10,sw=(R-sx)/2;
   [["Prepared by:",m.preparedBy],["Approved by:","Paulo Garcia"]].forEach(([lab,name],i)=>{
-    const x=L+i*half;
-    doc.setFont(F,"normal");doc.setFontSize(8);doc.setTextColor(SLATE);doc.text(lab,x,y);
-    doc.setFont(F,"bold");doc.setFontSize(9.5);doc.setTextColor(INK);doc.text(name||"",x,y+8);
-    doc.setFont(F,"normal");doc.setFontSize(7.5);doc.setTextColor(SLATE);doc.text("GMD Productions Inc.",x,y+12);
+    const x=sx+i*sw,sy=y+12;
+    doc.setFont(F,"normal");doc.setFontSize(8);doc.setTextColor(SLATE);doc.text(lab,x,sy);
+    doc.setFont(F,"bold");doc.setFontSize(9.5);doc.setTextColor(INK);doc.text(name||"",x,sy+12);
+    doc.setDrawColor("#94a3b8");doc.setLineWidth(0.3);doc.line(x,sy+13.5,x+sw-6,sy+13.5);
+    doc.setFont(F,"normal");doc.setFontSize(7.5);doc.setTextColor(SLATE);doc.text("GMD Productions Inc.",x,sy+17.5);
   });
 
   stampPages(doc,{footer:`GMD Productions Inc. · Statement of Account · ${m.clientName}`,draft:m.draft,

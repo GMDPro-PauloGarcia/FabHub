@@ -1,6 +1,6 @@
 import React,{useState,useEffect,useMemo,useCallback} from "react";
 import {supabase,isSupabaseReady,sbListAll} from "../supabaseClient";
-import {Modal,Fld,Inp,Sel,toastEmit,uiConfirm,uiPrompt,addPrintClose,today,ProjectSelect} from "../shared";
+import {Modal,Fld,Inp,Sel,toastEmit,uiConfirm,uiPrompt,addPrintClose,docLogo,today,ProjectSelect} from "../shared";
 import {WON_STAGES,PO_UNITS,PR_CATS,projDisplayName} from "../core";
 
 // ─── PRF — Purchase Request Form ──────────────────────────────────────────────
@@ -440,6 +440,7 @@ function printPrf(p,lines,projName,deal){
     .h td{border:none;padding:2px 6px}.h .k{background:#1f3a5f;color:#fff;font-weight:bold;width:120px}.c{text-align:center}.r{text-align:right}
     .sig td{height:58px;width:20%}.sl{font-size:10px;color:#555;text-transform:uppercase}.sn{font-weight:bold;margin-top:14px}.sd{font-size:10px;color:#555}
     @media print{.fh-close{display:none}}</style></head><body>
+    <div style="margin-bottom:6px">${docLogo(34)}</div>
     <h1>FABRICATION MATERIALS PURCHASE REQUEST FORM</h1>
     <table class="h"><tr><td class="k">PRF No.</td><td>${prfEsc(p.prf_no||"DRAFT")}</td><td class="k">Date Requested</td><td>${prfEsc((p.submitted_at||p.created_at||"").slice(0,10))}</td><td class="k">Required Date</td><td>${prfEsc(p.required_date||"")}</td></tr>
     <tr><td class="k">Department</td><td>${prfEsc(p.department)}</td><td class="k">Requestor</td><td>${prfEsc(p.requested_by_name||p.requested_by)}</td><td class="k">Priority</td><td>${prfEsc(p.priority)}</td></tr>
