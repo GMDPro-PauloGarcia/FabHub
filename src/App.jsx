@@ -27797,7 +27797,15 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                           <div style={{fontWeight:700,color:"#1d4ed8",marginBottom:8,fontSize:".82rem"}}>Edit Milestone</div>
                           <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:8}}>
                             <Fld label="Milestone Name"><Inp value={editMsForm.name||""} onChange={e=>fme("name",e.target.value)} placeholder="e.g. 30% Down Payment"/></Fld>
-                            <Fld label="Amount (₱)"><Inp type="number" value={editMsForm.amount||""} onChange={e=>fme("amount",e.target.value)} placeholder="0.00"/></Fld>
+                            {(()=>{
+                              // Only a Manager changes the amount of a sent invoice; others
+                              // request a deduction. Mirrors trg_billing_milestone_amount_guard
+                              // (migration 20261121010000), which keeps the old amount otherwise.
+                              const orig=billings.find(b=>b.id===editMs);
+                              const amtLocked=canonRole(role)!=="Manager"&&!!orig&&orig.status!=="Draft";
+                              return(<Fld label="Amount (₱)"><Inp type="number" value={editMsForm.amount||""} readOnly={amtLocked} onChange={e=>fme("amount",e.target.value)} placeholder="0.00"/>
+                                {amtLocked&&<div style={{fontSize:".7rem",color:"#b45309",fontWeight:600,marginTop:3}}>This invoice has been sent. Only a Manager can change its amount. To lower it, request a deduction.</div>}</Fld>);
+                            })()}
                             <Fld label="Invoice No"><Inp value={editMsForm.invoiceNo||""} onChange={e=>fme("invoiceNo",e.target.value)} placeholder="INV-0001"/></Fld>
                             <Fld label="Invoice Date"><Inp type="date" value={editMsForm.invoiceDate||""} onChange={e=>fme("invoiceDate",e.target.value)}/></Fld>
                             {editMsForm.isDraft&&<Fld label="Bill on" hint="When this invoice should go out. Billing Check flags it 3 days after."><Inp type="date" value={editMsForm.plannedDate||""} onChange={e=>fme("plannedDate",e.target.value)}/></Fld>}
