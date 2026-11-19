@@ -65,9 +65,15 @@ export function buildBoqPdf(m){
   });
   const dark=(label,amount,fill)=>push([{content:label,colSpan:5,styles:{halign:"right",fontStyle:"bold",fillColor:fill,textColor:255,fontSize:9}},{content:pdfPeso(amount),styles:{halign:"right",fontStyle:"bold",fillColor:fill,textColor:255,fontSize:9}},{content:"",styles:{fillColor:fill}}],"total",null);
   const light=(label,amount,fill,color)=>push([{content:label,colSpan:5,styles:{halign:"right",fillColor:fill,textColor:color}},{content:amount,styles:{halign:"right",fillColor:fill,textColor:color}},{content:"",styles:{fillColor:fill}}],"total",null);
-  dark("Grand Total",m.grandTotal,NAVY);
-  if(m.discountVal>0){light("Discount",`(${pdfPeso(m.discountVal)})`,"#fffbeb","#92400e");dark("Net Total",m.netTotal,NAVY);}
-  if(m.vatEnabled){light("VAT 12%",pdfPeso(m.vatAmt),"#f8fafc","#475569");dark("Grand Total w/ VAT",m.netTotal+m.vatAmt,INK);}
+  // One "total contract price" the client signs for; the steps to it spelled
+  // out (it used to read Grand Total, then Net Total, then Grand Total w/ VAT).
+  const hasSteps=m.discountVal>0||m.vatEnabled;
+  if(hasSteps){
+    light("Total of all items",pdfPeso(m.grandTotal),"#f8fafc","#475569");
+    if(m.discountVal>0) light("Less: discount",`(${pdfPeso(m.discountVal)})`,"#fffbeb","#92400e");
+    if(m.vatEnabled){if(m.discountVal>0)light("Price before VAT",pdfPeso(m.netTotal),"#f8fafc","#475569");light("Add: VAT 12%",pdfPeso(m.vatAmt),"#f8fafc","#475569");}
+  }
+  dark(m.vatEnabled?"TOTAL CONTRACT PRICE (VAT-inclusive)":"TOTAL CONTRACT PRICE",m.netTotal+(m.vatEnabled?m.vatAmt:0),NAVY);
 
   autoTable(doc,{
     startY:y,margin:{left:L,right:W-R,top:14,bottom:16},
@@ -105,12 +111,13 @@ export function buildBoqPdf(m){
   doc.text("BANK DETAILS",colX[0],y);doc.text("PAYMENT TERMS",colX[1],y);
   doc.setFont(F,"normal");doc.setFontSize(8);doc.setTextColor("#475569");
   ["Account Name: GMD PRODUCTIONS INC","BDO CHECKING — 012758000370","BPI CHECKING — 6011 04 82 03","METROBANK — 382-7-38202059-2"].forEach((t,i)=>doc.text(t,colX[0],y+5+i*4));
-  ["50% Down Payment to start project","Billing of 40% up until installation","Retention of 10% upon certificate of completion"].forEach((t,i)=>doc.text(t,colX[1],y+5+i*4));
-  y+=28;
+  const pts=(m.payTerms&&m.payTerms.length?m.payTerms:["50% down payment to start the project","40% billed up to installation","10% retention, released on the certificate of completion"]);
+  let py=y+5;pts.forEach(t=>doc.splitTextToSize(t,half-6).forEach(l=>{doc.text(l,colX[1],py);py+=4;}));
+  y=Math.max(y+24,py)+4;
 
   need(26);
   const sw=(R-L-12)/3;
-  [["PREPARED BY","Rodney Erpe","Quantity Surveyor"],["APPROVED & SUBMITTED BY","Paulo Miguel Garcia","President"],["ACCEPTED BY",m.client||"Client Name / Representative","Signature over Printed Name"]].forEach(([lab,name,role],i)=>{
+  [["PREPARED BY",m.preparedBy||"Rodney Erpe","GMD Productions Inc."],["APPROVED & SUBMITTED BY","Paulo Miguel Garcia","President"],["ACCEPTED BY",m.client||"Client Name / Representative","Signature over Printed Name"]].forEach(([lab,name,role],i)=>{
     const x=L+i*(sw+6);
     doc.setFont(F,"bold");doc.setFontSize(6.5);doc.setTextColor("#94a3b8");doc.text(lab,x,y);
     doc.setDrawColor(NAVY);doc.setLineWidth(0.4);doc.line(x,y+11,x+sw,y+11);

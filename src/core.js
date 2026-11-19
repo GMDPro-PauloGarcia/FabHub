@@ -988,6 +988,17 @@ export const projProgressPct=(pc,deal=null)=>{
   return n;
 };
 
+// What a PO / WO line is for, as a supplier or subcon may see it: the project
+// code (JO, else CE no.) and the site, never the client's name (Paulo,
+// 2026-11-19). GMD stock and cost-center lines say so.
+export const orderForLabel=(deal,jos,projectId)=>{
+  if(projectId==="__gmd_stocks__") return "GMD warehouse stock";
+  if(!deal) return "—";
+  if(deal.isCostCenter) return "GMD internal";
+  const jo=dealJo(jos,deal.id);
+  const code=(jo&&(jo.joNo||jo.joNum))||deal.ceNo||"";
+  return [code,deal.location||""].filter(Boolean).join(" · ")||"—";
+};
 export const dealJo=(jos,dealId)=>{
   let best=null;
   for(const j of jos||[]) if(j.dealId===dealId&&j.status!=="Void"&&(!best||_joCmp(j,best)<0)) best=j;

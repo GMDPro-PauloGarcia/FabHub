@@ -5,34 +5,13 @@
 // SAME figures its print pages use, so the PDF and the printout can't
 // disagree. Nothing here does billing math.
 import autoTable from "jspdf-autotable";
-import {F,SLATE,INK,NAVY,LINE,pdfNum,newDoc,stampPages} from "./pdfKit";
-import {LOGO_ON_DARK_PNG,LOGO_RATIO} from "./pdfLogo";
+import {F,SLATE,INK,NAVY,LINE,pdfNum,newDoc,stampPages,docHeader} from "./pdfKit";
 
 const ORANGE="#ea580c",BLUE="#2563eb",GREEN="#059669",RED="#dc2626";
-const TAGLINE="Retail Design & Build | Construction | Modular Fit-outs | Signage | POP Displays";
 const BANKS=["Account Name: GMD PRODUCTIONS INC","BDO CHECKING — 012758000370","BPI CHECKING — 6011 04 82 03","METROBANK — 382-7-38202059-2"];
 const CO_FOOTER="GMD PRODUCTIONS INC · 32 Santan Unit H Brgy Fortune, Marikina, NCR 1802 PH · TIN 010-063-229-000";
 
-// Navy band with the company name and date, then a slate sub-bar, like the
-// print pages' header.
-const header=(doc,{dateStr,rightLabel})=>{
-  const W=doc.internal.pageSize.getWidth();
-  doc.setFillColor(NAVY);doc.rect(0,0,W,20,"F");
-  // Logo (white lettering for the navy band), then the company name.
-  const lh=13,lw=lh*LOGO_RATIO;
-  doc.addImage(LOGO_ON_DARK_PNG,"PNG",10,3.5,lw,lh);
-  doc.setDrawColor("#475569");doc.setLineWidth(0.3);doc.line(10+lw+3,5,10+lw+3,15);
-  doc.setFont(F,"bold");doc.setFontSize(15);doc.setTextColor(255);doc.text("GMD PRODUCTIONS INC.",10+lw+6,13);
-  doc.setFont(F,"bold");doc.setFontSize(9.5);doc.setTextColor("#f97316");doc.text(dateStr||"",W-12,13,{align:"right"});
-  const dw=doc.getTextWidth(dateStr||"");
-  doc.setFont(F,"normal");doc.setFontSize(8);doc.setTextColor("#cbd5e1");doc.text("DATE:",W-12-dw-2,13,{align:"right"});
-  doc.setFillColor("#334155");doc.rect(0,20,W,7,"F");
-  doc.setFillColor(ORANGE);doc.rect(0,27,W,0.8,"F");
-  doc.setFont(F,"normal");doc.setFontSize(7);doc.setTextColor("#cbd5e1");
-  doc.text(TAGLINE,12,24.6);
-  if(rightLabel) doc.text(rightLabel,W-12,24.6,{align:"right"});
-  return 36;
-};
+const header=docHeader;
 
 // ── Billing statement (a milestone's invoice; never titled "Tax Invoice") ──
 export function buildInvoicePdf(m){

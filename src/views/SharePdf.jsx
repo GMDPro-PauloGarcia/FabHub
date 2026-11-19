@@ -49,3 +49,23 @@ export function useSharePdf(toastEmit){
   );
   return{busy,make,dialog};
 }
+
+// 🖨 Print for a generated document: opens the same PDF as Share PDF in a new
+// tab, to print or save from the browser's PDF viewer. One layout for both,
+// and no browser date / about:blank lines on the printout. The tab is opened
+// inside the tap, so popup blockers allow it; the PDF is built after.
+export async function openPdfTab(build,title,toastEmit){
+  const t=String(title||"Document").replace(/[<>&]/g,"");
+  const w=window.open("","_blank");
+  if(w){try{w.document.write(`<title>${t}</title><p style="font:14px Arial;padding:24px;color:#475569">Preparing ${t}…</p>`);}catch(e){}}
+  try{
+    const blob=await build();
+    const url=URL.createObjectURL(blob);
+    if(w&&!w.closed) w.location.href=url;
+    else if(!window.open(url,"_blank")) toastEmit&&toastEmit("Popup blocked: allow popups for FabHub, or use Share PDF.","warning",8000);
+    setTimeout(()=>URL.revokeObjectURL(url),120000);
+  }catch(err){
+    if(w&&!w.closed) w.close();
+    toastEmit&&toastEmit("Couldn't make the PDF: "+(err.message||err),"error");
+  }
+}

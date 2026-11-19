@@ -3,9 +3,9 @@ import {today,uid,KEYS,Card,uiConfirm,addPrintClose,docLogo,ProjectSelect} from 
 import {supabase,isSupabaseReady,sbInsert,sbUpdate,sbDelete} from "../supabaseClient";
 // Clearing a deal's BOQ is Manager-only, also enforced by migration
 // 20261006010000_deals_boq_safeguards.sql — keep in sync.
-import {canonRole} from "../core";
+import {canonRole,NET_DAY_OPTIONS} from "../core";
 import {downloadBoqXlsx,boqXlsxFileName} from "./boqExcel";
-import {useSharePdf} from "./SharePdf";
+import {useSharePdf,openPdfTab} from "./SharePdf";
 
 // A textarea that grows to fit its content. BOQ line-item descriptions are
 // often multi-line spec lists (a title + "Specifications:" + bullets), so a
@@ -56,6 +56,8 @@ const fmtQty=q=>{const n=Number(q);return Number.isFinite(n)?n.toLocaleString("e
 //    Any copy of it in edited notes (e.g. saved before it was locked) is
 //    dropped so it never prints twice.
 // Bank details are fixed on purpose (no editable bank account on a quote).
+// GMD's standard payment terms, printed when the project has no agreed schedule.
+const BOQ_STD_PAY_TERMS=["50% down payment to start the project","40% billed up to installation","10% retention, released on the certificate of completion"];
 const BOQ_DEFAULT_NOTES=[
   "Inclusive of Labor Fees (Inclusive of Night Differential)",
   "Inclusive of Contingency Fee",
@@ -922,125 +924,13 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
     setXfer(null);
   };
 
-  const printBOQ=()=>{
-    const esc=s=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-    const fmtP=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2});
-    const dateStr=boqDate?new Date(boqDate+"T00:00:00").toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"}):"-";
-    // Project / Location fall back to the linked pipeline deal so a BOQ tied to a
-    // project never prints with a blank "Project" field (e.g. imported BOQs, or
-    // when the title was never typed on the builder header).
-    const projectName=(boqTitle&&boqTitle.trim())||dealLabel(deal)||"—";
-    const locationName=(location&&location.trim())||deal?.location||"—";
-    let rows="";
-    sections.forEach(sec=>{
-      const si=items.filter(it=>it.section===sec.id);
-      if(!si.length) return;
-      const secTotal=si.reduce((s,it)=>s+it.total,0);
-      // Color-code each section by its assigned colour: a solid colour band for
-      // the header, a matching left accent on every item row, and a tinted
-      // sub-total. clr falls back to slate when a section has no colour set.
-      const clr=sec.color||"#64748b";
-      rows+=`<tr style="background:${clr}"><td colspan="2" style="font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.8px;padding:8px 10px;color:#fff;border-left:4px solid ${clr}">${esc(sec.id)}. ${esc(sec.label)}</td><td colspan="5" style="padding:8px 10px"></td></tr>`;
-      // One line item, prefixed with its (possibly nested) number.
-      // Descriptions & remarks are free-text fields users type multi-line specs
-      // into (title + "Specifications:" + a bulleted list). white-space:pre-line
-      // keeps those line breaks in the PDF so the text can be read line-by-line
-      // instead of collapsing into one run-on paragraph; overflow-wrap breaks any
-      // over-long token so nothing spills past the cell. vertical-align:top keeps
-      // the number/qty/prices aligned to the first line of a tall description.
-      const itemRowHtml=(it,num)=>`<tr style="background:#fff"><td style="font-size:11px;color:#64748b;padding:6px 10px;white-space:nowrap;vertical-align:top;border-left:4px solid ${clr}">${esc(num)}</td><td style="padding:6px 10px;font-size:12px;white-space:pre-line;overflow-wrap:break-word;line-height:1.5;vertical-align:top">${esc(it.description)||"—"}</td><td style="text-align:center;padding:6px 10px;font-size:12px;vertical-align:top">${fmtQty(it.qty||1)}</td><td style="padding:6px 10px;font-size:12px;vertical-align:top">${esc(it.unit||"lot")}</td><td style="text-align:right;padding:6px 10px;font-size:12px;vertical-align:top">${fmtP(it.unitCost)}</td><td style="text-align:right;font-weight:700;padding:6px 10px;font-size:12px;vertical-align:top">${fmtP(it.total)}</td><td style="padding:6px 10px;font-size:11px;color:#64748b;white-space:pre-line;overflow-wrap:break-word;line-height:1.5;vertical-align:top">${esc(it.remarks||"")}</td></tr>`;
-      const {ungrouped,subs}=groupSection(si);
-      ungrouped.forEach((it,idx)=>{rows+=itemRowHtml(it,`${sec.id}.${idx+1}`);});
-      subs.forEach(sub=>{
-        const subTotal=sub.items.reduce((s,it)=>s+it.total,0);
-        // Sub-section heading row: lighter tint + numbered label, indented accent.
-        rows+=`<tr style="background:${clr}18"><td colspan="7" style="font-weight:700;font-size:11px;padding:6px 10px 6px 22px;color:${clr};border-left:4px solid ${clr}">${esc(sec.id)}.${sub.num} &nbsp;${esc(sub.label)}</td></tr>`;
-        sub.items.forEach((it,mi)=>{rows+=itemRowHtml(it,`${sec.id}.${sub.num}.${mi+1}`);});
-        rows+=`<tr style="background:${clr}11"><td colspan="5" style="text-align:right;font-size:10px;font-style:italic;padding:5px 10px;color:#64748b;border-left:4px solid ${clr}">Sub-total ${esc(sub.label)}</td><td style="text-align:right;font-weight:700;padding:5px 10px;font-size:11px;color:#334155">${fmtP(subTotal)}</td><td></td></tr>`;
-      });
-      rows+=`<tr style="background:${clr}22"><td colspan="5" style="text-align:right;font-size:11px;font-weight:700;padding:6px 10px;color:#475569;border-left:4px solid ${clr}">Sub-total ${esc(sec.label)}</td><td style="text-align:right;font-weight:800;padding:6px 10px;font-size:12px;color:#0f172a">${fmtP(secTotal)}</td><td></td></tr>`;
-    });
-    const vatAmt=netTotal*0.12;
-    const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>BOQ — ${esc((boqTitle&&boqTitle.trim())||dealLabel(deal)||"Draft")}</title>
-<style>
-  /* colour-adjust:exact forces section/header/total background colours to
-     render when saving as PDF — browsers drop them on print otherwise. */
-  *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  body{font-family:Arial,sans-serif;padding:32px;color:#0f172a;font-size:12px}
-  .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;border-bottom:3px solid #1e293b;padding-bottom:14px}
-  .co{font-size:22px;font-weight:800;letter-spacing:-.5px;color:#1e293b}
-  .co-sub{font-size:10px;color:#64748b;margin-top:2px}
-  .doc-label{font-size:9px;text-transform:uppercase;letter-spacing:2px;color:#94a3b8;margin-bottom:4px}
-  .doc-title{font-size:18px;font-weight:800;color:#1e293b;text-align:right}
-  .meta-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px 18px;margin-bottom:20px;display:grid;grid-template-columns:1fr 1fr;gap:10px 32px}
-  .meta-item label{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:#94a3b8;margin-bottom:2px}
-  .meta-item span{font-weight:700;font-size:13px}
-  table{width:100%;border-collapse:collapse;margin-bottom:0}
-  th{background:#1e293b;color:#fff;padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px}
-  th.r{text-align:right}
-  td{border-bottom:1px solid #f1f5f9;vertical-align:middle}
-  .tot-row td{background:#1e293b;color:#f1f5f9;font-weight:800;font-size:13px;padding:9px 10px}
-  .vat-row td{background:#f8fafc;color:#475569;font-size:12px;padding:7px 10px}
-  .gtvat-row td{background:#0f172a;color:#fff;font-weight:800;font-size:13px;padding:9px 10px}
-  .disc-row td{background:#fffbeb;color:#92400e;font-size:12px;padding:7px 10px}
-  .notes-section{margin-top:22px;padding:16px 18px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc}
-  .notes-section h3{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:#1e293b;margin-bottom:8px}
-  .notes-section ul{padding-left:18px;font-size:11px;line-height:1.7;color:#475569}
-  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:18px}
-  .two-col h3{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:#1e293b;margin-bottom:8px}
-  .two-col p{font-size:11px;line-height:1.7;color:#475569}
-  .sig-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-top:36px}
-  .sig-box .label{font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:#94a3b8;font-weight:600;margin-bottom:28px}
-  .sig-box .line{border-top:1.5px solid #1e293b;padding-top:6px;margin-top:4px}
-  .sig-box .name{font-weight:800;font-size:12px;color:#0f172a}
-  .sig-box .role{font-size:10px;color:#64748b}
-  .print-btn{text-align:center;margin:20px 0 0}
-  .print-btn button{background:#1e293b;color:#fff;border:none;border-radius:8px;padding:11px 28px;font-size:13px;font-weight:700;cursor:pointer}
-  @media print{.print-btn{display:none}body{padding:18px}}
-</style></head><body>
-<div class="hdr">
-  <div style="display:flex;align-items:center;gap:12px">${docLogo(42)}<div><div class="co">GMD Productions Inc.</div><div class="co-sub">Fabrication &amp; Project Management</div></div></div>
-  <div><div class="doc-label">Bill of Quantities</div><div class="doc-title">QUOTATION</div><div style="font-size:11px;color:#64748b;text-align:right;margin-top:3px">${quotationNo?`No. ${esc(quotationNo)}`:""} &nbsp; ${dateStr}</div></div>
-</div>
-<div class="meta-box">
-  <div class="meta-item"><label>Project</label><span>${esc(projectName)}</span></div>
-  <div class="meta-item"><label>Location</label><span>${esc(locationName)}</span></div>
-  <div class="meta-item"><label>Contractor</label><span>GMD Productions Inc.</span></div>
-  <div class="meta-item"><label>Date</label><span>${dateStr}</span></div>
-</div>
-<table>
-  <thead><tr><th style="width:68px">Item No.</th><th>Description</th><th style="text-align:center;width:48px">Qty</th><th style="width:56px">Unit</th><th class="r" style="width:110px">Unit Cost</th><th class="r" style="width:120px">Total Amount</th><th style="width:110px">Remarks</th></tr></thead>
-  <tbody>${rows}</tbody>
-  <tr class="tot-row"><td colspan="5" style="text-align:right">Grand Total</td><td style="text-align:right">${fmtP(grandTotal)}</td><td></td></tr>
-  ${discountVal>0?`<tr class="disc-row"><td colspan="5" style="text-align:right">Discount</td><td style="text-align:right">(${fmtP(discountVal)})</td><td></td></tr><tr class="tot-row"><td colspan="5" style="text-align:right">Net Total</td><td style="text-align:right">${fmtP(netTotal)}</td><td></td></tr>`:""}
-  ${vatEnabled?`<tr class="vat-row"><td colspan="5" style="text-align:right">VAT 12%</td><td style="text-align:right">${fmtP(vatAmt)}</td><td></td></tr><tr class="gtvat-row"><td colspan="5" style="text-align:right">Grand Total w/ VAT</td><td style="text-align:right">${fmtP(netTotal+vatAmt)}</td><td></td></tr>`:""}
-</table>
-<div class="notes-section">
-  <h3>General Notes</h3>
-  <ul>
-    ${boqGeneralNotes(vatEnabled,customNotes).map(n=>`<li>${esc(n)}</li>`).join("")}
-  </ul>
-  <div class="two-col">
-    <div>
-      <h3>Bank Details</h3>
-      <p>Account Name: <strong>GMD PRODUCTIONS INC</strong><br>BDO CHECKING — 012758000370<br>BPI CHECKING — 6011 04 82 03<br>METROBANK — 382-7-38202059-2</p>
-    </div>
-    <div>
-      <h3>Payment Terms</h3>
-      <p>50% Down Payment to start project<br>Billing of 40% up until installation<br>Retention of 10% upon certificate of completion</p>
-    </div>
-  </div>
-  <div class="sig-row">
-    <div class="sig-box"><div class="label">Prepared by</div><div class="line"><div class="name">Rodney Erpe</div><div class="role">Quantity Surveyor</div></div></div>
-    <div class="sig-box"><div class="label">Approved &amp; Submitted by</div><div class="line"><div class="name">Paulo Miguel Garcia</div><div class="role">President</div></div></div>
-    <div class="sig-box"><div class="label">Accepted by</div><div class="line"><div class="name">${esc(deal?.client||"Client Name / Representative")}</div><div class="role">Signature over Printed Name</div></div></div>
-  </div>
-</div>
-<div class="print-btn"><button onclick="window.print()">🖨️ Print / Save as PDF</button></div>
-</body></html>`;
-    const w=window.open("","_blank","width=1000,height=780");
-    if(w){w.document.write(html);w.document.close();addPrintClose(w);}
-  };
+  // 🖨 Preview / Print opens the same PDF as Share PDF in a new tab. It used
+  // to print its own HTML copy, which was clean for everyone, so a non-Manager
+  // could send a quotation without the DRAFT stamp by printing it instead.
+  const printBOQ=()=>openPdfTab(async()=>{
+    const {buildBoqPdf}=await import("./boqPdf");
+    return buildBoqPdf(boqPdfModel());
+  },pdfFileName(),toastEmit);
 
   // ── Share PDF ────────────────────────────────────────────────────────────
   // iPhones ignore window.print() in the print pop-up, so the quotation is also
@@ -1050,6 +940,19 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   // clean: everyone else's is watermarked "DRAFT – NOT FOR SUBMISSION", since
   // every quotation carries the President's name as approver.
   const pdfIsDraft=canonRole(role)!=="Manager";
+  // Who prepared it: the BOQ's last editor (FabHub records it on every save),
+  // not a fixed name (Paulo, 2026-11-19). Rodney only when nothing is recorded.
+  const boqPreparedBy=(lastEditedBy&&lastEditedBy!=="—")?lastEditedBy:"Rodney Erpe";
+  // Payment terms on the quotation: the project's agreed billing schedule when
+  // it has one, otherwise GMD's standard terms.
+  const boqPayTerms=(()=>{
+    const pt=deal?.paymentTerms;
+    if(pt&&Array.isArray(pt.schedule)&&pt.schedule.length){
+      const net=NET_DAY_OPTIONS.find(o=>o.days===Number(pt.netDays));
+      return [...pt.schedule.map(r=>`${r.name} — ${r.pct}% of the contract price`),...(net?[`Each billing payable ${net.days?`within ${net.days} days`:"upon receipt"}`]:[])];
+    }
+    return BOQ_STD_PAY_TERMS;
+  })();
   const pdf=useSharePdf(toastEmit);
   const boqPdfModel=()=>{
     const pdfSections=[];
@@ -1075,6 +978,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       client:deal?.client||"",
       sections:pdfSections,grandTotal,discountVal,netTotal,vatEnabled:!!vatEnabled,vatAmt:netTotal*0.12,
       notes:boqGeneralNotes(vatEnabled,customNotes),
+      preparedBy:boqPreparedBy,payTerms:boqPayTerms,
     };
   };
   const pdfFileName=()=>{
@@ -1115,7 +1019,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
         meta:{projectName,locationName:(location&&location.trim())||ref?.location||"",client:ref?.client||"",ceNo:ref?.ceNo||"",
           quotationNo,status:boqStatus,dateStr:boqDate?new Date(boqDate+"T00:00:00").toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"}):"",
           todayStr:now.toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"}),
-          exportedBy:session?.name||"",exportedAt:now.toLocaleString("en-PH")}},
+          exportedBy:session?.name||"",exportedAt:now.toLocaleString("en-PH"),preparedBy:boqPreparedBy,payTerms:boqPayTerms}},
         boqXlsxFileName(mode,mode==="rfq"?rfqName:projectName,today));
       if(mode==="rfq") setRfqPick(null);
     }catch(e){
@@ -1837,17 +1741,15 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
               </div>
               <div>
                 <div style={{fontWeight:700,color:"#0f172a",marginBottom:6}}>Payment Terms</div>
-                <div>50% DP to start project</div>
-                <div>Billing of 40% up until installation</div>
-                <div>Retention of 10% upon certificate of completion</div>
+                {boqPayTerms.map(t=><div key={t}>{t}</div>)}
               </div>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:20,borderTop:"1px solid #e2e8f0",paddingTop:20}}>
               <div>
                 <div style={{fontSize:".7rem",fontWeight:600,color:"#94a3b8",marginBottom:28}}>Prepared by:</div>
                 <div style={{borderBottom:"1.5px solid #0f172a",marginBottom:5}}/>
-                <div style={{fontWeight:700,color:"#0f172a"}}>Rodney Erpe</div>
-                <div style={{fontSize:".7rem",color:"#64748b"}}>Quantity Surveyor</div>
+                <div style={{fontWeight:700,color:"#0f172a"}}>{boqPreparedBy}</div>
+                <div style={{fontSize:".7rem",color:"#64748b"}}>GMD Productions Inc.</div>
               </div>
               <div>
                 <div style={{fontSize:".7rem",fontWeight:600,color:"#94a3b8",marginBottom:28}}>Approved and Submitted by:</div>
