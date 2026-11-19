@@ -39,6 +39,21 @@ export function buildInvoicePdf(m){
   doc.setFont(F,"bold");doc.setFontSize(16);doc.setTextColor(INK);
   doc.text((m.draft?`${m.docTitle} — DRAFT`:m.docTitle).toUpperCase(),L,y+2);
   y+=9;
+  // Kind of billing + its % of the contract (billingPosition, src/core.js).
+  const pos=m.position;
+  if(pos){
+    doc.setFont(F,"bold");doc.setFontSize(7.5);
+    const pw=doc.getTextWidth(pos.kind)+5;
+    doc.setFillColor(ORANGE);doc.roundedRect(L,y-3.6,pw,5.2,1,1,"F");
+    doc.setTextColor(255);doc.text(pos.kind,L+2.5,y);
+    let x=L+pw+3;
+    const seg=(t,bold)=>{doc.setFont(F,bold?"bold":"normal");doc.setFontSize(8.5);doc.setTextColor(bold?INK:"#475569");doc.text(t,x,y);x+=doc.getTextWidth(t);};
+    const sep="  ·  ";
+    if(pos.seq) seg(`Billing ${pos.seq}${pos.count?` of ${pos.count}`:""}`+(pos.pct!=null||pos.workPct!=null?sep:""),false);
+    if(pos.workPct!=null) seg(`Work ${pos.workPct}% complete`+(pos.pct!=null?sep:""),false);
+    if(pos.pct!=null){seg(`${pos.workPct!=null?"This billing: ":""}${pos.pct}% of contract price`,true);seg(` (${pdfNum(pos.gross)} of ${pdfNum(pos.contract)}${m.vat>0?", before VAT":""})`,false);}
+    y+=8;
+  }
 
   // Bill to (left) and invoice details (right)
   const topY=y;
@@ -81,6 +96,10 @@ export function buildInvoicePdf(m){
     doc.setFont(F,bold?"bold":"normal");doc.setFontSize(big?10.5:8.5);doc.setTextColor(bold?color:SLATE);doc.text(label,tx,ty);
     doc.setTextColor(color);doc.text(val,R,ty,{align:"right"});ty+=big?6:4.8;
   };
+  if(pos&&pos.retentionHeld>0){
+    trow("THIS BILLING (GROSS)",pdfNum(pos.gross));
+    trow(`Less: retention ${pos.retentionPct}%`,`(${pdfNum(pos.retentionHeld)})`,{color:RED});
+  }
   trow("SUBTOTAL",pdfNum(m.subtotal));
   trow("TAX",pdfNum(m.vat));
   trow("TOTAL",pdfNum(m.gross));

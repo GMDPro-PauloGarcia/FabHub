@@ -704,6 +704,51 @@ export const paymentBaseFactor = (b={}, deal) => {
   const rcv=milestoneReceivable(b,deal);
   return rcv>0 ? (Number(b.amount)||0)/rcv : 1;
 };
+// ── What kind of billing a statement is, and how much of the contract ──────
+// Shown under the statement title ("PROGRESS BILLING · Billing 2 of 4 · 30% of
+// contract price"). The % is worked out (gross claim / contract, VAT-ex both),
+// never read from the milestone name; namePct is the % typed in the name, so
+// the app can warn when the two disagree. A progress claim's amount is net of
+// retention: gross = amount + retentionHeld.
+export const billingKindLabel = (ms = {}) => {
+  const t = String(ms.msType || "").toLowerCase(), nm = String(ms.name || "").toLowerCase();
+  if (ms.isRetentionRelease || t === "retention" || /retention/.test(nm)) return "RETENTION RELEASE";
+  if (t === "down payment" || /\b(dp|down ?payment)\b/.test(nm)) return "DOWN PAYMENT";
+  if (t === "final" || /\bfinal\b/.test(nm)) return "FINAL BILLING";
+  if (t === "progress" || /progress|claim/.test(nm)) return "PROGRESS BILLING";
+  return "BILLING";
+};
+export const billingPosition = ({ deal, milestones = [], ms } = {}) => {
+  if (!ms) return null;
+  const contract = Number(deal && deal.value) || 0;
+  const amount = Number(ms.amount) || 0, retentionHeld = Number(ms.retentionHeld) || 0;
+  const gross = amount + retentionHeld;
+  const key = b => String(b.invoiceDate || b.plannedDate || b.created_at || "9999");
+  const seqAll = milestones.filter(b => b.dealId === ms.dealId && b.status !== "Cancelled");
+  // "of N" only when the schedule covers the whole contract; progress claims
+  // are added as work goes on, so there the total isn't known yet.
+  const scheduled = seqAll.filter(b => !b.isRetentionRelease).reduce((s, b) => s + (Number(b.amount) || 0) + (Number(b.retentionHeld) || 0), 0);
+  const fullSchedule = contract > 0 && scheduled >= contract - 1;
+  const seqList = seqAll
+    .slice().sort((a, b) => key(a).localeCompare(key(b)) || String(a.invoiceNo || "").localeCompare(String(b.invoiceNo || "")));
+  const idx = seqList.findIndex(b => b.id === ms.id);
+  const r1 = x => Math.round(x * 10) / 10;
+  const pct = contract > 0 ? r1(gross / contract * 100) : null;
+  // "60% complete" in a progress claim's name is work done, not the share
+  // billed: kept apart (workPct) and never compared with pct.
+  const nm = String(ms.name || "");
+  const w = nm.match(/(\d+(?:\.\d+)?)\s*%\s*(?:complete|completion|accomplish)/i);
+  const m = nm.replace(/(\d+(?:\.\d+)?)\s*%\s*(?:complete|completion|accomplish)\w*/ig, "").match(/(\d+(?:\.\d+)?)\s*%/);
+  const namePct = m ? Number(m[1]) : null;
+  const workPct = w ? Number(w[1]) : null;
+  return {
+    kind: billingKindLabel(ms), seq: idx >= 0 ? idx + 1 : null, count: fullSchedule ? seqList.length : null,
+    contract, gross, amount, retentionHeld,
+    retentionPct: retentionHeld > 0 && gross > 0 ? r1(retentionHeld / gross * 100) : 0,
+    pct, namePct, workPct, pctMismatch: pct != null && namePct != null && Math.abs(namePct - pct) > 0.5,
+  };
+};
+
 // ── Billing terms and due date (one rule, so they never contradict) ────────
 // The statement's TERMS line is worked out from its due date, never typed
 // separately: 0 days = "Due on receipt", otherwise "Net N days". A milestone
@@ -751,8 +796,12 @@ export const invoiceContractProgress = ({ deal, milestones = [], ms = null } = {
     (isBilledRevenue(b) && (!asOf || !b.invoiceDate || String(b.invoiceDate) <= asOf)));
   if (ms && !billedMs.some(b => b.id === ms.id)) billedMs.push(ms);
   const paidBaseOf = b => milestonePaid(b) * paymentBaseFactor(b, deal);
-  const billedBase = billedMs.reduce((s, b) => s + (Number(b.amount) || 0), 0);
-  const thisBase = ms ? Number(ms.amount) || 0 : 0;
+  // A progress claim's retention is billed (claimed), just held back until
+  // the retention release; so it counts as billed on the claim, and the
+  // release milestone's own amount doesn't count again.
+  const claimed = b => b.isRetentionRelease ? 0 : (Number(b.amount) || 0) + (Number(b.retentionHeld) || 0);
+  const billedBase = billedMs.reduce((s, b) => s + claimed(b), 0);
+  const thisBase = ms ? (ms.isRetentionRelease ? Number(ms.amount) || 0 : claimed(ms)) : 0;
   const paidBase = Math.min(own.reduce((s, b) => s + paidBaseOf(b), 0), Math.max(billedBase, contractBase));
   const thisUnpaidBase = ms ? Math.max(0, thisBase - paidBaseOf(ms)) : 0;
   const prevUnpaidBase = Math.max(0, billedBase - paidBase - thisUnpaidBase);
