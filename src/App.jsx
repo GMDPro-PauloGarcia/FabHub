@@ -13,7 +13,7 @@ import {fmt,addPrintClose,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dro
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {projProgressPct, isConstructionDeal, projStageFlow, projStepIndex, projStepLabel, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, canRecordDeduction, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel, pendingCostByProject, poSplitTotal, canRaiseOrder, woSignStep, WO_SIGN_MSG, arAgeBucket, arCallOrder, dealHasBoq, MOTHER_PO_BOQ_MSG, ledgerCosts, poVatSet, isBilledRevenue, paymentBaseFactor, projectProgressPct} from './core';
+import {projProgressPct, isConstructionDeal, projStageFlow, projStepIndex, projStepLabel, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, canRecordDeduction, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel, pendingCostByProject, poSplitTotal, canRaiseOrder, woSignStep, WO_SIGN_MSG, arAgeBucket, arCallOrder, dealHasBoq, MOTHER_PO_BOQ_MSG, ledgerCosts, poVatSet, isBilledRevenue, paymentBaseFactor, invoiceContractProgress, projectProgressPct} from './core';
 import ProgressReportModal from './views/ProgressReportModal';
 
 // Returns a component whose function IDENTITY is stable across renders while its
@@ -26062,8 +26062,9 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const billingPdf=useSharePdf(toastEmit);
   const billingPdfDraft=!["Manager","Finance","FinanceAssistant","Accounting"].includes(role);
   const shareInvoicePdf=(ms)=>{
-    const{d,tx,totalPaid,balance,cp,clientAddr}=invoiceData(ms);
+    const{d,tx,totalPaid,balance,cp,clientAddr,prog}=invoiceData(ms);
     const model={
+      progress:prog,asOf:today,
       draft:billingPdfDraft,
       docTitle:"Billing Statement",
       invoiceNo:ms.invoiceNo||"",invoiceDate:ms.invoiceDate||today,
@@ -26328,10 +26329,35 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     const balance=Math.max(0,tx.netReceivable-totalPaid);
     const cp=(clientProfiles||{})[d?.client||""]||{};
     const clientAddr=[cp.billingAddress,cp.city,cp.province,cp.zipCode].filter(Boolean).join(", ");
-    return{d,tx,totalPaid,balance,cp,clientAddr};
+    // Contract progress bar (billed / paid of the whole contract). None on a
+    // mother PO: it earns ₱0 itself, its sub-projects carry the billing.
+    const prog=isMotherPO(d)?null:invoiceContractProgress({deal:d,milestones:billings,ms});
+    return{d,tx,totalPaid,balance,cp,clientAddr,prog};
   };
   const printInvoice=(ms)=>{
-    const{d,tx,totalPaid,balance,cp,clientAddr}=invoiceData(ms);
+    const{d,tx,totalPaid,balance,cp,clientAddr,prog}=invoiceData(ms);
+    // Contract summary: one bar (paid / billed, unpaid / this statement / not yet
+    // billed) and the four figures. Same numbers as the Share PDF (billingPdf.js).
+    const progHtml=(()=>{
+      if(!prog) return "";
+      const segs=[["#059669",prog.paidPct],["#f59e0b",prog.prevUnpaidPct],["#ea580c",prog.thisUnpaidPct],["#e2e8f0",prog.unbilledPct]];
+      const tot=Math.max(100,segs.reduce((s,[,v])=>s+v,0));
+      const bar=segs.filter(([,v])=>v>0).map(([c,v])=>`<div style="width:${(v/tot*100).toFixed(2)}%;background:${c}"></div>`).join("");
+      const leg=[["#059669","Paid",prog.paidPct],["#f59e0b","Billed, unpaid",prog.prevUnpaidPct],["#ea580c","This billing",prog.thisUnpaidPct],["#e2e8f0","Not yet billed",prog.unbilledPct]]
+        .filter(([,,v])=>v>0).map(([c,l,v])=>`<span><i style="background:${c}"></i>${l} ${v}%</span>`).join("");
+      const box=(l,v,sub,c)=>`<div class="cp-box"><div class="cp-l">${l}</div><div class="cp-v" style="color:${c}">${fmt(v)}</div>${sub?`<div class="cp-s">${sub}</div>`:""}</div>`;
+      return `<div class="cp">
+  <div class="cp-head"><span class="cp-title">Contract Summary</span><span class="cp-asof">as of ${today}${prog.vatable?" · amounts incl. VAT":""}</span></div>
+  <div class="cp-grid">
+    ${box("Contract amount",prog.contract,"","#0f172a")}
+    ${box("Billed to date",prog.billed,`${prog.billedPct}% of contract, incl. this billing`,"#2563eb")}
+    ${box("Paid to date",prog.paid,`${prog.paidPct}% of contract${prog.withholding?", incl. tax withheld":""}`,"#059669")}
+    ${box("Remaining on contract",prog.remaining,`${Math.max(0,Math.round((100-prog.paidPct)*10)/10)}% of contract`,"#ea580c")}
+  </div>
+  <div class="cp-bar">${bar}</div>
+  <div class="cp-leg">${leg}</div>
+</div>`;
+    })();
     const win=window.open("","_blank");
     win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Billing Statement ${ms.invoiceNo}</title>
 <style>
@@ -26385,6 +26411,19 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   table.ts th:first-child{text-align:center;}
   table.ts td{padding:6px 10px;font-size:11px;text-align:right;border-bottom:1px solid #f1f5f9;}
   table.ts td:first-child{text-align:center;}
+  /* Contract summary + progress bar */
+  .cp{margin-top:18px;border:1px solid #e2e8f0;border-radius:6px;padding:12px 14px;}
+  .cp-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;}
+  .cp-title{font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:#0f172a;}
+  .cp-asof{font-size:9px;color:#94a3b8;}
+  .cp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px;}
+  .cp-l{font-size:8px;font-weight:700;text-transform:uppercase;color:#64748b;letter-spacing:.5px;}
+  .cp-v{font-size:13px;font-weight:800;margin-top:2px;white-space:nowrap;}
+  .cp-s{font-size:8.5px;color:#64748b;margin-top:1px;}
+  .cp-bar{display:flex;height:12px;border-radius:6px;overflow:hidden;background:#e2e8f0;}
+  .cp-bar div{height:100%;}
+  .cp-leg{display:flex;flex-wrap:wrap;gap:14px;margin-top:6px;font-size:9px;color:#475569;}
+  .cp-leg i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:-1px;}
   /* Signature */
   .sig-row{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:32px;padding-top:16px;}
   .sig-block{font-size:11px;color:#64748b;}
@@ -26393,7 +26432,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   .co-footer{text-align:center;margin-top:22px;padding-top:10px;border-top:1px solid #e2e8f0;font-size:9px;color:#94a3b8;line-height:1.7;}
   @media print{
     .print-btn{display:none;}
-    .header,.sub-bar,table.items thead tr,table.ts thead tr{print-color-adjust:exact;-webkit-print-color-adjust:exact;}
+    .header,.sub-bar,table.items thead tr,table.ts thead tr,.cp-bar div,.cp-leg i{print-color-adjust:exact;-webkit-print-color-adjust:exact;}
   }
 </style>
 </head><body>
@@ -26488,6 +26527,8 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       </tr>
     </table>
   </div>
+
+  ${progHtml}
 
   <!-- Tax summary -->
   ${tx.vat>0?`

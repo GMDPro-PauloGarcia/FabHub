@@ -93,6 +93,46 @@ export function buildInvoicePdf(m){
   trow("BALANCE DUE",`PHP ${pdfNum(m.balance)}`,{color:m.balance>0?ORANGE:GREEN,bold:true,big:true});
   y=Math.max(y,ty)+5;
 
+  // Contract summary: four figures and one bar (paid / billed, unpaid / this
+  // billing / not yet billed). Same numbers as the print page (invoiceData).
+  const p=m.progress;
+  if(p){
+    if(y>215){doc.addPage();y=24;}
+    const boxH=37;
+    doc.setDrawColor(LINE);doc.setLineWidth(0.3);doc.roundedRect(L,y,R-L,boxH,1.5,1.5,"S");
+    let cy=y+6;
+    doc.setFont(F,"bold");doc.setFontSize(8.5);doc.setTextColor(INK);doc.text("CONTRACT SUMMARY",L+4,cy);
+    doc.setFont(F,"normal");doc.setFontSize(7);doc.setTextColor("#94a3b8");
+    doc.text(`as of ${m.asOf||""}${p.vatable?" · amounts incl. VAT":""}`,R-4,cy,{align:"right"});
+    cy+=6;
+    const cw=(R-L-8)/4;
+    [["CONTRACT AMOUNT",p.contract,"",INK],
+     ["BILLED TO DATE",p.billed,`${p.billedPct}% of contract, incl. this billing`,BLUE],
+     ["PAID TO DATE",p.paid,`${p.paidPct}% of contract${p.withholding?", incl. tax withheld":""}`,GREEN],
+     ["REMAINING ON CONTRACT",p.remaining,`${Math.max(0,Math.round((100-p.paidPct)*10)/10)}% of contract`,ORANGE]].forEach(([k,v,sub,c],i)=>{
+      const x=L+4+i*cw;
+      doc.setFont(F,"bold");doc.setFontSize(6.5);doc.setTextColor(SLATE);doc.text(k,x,cy);
+      doc.setFontSize(10.5);doc.setTextColor(c);doc.text(pdfNum(v),x,cy+5.5);
+      if(sub){doc.setFont(F,"normal");doc.setFontSize(6.5);doc.setTextColor(SLATE);doc.text(doc.splitTextToSize(sub,cw-3)[0],x,cy+9.5);}
+    });
+    cy+=14;
+    const segs=[[GREEN,"Paid",p.paidPct],["#f59e0b","Billed, unpaid",p.prevUnpaidPct],[ORANGE,"This billing",p.thisUnpaidPct],["#e2e8f0","Not yet billed",p.unbilledPct]];
+    const tot=Math.max(100,segs.reduce((s,a)=>s+a[2],0));
+    const bx=L+4,bw=R-L-8,bh=4.5;
+    doc.setFillColor("#e2e8f0");doc.roundedRect(bx,cy,bw,bh,2,2,"F");
+    let sx=bx;
+    segs.forEach(([c,,v])=>{if(v<=0)return;const w=bw*v/tot;doc.setFillColor(c);doc.rect(sx,cy,w,bh,"F");sx+=w;});
+    cy+=bh+5;
+    let lx=bx;
+    doc.setFont(F,"normal");doc.setFontSize(7);
+    segs.filter(a=>a[2]>0).forEach(([c,l,v])=>{
+      doc.setFillColor(c);doc.rect(lx,cy-2.3,2.6,2.6,"F");
+      const t=`${l} ${v}%`;doc.setTextColor("#475569");doc.text(t,lx+3.8,cy);
+      lx+=3.8+doc.getTextWidth(t)+6;
+    });
+    y+=boxH+6;
+  }
+
   if(m.vat>0){
     doc.setFont(F,"bold");doc.setFontSize(8.5);doc.setTextColor(INK);doc.text("TAX SUMMARY",L,y);
     autoTable(doc,{

@@ -704,6 +704,45 @@ export const paymentBaseFactor = (b={}, deal) => {
   const rcv=milestoneReceivable(b,deal);
   return rcv>0 ? (Number(b.amount)||0)/rcv : 1;
 };
+// Contract progress for a billing statement: how much of the contract has been
+// billed and paid, for the bar on the printed statement and the Share PDF.
+// Worked out VAT-exclusive (contract value and milestone amounts are VAT-ex;
+// payments are restated with paymentBaseFactor, so EWT withheld counts as
+// settled), then shown in the statement's own basis: x1.12 when the deal is
+// VAT-able, so it reads against the statement's TOTAL. "Billed" = every sent
+// milestone dated on or before this statement, plus this one; "paid" = every
+// payment recorded to date (offsets count, bounced don't). null when there is
+// no contract value to measure against (e.g. a mother PO).
+export const invoiceContractProgress = ({ deal, milestones = [], ms } = {}) => {
+  const contractBase = Number(deal && deal.value) || 0;
+  if (!(contractBase > 0) || !ms) return null;
+  const r2 = x => Math.round((Number(x) || 0) * 100) / 100;
+  const vatable = calcTax(100, (deal && deal.receiptType) || "OR").vat > 0;
+  const k = vatable ? 1.12 : 1;
+  const own = milestones.filter(b => b.dealId === ms.dealId && b.status !== "Cancelled");
+  const asOf = ms.invoiceDate || "";
+  const billedMs = own.filter(b => b.id === ms.id ||
+    (isBilledRevenue(b) && (!asOf || !b.invoiceDate || String(b.invoiceDate) <= asOf)));
+  if (!billedMs.some(b => b.id === ms.id)) billedMs.push(ms);
+  const paidBaseOf = b => milestonePaid(b) * paymentBaseFactor(b, deal);
+  const billedBase = billedMs.reduce((s, b) => s + (Number(b.amount) || 0), 0);
+  const thisBase = Number(ms.amount) || 0;
+  const paidBase = Math.min(own.reduce((s, b) => s + paidBaseOf(b), 0), Math.max(billedBase, contractBase));
+  const thisUnpaidBase = Math.max(0, thisBase - paidBaseOf(ms));
+  const prevUnpaidBase = Math.max(0, billedBase - paidBase - thisUnpaidBase);
+  const unbilledBase = Math.max(0, contractBase - billedBase);
+  const pct = x => Math.round(x / contractBase * 1000) / 10;
+  return {
+    vatable,
+    contract: r2(contractBase * k), billed: r2(billedBase * k), paid: r2(paidBase * k),
+    thisBill: r2(thisBase * k), thisUnpaid: r2(thisUnpaidBase * k), prevUnpaid: r2(prevUnpaidBase * k),
+    unbilled: r2(unbilledBase * k), remaining: r2(Math.max(0, contractBase - paidBase) * k),
+    paidPct: pct(paidBase), billedPct: pct(billedBase), thisPct: pct(thisBase),
+    thisUnpaidPct: pct(thisUnpaidBase), prevUnpaidPct: pct(prevUnpaidBase), unbilledPct: pct(unbilledBase),
+    overBilled: billedBase - contractBase > 0.5,
+    withholding: !!(deal && deal.withholding),
+  };
+};
 // A project's completion % for margin screens: the one progress rule (projProgressPct),
 // with "not set yet" counted as 0.
 export const projectProgressPct = (card, deal) => projProgressPct(card, deal) ?? 0;
