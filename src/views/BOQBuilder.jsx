@@ -1,5 +1,5 @@
 import React,{useState,useEffect,useLayoutEffect,useRef} from "react";
-import {today,uid,KEYS,Card,uiConfirm,addPrintClose,ProjectSelect} from "../shared";
+import {today,uid,KEYS,Card,uiConfirm,addPrintClose,docLogo,ProjectSelect} from "../shared";
 import {supabase,isSupabaseReady,sbInsert,sbUpdate,sbDelete} from "../supabaseClient";
 // Clearing a deal's BOQ is Manager-only, also enforced by migration
 // 20261006010000_deals_boq_safeguards.sql — keep in sync.
@@ -999,7 +999,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   @media print{.print-btn{display:none}body{padding:18px}}
 </style></head><body>
 <div class="hdr">
-  <div><div class="co">GMD Productions Inc.</div><div class="co-sub">Fabrication &amp; Project Management</div></div>
+  <div style="display:flex;align-items:center;gap:12px">${docLogo(42)}<div><div class="co">GMD Productions Inc.</div><div class="co-sub">Fabrication &amp; Project Management</div></div></div>
   <div><div class="doc-label">Bill of Quantities</div><div class="doc-title">QUOTATION</div><div style="font-size:11px;color:#64748b;text-align:right;margin-top:3px">${quotationNo?`No. ${esc(quotationNo)}`:""} &nbsp; ${dateStr}</div></div>
 </div>
 <div class="meta-box">

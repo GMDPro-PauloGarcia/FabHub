@@ -9,7 +9,7 @@ import SupplierDocsPanel from "./views/SupplierDocsPanel";
 import CashOutModal,{openCashOut,closeCashOut,cashOutHas,OrderPicker} from "./views/CashOutModal";
 import BillHistoryModal,{openBillHistory} from "./views/BillHistory";
 import {buildOrders} from "./data/ledger";
-import {fmt,addPrintClose,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable,HIDDEN_NAV_IDS,AP_HIDDEN,WAREHOUSE_HIDDEN,isHiddenView,HIDDEN_FIN_TABS,HIDDEN_PIPE_TABS,pageOn,cashCanEdit,ProjectSelect,setProjectSearchIndex} from './shared';
+import {fmt,addPrintClose,docLogo,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable,HIDDEN_NAV_IDS,AP_HIDDEN,WAREHOUSE_HIDDEN,isHiddenView,HIDDEN_FIN_TABS,HIDDEN_PIPE_TABS,pageOn,cashCanEdit,ProjectSelect,setProjectSearchIndex} from './shared';
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
@@ -2135,6 +2135,7 @@ function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSa
       .total-row td{background:#f1f5f9;font-weight:700;border-top:2px solid #1e293b}
       .footer{margin-top:20px;font-size:8pt;color:#94a3b8;text-align:right}
     </style></head><body>
+    <div style="margin-bottom:6px">${docLogo(34)}</div>
     <h1>📝 EXPENSE LOG</h1>
     <div class="meta">Printed: ${dateNow} &nbsp;|&nbsp; ${printRows.length} expense${printRows.length!==1?"s":""} &nbsp;|&nbsp; GMD PRO</div>
     <table>
@@ -6203,7 +6204,7 @@ export default function App(){
   .notes-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px;font-size:11px;color:#475569;margin-top:8px}
   @media print{body{padding:10px}}
 </style></head><body>
-<div class="logo-area"><div><div class="co-name">GMD PRODUCTIONS INC</div><div class="co-sub">Interior Design & Fabrication · info@gmdpro.com.ph</div></div></div>
+<div class="logo-area">${docLogo(44)}<div><div class="co-name">GMD PRODUCTIONS INC</div><div class="co-sub">Interior Design & Fabrication · info@gmdpro.com.ph</div></div></div>
 <div class="doc-title">GOODS RECEIVING NOTE</div>
 <div class="meta-grid">
   <div class="meta-row"><span class="meta-label">GRN / DR No.:</span><span class="meta-val"><strong>${drNo||"— (none)"}</strong></span></div>
@@ -9440,7 +9441,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 <div class="doc">
   <div class="wm">GMD PRODUCTION INC.</div>
   <div class="top">
-    <div class="co">GMD PRODUCTION INC.<small>Marikina City, Metro Manila, Philippines · TIN 010-063-229-00000</small></div>
+    <div style="display:flex;align-items:center;gap:12px">${docLogo(40)}<div class="co">GMD PRODUCTION INC.<small>Marikina City, Metro Manila, Philippines · TIN 010-063-229-00000</small></div></div>
     <div><div class="cvlbl">Accounts Payable Voucher No.</div><div class="cvno">${esc(apvNoFor(p))}</div></div>
   </div>
   <table>
@@ -9519,7 +9520,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 <div class="doc">
   <div class="wm">GMD PRODUCTION INC.</div>
   <div class="top">
-    <div class="co">GMD PRODUCTION INC.<small>Marikina City, Metro Manila, Philippines · TIN 010-063-229-00000</small></div>
+    <div style="display:flex;align-items:center;gap:12px">${docLogo(40)}<div class="co">GMD PRODUCTION INC.<small>Marikina City, Metro Manila, Philippines · TIN 010-063-229-00000</small></div></div>
     <div><div class="cvlbl">Check Voucher No.</div><div class="cvno">${esc(v.cvNo||"—")}</div></div>
   </div>
   <table>
@@ -13405,7 +13406,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       </style></head><body>
       <div class="print-btn"><button onclick="window.print()">🖨 Print / Save as PDF</button></div>
       <div class="header">
-        <div class="co-name">GMD PRODUCTIONS INC.</div>
+        <div style="display:flex;align-items:center;gap:12px">${docLogo(38,{dark:true})}<div class="co-name">GMD PRODUCTIONS INC.</div></div>
         <div style="text-align:right">
           <span style="color:rgba(255,255,255,.6);font-size:10px">DATE: </span>
           <span style="color:#f97316;font-weight:700;font-size:12px">${dateStr}</span>
@@ -23190,7 +23191,7 @@ function SubconWOView({embedded=false,onEmbeddedDone,woDraft=null,clearWoDraft,s
   @media print{body{padding:24px 32px}}
 </style></head><body>
   <div class="lh">
-    <div class="co">GMD PRODUCTION INC.<small>32 Santan, Brgy. Fortune, Marikina City, Philippines · TIN 010-063-229-00000</small></div>
+    <div style="display:flex;align-items:center;gap:12px">${docLogo(40)}<div class="co">GMD PRODUCTION INC.<small>32 Santan, Brgy. Fortune, Marikina City, Philippines · TIN 010-063-229-00000</small></div></div>
     <div class="doct"><div class="t">Subcontractor Agreement</div><div class="p">${esc(w.woNumber||"")}${w.woNumber?" · ":""}${esc(dateStr)}</div></div>
   </div>
   <h1>SERVICE AGREEMENT CONTRACT</h1>
@@ -23287,7 +23288,7 @@ function SubconWOView({embedded=false,onEmbeddedDone,woDraft=null,clearWoDraft,s
   @media print{body{padding:20px}}
 </style></head><body>
 <div class="hdr">
-  <div><div class="co">GMD PRODUCTIONS INC</div><div class="co-sub">Fabrication &amp; Project Management</div></div>
+  <div style="display:flex;align-items:center;gap:12px">${docLogo(42)}<div><div class="co">GMD PRODUCTIONS INC</div><div class="co-sub">Fabrication &amp; Project Management</div></div></div>
   <div style="text-align:right"><div class="doc-title">SUBCON WORK ORDER</div><div class="doc-sub">${esc(w.woNumber)} · ${esc(w.woDate)||""}</div></div>
 </div>
 <div class="meta">
@@ -23784,7 +23785,7 @@ function PoDocumentationQueue({prs,swos,updatePR,updateSWO,wonDeals,session,role
   @media print{body{padding:20px}}
 </style></head><body>
 <div class="hdr">
-  <div><div class="co">GMD PRODUCTIONS INC</div><div class="co-sub">Fabrication &amp; Project Management</div></div>
+  <div style="display:flex;align-items:center;gap:12px">${docLogo(42)}<div><div class="co">GMD PRODUCTIONS INC</div><div class="co-sub">Fabrication &amp; Project Management</div></div></div>
   <div style="text-align:right"><div class="doc-title">PAYMENT ORDER</div><div class="doc-sub">${esc(d.number)} · ${esc(a.paymentOrderedAt)||today}</div></div>
 </div>
 <table>
@@ -24201,7 +24202,7 @@ function ProcurementView2({embedded=false,onEmbeddedDone,poDraft=null,clearPoDra
   @media print{body{padding:20px}}
 </style></head><body>
 <div class="hdr">
-  <div><div class="co">GMD PRODUCTIONS INC</div><div class="co-sub">Fabrication & Project Management</div></div>
+  <div style="display:flex;align-items:center;gap:12px">${docLogo(42)}<div><div class="co">GMD PRODUCTIONS INC</div><div class="co-sub">Fabrication & Project Management</div></div></div>
   <div style="text-align:right"><div class="po-title">PURCHASE ORDER</div><div class="po-sub">${poNo} · ${poD||""}</div></div>
 </div>
 <div class="meta">
@@ -25376,10 +25377,10 @@ function BudgetRequestView({sendTelegramNotification,breqs,addBR,updateBR,delete
 </style></head><body><div class="page">
 
   <div class="letterhead">
-    <div>
+    <div style="display:flex;align-items:center;gap:12px">${docLogo(44)}<div>
       <div class="co-name">GMD Productions Inc.</div>
       <div class="co-info">Interior Design &amp; Fabrication<br>Marikina City, Metro Manila<br>gmdproductionsinc@gmail.com</div>
-    </div>
+    </div></div>
     <div style="text-align:right">
       <div class="doc-title">BUDGET REQUEST</div>
       <div class="doc-no">Date: ${printDate}</div>
@@ -29377,7 +29378,7 @@ function DataManagement({
     </style></head><body>
     <div class="hdr">
       <div>
-        <div class="logo">GMD <span>PROD</span></div>
+        <div>${docLogo(44)}</div>
         <div style="color:#64748b;font-size:11px;margin-top:4px;">GMD Productions Inc. · TIN: 010-063-229-00000</div>
         <div style="color:#64748b;font-size:11px;">32 Unit-H Santan St., Fortune, Marikina City</div>
       </div>

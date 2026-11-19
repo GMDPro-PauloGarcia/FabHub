@@ -1,5 +1,5 @@
 import React from "react";
-import {fmt,addPrintClose,today,BANKS,KPI,Modal,uiConfirm,ProjectSelect} from "../shared";
+import {fmt,addPrintClose,docLogo,today,BANKS,KPI,Modal,uiConfirm,ProjectSelect} from "../shared";
 // ─── LIQUIDATION VIEW ─────────────────────────────────────────────────────────
 function LiquidationView({evouchers,addEV,updateEV,deleteEV,addEVItem,updateEVItem,deleteEVItem,submitEV,markEVPaid,wonDeals,session,role,today,fmt,BANKS,isMobile}){
   const[collapsed,setCollapsed]=React.useState(new Set());
@@ -103,7 +103,7 @@ tr:nth-child(even) td{background:#f9f9f9;}
 @media print{body{padding:0;}@page{margin:0.8cm;size:A4 landscape;}}
 </style></head><body><div class="wrap">
 <div class="logo-title">
-  <div class="logo-cell"><div><div class="logo-txt">GMD</div><div class="logo-sub">PRO</div></div></div>
+  <div class="logo-cell">${docLogo(40)}</div>
   <div class="form-title" style="display:flex;align-items:center;justify-content:center;">PRF LIQUIDATION FORM</div>
 </div>
 <div class="info-grid">
