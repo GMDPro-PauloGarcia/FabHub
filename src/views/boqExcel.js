@@ -314,9 +314,9 @@ export function buildBoqWorkbook(ExcelJS,{mode="client",sections=[],items=[],gro
     ["Account Name: GMD PRODUCTIONS INC","BDO CHECKING — 012758000370","BPI CHECKING — 6011 04 82 03","METROBANK — 382-7-38202059-2"].forEach(line);
     r++;
     head("Payment Terms");
-    ["50% Down Payment to start project","Billing of 40% up until installation","Retention of 10% upon certificate of completion"].forEach(line);
+    (meta.payTerms&&meta.payTerms.length?meta.payTerms:["50% Down Payment to start project","Billing of 40% up until installation","Retention of 10% upon certificate of completion"]).forEach(line);
     r+=2;
-    const sig=[["Prepared by","Rodney Erpe","Quantity Surveyor","A"],["Approved & Submitted by","Paulo Miguel Garcia","President","C"],["Accepted by",meta.client||"Client Name / Representative","Signature over Printed Name","F"]];
+    const sig=[["Prepared by",meta.preparedBy||"Rodney Erpe","GMD Productions Inc.","A"],["Approved & Submitted by","Paulo Miguel Garcia","President","C"],["Accepted by",meta.client||"Client Name / Representative","Signature over Printed Name","F"]];
     sig.forEach(([l,,,col])=>{ws.getCell(`${col}${r}`).value=l;ws.getCell(`${col}${r}`).font={size:9,color:{argb:MUTED}};});
     r+=3;
     sig.forEach(([,n,,col])=>{const c=ws.getCell(`${col}${r}`);c.value=n;c.font={bold:true};c.border={top:{style:"thin",color:{argb:DARK}}};});

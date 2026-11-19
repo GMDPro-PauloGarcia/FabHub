@@ -704,6 +704,140 @@ export const paymentBaseFactor = (b={}, deal) => {
   const rcv=milestoneReceivable(b,deal);
   return rcv>0 ? (Number(b.amount)||0)/rcv : 1;
 };
+// ── What kind of billing a statement is, and how much of the contract ──────
+// Shown under the statement title ("PROGRESS BILLING · Billing 2 of 4 · 30% of
+// contract price"). The % is worked out (gross claim / contract, VAT-ex both),
+// never read from the milestone name; namePct is the % typed in the name, so
+// the app can warn when the two disagree. A progress claim's amount is net of
+// retention: gross = amount + retentionHeld.
+export const billingKindLabel = (ms = {}) => {
+  const t = String(ms.msType || "").toLowerCase(), nm = String(ms.name || "").toLowerCase();
+  if (ms.isRetentionRelease || t === "retention" || /retention/.test(nm)) return "RETENTION RELEASE";
+  if (t === "down payment" || /\b(dp|down ?payment)\b/.test(nm)) return "DOWN PAYMENT";
+  if (t === "final" || /\bfinal\b/.test(nm)) return "FINAL BILLING";
+  if (t === "progress" || /progress|claim/.test(nm)) return "PROGRESS BILLING";
+  return "BILLING";
+};
+export const billingPosition = ({ deal, milestones = [], ms } = {}) => {
+  if (!ms) return null;
+  const contract = Number(deal && deal.value) || 0;
+  const amount = Number(ms.amount) || 0, retentionHeld = Number(ms.retentionHeld) || 0;
+  const gross = amount + retentionHeld;
+  const key = b => String(b.invoiceDate || b.plannedDate || b.created_at || "9999");
+  const seqAll = milestones.filter(b => b.dealId === ms.dealId && b.status !== "Cancelled");
+  // "of N" only when the schedule covers the whole contract; progress claims
+  // are added as work goes on, so there the total isn't known yet.
+  const scheduled = seqAll.filter(b => !b.isRetentionRelease).reduce((s, b) => s + (Number(b.amount) || 0) + (Number(b.retentionHeld) || 0), 0);
+  const fullSchedule = contract > 0 && scheduled >= contract - 1;
+  const seqList = seqAll
+    .slice().sort((a, b) => key(a).localeCompare(key(b)) || String(a.invoiceNo || "").localeCompare(String(b.invoiceNo || "")));
+  const idx = seqList.findIndex(b => b.id === ms.id);
+  const r1 = x => Math.round(x * 10) / 10;
+  const pct = contract > 0 ? r1(gross / contract * 100) : null;
+  // "60% complete" in a progress claim's name is work done, not the share
+  // billed: kept apart (workPct) and never compared with pct.
+  const nm = String(ms.name || "");
+  const w = nm.match(/(\d+(?:\.\d+)?)\s*%\s*(?:complete|completion|accomplish)/i);
+  const m = nm.replace(/(\d+(?:\.\d+)?)\s*%\s*(?:complete|completion|accomplish)\w*/ig, "").match(/(\d+(?:\.\d+)?)\s*%/);
+  const namePct = m ? Number(m[1]) : null;
+  const workPct = w ? Number(w[1]) : null;
+  return {
+    kind: billingKindLabel(ms), seq: idx >= 0 ? idx + 1 : null, count: fullSchedule ? seqList.length : null,
+    contract, gross, amount, retentionHeld,
+    retentionPct: retentionHeld > 0 && gross > 0 ? r1(retentionHeld / gross * 100) : 0,
+    pctExact: contract > 0 ? Math.round(gross / contract * 10000) / 100 : null,
+    pct, namePct, workPct, pctMismatch: pct != null && namePct != null && Math.abs(namePct - pct) > 0.5,
+  };
+};
+
+// The statement's line item, billed as a share of the contract: QTY = the %,
+// RATE = the contract price, AMOUNT = this billing (gross of any retention).
+// Falls back to QTY 1 when the % can't reproduce the amount to the peso (no
+// contract value, or an odd amount).
+export const statementLine = (pos, ms = {}) => {
+  const title = s => s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+  const name = String(ms.name || "").trim();
+  const gross = pos ? pos.gross : Number(ms.amount) || 0;
+  const service = pos && pos.kind !== "BILLING" ? title(pos.kind) : (name || "Billing");
+  const asPct = !!(pos && pos.contract > 0 && pos.pctExact != null &&
+    Math.abs(pos.contract * pos.pctExact / 100 - gross) < 1);
+  const desc = [];
+  if (name && name.toLowerCase() !== service.toLowerCase()) desc.push(name);
+  if (pos && pos.pct != null) desc.push(`${asPct ? pos.pctExact : pos.pct}% of the contract price`);
+  const d2 = String(ms.description || "").trim();
+  if (d2 && d2.toLowerCase() !== name.toLowerCase()) desc.push(d2);
+  return { service, qty: asPct ? `${pos.pctExact}%` : "1", rate: asPct ? pos.contract : gross, amount: gross, description: desc };
+};
+
+// ── Billing terms and due date (one rule, so they never contradict) ────────
+// The statement's TERMS line is worked out from its due date, never typed
+// separately: 0 days = "Due on receipt", otherwise "Net N days". A milestone
+// with no due date gets one from, in order: the project's payment period
+// (deal.paymentTerms.netDays), a number in the client profile's terms, or
+// DEFAULT_BILLING_NET_DAYS, counted from the billing date.
+export const DEFAULT_BILLING_NET_DAYS = 15;
+const _isoDays = (a, b) => Math.round((Date.parse(String(b).slice(0, 10) + "T00:00:00Z") - Date.parse(String(a).slice(0, 10) + "T00:00:00Z")) / 86400000);
+export const billingTermsLabel = (days) => Number(days) <= 0 ? "Due on receipt" : `Net ${Number(days)} days`;
+export const billingDefaultNetDays = (deal, clientTerms) => {
+  const nd = deal && deal.paymentTerms && deal.paymentTerms.netDays;
+  if (nd != null && nd !== "" && Number.isFinite(Number(nd))) return Math.max(0, Number(nd));
+  const t = String(clientTerms || "").toLowerCase();
+  if (/\b(cod|cash|cwo|upon receipt|on receipt)\b/.test(t)) return 0;
+  const m = t.match(/(\d+)/);
+  return m ? parseInt(m[1], 10) : DEFAULT_BILLING_NET_DAYS;
+};
+export const billingDueTerms = ({ ms = {}, deal, clientTerms, today } = {}) => {
+  const billDate = String(ms.invoiceDate || today || "").slice(0, 10);
+  let days, dueDate;
+  if (ms.dueDate && billDate) { dueDate = String(ms.dueDate).slice(0, 10); days = Math.max(0, _isoDays(billDate, dueDate)); }
+  else { days = billingDefaultNetDays(deal, clientTerms); dueDate = billDate ? addDaysISO(billDate, days) : ""; }
+  return { days, label: billingTermsLabel(days), dueDate, overdue: !!(dueDate && today && dueDate < today) };
+};
+// Contract progress for a billing statement: how much of the contract has been
+// billed and paid, for the bar on the printed statement and the Share PDF.
+// Worked out VAT-exclusive (contract value and milestone amounts are VAT-ex;
+// payments are restated with paymentBaseFactor, so EWT withheld counts as
+// settled), then shown in the statement's own basis: x1.12 when the deal is
+// VAT-able, so it reads against the statement's TOTAL. "Billed" = every sent
+// milestone dated on or before this statement, plus this one; "paid" = every
+// payment recorded to date (offsets count, bounced don't). null when there is
+// no contract value to measure against (e.g. a mother PO).
+// Without `ms` (the Statement of Account) "billed" is every sent milestone and
+// there is no "this billing" slice.
+export const invoiceContractProgress = ({ deal, milestones = [], ms = null } = {}) => {
+  const contractBase = Number(deal && deal.value) || 0;
+  if (!(contractBase > 0) || !deal) return null;
+  const r2 = x => Math.round((Number(x) || 0) * 100) / 100;
+  const vatable = calcTax(100, (deal && deal.receiptType) || "OR").vat > 0;
+  const k = vatable ? 1.12 : 1;
+  const own = milestones.filter(b => b.dealId === deal.id && b.status !== "Cancelled");
+  const asOf = (ms && ms.invoiceDate) || "";
+  const billedMs = own.filter(b => (ms && b.id === ms.id) ||
+    (isBilledRevenue(b) && (!asOf || !b.invoiceDate || String(b.invoiceDate) <= asOf)));
+  if (ms && !billedMs.some(b => b.id === ms.id)) billedMs.push(ms);
+  const paidBaseOf = b => milestonePaid(b) * paymentBaseFactor(b, deal);
+  // A progress claim's retention is billed (claimed), just held back until
+  // the retention release; so it counts as billed on the claim, and the
+  // release milestone's own amount doesn't count again.
+  const claimed = b => b.isRetentionRelease ? 0 : (Number(b.amount) || 0) + (Number(b.retentionHeld) || 0);
+  const billedBase = billedMs.reduce((s, b) => s + claimed(b), 0);
+  const thisBase = ms ? (ms.isRetentionRelease ? Number(ms.amount) || 0 : claimed(ms)) : 0;
+  const paidBase = Math.min(own.reduce((s, b) => s + paidBaseOf(b), 0), Math.max(billedBase, contractBase));
+  const thisUnpaidBase = ms ? Math.max(0, thisBase - paidBaseOf(ms)) : 0;
+  const prevUnpaidBase = Math.max(0, billedBase - paidBase - thisUnpaidBase);
+  const unbilledBase = Math.max(0, contractBase - billedBase);
+  const pct = x => Math.round(x / contractBase * 1000) / 10;
+  return {
+    vatable,
+    contract: r2(contractBase * k), billed: r2(billedBase * k), paid: r2(paidBase * k),
+    thisBill: r2(thisBase * k), thisUnpaid: r2(thisUnpaidBase * k), prevUnpaid: r2(prevUnpaidBase * k),
+    unbilled: r2(unbilledBase * k), remaining: r2(Math.max(0, contractBase - paidBase) * k),
+    paidPct: pct(paidBase), billedPct: pct(billedBase), thisPct: pct(thisBase),
+    thisUnpaidPct: pct(thisUnpaidBase), prevUnpaidPct: pct(prevUnpaidBase), unbilledPct: pct(unbilledBase),
+    overBilled: billedBase - contractBase > 0.5,
+    withholding: !!(deal && deal.withholding),
+  };
+};
 // A project's completion % for margin screens: the one progress rule (projProgressPct),
 // with "not set yet" counted as 0.
 export const projectProgressPct = (card, deal) => projProgressPct(card, deal) ?? 0;
@@ -854,6 +988,17 @@ export const projProgressPct=(pc,deal=null)=>{
   return n;
 };
 
+// What a PO / WO line is for, as a supplier or subcon may see it: the project
+// code (JO, else CE no.) and the site, never the client's name (Paulo,
+// 2026-11-19). GMD stock and cost-center lines say so.
+export const orderForLabel=(deal,jos,projectId)=>{
+  if(projectId==="__gmd_stocks__") return "GMD warehouse stock";
+  if(!deal) return "—";
+  if(deal.isCostCenter) return "GMD internal";
+  const jo=dealJo(jos,deal.id);
+  const code=(jo&&(jo.joNo||jo.joNum))||deal.ceNo||"";
+  return [code,deal.location||""].filter(Boolean).join(" · ")||"—";
+};
 export const dealJo=(jos,dealId)=>{
   let best=null;
   for(const j of jos||[]) if(j.dealId===dealId&&j.status!=="Void"&&(!best||_joCmp(j,best)<0)) best=j;

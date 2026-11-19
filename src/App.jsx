@@ -4,16 +4,16 @@ const WrapCtx = createContext(false);
 const BUDGET_ONLY=["Design","Operations","ProjectMover"];
 import {deductionFromSb,supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbUpsertDetailed,sbInsertIfMissing,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbPendingIds,sbOnQueueChange,appLogin,appLogout,restoreAppToken,restoreOrRefreshAppToken,hasAppToken,appTokenExpired,refreshAppToken,setSessionExpiredHandler,setTokenRenewedHandler,logClientError} from './supabaseClient';
 import{idbGetMany,idbSetMany}from'./idb.js';
-import {useSharePdf} from "./views/SharePdf";
+import {useSharePdf,openPdfTab as openPdfTabShared} from "./views/SharePdf";
 import SupplierDocsPanel from "./views/SupplierDocsPanel";
 import CashOutModal,{openCashOut,closeCashOut,cashOutHas,OrderPicker} from "./views/CashOutModal";
 import BillHistoryModal,{openBillHistory} from "./views/BillHistory";
 import {buildOrders} from "./data/ledger";
-import {fmt,addPrintClose,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable,HIDDEN_NAV_IDS,AP_HIDDEN,WAREHOUSE_HIDDEN,isHiddenView,HIDDEN_FIN_TABS,HIDDEN_PIPE_TABS,pageOn,cashCanEdit,ProjectSelect,setProjectSearchIndex} from './shared';
+import {fmt,addPrintClose,docLogo,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable,HIDDEN_NAV_IDS,AP_HIDDEN,WAREHOUSE_HIDDEN,isHiddenView,HIDDEN_FIN_TABS,HIDDEN_PIPE_TABS,pageOn,cashCanEdit,ProjectSelect,setProjectSearchIndex} from './shared';
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {projProgressPct, isConstructionDeal, projStageFlow, projStepIndex, projStepLabel, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, canRecordDeduction, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel, pendingCostByProject, poSplitTotal, canRaiseOrder, woSignStep, WO_SIGN_MSG, arAgeBucket, arCallOrder, dealHasBoq, MOTHER_PO_BOQ_MSG, ledgerCosts, poVatSet, isBilledRevenue, paymentBaseFactor, projectProgressPct} from './core';
+import {projProgressPct, isConstructionDeal, projStageFlow, projStepIndex, projStepLabel, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, canRecordDeduction, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel, pendingCostByProject, poSplitTotal, canRaiseOrder, woSignStep, WO_SIGN_MSG, arAgeBucket, arCallOrder, dealHasBoq, MOTHER_PO_BOQ_MSG, ledgerCosts, poVatSet, isBilledRevenue, paymentBaseFactor, invoiceContractProgress, billingPosition, statementLine, orderForLabel, PO_ISSUED_STATUSES, WO_COMMITTED_STATUSES, billingDueTerms, billingDefaultNetDays, billingTermsLabel, projectProgressPct} from './core';
 import ProgressReportModal from './views/ProgressReportModal';
 
 // Returns a component whose function IDENTITY is stable across renders while its
@@ -2135,6 +2135,7 @@ function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSa
       .total-row td{background:#f1f5f9;font-weight:700;border-top:2px solid #1e293b}
       .footer{margin-top:20px;font-size:8pt;color:#94a3b8;text-align:right}
     </style></head><body>
+    <div style="margin-bottom:6px">${docLogo(34)}</div>
     <h1>📝 EXPENSE LOG</h1>
     <div class="meta">Printed: ${dateNow} &nbsp;|&nbsp; ${printRows.length} expense${printRows.length!==1?"s":""} &nbsp;|&nbsp; GMD PRO</div>
     <table>
@@ -6203,7 +6204,7 @@ export default function App(){
   .notes-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px;font-size:11px;color:#475569;margin-top:8px}
   @media print{body{padding:10px}}
 </style></head><body>
-<div class="logo-area"><div><div class="co-name">GMD PRODUCTIONS INC</div><div class="co-sub">Interior Design & Fabrication · info@gmdpro.com.ph</div></div></div>
+<div class="logo-area">${docLogo(44)}<div><div class="co-name">GMD PRODUCTIONS INC</div><div class="co-sub">Interior Design & Fabrication · info@gmdpro.com.ph</div></div></div>
 <div class="doc-title">GOODS RECEIVING NOTE</div>
 <div class="meta-grid">
   <div class="meta-row"><span class="meta-label">GRN / DR No.:</span><span class="meta-val"><strong>${drNo||"— (none)"}</strong></span></div>
@@ -9440,7 +9441,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 <div class="doc">
   <div class="wm">GMD PRODUCTION INC.</div>
   <div class="top">
-    <div class="co">GMD PRODUCTION INC.<small>Marikina City, Metro Manila, Philippines · TIN 010-063-229-00000</small></div>
+    <div style="display:flex;align-items:center;gap:12px">${docLogo(40)}<div class="co">GMD PRODUCTION INC.<small>Marikina City, Metro Manila, Philippines · TIN 010-063-229-00000</small></div></div>
     <div><div class="cvlbl">Accounts Payable Voucher No.</div><div class="cvno">${esc(apvNoFor(p))}</div></div>
   </div>
   <table>
@@ -9519,7 +9520,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 <div class="doc">
   <div class="wm">GMD PRODUCTION INC.</div>
   <div class="top">
-    <div class="co">GMD PRODUCTION INC.<small>Marikina City, Metro Manila, Philippines · TIN 010-063-229-00000</small></div>
+    <div style="display:flex;align-items:center;gap:12px">${docLogo(40)}<div class="co">GMD PRODUCTION INC.<small>Marikina City, Metro Manila, Philippines · TIN 010-063-229-00000</small></div></div>
     <div><div class="cvlbl">Check Voucher No.</div><div class="cvno">${esc(v.cvNo||"—")}</div></div>
   </div>
   <table>
@@ -10704,10 +10705,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const cashOutKinds=[
     coCan("purchase_requests")&&pageOn("procurement")&&{id:"po",group:"order",icon:"📦",label:"Purchase Order",wide:true,
       desc:"Order materials from a supplier. Cost Control or a Manager approves it before it's issued; no down payment, no issue.",
-      render:(_,close)=><ProcurementView2 embedded onEmbeddedDone={close} onPoFromPrf={linkPrfLines} payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/>},
+      render:(_,close)=><ProcurementView2 jos={jos} embedded onEmbeddedDone={close} onPoFromPrf={linkPrfLines} payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/>},
     coCan("subcon_work_orders")&&pageOn("subconwo")&&{id:"wo",group:"order",icon:"🔨",label:"Subcon Work Order",wide:true,
       desc:"Engage a subcontractor for a contract amount. Needs an approver and the client's down payment to issue.",
-      render:(_,close)=><SubconWOView embedded onEmbeddedDone={close} deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/>},
+      render:(_,close)=><SubconWOView jos={jos} embedded onEmbeddedDone={close} deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/>},
     (canBillPo||canBillOpex)&&{id:"bill",group:"bill",icon:"🧾",label:canBillPo?"Supplier bill (AP)":"OPEX bill (no PO)",editLabel:"Edit bill",
       desc:canBillPo?"A supplier's invoice. Pick its PO to fill in the details, or enter a bill with no PO (rent, utilities, OPEX).":"Rent, utilities, permits and other bills with no PO, charged to GMD OPEX or another cost center. Bills on a PO are entered by Procurement.",
       render:(p,close)=>p?.form
@@ -13405,7 +13406,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       </style></head><body>
       <div class="print-btn"><button onclick="window.print()">🖨 Print / Save as PDF</button></div>
       <div class="header">
-        <div class="co-name">GMD PRODUCTIONS INC.</div>
+        <div style="display:flex;align-items:center;gap:12px">${docLogo(38,{dark:true})}<div class="co-name">GMD PRODUCTIONS INC.</div></div>
         <div style="text-align:right">
           <span style="color:rgba(255,255,255,.6);font-size:10px">DATE: </span>
           <span style="color:#f97316;font-weight:700;font-size:12px">${dateStr}</span>
@@ -16623,10 +16624,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         })()}
       </Wrap>
     );
-    if(page==="procurement") return(<Wrap><ProcurementView2 poDraft={poDraft} clearPoDraft={()=>setPoDraft(null)} onPoFromPrf={linkPrfLines} payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 jos={jos} poDraft={poDraft} clearPoDraft={()=>setPoDraft(null)} onPoFromPrf={linkPrfLines} payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="purchasing") return(<Wrap>{purchasingPage()}</Wrap>);
     if(page==="orderboard") return(<Wrap>{orderBoardPage()}</Wrap>);
-    if(page==="subconwo") return(<Wrap><SubconWOView woDraft={woDraft} clearWoDraft={()=>setWoDraft(null)} deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="subconwo") return(<Wrap><SubconWOView jos={jos} woDraft={woDraft} clearWoDraft={()=>setWoDraft(null)} deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="costing") return(<Wrap><CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView sendTelegramNotification={sendTelegramNotification} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
@@ -16972,10 +16973,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       </Wrap>
     );
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
-    if(page==="procurement") return(<Wrap><ProcurementView2 poDraft={poDraft} clearPoDraft={()=>setPoDraft(null)} onPoFromPrf={linkPrfLines} payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 jos={jos} poDraft={poDraft} clearPoDraft={()=>setPoDraft(null)} onPoFromPrf={linkPrfLines} payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="purchasing") return(<Wrap>{purchasingPage()}</Wrap>);
     if(page==="orderboard") return(<Wrap>{orderBoardPage()}</Wrap>);
-    if(page==="subconwo") return(<Wrap><SubconWOView woDraft={woDraft} clearWoDraft={()=>setWoDraft(null)} deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="subconwo") return(<Wrap><SubconWOView jos={jos} woDraft={woDraft} clearWoDraft={()=>setWoDraft(null)} deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap} addMR={addMR} wonDeals={wonDeals} session={session}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView sendTelegramNotification={sendTelegramNotification} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="requests") return(<Wrap><RequestsView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
@@ -17472,10 +17473,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   if(role==="Operations"){
     if(page==="home") return <OpsView sendTelegramNotification={sendTelegramNotification} projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role} openPmModal={d=>setPmUpdateModal(d)} onCloseProject={(dealId,stage)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,stage}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{stage}).catch(()=>{});logActivity(dealId,"Stage Change",`Pipeline stage → ${stage}`,session?.name);["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,`📌 <b>Project Stage Updated</b>\nClient: <b>${projDeal?.client||"?"}</b>${projDeal?.ceNo?`\nCE: ${projDeal.ceNo}`:""}\nNew Stage: ${stage}\nBy: ${session?.name||"Ops"}`));}}/>;
-    if(page==="procurement") return(<Wrap><ProcurementView2 poDraft={poDraft} clearPoDraft={()=>setPoDraft(null)} onPoFromPrf={linkPrfLines} payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 jos={jos} poDraft={poDraft} clearPoDraft={()=>setPoDraft(null)} onPoFromPrf={linkPrfLines} payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="purchasing") return(<Wrap>{purchasingPage()}</Wrap>);
     if(page==="orderboard") return(<Wrap>{orderBoardPage()}</Wrap>);
-    if(page==="subconwo") return(<Wrap><SubconWOView woDraft={woDraft} clearWoDraft={()=>setWoDraft(null)} deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="subconwo") return(<Wrap><SubconWOView jos={jos} woDraft={woDraft} clearWoDraft={()=>setWoDraft(null)} deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView sendTelegramNotification={sendTelegramNotification} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="requests") return(<Wrap><RequestsView sendTelegramNotification={sendTelegramNotification} mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
@@ -19112,7 +19113,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   if((["Cost Control","Finance","Manager","Operations"].includes(role))&&page==="procurement") return(
     <Wrap>
-      <ProcurementView2 poDraft={poDraft} clearPoDraft={()=>setPoDraft(null)} onPoFromPrf={linkPrfLines} payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms}
+      <ProcurementView2 jos={jos} poDraft={poDraft} clearPoDraft={()=>setPoDraft(null)} onPoFromPrf={linkPrfLines} payPays={payPays} costCenterDeals={costCenterDeals} onCreateCostCenter={createCostCenter} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms}
         prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR}
         wonDeals={wonDeals} deals={deals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}
         upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} approvePOs={approvePOs} chartOfAccounts={chartOfAccounts}/>
@@ -22768,7 +22769,7 @@ function CEQSView({ceReqs,addCEReq,updateCEReq,session,role,toastEmit,deals}){
 // ─── BOQ MODAL (opened from pipeline 📋 button) ──────────────────────────────
 
 // ─── SUBCON WORK ORDERS VIEW ───────────────────────────────────────────────────
-function SubconWOView({embedded=false,onEmbeddedDone,woDraft=null,clearWoDraft,swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,deals,subcons,session,role,toastEmit,sendTelegramNotification,chartOfAccounts=[],onWaiveDp,onCreditTerms}){
+function SubconWOView({jos=[],embedded=false,onEmbeddedDone,woDraft=null,clearWoDraft,swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,deals,subcons,session,role,toastEmit,sendTelegramNotification,chartOfAccounts=[],onWaiveDp,onCreditTerms}){
   const today=new Date().toISOString().split("T")[0];
   const[mode,setMode]=useState("list");
   const[editingId,setEditingId]=useState(null);
@@ -23190,7 +23191,7 @@ function SubconWOView({embedded=false,onEmbeddedDone,woDraft=null,clearWoDraft,s
   @media print{body{padding:24px 32px}}
 </style></head><body>
   <div class="lh">
-    <div class="co">GMD PRODUCTION INC.<small>32 Santan, Brgy. Fortune, Marikina City, Philippines · TIN 010-063-229-00000</small></div>
+    <div style="display:flex;align-items:center;gap:12px">${docLogo(40)}<div class="co">GMD PRODUCTION INC.<small>32 Santan, Brgy. Fortune, Marikina City, Philippines · TIN 010-063-229-00000</small></div></div>
     <div class="doct"><div class="t">Subcontractor Agreement</div><div class="p">${esc(w.woNumber||"")}${w.woNumber?" · ":""}${esc(dateStr)}</div></div>
   </div>
   <h1>SERVICE AGREEMENT CONTRACT</h1>
@@ -23259,63 +23260,23 @@ function SubconWOView({embedded=false,onEmbeddedDone,woDraft=null,clearWoDraft,s
     const win=window.open("","_blank","width=820,height=900");
     if(win){win.document.write(html);win.document.close();addPrintClose(win);setTimeout(()=>win.print(),600);}
   };
+  // 🖨 WO: the PDF (ordersPdf.js) in a new tab. Plain "how you get paid"
+  // (down payment, certified progress, retention), both GMD signatures, the
+  // project as code + site only, and a "not yet issued" stamp until it is.
   const printWO=w=>{
-    const fmt2=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2});
-    const retAmt=woRetentionAmt(w);
-    const esc=s=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-    const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Work Order — ${esc(w.woNumber)}</title>
-<style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:Arial,sans-serif;padding:32px;color:#0f172a;font-size:12px}
-  .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;border-bottom:2px solid #1e293b;padding-bottom:16px}
-  .co{font-size:22px;font-weight:800;letter-spacing:-0.5px}
-  .co-sub{font-size:11px;color:#64748b;margin-top:2px}
-  .doc-title{font-size:20px;font-weight:800;color:#1e293b}
-  .doc-sub{font-size:11px;color:#64748b;margin-top:3px}
-  .meta{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px 16px;margin-bottom:20px;background:#f8fafc;padding:14px 16px;border-radius:8px;border:1px solid #e2e8f0}
-  .meta-item label{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:#94a3b8;margin-bottom:3px}
-  .meta-item span{font-weight:700;font-size:13px}
-  .sec-title{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#1e293b;border-bottom:1.5px solid #1e293b;padding-bottom:4px;margin:18px 0 8px}
-  .scope{white-space:pre-wrap;font-size:12px;line-height:1.6;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;min-height:90px}
-  table{width:100%;border-collapse:collapse;margin-top:8px}
-  td{padding:8px 10px;border-bottom:1px solid #f1f5f9;vertical-align:top;font-size:12px}
-  td.lbl{color:#64748b;width:220px}
-  td.val{font-weight:700}
-  .total-row td{font-weight:800;background:#eff6ff;color:#1e40af;border-top:2px solid #1e293b;font-size:13px}
-  .sig{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-top:44px}
-  .sig-box{border-top:1px solid #cbd5e1;padding-top:8px;font-size:10px;color:#64748b}
-  @media print{body{padding:20px}}
-</style></head><body>
-<div class="hdr">
-  <div><div class="co">GMD PRODUCTIONS INC</div><div class="co-sub">Fabrication &amp; Project Management</div></div>
-  <div style="text-align:right"><div class="doc-title">SUBCON WORK ORDER</div><div class="doc-sub">${esc(w.woNumber)} · ${esc(w.woDate)||""}</div></div>
-</div>
-<div class="meta">
-  <div class="meta-item"><label>Subcontractor</label><span>${esc(w.subcontractor)||"—"}</span></div>
-  <div class="meta-item"><label>WO Number</label><span>${esc(w.woNumber)||"—"}</span></div>
-  <div class="meta-item"><label>Date Issued</label><span>${esc(w.woDate)||"—"}</span></div>
-  <div class="meta-item"><label>Project</label><span>${esc(w.projectName)||"—"}</span></div>
-  <div class="meta-item"><label>Work Type</label><span>${esc(w.specialty)||"—"}</span></div>
-  <div class="meta-item"><label>Schedule</label><span>${esc(w.startDate)||"—"} → ${esc(w.targetEndDate)||"—"}</span></div>
-</div>
-<div class="sec-title">Scope of Work</div>
-<div class="scope">${esc(w.scopeOfWork)||"—"}</div>
-${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-height:0">${esc(w.notes)}</div>`:""}
-<div class="sec-title">Commercial Terms</div>
-<table>
-  <tr><td class="lbl">Payment Structure</td><td class="val">${esc(w.paymentStructure)||"—"}</td></tr>
-  <tr><td class="lbl">Payment Terms</td><td class="val">${esc(w.paymentTerms)||"—"}</td></tr>
-  <tr><td class="lbl">Retention${n(w.retentionPct)>0?` (${n(w.retentionPct)}%)`:""}</td><td class="val">${n(w.retentionPct)>0?"−"+fmt2(retAmt)+" held until acceptance":"None"}</td></tr>
-  <tr class="total-row"><td>CONTRACT AMOUNT</td><td>${fmt2(w.contractAmount)}</td></tr>
-</table>
-<div class="sig">
-  <div class="sig-box">Prepared by<br><br><br>_______________________<br>${esc(w.requestedBy)||""}</div>
-  <div class="sig-box">Approved by<br><br><br>_______________________<br>${esc(w.approvedBy)||""}</div>
-  <div class="sig-box">Conforme — Subcontractor<br><br><br>_______________________<br>${esc(w.subcontractor)||""}</div>
-</div>
-</body></html>`;
-    const win=window.open("","_blank","width=900,height=700");
-    if(win){win.document.write(html);win.document.close();addPrintClose(win);setTimeout(()=>win.print(),600);}
+    const deal=(deals||wonDeals||[]).find(d=>d.id===w.projectId)||(wonDeals||[]).find(d=>d.id===w.projectId);
+    const contract=n(w.contractAmount),dpPct=Number(w.dpPct)||0,retPct=n(w.retentionPct);
+    const issued=WO_COMMITTED_STATUSES.includes(w.status);
+    const model={
+      woNo:w.woNumber||"—",woDate:w.woDate||"",subcon:w.subcontractor||"—",status:w.status||"Draft",issued,
+      forLabel:orderForLabel(deal,jos,w.projectId),workType:w.specialty||"—",
+      schedule:[w.startDate,w.targetEndDate].some(Boolean)?`${w.startDate||"?"} to ${w.targetEndDate||"?"}`:"—",
+      scope:w.scopeOfWork||"",notes:w.notes||"",
+      contract,dpPct,dpAmt:Math.round(contract*dpPct)/100,retPct,retAmt:woRetentionAmt(w),
+      terms:w.paymentTerms||"",structure:w.paymentStructure||"",
+      preparedBy:w.requestedBy||"",ccSigner:w.ccApprovedBy||"",approvedBy:w.approvedBy||"",
+    };
+    openPdfTabShared(async()=>{const {buildWoPdf}=await import("./views/ordersPdf");return buildWoPdf(model);},`WO ${w.woNumber||""}`.trim(),toastEmit);
   };
 
   const filtered=swos.filter(w=>{
@@ -23784,7 +23745,7 @@ function PoDocumentationQueue({prs,swos,updatePR,updateSWO,wonDeals,session,role
   @media print{body{padding:20px}}
 </style></head><body>
 <div class="hdr">
-  <div><div class="co">GMD PRODUCTIONS INC</div><div class="co-sub">Fabrication &amp; Project Management</div></div>
+  <div style="display:flex;align-items:center;gap:12px">${docLogo(42)}<div><div class="co">GMD PRODUCTIONS INC</div><div class="co-sub">Fabrication &amp; Project Management</div></div></div>
   <div style="text-align:right"><div class="doc-title">PAYMENT ORDER</div><div class="doc-sub">${esc(d.number)} · ${esc(a.paymentOrderedAt)||today}</div></div>
 </div>
 <table>
@@ -23987,7 +23948,7 @@ function DpGate({deal,deals,role,onWaiveDp,onCreditTerms,what="POs"}){
 }
 
 // ─── PROCUREMENT VIEW 2 (Full PO → Multi-item → Delivery) ───────────────────
-function ProcurementView2({embedded=false,onEmbeddedDone,poDraft=null,clearPoDraft,onPoFromPrf,payPays=[],prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allDeals,budgets,exps,swos,session,role,toastEmit,suppliers,addSupplier,upPayables,payables,sendTelegramNotification,isSupabaseReady,sbUpsert,payableToSb,syncPoPayable,approvePOs,chartOfAccounts=[],onWaiveDp,onCreditTerms,costCenterDeals=[],onCreateCostCenter}){
+function ProcurementView2({jos=[],embedded=false,onEmbeddedDone,poDraft=null,clearPoDraft,onPoFromPrf,payPays=[],prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allDeals,budgets,exps,swos,session,role,toastEmit,suppliers,addSupplier,upPayables,payables,sendTelegramNotification,isSupabaseReady,sbUpsert,payableToSb,syncPoPayable,approvePOs,chartOfAccounts=[],onWaiveDp,onCreditTerms,costCenterDeals=[],onCreateCostCenter}){
   // Internal cost centers (HR, GMD Tools, warehouse stock…): deals flagged
   // is_cost_center, bought against like a project but kept out of project
   // lists. Only a Manager adds one (create_cost_center RPC).
@@ -24146,88 +24107,37 @@ function ProcurementView2({embedded=false,onEmbeddedDone,poDraft=null,clearPoDra
     setMode("newpo");
   };
 
-  const printPO=(poNo,supplierName,poD,items,poDiscType,poDiscVal,withVat)=>{
-    const fmt=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2});
-    const subtotal=items.reduce((s,i)=>{const cost=(Number(i.actUnitCost)||Number(i.estUnitCost)||0)*Number(i.qty||1);return s+cost;},0);
-    const poDisc=poDiscType==="pct"?subtotal*(Number(poDiscVal||0)/100):poDiscType==="fixed"?Math.min(Number(poDiscVal||0),subtotal):0;
-    const grandTotal=subtotal-poDisc;
-    const vatAmt=withVat?grandTotal*0.12:0;
-    const totalWithVat=grandTotal+vatAmt;
-    // Effective terms for the printed PO: the PO's own term wins; if left on
-    // "supplier default" (blank), fall back to the supplier's terms so the
-    // supplier reads the terms that actually apply, not a dash.
-    const supTermsPrint=(suppliers||[]).find(s=>(s.companyName||s.company_name||"").toLowerCase()===(supplierName||"").toLowerCase())?.paymentTerms||"";
-    const effTermsPrint=items[0]?.paymentTerms||supTermsPrint;
-    const termsSrc=(items[0]?.termsText||"").trim()||PO_TERMS_DEFAULT;
-    const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-    const termsItems=termsSrc.split("\n").map(t=>t.trim()).filter(Boolean).map(t=>`<li>${esc(t)}</li>`).join("");
-    const preparedBy=items[0]?.requestedBy||items[0]?.createdBy||"";
-    const approvedBy=items[0]?.approvedBy||"";
-    const receivedBy=supplierName||"";
-    const allProjDeals=[...activeDeals,...(wonDeals||[])];
-    const projectList=[...new Set(items.map(i=>{if(i.projectId==="__gmd_stocks__"||i.projectName==="GMD Stocks")return"GMD Stocks";const d=allProjDeals.find(x=>x.id===i.projectId);return d?projDisplayName(d):(i.projectName||"");}).filter(Boolean))].join(" / ")||"—";
-    const rows=items.map((i,idx)=>{
-      const deal=i.projectId==="__gmd_stocks__"?null:allProjDeals.find(d=>d.id===i.projectId);
-      const unitCost=Number(i.actUnitCost)||Number(i.estUnitCost)||0;
-      const lineGross=unitCost*Number(i.qty||1);
-      return `<tr><td>${idx+1}</td><td>${i.itemName||""}</td><td>${deal?projDisplayName(deal):(i.projectName||"—")}</td><td>${i.category||""}</td><td style="text-align:center">${i.qty} ${i.unit||""}</td><td style="text-align:right">${fmt(unitCost)}</td><td style="text-align:right;font-weight:700">${fmt(lineGross)}</td></tr>`;
-    }).join("");
-    const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>PO — ${poNo}</title>
-<style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:Arial,sans-serif;padding:32px;color:#0f172a;font-size:12px}
-  .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;border-bottom:2px solid #1e293b;padding-bottom:16px}
-  .co{font-size:22px;font-weight:800;letter-spacing:-0.5px}
-  .co-sub{font-size:11px;color:#64748b;margin-top:2px}
-  .po-title{font-size:20px;font-weight:800;color:#1e293b}
-  .po-sub{font-size:11px;color:#64748b;margin-top:3px}
-  .meta{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:8px;background:#f8fafc;padding:14px 16px;border-radius:8px 8px 0 0;border:1px solid #e2e8f0;border-bottom:none}
-  .meta-item label{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:#94a3b8;margin-bottom:3px}
-  .meta-item span{font-weight:700;font-size:13px}
-  .meta-proj{background:#f8fafc;padding:10px 16px 14px;border-radius:0 0 8px 8px;border:1px solid #e2e8f0;margin-bottom:20px;border-top:1px dashed #e2e8f0}
-  .meta-proj label{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:#94a3b8;margin-bottom:3px}
-  .meta-proj span{font-weight:700;font-size:12px;color:#1e293b}
-  table{width:100%;border-collapse:collapse;margin-top:8px}
-  th{background:#1e293b;color:#fff;padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px}
-  td{padding:8px 10px;border-bottom:1px solid #f1f5f9;vertical-align:top}
-  tr:nth-child(even) td{background:#f8fafc}
-  .total-row td{font-weight:800;background:#eff6ff;color:#1e40af;border-top:2px solid #1e293b}
-  .terms{margin-top:28px;border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px;background:#fafafa}
-  .terms h4{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:#64748b;margin-bottom:8px}
-  .terms ol{margin:0;padding-left:18px}
-  .terms li{font-size:10px;color:#334155;margin-bottom:5px;line-height:1.5}
-  .sig{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-top:48px}
-  .sig-box{font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
-  @media print{body{padding:20px}}
-</style></head><body>
-<div class="hdr">
-  <div><div class="co">GMD PRODUCTIONS INC</div><div class="co-sub">Fabrication & Project Management</div></div>
-  <div style="text-align:right"><div class="po-title">PURCHASE ORDER</div><div class="po-sub">${poNo} · ${poD||""}</div></div>
-</div>
-<div class="meta">
-  <div class="meta-item"><label>Supplier</label><span>${supplierName||"—"}</span></div>
-  <div class="meta-item"><label>PO Number</label><span>${poNo}</span></div>
-  <div class="meta-item"><label>Date Issued</label><span>${poD||"—"}</span></div>
-  <div class="meta-item"><label>Payment Terms</label><span>${effTermsPrint||"—"}</span></div>
-</div>
-<div class="meta-proj"><label>Project(s)</label><span>${projectList}</span></div>
-<table>
-  <thead><tr><th>#</th><th>Description</th><th>Project</th><th>Category</th><th style="text-align:center">Qty</th><th style="text-align:right">Unit Cost</th><th style="text-align:right">Amount</th></tr></thead>
-  <tbody>${rows}</tbody>
-  ${poDisc>0?`<tr style="background:#f0fdf4"><td colspan="6" style="text-align:right;font-size:11px;color:#059669">PO-Level Discount (${poDiscType==="pct"?poDiscVal+"%":"Fixed"})</td><td style="text-align:right;color:#059669;font-weight:700">−${fmt(poDisc)}</td></tr>`:""}
-  ${withVat?`<tr style="background:#f8fafc"><td colspan="6" style="text-align:right;font-size:11px;color:#64748b">Ex-VAT Amount</td><td style="text-align:right;color:#64748b">${fmt(grandTotal)}</td></tr><tr style="background:#fffbeb"><td colspan="6" style="text-align:right;font-size:11px;color:#b45309;font-weight:700">VAT 12% (OR)</td><td style="text-align:right;color:#b45309;font-weight:700">+${fmt(vatAmt)}</td></tr>`:""}
-  <tr class="total-row"><td colspan="6" style="text-align:right">${withVat?"TOTAL (VAT Inclusive)":"Grand Total"}</td><td style="text-align:right">${fmt(totalWithVat)}</td></tr>
-  ${withVat?`<tr><td colspan="7" style="font-size:9px;color:#94a3b8;text-align:right;padding-top:4px">Official Receipt (OR) — VAT Registered Supplier · TIN of GMD PRODUCTIONS INC applies</td></tr>`:""}
-</table>
-${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems}</ol></div>`:""}
-<div class="sig">
-  <div class="sig-box">Prepared by<br><br><br><div style="border-top:1px solid #94a3b8;padding-top:6px;margin-top:4px"><strong style="font-size:11px;color:#0f172a">${preparedBy||"&nbsp;"}</strong><br>Procurement</div></div>
-  <div class="sig-box">Approved by<br><br><br><div style="border-top:1px solid #94a3b8;padding-top:6px;margin-top:4px"><strong style="font-size:11px;color:#0f172a">${approvedBy||"&nbsp;"}</strong><br>Manager / Authorized</div></div>
-  <div class="sig-box">Received by<br><br><br><div style="border-top:1px solid #94a3b8;padding-top:6px;margin-top:4px"><strong style="font-size:11px;color:#0f172a">${receivedBy||"&nbsp;"}</strong><br>Supplier / Vendor</div></div>
-</div>
-</body></html>`;
-    const w=window.open("","_blank","width=900,height=700");
-    if(w){w.document.write(html);w.document.close();addPrintClose(w);setTimeout(()=>w.print(),600);}
+  // 🖨 PO: the PDF (ordersPdf.js) in a new tab. Built from every line of the
+  // PO in the database, not the lines the list happens to show: a project or
+  // status filter used to print a partial PO with a lower total. Cancelled
+  // lines are left out (they were printed and added to the total).
+  const printPO=(poNo,supplierName)=>{
+    const key=(supplierName||"").toLowerCase().trim();
+    const items=prs.filter(p=>p.poNumber===poNo&&(p.supplier||"").toLowerCase().trim()===key&&p.status!=="Cancelled");
+    if(!items.length){toastEmit&&toastEmit(`PO ${poNo} has no lines to print (all cancelled?).`,"warning");return;}
+    const t=poTotals(items);
+    const pdt=items[0]?.poDiscType||"none",pdv=Number(items[0]?.poDiscValue)||0;
+    const sup=(suppliers||[]).find(s=>(s.companyName||s.company_name||"").toLowerCase().trim()===key)||{};
+    const allProjDeals=[...(allDeals||[]),...(wonDeals||[])];
+    const status=items.find(i=>PO_ISSUED_STATUSES.includes(i.status))?.status||items[0]?.status||"Draft";
+    const approved=PO_ISSUED_STATUSES.includes(status);
+    const model={
+      poNo,poDate:items[0]?.poDate||"",supplier:supplierName||"—",status,approved,
+      approvedBy:items.find(i=>i.approvedBy)?.approvedBy||"",
+      preparedBy:items[0]?.requestedBy||items[0]?.createdBy||"",
+      supplierContact:[sup.contactPerson,sup.contactNos].filter(Boolean).join(" · "),supplierAddress:sup.address||"",supplierTin:sup.tinNo||"",
+      terms:items[0]?.paymentTerms||sup.paymentTerms||"",
+      withVat:t.withVat,subtotal:t.gross,discount:Math.round((t.gross-t.net)*100)/100,discountLabel:pdt==="pct"?`${pdv}%`:"",
+      net:t.net,vat:Math.round((t.total-t.net)*100)/100,total:t.total,
+      lines:items.map(i=>{
+        const unitPrice=Number(i.actUnitCost)||Number(i.estUnitCost)||0,qty=Number(i.qty)||0;
+        const deal=i.projectId==="__gmd_stocks__"?null:allProjDeals.find(d=>d.id===(i.projectId||i.dealId));
+        return{item:i.itemName||"—",note:i.description&&i.description!==i.itemName?i.description:"",qty:String(qty),unit:i.unit||"",unitPrice,amount:unitPrice*qty,
+          forLabel:orderForLabel(deal,jos,i.projectId)};
+      }),
+      termsLines:((items[0]?.termsText||"").trim()||PO_TERMS_DEFAULT).split("\n").map(x=>x.trim()).filter(Boolean),
+    };
+    openPdfTabShared(async()=>{const {buildPoPdf}=await import("./views/ordersPdf");return buildPoPdf(model);},`PO ${poNo}`,toastEmit);
   };
 
   const addPoItem=()=>setPoItems(p=>[...p,emptyPoItem()]);
@@ -24905,7 +24815,7 @@ ${termsItems?`<div class="terms"><h4>Terms &amp; Conditions</h4><ol>${termsItems
                   <div style={{textAlign:"right",fontWeight:800,color:"#10b981",fontSize:".85rem"}}>{fmt(total)}</div>
                   <div><span style={{fontSize:".62rem",background:STATUS_CLR[status]+"22",color:STATUS_CLR[status],border:`1px solid ${STATUS_CLR[status]}44`,borderRadius:20,padding:"2px 8px",fontWeight:700,whiteSpace:"nowrap"}}>{status}</span></div>
                   <div style={{display:"flex",gap:5,justifyContent:"flex-end"}}>
-                    <button aria-label={`Print PO ${poNo}`} title="Print PO" onClick={e=>{e.stopPropagation();printPO(poNo,supplier,poD,items,items[0]?.poDiscType,items[0]?.poDiscValue,items[0]?.withVat);}} style={{background:"#eff6ff",border:"none",borderRadius:6,padding:"3px 8px",fontSize:".68rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨</button>
+                    <button aria-label={`Print PO ${poNo}`} title="Print PO" onClick={e=>{e.stopPropagation();printPO(poNo,supplier);}} style={{background:"#eff6ff",border:"none",borderRadius:6,padding:"3px 8px",fontSize:".68rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨</button>
                     {(role==="Manager"||isProcurementRole(role))&&<button aria-label={`Edit PO ${poNo}`} title="Edit PO" onClick={e=>{e.stopPropagation();openEditPO(poNo,items);}} style={{background:"#f0fdf4",border:"none",borderRadius:6,padding:"3px 8px",fontSize:".68rem",color:"#059669",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✏</button>}
                     {(role==="Manager"||isProcurementRole(role))&&<button aria-label={`Delete PO ${poNo}`} title="Delete PO" onClick={async e=>{e.stopPropagation();
                       // Policy v2.0: a PO that has already raised an Accounts Payable
@@ -25376,10 +25286,10 @@ function BudgetRequestView({sendTelegramNotification,breqs,addBR,updateBR,delete
 </style></head><body><div class="page">
 
   <div class="letterhead">
-    <div>
+    <div style="display:flex;align-items:center;gap:12px">${docLogo(44)}<div>
       <div class="co-name">GMD Productions Inc.</div>
       <div class="co-info">Interior Design &amp; Fabrication<br>Marikina City, Metro Manila<br>gmdproductionsinc@gmail.com</div>
-    </div>
+    </div></div>
     <div style="text-align:right">
       <div class="doc-title">BUDGET REQUEST</div>
       <div class="doc-no">Date: ${printDate}</div>
@@ -26061,19 +25971,24 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   // everyone else's is watermarked DRAFT (same rule as the BOQ quotation).
   const billingPdf=useSharePdf(toastEmit);
   const billingPdfDraft=!["Manager","Finance","FinanceAssistant","Accounting"].includes(role);
-  const shareInvoicePdf=(ms)=>{
-    const{d,tx,totalPaid,balance,cp,clientAddr}=invoiceData(ms);
-    const model={
+  const invoiceModel=(ms)=>{
+    const{d,tx,totalPaid,balance,cp,clientAddr,prog,due,pos,line}=invoiceData(ms);
+    return{
+      progress:prog,asOf:today,position:pos,
       draft:billingPdfDraft,
       docTitle:"Billing Statement",
       invoiceNo:ms.invoiceNo||"",invoiceDate:ms.invoiceDate||today,
-      dueDate:ms.dueDate||ms.invoiceDate||today,overdue:!!(ms.dueDate&&ms.dueDate<today),
-      terms:cp.paymentTerms||"Due on receipt",poNo:dealClientPo(d,deals),
-      billTo:{name:d?.client||"—",contact:cp.contactPerson||"",address:clientAddr,email:cp.email||"",tin:cp.tin||""},
-      line:{date:ms.invoiceDate||today,service:ms.name||"",tax:tx.vat>0?"12% S":"—",
-        description:[d?.contact||"",d?.location?`Location: ${d.location}`:"",ms.description||""].filter(Boolean)},
+      dueDate:due.dueDate,overdue:due.overdue,
+      terms:due.label,poNo:dealClientPo(d,deals),
+      billTo:{name:d?.client||"—",project:d?.contact||d?.product||"",location:d?.location||"",ceNo:d?.ceNo||"",
+        contact:cp.contactPerson||"",address:clientAddr,email:cp.email||"",tin:cp.tin||""},
+      line:{date:ms.invoiceDate||today,service:line.service,tax:tx.vat>0?"12% S":"—",qty:line.qty,rate:line.rate,amount:line.amount,
+        description:line.description},
       subtotal:Number(ms.amount)||0,vat:tx.vat,gross:tx.gross,ewt:tx.ewt,paid:totalPaid,balance,
     };
+  };
+  const shareInvoicePdf=(ms)=>{
+    const model=invoiceModel(ms),d=deals.find(x=>x.id===ms.dealId);
     billingPdf.make(async()=>{const {buildInvoicePdf}=await import("./views/billingPdf");return buildInvoicePdf(model);},
       [ms.invoiceNo,d?.client,"Billing Statement"].filter(Boolean).join(" - "),
       {draft:billingPdfDraft,draftNote:"Only Finance's or a Manager's copy is clean to send."});
@@ -26083,20 +25998,25 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     return{client:r.d.client||"",project:r.d.contact||r.d.product||r.d.ceNo||"—",
       ref:[r.d.ceNo&&(r.d.contact||r.d.product)?r.d.ceNo:"",po?"PO# "+po:""].filter(Boolean).join(" · "),
       vatable:r.vatable,vat:r.vat,gross:r.gross,payments:r.payments,ewt:r.ewt,due:r.due,balance:r.balance,
-      lastPaid:r.lastPaid,awaiting2307:r.awaiting2307};
+      lastPaid:r.lastPaid,awaiting2307:r.awaiting2307,nextDue:r.nextDue,overdueAmt:r.overdueAmt,progress:r.progress,lines:r.lines,
+      location:r.d.location||""};
   };
-  const shareSoaPdf=(clientName)=>{
+  const soaModel=(clientName)=>{
     const sd=soaData(clientName);
-    if(!sd){toastEmit&&toastEmit("No billing data found for "+clientName,"warning");return;}
-    const model={
+    if(!sd){toastEmit&&toastEmit("No billing data found for "+clientName,"warning");return null;}
+    return{
       draft:billingPdfDraft,clientName,address:sd.soaAddr,dateStr:sd.dateStr,refNos:sd.invoiceNos,amtLbl:sd.amtLbl,
-      preparedBy:sd.preparedBy,
+      preparedBy:sd.preparedBy,termsLbl:sd.termsLbl,today,overdue:sd.tOver,
       rows:sd.rows.map(soaPdfRow),
       settledRows:sd.settledRows.map(soaPdfRow),
       settledSince:sd.settledSince,settledMonths:SOA_SETTLED_MONTHS,
       settledTotals:{gross:sd.sG,payments:sd.sP},
       totals:{vatable:sd.tV,vat:sd.tVat,gross:sd.tG,payments:sd.tP,ewt:sd.tE,due:sd.tD,balance:sd.tB},
     };
+  };
+  const shareSoaPdf=(clientName)=>{
+    const model=soaModel(clientName);
+    if(!model) return;
     billingPdf.make(async()=>{const {buildSoaPdf}=await import("./views/billingPdf");return buildSoaPdf(model);},
       [clientName,"Statement of Account",today].join(" - "),
       {draft:billingPdfDraft,draftNote:"Only Finance's or a Manager's copy is clean to send."});
@@ -26328,198 +26248,26 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     const balance=Math.max(0,tx.netReceivable-totalPaid);
     const cp=(clientProfiles||{})[d?.client||""]||{};
     const clientAddr=[cp.billingAddress,cp.city,cp.province,cp.zipCode].filter(Boolean).join(", ");
-    return{d,tx,totalPaid,balance,cp,clientAddr};
+    // Contract progress bar (billed / paid of the whole contract). None on a
+    // mother PO: it earns ₱0 itself, its sub-projects carry the billing.
+    const prog=isMotherPO(d)?null:invoiceContractProgress({deal:d,milestones:billings,ms});
+    // TERMS and DUE DATE from one rule (billingDueTerms) so they can't disagree.
+    const due=billingDueTerms({ms,deal:d,clientTerms:cp.paymentTerms,today});
+    // What kind of billing this is and its % of the contract (worked out, not
+    // read from the name). A name that says another % gets a warning first.
+    const pos=billingPosition({deal:isMotherPO(d)?null:d,milestones:billings,ms});
+    if(pos?.pctMismatch) toastEmit&&toastEmit(`Check ${ms.invoiceNo||"this billing"}: its name says ${pos.namePct}% but the amount is ${pos.pct}% of the contract. Fix the name or the amount before sending.`,"warning",12000);
+    const line=statementLine(pos,ms);
+    return{d,tx,totalPaid,balance,cp,clientAddr,prog,due,pos,line};
   };
+  // 🖨 opens the same PDF as Share PDF in a new tab, to print or save from
+  // the browser's PDF viewer. One layout for both (they used to be two copies
+  // that drifted), and no browser date / about:blank lines on the printout.
+  // The tab is opened inside the tap, so popup blockers allow it.
+  const openPdfTab=(build,title)=>openPdfTabShared(build,title,toastEmit);
   const printInvoice=(ms)=>{
-    const{d,tx,totalPaid,balance,cp,clientAddr}=invoiceData(ms);
-    const win=window.open("","_blank");
-    win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Billing Statement ${ms.invoiceNo}</title>
-<style>
-  @page{size:A4;margin:12mm 14mm}
-  *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:Arial,Helvetica,sans-serif;color:#0f172a;font-size:11px;background:#fff;}
-  /* Print button */
-  .print-btn{text-align:center;padding:12px;background:#f8fafc;border-bottom:1px solid #e2e8f0;}
-  .print-btn button{background:#1e293b;color:#fff;border:none;border-radius:6px;padding:8px 24px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:700;}
-  /* Header — matches Statement of Account template */
-  .header{background:#1e293b;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;}
-  .co-name{font-size:22px;font-weight:900;color:#fff;letter-spacing:-.5px;}
-  .sub-bar{background:#1e293b;padding:2px 20px 10px;display:flex;justify-content:space-between;border-bottom:3px solid #ea580c;}
-  .tagline{color:rgba(255,255,255,.45);font-size:9.5px;}
-  .wrap{padding:16px 20px 8px;}
-  /* Doc title */
-  .doc-title{font-size:16px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;}
-  /* Bill-to + meta grid */
-  .meta-row{display:grid;grid-template-columns:1fr auto;gap:40px;margin-bottom:16px;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;padding:12px 0;}
-  .bill-label{font-size:9px;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px;letter-spacing:.5px;}
-  .bill-name{font-weight:700;font-size:13px;color:#0f172a;}
-  .bill-addr{font-size:11px;color:#475569;margin-top:3px;line-height:1.6;}
-  .meta-table td{font-size:11px;padding:2px 0 2px 24px;vertical-align:top;}
-  .meta-table .label{color:#64748b;padding-left:0;white-space:nowrap;text-transform:uppercase;font-size:9px;font-weight:700;letter-spacing:.5px;}
-  .meta-table .val{font-weight:600;}
-  /* Items table — navy header like SOA */
-  table.items{width:100%;border-collapse:collapse;margin-bottom:0;}
-  table.items thead tr{background:#1e293b;}
-  table.items th{padding:8px 10px;font-size:8px;font-weight:700;text-transform:uppercase;color:rgba(255,255,255,.8);text-align:left;letter-spacing:.5px;}
-  table.items th.r{text-align:right;}
-  table.items td{padding:9px 10px;font-size:11px;border-bottom:1px solid #f1f5f9;vertical-align:top;}
-  table.items tbody tr:nth-child(even){background:#f9fafb;}
-  table.items td.r{text-align:right;white-space:nowrap;}
-  table.items td.bold{font-weight:700;}
-  /* Footer row: terms left, totals right */
-  .footer-row{display:grid;grid-template-columns:1fr auto;gap:24px;margin-top:0;border-top:1px dashed #cbd5e1;padding-top:14px;}
-  .terms{font-size:11px;color:#475569;line-height:1.7;}
-  .terms strong{display:block;margin-bottom:4px;font-size:11px;color:#0f172a;}
-  .totals-tbl{width:270px;}
-  .totals-tbl td{font-size:11px;padding:3px 0 3px 16px;}
-  .totals-tbl .label{color:#64748b;padding-left:0;}
-  .totals-tbl .sep{border-top:1px dashed #cbd5e1;}
-  .totals-tbl .grand-sep td{border-top:2px solid #1e293b;font-weight:900;font-size:13px;padding-top:8px;}
-  .totals-tbl .grand-sep .label{color:#0f172a;text-transform:uppercase;letter-spacing:.5px;}
-  /* Tax summary — navy header like SOA */
-  .tax-summary{margin-top:20px;}
-  .tax-summary .ts-title{font-weight:700;font-size:11px;margin-bottom:5px;text-transform:uppercase;letter-spacing:.8px;color:#0f172a;}
-  table.ts{width:100%;border-collapse:collapse;}
-  table.ts thead tr{background:#1e293b;}
-  table.ts th{padding:6px 10px;font-size:8px;font-weight:700;text-transform:uppercase;color:rgba(255,255,255,.8);text-align:right;letter-spacing:.5px;}
-  table.ts th:first-child{text-align:center;}
-  table.ts td{padding:6px 10px;font-size:11px;text-align:right;border-bottom:1px solid #f1f5f9;}
-  table.ts td:first-child{text-align:center;}
-  /* Signature */
-  .sig-row{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:32px;padding-top:16px;}
-  .sig-block{font-size:11px;color:#64748b;}
-  .sig-line{border-top:1px solid #94a3b8;margin-top:28px;padding-top:4px;}
-  /* Company footer */
-  .co-footer{text-align:center;margin-top:22px;padding-top:10px;border-top:1px solid #e2e8f0;font-size:9px;color:#94a3b8;line-height:1.7;}
-  @media print{
-    .print-btn{display:none;}
-    .header,.sub-bar,table.items thead tr,table.ts thead tr{print-color-adjust:exact;-webkit-print-color-adjust:exact;}
-  }
-</style>
-</head><body>
-<div class="print-btn"><button onclick="window.print()">🖨 Print / Save as PDF</button></div>
-
-<!-- Header -->
-<div class="header">
-  <div class="co-name">GMD PRODUCTIONS INC.</div>
-  <div style="text-align:right">
-    <span style="color:rgba(255,255,255,.6);font-size:10px">DATE: </span>
-    <span style="color:#f97316;font-weight:700;font-size:12px">${ms.invoiceDate||today}</span>
-  </div>
-</div>
-<div class="sub-bar">
-  <span class="tagline">Retail Design &amp; Build | Construction | Modular Fit-outs | Signage | POP Displays</span>
-  <span class="tagline">BILLING NO.: ${ms.invoiceNo||"—"}</span>
-</div>
-
-<div class="wrap">
-  <!-- Document title -->
-  <!-- Never "Tax Invoice": GMD issues its official BIR invoice / receipt
-       separately, so this document is a billing statement only (Paulo,
-       2026-10-26). Same title and note on the Share PDF (billingPdf.js). -->
-  <div class="doc-title">Billing Statement</div>
-
-  <!-- Bill-to + Invoice meta -->
-  <div class="meta-row">
-    <div>
-      <div class="bill-label">Bill To</div>
-      <div class="bill-name">${d?.client||"—"}</div>
-      ${cp.contactPerson?`<div class="bill-addr">${cp.contactPerson}</div>`:""}
-      ${clientAddr?`<div class="bill-addr">${clientAddr}</div>`:""}
-      ${cp.email?`<div class="bill-addr">${cp.email}</div>`:""}
-      ${cp.tin?`<div class="bill-addr">TIN: ${cp.tin}</div>`:""}
-    </div>
-    <table class="meta-table">
-      <tr><td class="label">BILLING NO.</td><td class="val">${ms.invoiceNo||"—"}</td></tr>
-      ${dealClientPo(d,deals)?`<tr><td class="label">PO #</td><td class="val">${String(dealClientPo(d,deals)).replace(/&/g,"&amp;").replace(/</g,"&lt;")}</td></tr>`:""}
-      <tr><td class="label">DATE</td><td class="val">${ms.invoiceDate||today}</td></tr>
-      <tr><td class="label">TERMS</td><td class="val">${cp.paymentTerms||"Due on receipt"}</td></tr>
-      <tr><td class="label">DUE DATE</td><td class="val" style="color:${ms.dueDate&&ms.dueDate<today?"#dc2626":"inherit"}">${ms.dueDate||ms.invoiceDate||today}</td></tr>
-    </table>
-  </div>
-
-  <!-- Line items -->
-  <table class="items">
-    <thead>
-      <tr>
-        <th style="width:80px">DATE</th>
-        <th style="width:130px">SERVICE</th>
-        <th>DESCRIPTION</th>
-        <th class="r" style="width:60px">TAX</th>
-        <th class="r" style="width:40px">QTY</th>
-        <th class="r" style="width:100px">RATE</th>
-        <th class="r" style="width:100px">AMOUNT</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>${ms.invoiceDate||today}</td>
-        <td class="bold">${ms.name}</td>
-        <td>${[d?.contact?`${d.contact}`:"",d?.location?`Location: ${d.location}`:"",ms.description||""].filter(Boolean).join("<br/>")}</td>
-        <td class="r">${tx.vat>0?"12% S":"—"}</td>
-        <td class="r">1</td>
-        <td class="r">${fmt(ms.amount)}</td>
-        <td class="r">${fmt(ms.amount)}</td>
-      </tr>
-    </tbody>
-  </table>
-
-  <!-- Footer: payment terms + totals -->
-  <div class="footer-row">
-    <div class="terms">
-      <strong>We require the ff payment terms:</strong>
-      1) 50% DP to start project<br/>
-      2) Billing of 40% up until installation<br/>
-      3) Retention of 10% upon certificate of completion<br/><br/>
-      <strong>Account Name: GMD PRODUCTIONS INC</strong>
-      BDO CHECKING — 012758000370<br/>
-      BPI CHECKING — 6011 04 82 03<br/>
-      METROBANK — 382-7-38202059-2
-    </div>
-    <table class="totals-tbl">
-      <tr><td class="label">SUBTOTAL</td><td style="text-align:right">${fmt(ms.amount)}</td></tr>
-      <tr><td class="label sep">TAX</td><td style="text-align:right" class="sep">${fmt(tx.vat)}</td></tr>
-      <tr><td class="label">TOTAL</td><td style="text-align:right">${fmt(tx.gross)}</td></tr>
-      ${tx.ewt>0?`<tr><td class="label" style="color:#dc2626">Less: EWT</td><td style="text-align:right;color:#dc2626">(${fmt(tx.ewt)})</td></tr>`:""}
-      ${totalPaid>0?`<tr><td class="label" style="color:#2563eb">AMOUNT PAID</td><td style="text-align:right;color:#2563eb">(${fmt(totalPaid)})</td></tr>`:""}
-      <tr class="grand-sep">
-        <td class="label">BALANCE DUE</td>
-        <td style="text-align:right;color:${balance>0?"#ea580c":"#059669"}">PHP ${balance>0?Number(balance).toLocaleString("en-PH",{minimumFractionDigits:2}):"0.00"}</td>
-      </tr>
-    </table>
-  </div>
-
-  <!-- Tax summary -->
-  ${tx.vat>0?`
-  <div class="tax-summary">
-    <div class="ts-title">Tax Summary</div>
-    <table class="ts">
-      <thead><tr><th>RATE</th><th>TAX</th><th>NET</th></tr></thead>
-      <tbody><tr><td>VAT @ 12%</td><td>${fmt(tx.vat)}</td><td>${fmt(ms.amount)}</td></tr></tbody>
-    </table>
-  </div>`:""}
-
-  <!-- Signature -->
-  <div class="sig-row">
-    <div class="sig-block">
-      <div class="sig-line">Accepted By</div>
-    </div>
-    <div class="sig-block">
-      <div class="sig-line">Accepted Date</div>
-    </div>
-  </div>
-
-  <!-- Company footer -->
-  <div style="text-align:center;margin-top:18px;font-size:10px;font-weight:700;color:#475569">This is a billing statement, not an official receipt or BIR invoice. The official invoice is issued separately.</div>
-  <div class="co-footer">
-    GMD PRODUCTIONS INC &nbsp;·&nbsp; 32 Santan Unit H Brgy Fortune, Marikina, NCR 1802 PH &nbsp;·&nbsp; TIN 010-063-229-000<br/>
-    +63 9189338436 &nbsp;·&nbsp; sales@gmd.ph &nbsp;·&nbsp; www.gmd.ph
-  </div>
-
-  <div style="text-align:center;margin-top:10px;font-size:9px;color:#cbd5e1">Page 1 of 1</div>
-</div>
-</body></html>`);
-    win.document.close();addPrintClose(win);
+    const model=invoiceModel(ms);
+    openPdfTab(async()=>{const {buildInvoicePdf}=await import("./views/billingPdf");return buildInvoicePdf(model);},`Billing Statement ${ms.invoiceNo||""}`.trim());
   };
 
   // One client's SOA figures — used by the print page AND the Share PDF copy
@@ -26529,7 +26277,9 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     const allRows=clientDeals.map(d=>{
       const ms=billings.filter(b=>b.dealId===d.id);
       const rt=d.receiptType||"OR",wh=d.withholding||false;
-      const active=ms.filter(m=>m.status!=="Cancelled");
+      // Sent billings only: a Draft hasn't gone to the client, so it is not
+      // owed yet (it used to be counted, asking clients for unsent billings).
+      const active=ms.filter(m=>m.status!=="Cancelled"&&m.status!=="Draft");
       const vatable=active.reduce((s,m)=>s+calcTax(m.amount,m.receiptType??rt,m.withholding??wh).base,0);
       const vat=active.reduce((s,m)=>s+calcTax(m.amount,m.receiptType??rt,m.withholding??wh).vat,0);
       const gross=vatable+vat;
@@ -26546,7 +26296,25 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       // outstanding, labelled, because the SOA is how Finance chases it.
       const settled=balance<0.01;
       const awaiting2307=!settled&&due<0.01;
-      return{d,vatable,vat,gross,payments,ewt,due,balance,lastPaid,settled,awaiting2307};
+      // Due date of each open billing (billingDueTerms: the same rule as the
+      // billing statement), the earliest one shown, and what is past due.
+      const cpD=(clientProfiles||{})[d.client||""]||{};
+      const open=active.map(m=>({m,bal:milestoneBalance(m,d),t:billingDueTerms({ms:m,deal:d,clientTerms:cpD.paymentTerms,today})})).filter(x=>x.bal>0.01);
+      const nextDue=open.reduce((mn,x)=>x.t.dueDate&&(!mn||x.t.dueDate<mn)?x.t.dueDate:mn,"");
+      const overdueAmt=open.filter(x=>x.t.overdue).reduce((s,x)=>s+x.bal,0);
+      const progress=isMotherPO(d)?null:invoiceContractProgress({deal:d,milestones:billings});
+      // One line per sent billing, oldest first, in plain terms: what was
+      // billed, the tax the client withholds, what they paid, what is still due.
+      const lines=active.slice().sort((a,b)=>String(a.invoiceDate||"").localeCompare(String(b.invoiceDate||""))).map(m=>{
+        const tx=calcTax(m.amount,m.receiptType??rt,m.withholding??wh);
+        const paid=(m.payments||[]).filter(p=>!p.bounced).reduce((s2,p)=>s2+Number(p.amount||0),0);
+        const amtDue=Math.max(0,tx.netReceivable-paid);
+        const t=billingDueTerms({ms:m,deal:d,clientTerms:cpD.paymentTerms,today});
+        const pos=isMotherPO(d)?null:billingPosition({deal:d,milestones:billings,ms:m});
+        const status=amtDue<0.01?(tx.ewt>0&&awaiting2307?"Paid · BIR 2307 to follow":"Paid"):t.overdue?"Past due":paid>0?"Partly paid":"Due";
+        return{no:m.invoiceNo||"",date:m.invoiceDate||"",what:m.name||"",pct:pos?.pct??null,billed:tx.gross,ewt:tx.ewt,paid,amtDue,dueDate:t.dueDate,status};
+      });
+      return{d,vatable,vat,gross,payments,ewt,due,balance,lastPaid,settled,awaiting2307,nextDue,overdueAmt,progress,lines};
     }).filter(r=>r.vatable>0||r.payments>0);
     if(!allRows.length) return null;
     // Outstanding projects carry the statement's totals. Settled ones are shown
@@ -26561,170 +26329,27 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     const tG=rows.reduce((s,r)=>s+r.gross,0),tP=rows.reduce((s,r)=>s+r.payments,0);
     const tE=rows.reduce((s,r)=>s+r.ewt,0),tD=rows.reduce((s,r)=>s+r.due,0);
     const tB=rows.reduce((s,r)=>s+r.balance,0);
+    const tOver=rows.reduce((s,r)=>s+r.overdueAmt,0);
     const dateStr=new Date().toLocaleDateString("en-US",{month:"numeric",day:"numeric",year:"numeric"});
     const preparedBy=session?.name||"";
     // Billing address from the client's profile (Clients → Profile), the same
     // source the invoice uses. It used to print blank for every client.
     const cpSoa=(clientProfiles||{})[clientName]||(clientProfiles||{})[clientDeals[0]?.client||""]||{};
     const soaAddr=[cpSoa.billingAddress,cpSoa.city,cpSoa.province,cpSoa.zipCode].filter(Boolean).join(", ");
+    // The client's standard terms for the header line; each row's due date
+    // still follows its own billing.
+    const termsLbl=billingTermsLabel(billingDefaultNetDays(null,cpSoa.paymentTerms))+" from billing date";
     // AR (no VAT) projects have no "vatable" amount; don't label them as such.
     const amtLbl=(rows.length?tVat:allRows.reduce((s,r)=>s+r.vat,0))>0?"VATABLE AMOUNT":"AMOUNT (NO VAT)";
     // Reference numbers of the projects actually on this statement.
     const shownIds=new Set([...rows,...settledRows].map(r=>r.d.id));
     const invoiceNos=[...new Set(billings.filter(b=>shownIds.has(b.dealId)&&b.invoiceNo&&b.status!=="Cancelled").map(b=>b.invoiceNo))].join(", ");
-    return{clientDeals,rows,settledRows,settledSince,sG,sP,tV,tVat,tG,tP,tE,tD,tB,dateStr,preparedBy,cpSoa,soaAddr,amtLbl,invoiceNos};
+    return{clientDeals,rows,settledRows,settledSince,sG,sP,tV,tVat,tG,tP,tE,tD,tB,tOver,termsLbl,dateStr,preparedBy,cpSoa,soaAddr,amtLbl,invoiceNos};
   };
   const printSOA=(clientName)=>{
-    const esc=(s)=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-    const f=(v)=>Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
-    const sd=soaData(clientName);
-    if(!sd){alert("No billing data found for "+clientName);return;}
-    const{rows,settledRows,settledSince,sG,sP,tV,tVat,tG,tP,tE,tD,tB,dateStr,preparedBy,soaAddr,amtLbl,invoiceNos}=sd;
-    const fd=(iso)=>iso?new Date(iso+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):"—";
-    const projCell=(r)=>`<td style="text-align:left"><div style="color:#2563eb;font-weight:600">${esc(r.d.contact||r.d.product||r.d.ceNo||"—")}</div>${(()=>{const po=dealClientPo(r.d,deals);const ref=[r.d.ceNo&&(r.d.contact||r.d.product)?r.d.ceNo:"",po?"PO# "+po:""].filter(Boolean).join(" · ");return ref?`<div style="color:#64748b;font-size:8.5px;margin-top:1px">${esc(ref)}</div>`:"";})()}${r.awaiting2307?`<div style="color:#b45309;font-size:8.5px;font-weight:700;margin-top:1px">Awaiting BIR Form 2307</div>`:""}</td>`;
-    const settledHtml=settledRows.map((r,i)=>`<tr>
-      <td style="text-align:center;color:#64748b">${i+1}</td>
-      ${projCell(r)}
-      <td style="text-align:right">${f(r.gross)}</td>
-      <td style="text-align:right;color:#2563eb">${f(r.payments)}</td>
-      <td style="text-align:right">${esc(fd(r.lastPaid))}</td>
-      <td style="text-align:right;color:#059669;font-weight:700">PAID</td>
-    </tr>`).join("");
-    const rowsHtml=rows.map((r,i)=>`<tr>
-      <td style="text-align:center;color:#64748b">${i+1}</td>
-      <td style="color:#2563eb;font-weight:600">${esc(r.d.client)}</td>
-      ${projCell(r)}
-      <td style="text-align:right">${f(r.vatable)}</td>
-      <td style="text-align:right">${f(r.vat)}</td>
-      <td style="text-align:right">${f(r.gross)}</td>
-      <td style="text-align:right;color:#2563eb">${f(r.payments)}</td>
-      <td style="text-align:right">${f(r.ewt)}</td>
-      <td style="text-align:right;color:#ea580c;font-weight:700">${f(r.due)}</td>
-      <td style="text-align:right;font-weight:700">${f(r.balance)}</td>
-    </tr>`).join("");
-    const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>SOA — ${esc(clientName)}</title><style>
-      @page{size:A4 landscape;margin:12mm 15mm}
-      *{box-sizing:border-box;margin:0;padding:0;print-color-adjust:exact;-webkit-print-color-adjust:exact}
-      body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#0f172a;background:#fff;padding:0}
-      .print-btn{text-align:center;padding:12px;background:#f8fafc;border-bottom:1px solid #e2e8f0}
-      .print-btn button{background:#1e293b;color:#fff;border:none;border-radius:6px;padding:8px 24px;font-size:13px;cursor:pointer;font-family:inherit}
-      @media print{.print-btn{display:none}}
-      .header{background:#1e293b;padding:12px 20px;display:flex;justify-content:space-between;align-items:center}
-      .co-name{font-size:22px;font-weight:900;color:#fff;letter-spacing:-.5px}
-      .sub-bar{background:#1e293b;padding:2px 20px 10px;display:flex;justify-content:space-between;border-bottom:3px solid #ea580c}
-      .tagline{color:rgba(255,255,255,.45);font-size:9.5px}
-      .soa-wrap{padding:12px 20px 8px}
-      .soa-title{font-size:15px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px}
-      .client-grid{display:grid;grid-template-columns:auto 1fr 40px auto 1fr;gap:6px 10px;align-items:end;margin-bottom:16px}
-      .cl{font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;white-space:nowrap}
-      .cv{border-bottom:1.5px solid #0f172a;padding-bottom:2px;font-weight:600;font-size:11px;color:#1e40af}
-      .summary{display:grid;grid-template-columns:repeat(5,1fr);border:1.5px solid #e2e8f0;margin-bottom:16px}
-      .sb{padding:10px 14px;background:#f8fafc;border-right:1px solid #e2e8f0;text-align:center}
-      .sb:last-child{border-right:none;background:#fff7ed}
-      .sl{font-size:8px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px}
-      .sv{font-size:16px;font-weight:800;color:#0f172a}
-      .sb:last-child .sv{color:#ea580c}
-      table{width:100%;border-collapse:collapse;margin:0 0 14px;font-size:10px}
-      thead tr{background:#1e293b}
-      thead th{color:rgba(255,255,255,.8);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:8px 10px;text-align:left}
-      thead th:nth-child(n+4){text-align:right}
-      tbody tr:nth-child(even){background:#f9fafb}
-      tbody td{padding:8px 10px;border-bottom:1px solid #f1f5f9}
-      tbody td:nth-child(n+4){text-align:right}
-      tfoot tr{background:#1e293b}
-      tfoot td{color:#fff;font-weight:700;padding:9px 10px;font-size:10px;text-align:right}
-      tfoot td:nth-child(1),tfoot td:nth-child(2){text-align:center;color:rgba(255,255,255,.7);font-size:9px;font-weight:400}
-      .total-due{color:#f97316!important;font-size:13px!important;font-weight:900!important}
-      .tbl-title{font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#0f172a;margin:4px 0 6px}
-      .paid-full{border:2px solid #059669;color:#059669;background:#ecfdf5;font-weight:900;font-size:13px;letter-spacing:1px;text-align:center;padding:10px;margin-bottom:14px}
-      table.settled thead tr,table.settled tfoot tr{background:#475569}
-      table.settled thead th:nth-child(n+3){text-align:right}
-      table.settled thead th:nth-child(-n+2),table.settled tbody td:nth-child(-n+2){text-align:left}
-      table.settled tbody td:first-child{text-align:center}
-      table.settled tbody td:nth-child(n+3){text-align:right}
-      .none{font-size:9.5px;color:#64748b;font-style:italic;margin-bottom:14px}
-      .notes{border:1px solid #e2e8f0;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:9px;color:#475569}
-      .notes b{color:#0f172a;font-size:9px}
-      .notes .nt{font-weight:700;font-size:10px;color:#0f172a;margin-bottom:6px}
-      .sig{display:grid;grid-template-columns:1fr 1fr;gap:40px;padding:10px 0}
-      .sl2{font-size:9px;color:#64748b;margin-bottom:18px}
-      .sn{font-size:11px;font-weight:700}
-      .sc{font-size:9px;color:#64748b}
-    </style></head><body>
-    <div class="print-btn"><button onclick="window.print()">🖨 Print / Save as PDF</button></div>
-    <div class="header">
-      <div class="co-name">GMD PRODUCTIONS INC.</div>
-      <div style="text-align:right">
-        <span style="color:rgba(255,255,255,.6);font-size:10px">DATE: </span>
-        <span style="color:#f97316;font-weight:700;font-size:12px">${dateStr}</span>
-      </div>
-    </div>
-    <div class="sub-bar">
-      <span class="tagline">Retail Design &amp; Build | Construction | Modular Fit-outs | Signage | POP Displays</span>
-      <span class="tagline">REF NO.: ${esc(invoiceNos)||"—"}</span>
-    </div>
-    <div class="soa-wrap">
-      <div class="soa-title">Statement of Account</div>
-      <div class="client-grid">
-        <span class="cl">CLIENT NAME:</span>
-        <span class="cv">${esc(clientName)}</span>
-        <span></span>
-        <span class="cl">BILLING ADDRESS:</span>
-        <span class="cv">${soaAddr?esc(soaAddr):"&nbsp;"}</span>
-      </div>
-      ${rows.length?`<div class="summary">
-        <div class="sb"><div class="sl">TOTAL ${amtLbl}</div><div class="sv">${f(tV)}</div></div>
-        <div class="sb"><div class="sl">TOTAL VAT</div><div class="sv">${f(tVat)}</div></div>
-        <div class="sb"><div class="sl">TOTAL PAYMENTS MADE</div><div class="sv">${f(tP)}</div></div>
-        <div class="sb"><div class="sl">TOTAL BALANCE</div><div class="sv">${f(tB)}</div></div>
-        <div class="sb"><div class="sl">TOTAL AMOUNT DUE</div><div class="sv">${f(tD)}</div></div>
-      </div>`:""}
-      ${rows.length?"":`<div class="paid-full">PAID IN FULL — no outstanding balance as of ${esc(dateStr)}</div>`}
-      ${rows.length?`<div class="tbl-title">Outstanding</div>
-      <table>
-        <thead><tr>
-          <th style="width:30px;text-align:center">#</th>
-          <th>CLIENT NAME</th><th>PROJECT NAME</th>
-          <th>${amtLbl}</th><th>VAT</th><th>SALES AMOUNT</th>
-          <th>PAYMENT MADE</th><th>WHT</th><th>TOTAL AMOUNT DUE</th><th>BALANCE</th>
-        </tr></thead>
-        <tbody>${rowsHtml}</tbody>
-        <tfoot><tr>
-          <td></td><td colspan="2">TOTAL AMOUNT DUE</td>
-          <td>${f(tV)}</td><td>${f(tVat)}</td><td>${f(tG)}</td>
-          <td>${f(tP)}</td><td>${f(tE)}</td>
-          <td class="total-due">${f(tD)}</td><td>${f(tB)}</td>
-        </tr></tfoot>
-      </table>`:""}
-      <div class="tbl-title">Settled — fully paid since ${esc(fd(settledSince))}</div>
-      ${settledRows.length?`<table class="settled">
-        <thead><tr>
-          <th style="width:30px;text-align:center">#</th>
-          <th>PROJECT NAME</th><th>SALES AMOUNT</th><th>PAYMENT MADE</th><th>LAST PAYMENT</th><th>Status</th>
-        </tr></thead>
-        <tbody>${settledHtml}</tbody>
-        <tfoot><tr><td></td><td style="text-align:left">TOTAL SETTLED</td><td>${f(sG)}</td><td>${f(sP)}</td><td></td><td></td></tr></tfoot>
-      </table>`:`<div class="none">No projects fully paid in the last ${SOA_SETTLED_MONTHS} months.</div>`}
-      <div class="notes">
-        <div class="nt">NOTES</div>
-        <p style="margin-bottom:6px">Thank you for your business! Please send or email (<b>finance@gmd.ph</b>) us a copy of the payment for proper recording.</p>
-        <p style="margin-top:8px;font-weight:700">Payment Details:</p>
-        <p style="margin-top:4px"><b>Account Name:</b>&nbsp; GMD PRODUCTIONS INC</p>
-        <p style="margin-top:3px"><b>BDO CHECKING</b>&nbsp;—&nbsp;012758000370</p>
-        <p style="margin-top:3px"><b>BPI CHECKING</b>&nbsp;—&nbsp;6011 04 82 03</p>
-        <p style="margin-top:3px"><b>METROBANK</b>&nbsp;—&nbsp;382-7-38202059-2</p>
-      </div>
-      <div class="sig">
-        <div><div class="sl2">Prepared by:</div><div class="sn">${esc(preparedBy)||"&nbsp;"}</div><div class="sc">GMD Productions Inc.</div></div>
-        <div><div class="sl2">Approved by:</div><div class="sn">Paulo Garcia</div><div class="sc">GMD Productions Inc.</div></div>
-      </div>
-    </div>
-    </body></html>`;
-    const w=window.open("","_blank","width=1100,height=780");
-    if(!w){toastEmit&&toastEmit("Popup blocked — please allow popups for this site","warning");return;}
-    w.document.write(html);
-    w.document.close();addPrintClose(w);
-    setTimeout(()=>w.print(),600);
+    const model=soaModel(clientName);
+    if(!model) return;
+    openPdfTab(async()=>{const {buildSoaPdf}=await import("./views/billingPdf");return buildSoaPdf(model);},`SOA — ${clientName}`);
   };
 
   // Per-project summary for list — includes addendum child deals
@@ -29649,7 +29274,7 @@ function DataManagement({
     </style></head><body>
     <div class="hdr">
       <div>
-        <div class="logo">GMD <span>PROD</span></div>
+        <div>${docLogo(44)}</div>
         <div style="color:#64748b;font-size:11px;margin-top:4px;">GMD Productions Inc. · TIN: 010-063-229-00000</div>
         <div style="color:#64748b;font-size:11px;">32 Unit-H Santan St., Fortune, Marikina City</div>
       </div>

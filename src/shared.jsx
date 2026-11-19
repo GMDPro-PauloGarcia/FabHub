@@ -9,6 +9,12 @@ export const fmt   = n => "₱" + Number(n||0).toLocaleString("en-PH",{minimumFr
 // phone. Call after document.close(): adds a "✕ Close" button (hidden when
 // printing) that closes the pop-up, or says to close the tab if the browser
 // won't let it.
+// GMD logo for printed documents (pop-up windows have no base URL, so it is
+// an absolute link to the public file). dark: white lettering, for a navy band.
+// Preloaded once so a document that prints right after opening has it cached.
+try{if(typeof window!=="undefined"&&window.Image){["","-dark"].forEach(v=>{const i=new window.Image();i.src=`/gmd-logo-doc${v}.png`;});}}catch(e){}
+export const docLogo=(h=40,{dark=false,style=""}={})=>
+  `<img src="${window.location.origin}/gmd-logo-doc${dark?"-dark":""}.png" alt="GMD" style="height:${h}px;width:auto;vertical-align:middle;flex-shrink:0;${style}">`;
 export const addPrintClose=w=>{
   try{
     const d=w&&w.document;if(!d||!d.body)return;
