@@ -1,4 +1,5 @@
 -- Audit guards (FabHub system audit, 2026-11-19). NOT YET APPLIED.
+-- Section 5 (change order / addendum approval) added 2026-11-19 at Paulo's request.
 --
 -- Four rules that until now were enforced only in the app (or not at all).
 -- Anyone with a login token can write to the REST API directly, so app-only
@@ -162,6 +163,128 @@ revoke execute on function public.payables_stamp_creator() from public, anon, au
 revoke execute on function public.job_orders_lock_jo_no() from public, anon, authenticated;
 revoke execute on function public.swo_contract_lock() from public, anon, authenticated;
 
+-- ── 5. Change order / addendum approval (Paulo, 2026-11-19) ──────────────────
+-- Approving a change order (addenda) or an addendum deal (deals.parent_deal_id,
+-- addendum_status) rolls its value into the contract, billing and the Sales
+-- Owner's commission. Only a Manager, or SalesOpsAdmin on a deal where they are
+-- not the Sales Owner (deal or parent), may approve or un-approve one. Before:
+-- any Sales user could approve an addendum deal (56 approved, ₱12.2M, as of
+-- 2026-11-19), and Sales / Ops / PMs could approve a CO, whose invoice then failed
+-- silently under RLS. Anyone else's change is kept as it was and logged
+-- ('blocked'), so a stale full-row save still goes through.
+-- App mirror: canApproveAddendum / ADDENDUM_APPROVER_ROLES (src/core.js).
+create or replace function public.can_approve_addendum(p_deal uuid)
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = pg_catalog, public
+as $$
+declare
+  v_me text;
+begin
+  if public.is_mgr() then return true; end if;
+  if not public.has_role('SalesOpsAdmin') then return false; end if;
+  select lower(btrim(p.name)) into v_me from public.user_profiles p where p.username = public.app_username() limit 1;
+  return not exists (
+    select 1 from public.deals d
+    where (d.id = p_deal or d.id = (select x.parent_deal_id from public.deals x where x.id = p_deal))
+      and coalesce(v_me, '') <> ''
+      and lower(btrim(coalesce(d.sales_owner, ''))) = v_me);
+end $$;
+
+create or replace function public.addenda_approval_guard()
+returns trigger
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+declare
+  v_rolled_old boolean;
+  v_rolled_new boolean;
+begin
+  if coalesce(current_setting('request.jwt.claims', true), '') = '' then
+    return new;
+  end if;
+  v_rolled_new := coalesce(new.status, '') in ('Approved', 'Billed', 'Collected');
+  if tg_op = 'INSERT' then
+    if exists (select 1 from public.addenda x where x.id = new.id) then
+      return new;  -- upsert of an existing CO: the UPDATE branch decides
+    end if;
+    if v_rolled_new and not public.can_approve_addendum(new.deal_id) then
+      new.status := 'Discovered';
+      new.awarded_date := null;
+    end if;
+    return new;
+  end if;
+  v_rolled_old := coalesce(old.status, '') in ('Approved', 'Billed', 'Collected');
+  if (v_rolled_old <> v_rolled_new
+      or (v_rolled_old and (round(coalesce(new.value, 0), 2) <> round(coalesce(old.value, 0), 2)
+                            or coalesce(new.kind, '') <> coalesce(old.kind, '')))
+      or new.deal_id is distinct from old.deal_id and v_rolled_old)
+     and not public.can_approve_addendum(old.deal_id) then
+    insert into public.audit_log (table_name, record_id, action, snapshot, reason, performed_by, performed_at)
+    values ('addenda', old.id::text, 'blocked',
+            jsonb_build_object('title', old.title, 'status', old.status, 'attempted_status', new.status,
+                               'value', old.value, 'attempted_value', new.value),
+            'Only a Manager or SalesOpsAdmin (not on their own deal) approves a change order or changes an approved one',
+            public.app_username(), now());
+    new.status := old.status;
+    new.value := old.value;
+    new.kind := old.kind;
+    new.deal_id := old.deal_id;
+    new.awarded_date := old.awarded_date;
+  end if;
+  return new;
+end $$;
+
+create or replace trigger trg_addenda_approval_guard
+  before insert or update on public.addenda
+  for each row execute function public.addenda_approval_guard();
+
+create or replace function public.deals_addendum_approval_guard()
+returns trigger
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+begin
+  if coalesce(current_setting('request.jwt.claims', true), '') = '' then
+    return new;
+  end if;
+  if tg_op = 'INSERT' then
+    if exists (select 1 from public.deals x where x.id = new.id) then
+      return new;  -- upsert of an existing deal: the UPDATE branch decides
+    end if;
+    if new.parent_deal_id is not null and coalesce(new.addendum_status, '') = 'Approved'
+       and not (public.is_mgr() or (public.has_role('SalesOpsAdmin') and public.can_approve_addendum(new.parent_deal_id)
+                and lower(btrim(coalesce(new.sales_owner, ''))) is distinct from
+                    (select lower(btrim(p.name)) from public.user_profiles p where p.username = public.app_username() limit 1))) then
+      new.addendum_status := 'Pending';
+    end if;
+    return new;
+  end if;
+  if new.addendum_status is distinct from old.addendum_status
+     and old.parent_deal_id is not null
+     and not public.can_approve_addendum(old.id) then
+    insert into public.audit_log (table_name, record_id, action, snapshot, reason, performed_by, performed_at)
+    values ('deals', old.id::text, 'blocked',
+            jsonb_build_object('ce_no', old.ce_no, 'addendum_status', old.addendum_status, 'attempted', new.addendum_status),
+            'Only a Manager or SalesOpsAdmin (not on their own deal) approves an addendum',
+            public.app_username(), now());
+    new.addendum_status := old.addendum_status;
+  end if;
+  return new;
+end $$;
+
+create or replace trigger trg_deals_addendum_approval_guard
+  before insert or update on public.deals
+  for each row execute function public.deals_addendum_approval_guard();
+
+revoke execute on function public.can_approve_addendum(uuid) from public, anon, authenticated;
+revoke execute on function public.addenda_approval_guard() from public, anon, authenticated;
+revoke execute on function public.deals_addendum_approval_guard() from public, anon, authenticated;
+
 -- ROLLBACK
 -- drop trigger if exists trg_billing_milestone_amount_guard on public.billing_milestones;
 -- drop trigger if exists trg_payables_aa_stamp_creator on public.payables;
@@ -171,3 +294,8 @@ revoke execute on function public.swo_contract_lock() from public, anon, authent
 -- drop function if exists public.payables_stamp_creator();
 -- drop function if exists public.job_orders_lock_jo_no();
 -- drop function if exists public.swo_contract_lock();
+-- drop trigger if exists trg_addenda_approval_guard on public.addenda;
+-- drop trigger if exists trg_deals_addendum_approval_guard on public.deals;
+-- drop function if exists public.addenda_approval_guard();
+-- drop function if exists public.deals_addendum_approval_guard();
+-- drop function if exists public.can_approve_addendum(uuid);

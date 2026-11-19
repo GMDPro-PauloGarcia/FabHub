@@ -13,7 +13,7 @@ import {fmt,addPrintClose,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dro
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {projProgressPct, isConstructionDeal, projStageFlow, projStepIndex, projStepLabel, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, canRecordDeduction, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel, pendingCostByProject, poSplitTotal, canRaiseOrder, woSignStep, WO_SIGN_MSG, arAgeBucket, arCallOrder, dealHasBoq, MOTHER_PO_BOQ_MSG, ledgerCosts, poVatSet, isBilledRevenue, paymentBaseFactor, projectProgressPct} from './core';
+import {projProgressPct, isConstructionDeal, projStageFlow, projStepIndex, projStepLabel, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, canApproveAddendum, ADDENDUM_APPROVER_MSG, PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, canRecordDeduction, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel, pendingCostByProject, poSplitTotal, canRaiseOrder, woSignStep, WO_SIGN_MSG, arAgeBucket, arCallOrder, dealHasBoq, MOTHER_PO_BOQ_MSG, ledgerCosts, poVatSet, isBilledRevenue, paymentBaseFactor, projectProgressPct} from './core';
 import ProgressReportModal from './views/ProgressReportModal';
 
 // Returns a component whose function IDENTITY is stable across renders while its
@@ -1675,7 +1675,7 @@ function ClientAutocomplete({value:initVal, onChange, existingNames=[]}){
 }
 
 // ─── CLIENT DIRECTORY ────────────────────────────────────────────────────────
-function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId,deals=[],addenda=[],role}){
+function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId,deals=[],addenda=[],role,me=""}){
   // Local state — prevents App re-render on every keystroke (fixes focus bug)
   const[form,setForm]=useState(initialForm||emptyDeal);
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
@@ -1804,7 +1804,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
                   const on=(form.addendumStatus||"Pending")===st;
                   const clr=st==="Approved"?"#059669":"#d97706";
                   return(
-                    <button type="button" key={st} onClick={()=>f("addendumStatus",st)}
+                    <button type="button" key={st} disabled={!canApproveAddendum(role,me,form,deals.find(d=>d.id===form.parentDealId))} title={canApproveAddendum(role,me,form,deals.find(d=>d.id===form.parentDealId))?"":ADDENDUM_APPROVER_MSG} onClick={()=>f("addendumStatus",st)}
                       style={{flex:1,padding:"7px 12px",borderRadius:8,cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",
                         border:`1.5px solid ${on?clr:"#e2e8f0"}`,background:on?clr:"#fff",color:on?"#fff":"#64748b"}}>
                       {st==="Approved"?"✅ Approved":"⏳ Pending"}
@@ -2852,6 +2852,7 @@ function AddendaPageContent({role,wonDeals,deals,jos,session,addenda,upAddenda,u
   // can approve. (Server-side RLS must allow the same set — see migration 054.)
   const canApprove=["Manager","Sales","Operations","ProjectMover","SalesOpsAdmin"].includes(role)&&typeof updateAddendum==="function";
   const myName=session?.name||"";
+  const CO_ROLLED_STATUS=s=>["Approved","Billed","Collected"].includes(s);
   const myProjects=wonDeals.filter(d=>{
     const jo=dealJo(jos,d.id);
     return jo&&[jo.pm1,jo.pm2,jo.pm3,jo.coordinator].filter(Boolean).some(p=>
@@ -2947,11 +2948,18 @@ function AddendaPageContent({role,wonDeals,deals,jos,session,addenda,upAddenda,u
                           {!a._linkedDeal&&canCreate&&onOpenCoBoq&&<button onClick={()=>onOpenCoBoq(a.id)} title="Build this change order's BOQ (sections, rate card, markup)" style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:6,padding:"3px 9px",fontSize:".66rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>🧮 BOQ{(a.coBoqData?.items?.length)?` (${a.coBoqData.items.length})`:""}</button>}
                           {!a._linkedDeal&&!canCreate&&onOpenCoBoq&&(a.coBoqData?.items?.length)>0&&<button onClick={()=>onOpenCoBoq(a.id,true)} title="View & print this change order's BOQ to send to the client" style={{background:"#f5f3ff",border:"1.5px solid #ddd6fe",borderRadius:6,padding:"3px 9px",fontSize:".66rem",fontWeight:700,color:"#7c3aed",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>📄 Print BOQ</button>}
                           {a._linkedDeal&&<span title="This addendum is a linked deal, managed from the Sales Pipeline. It has its own billing and rolls into the parent's Total Contract when awarded." style={{fontSize:".62rem",fontWeight:700,color:"#0369a1",background:"#f0f9ff",border:"1px solid #bae6fd",borderRadius:6,padding:"2px 7px",whiteSpace:"nowrap"}}>🔗 linked deal</span>}
-                          {canApprove&&!a._linkedDeal
+                          {canApprove&&!a._linkedDeal&&(()=>{
+                              // Into or out of Approved / Billed / Collected: approvers only.
+                              const coDeal=wonDeals.find(d=>d.id===(a.dealId||a.projectId));
+                              const coApprover=canApproveAddendum(role,myName,coDeal,null);
+                              return !coApprover&&CO_ROLLED_STATUS(a.status);
+                            })()
+                            ? <span title={ADDENDUM_APPROVER_MSG} style={{fontSize:".68rem",fontWeight:700,color:statusClr[a.status]||"#64748b",background:(statusClr[a.status]||"#64748b")+"18",borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap"}}>{a.status}</span>
+                            : canApprove&&!a._linkedDeal
                             ? <select value={a.status} title="Advance this change order's status. Set to Approved once the client agrees — it rolls into the contract and creates its billing claim."
                                 onChange={e=>{const v=e.target.value;updateAddendum(a.id,v==="Approved"?{status:v,clientApproved:true}:{status:v});}}
                                 style={{fontSize:".68rem",fontWeight:700,color:statusClr[a.status]||"#64748b",background:(statusClr[a.status]||"#64748b")+"18",border:`1px solid ${(statusClr[a.status]||"#64748b")}55`,borderRadius:20,padding:"2px 8px",fontFamily:"inherit",cursor:"pointer",whiteSpace:"nowrap"}}>
-                                {ADDENDUM_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
+                                {ADDENDUM_STATUSES.filter(s=>!CO_ROLLED_STATUS(s)||canApproveAddendum(role,myName,wonDeals.find(d=>d.id===(a.dealId||a.projectId)),null)).map(s=><option key={s} value={s}>{s}</option>)}
                               </select>
                             : <span style={{fontSize:".68rem",fontWeight:700,color:statusClr[a.status]||"#64748b",background:(statusClr[a.status]||"#64748b")+"18",borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap"}}>{a.status}</span>}
                         </div>
@@ -7337,6 +7345,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     }));
   };
   const updateAddendum=(id,ch)=>{
+    // Moving a CO into/out of Approved·Billed·Collected, or changing the value of
+    // one that is in, rolls the contract and billing: approvers only
+    // (canApproveAddendum; the database keeps the old values otherwise).
+    {const cur=addenda.find(x=>x.id===id);
+     if(cur){const nx={...cur,...ch};
+       const touchesRolled=ADDENDUM_ROLLED(cur.status)!==ADDENDUM_ROLLED(nx.status)||(ADDENDUM_ROLLED(cur.status)&&coSignedValue(cur)!==coSignedValue(nx));
+       if(touchesRolled&&!canApproveAddendum(role,session?.name,deals.find(d=>d.id===(cur.dealId||cur.projectId)),null)){toastEmit(ADDENDUM_APPROVER_MSG,"error",8000);return;}}}
     upAddenda(as=>as.map(a=>{
       if(a.id!==id) return a;
       const n={...a,...ch};
@@ -8685,6 +8700,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // Standalone deals keep addendumStatus null.
     if(rec.parentDealId){
       const _parent=deals.find(d=>d.id===rec.parentDealId);
+      // Approving (or un-approving) an addendum is for approvers only; anyone
+      // else keeps the status it had (canApproveAddendum, migration 20261121010000).
+      {const _prev=editDeal?deals.find(d=>d.id===editDeal):null;
+       const _was=_prev?.addendumStatus||"Pending";
+       if((rec.addendumStatus||"Pending")!==_was&&!canApproveAddendum(role,session?.name,_prev||rec,_parent)){
+         toastEmit(ADDENDUM_APPROVER_MSG,"warning",8000);rec.addendumStatus=_was;}}
       if(rec.addendumStatus==="Approved"){
         if(_parent&&!isLostStage(_parent.stage)) rec.stage=_parent.stage;
         rec.probability=WON_STAGES.includes(rec.stage)?100:rec.probability;
@@ -10963,7 +10984,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {/* Global Modals */}
       <CashOutModal kinds={cashOutKinds}/>
       <BillHistoryModal payPays={payPays}/>
-      <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal} deals={deals} addenda={addenda} role={role}/>
+      <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal} deals={deals} addenda={addenda} role={role} me={session?.name||""}/>
       <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={spendProjList} clientName={clientName} chartOfAccounts={chartOfAccounts} suppliers={suppliers} exps={exps} poRefOptions={[...new Set([...prs.map(p=>p.poNumber),...swos.map(w=>w.woNumber)].filter(Boolean))]}/>
       <Modal open={confirmDel!==null} onClose={()=>{setConfirmDel(null);setDelAck(false);}} title="Delete this deal?">
         {(()=>{
@@ -14819,7 +14840,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             .sort((a,b)=>b._wait-a._wait);
           if(!pend.length) return null;
           const totalPend=pend.reduce((s,d)=>s+Math.abs(Number(d.value)||0),0);
-          const canApprove=role==="Manager"||role==="Sales";
+          // Managers and SalesOpsAdmin (not on their own deal) — canApproveAddendum.
+          const canApprove=c=>canApproveAddendum(role,session?.name,c,deals.find(d=>d.id===c.parentDealId));
           const money=v=>"₱"+Math.abs(Number(v)||0).toLocaleString("en-PH");
           const approve=async(c)=>{
             const parent=deals.find(d=>d.id===c.parentDealId);
@@ -14827,8 +14849,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             if(!(await uiConfirm(`Approve this addendum?\n\n${c.contact||c.client} — ${money(c.value)}\n\nThis marks it client-approved: it rolls into ${pname}'s Total Contract and unlocks billing & design. Reversible from the deal's edit screen.`))) return;
             const newStage=(parent&&!isLostStage(parent.stage))?parent.stage:c.stage;
             const prob=WON_STAGES.includes(newStage)?100:c.probability;
+            if(!canApprove(c)){toastEmit&&toastEmit(ADDENDUM_APPROVER_MSG,"error",8000);return;}
+            // Server first: before 2026-11-19 a refused update still showed as approved.
+            if(isSupabaseReady()&&!await sbUpdate('deals',c.id,{addendum_status:"Approved",stage:newStage,probability:prob})){
+              toastEmit&&toastEmit("Addendum NOT approved: the server didn't confirm it. Try again.","error",9000);return;
+            }
             upDeals(ds=>ds.map(d=>d.id===c.id?{...d,addendumStatus:"Approved",stage:newStage,probability:prob}:d));
-            if(isSupabaseReady()) sbUpdate('deals',c.id,{addendum_status:"Approved",stage:newStage,probability:prob,updated_at:new Date().toISOString()}).catch(()=>{});
             logActivity(c.id,"Addendum approved",`${c.contact||c.client} — addendum approved by client (${money(c.value)}) → rolled into ${pname}`,session?.name);
             toastEmit&&toastEmit(`✅ Addendum approved — ${money(c.value)} now in ${pname}'s contract`,"success",6000);
           };
@@ -14852,7 +14878,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     </div>
                     {!BUDGET_ONLY.includes(role)&&<div style={{fontFamily:"'IBM Plex Mono',monospace",fontWeight:700,fontSize:".8rem",color:"#d97706",whiteSpace:"nowrap"}}>{money(c.value)}</div>}
                     <span title={`Waiting ${c._wait} day${c._wait!==1?"s":""} since acquired`} style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".64rem",fontWeight:700,padding:"2px 8px",borderRadius:20,whiteSpace:"nowrap",background:stale?"#fef2f2":"#f8fafc",color:stale?"#dc2626":"#64748b",border:`1px solid ${stale?"#fecaca":"#e2e8f0"}`}}>{stale?"⚠ ":""}{c._wait}d{stale?" · chase client":""}</span>
-                    {canApprove&&<button onClick={()=>approve(c)} style={{background:"#059669",border:"none",borderRadius:7,padding:"6px 14px",fontSize:".78rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700,flexShrink:0}}>✅ Approve</button>}
+                    {canApprove(c)&&<button onClick={()=>approve(c)} style={{background:"#059669",border:"none",borderRadius:7,padding:"6px 14px",fontSize:".78rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700,flexShrink:0}}>✅ Approve</button>}
                   </div>
                 );
               })}
