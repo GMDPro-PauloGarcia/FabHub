@@ -692,7 +692,7 @@ export const sbLoadAll = async () => {
       cashPos, budgets, checklists, swatches, actLog, users, appSettings,
       drfs, inventory, stocklog, projRows,
       suppliers, subcontractors,
-      payables, loans, loanPayments,
+      payables, loans, loanPayments, loanSchedule,
       swos, boqLibrary, standaloneBoqRows, checkVouchers, blockers, dailyLogs, ceReqs,
       commissionPayouts, tools, deliveryReceipts, payablePayments,
       billingDeductions
@@ -740,6 +740,7 @@ export const sbLoadAll = async () => {
       () => sbListAll('payables',        { order: 'created_at' }),
       () => sbList('loans',           { order: 'created_at', limit: 200 }),
       () => sbList('loan_payments',   { order: 'date',        limit: 1000 }),
+      () => sbList('loan_schedule',   { order: 'due_date', asc: true, limit: 3000 }),
       () => sbListAll('subcon_work_orders', { order: 'created_at' }),
       () => sbList('boq_library',        { order: 'name', asc: true, limit: 2000 }),
       () => sbList('standalone_boqs',    { order: 'updated_at', limit: 2000 }),
@@ -829,7 +830,7 @@ export const sbLoadAll = async () => {
     const projsObj    = Object.fromEntries((projRows||[]).map(r => [r.deal_id, r.data]))
 
     // Embed loan_payments into loans (draws / payments, see loanFromSb)
-    const loansArr = loans.map(l => loanFromSb(l, loanPayments))
+    const loansArr = loans.map(l => loanFromSb(l, loanPayments, loanSchedule))
 
     return { deals, jos, pcards: pcardsObj, billings: billingsArr, exps: expenses, inflows,
              prs, mreqs, breqs, addenda, cashPositions: cashPosObj, budgets: budgetsObj,
@@ -947,7 +948,14 @@ export const loanEntryFromSb = p => ({
   bank: p.bank || '', cashKey: p.cash_key || '', cashDate: p.cash_date || null,
   note: p.note || '', recordedBy: p.recorded_by || '', createdAt: p.created_at || null,
 })
-export const loanFromSb = (l, payments = []) => {
+// Migration 20261121010000 added loan_schedule (one row per installment) and
+// loans.lender_type / paid_from.
+export const loanScheduleFromSb = r => ({
+  id: r.id, loanId: r.loan_id, seq: Number(r.seq) || 0, due: r.due_date || null,
+  principal: _ln(r.principal), interest: _ln(r.interest), amount: _ln(r.amount) || (_ln(r.principal) + _ln(r.interest)),
+  note: r.note || '',
+})
+export const loanFromSb = (l, payments = [], schedule = []) => {
   const entries = (payments || []).filter(p => p.loan_id === l.id).map(loanEntryFromSb)
     .sort((a, b) => String(a.date).localeCompare(String(b.date)))
   return {
@@ -957,6 +965,8 @@ export const loanFromSb = (l, payments = []) => {
     disbursedDate: l.disbursed_date || null, termMonths: _ln(l.term_months),
     interestRate: _ln(l.interest_rate), monthlyPayment: _ln(l.monthly_payment),
     firstDue: l.first_due || null, status: l.status || 'Active', notes: l.notes || '',
+    lenderType: l.lender_type || 'bank', paidFrom: l.paid_from || '',
+    schedule: (schedule || []).filter(r => r.loan_id === l.id).map(loanScheduleFromSb).sort((a, b) => a.seq - b.seq),
     draws: entries.filter(e => e.type === 'draw'),
     payments: entries.filter(e => e.type !== 'draw'),
   }
@@ -965,7 +975,11 @@ export const loanToSb = l => ({
   id: l.id, kind: l.kind === 'credit_line' ? 'credit_line' : 'bank_loan',
   lender: l.lender || '', name: l.name || '', type: l.kind === 'credit_line' ? 'Credit line' : 'Bank loan',
   credit_limit: l.kind === 'credit_line' ? (_ln(l.limit) || null) : null,
-  principal: l.kind === 'credit_line' ? null : (_ln(l.principal) || null),
+  // loans.principal is NOT NULL: a credit line carries 0 (null made every
+  // "+ Credit line" save fail before 2026-11-21).
+  principal: l.kind === 'credit_line' ? 0 : _ln(l.principal),
+  lender_type: ['bank', 'private', 'related'].includes(l.lenderType) ? l.lenderType : 'bank',
+  paid_from: l.paidFrom || null,
   disbursed_date: l.disbursedDate || null, term_months: _ln(l.termMonths) || null,
   interest_rate: _ln(l.interestRate) || null, monthly_payment: _ln(l.monthlyPayment) || null,
   first_due: l.firstDue || null, status: l.status || 'Active', notes: l.notes || '',
