@@ -1,6 +1,7 @@
 import React,{useState,useMemo} from "react";
 import {today as TODAY} from "../shared";
-import {fmtPHP} from "../core";
+import {fmtPHP,milestoneBalance} from "../core";
+import {payIsOpen,payBalance} from "../data/ledger";
 
 // ─── FINANCE WEEKLY DUES BOARD ───────────────────────────────────────────────
 // A forward-looking weekly calendar of money movements, auto-derived (read-only)
@@ -39,17 +40,20 @@ function FinanceWeeklyDues({billings=[],payables=[],wonDeals=[],deals=[],complet
   const collections=useMemo(()=>(billings||[])
     .filter(b=>b.dueDate&&b.status!=="Cancelled"&&b.status!=="Fully Paid")
     .map(b=>{
-      const paid=(b.payments||[]).reduce((s,p)=>s+(p.bounced?0:num(p.amount)),0);
-      const out=Math.max(0,num(b.amount)-paid);
+      // Receivable basis (VAT + EWT applied), as AR / ARDrill use. Comparing the
+      // VAT-exclusive invoice amount with VAT-inclusive cash hid ~10% of every
+      // VAT invoice (a ₱1M invoice paid ₱1M showed nothing due; AR showed ₱100K).
+      const deal=wonDeals.find(x=>x.id===b.dealId)||deals.find(x=>x.id===b.dealId)||completedDeals.find(x=>x.id===b.dealId);
+      const out=milestoneBalance(b,deal);
       return {id:b.id,date:b.dueDate,amount:out,client:clientFor(b.dealId),label:b.name||b.invoiceNo||"Billing",ref:b.invoiceNo||"",status:b.status||""};
     })
     .filter(x=>x.amount>0.5)
   ,[billings,wonDeals,deals,completedDeals]);
 
   const paymentsDue=useMemo(()=>(payables||[])
-    .filter(p=>p.dueDate&&p.status!=="Paid")
+    .filter(p=>p.dueDate&&payIsOpen(p)) // Cancelled / Void bills are not money out
     .map(p=>{
-      const out=Math.max(0,num(p.amount)-num(p.paidAmount));
+      const out=payBalance(p);
       return {id:p.id,date:p.dueDate,amount:out,vendor:p.vendor||"Payable",ref:p.poNumber||p.invoiceRef||p.apNumber||"",status:p.status||"Unpaid"};
     })
     .filter(x=>x.amount>0.5)

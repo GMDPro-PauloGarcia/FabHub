@@ -8,7 +8,7 @@ import {useSharePdf} from "./views/SharePdf";
 import SupplierDocsPanel from "./views/SupplierDocsPanel";
 import CashOutModal,{openCashOut,closeCashOut,cashOutHas,OrderPicker} from "./views/CashOutModal";
 import BillHistoryModal,{openBillHistory} from "./views/BillHistory";
-import {buildOrders} from "./data/ledger";
+import {buildOrders,payIsOpen,payBalance} from "./data/ledger";
 import {fmt,addPrintClose,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable,HIDDEN_NAV_IDS,AP_HIDDEN,WAREHOUSE_HIDDEN,isHiddenView,HIDDEN_FIN_TABS,HIDDEN_PIPE_TABS,pageOn,cashCanEdit,ProjectSelect,setProjectSearchIndex} from './shared';
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
@@ -4178,8 +4178,11 @@ const _marginClr=m=>m==null?"#94a3b8":m>=25?"#059669":m>=10?"#f59e0b":"#ef4444";
 
 function FinancialOverview({deals=[],wonDeals=[],exps=[],payables=[],prs=[],swos=[],pcards={},loans=[],cashPositions={},billings=[],today,setPage,setFinTab,onOpenProject,onViewAllMargins,isMobile}){
   const cash=bankCashSummary(cashPositions,today);
-  const payTotal=(payables||[]).filter(p=>p.status!=="Paid"&&p.status!=="Cancelled"&&Number(p.amount)>0).reduce((s,p)=>s+Number(p.amount||0),0);
-  const payCount=(payables||[]).filter(p=>p.status!=="Paid"&&p.status!=="Cancelled"&&Number(p.amount)>0).length;
+  // Open balance, same rule as Manager Home and the Ledgers (payIsOpen +
+  // payBalance): Void excluded, part-payments netted off. It used to sum the
+  // full amount of every bill not Paid/Cancelled, Void and part-paid included.
+  const payTotal=(payables||[]).filter(payIsOpen).reduce((s,p)=>s+payBalance(p),0);
+  const payCount=(payables||[]).filter(payIsOpen).length;
   const loanPrincipal=(loans||[]).reduce((s,l)=>s+(Number(l.principal)||0),0);
   const loanPaid=(loans||[]).reduce((s,l)=>s+(l.payments||[]).reduce((a,p)=>a+Number(p.amount||0),0),0);
   const loanOutstanding=Math.max(0,loanPrincipal-loanPaid);
@@ -4965,34 +4968,49 @@ export default function App(){
               const sbSwoIds=new Set((data.swos||[]).map(s=>s.id));
               const sbMrIds=new Set((data.mreqs||[]).map(r=>r.id));
               const sbBrIds=new Set((data.breqs||[]).map(r=>r.id));
+              // Guards (2026-11-19). "Not on the server" also means "deleted by
+              // someone else" or "beyond the read limit" (job_orders loads 500),
+              // and when a table's read FAILED the server list is empty, so every
+              // cached row looked missing and was full-row upserted over newer
+              // server data. Push only rows that are queued on this device or were
+              // created in the last 3 days, and never for a table whose read failed.
+              const failedReads=new Set(data._failed||[]);
+              const pendingIds=new Set(sbPendingIds?.()||[]);
+              const recentCut=Date.now()-3*86400000;
+              const pushable=(table,r)=>{
+                if(failedReads.has(table)) return false;
+                if(pendingIds.has(r.id)) return true;
+                const t=Date.parse(r.createdAt||r.created_at||r.addedAt||r.added_at||"");
+                return isFinite(t)&&t>=recentCut;
+              };
               // Read current local state via functional updater pattern (read-only)
               setDeals(localDeals=>{
-                const missing=localDeals.filter(d=>uuidRe.test(d.id||"")&&!sbDealIds.has(d.id));
+                const missing=localDeals.filter(d=>uuidRe.test(d.id||"")&&!sbDealIds.has(d.id)&&pushable("deals",d));
                 if(missing.length){console.info("[FabHub] Auto-syncing",missing.length,"local-only deals to Supabase");missing.forEach(d=>sbSyncOne("deals",d,toSbDeal));}
                 return localDeals;
               });
               setPrs(localPrs=>{
-                const missing=localPrs.filter(r=>uuidRe.test(r.id||"")&&!sbPrIds.has(r.id));
+                const missing=localPrs.filter(r=>uuidRe.test(r.id||"")&&!sbPrIds.has(r.id)&&pushable("purchase_requests",r));
                 if(missing.length){console.info("[FabHub] Auto-syncing",missing.length,"local-only POs to Supabase");missing.forEach(r=>sbSyncOne("purchase_requests",r,toSbPR));}
                 return localPrs;
               });
               setJos(localJos=>{
-                const missing=dropStaleJos(sbJos,localJos).filter(j=>uuidRe.test(j.id||"")&&!sbJoIds.has(j.id));
+                const missing=dropStaleJos(sbJos,localJos).filter(j=>uuidRe.test(j.id||"")&&!sbJoIds.has(j.id)&&pushable("job_orders",j));
                 if(missing.length){console.info("[FabHub] Auto-syncing",missing.length,"local-only JOs to Supabase");missing.forEach(j=>sbSyncOne("job_orders",j,toSbJO));}
                 return localJos;
               });
               setSwos(localSwos=>{
-                const missing=localSwos.filter(s=>uuidRe.test(s.id||"")&&!sbSwoIds.has(s.id));
+                const missing=localSwos.filter(s=>uuidRe.test(s.id||"")&&!sbSwoIds.has(s.id)&&pushable("subcon_work_orders",s));
                 if(missing.length){console.info("[FabHub] Auto-syncing",missing.length,"local-only WOs to Supabase");missing.forEach(s=>sbSyncOne("subcon_work_orders",s,swoToSb));}
                 return localSwos;
               });
               setMreqs(localMreqs=>{
-                const missing=localMreqs.filter(r=>uuidRe.test(r.id||"")&&!sbMrIds.has(r.id));
+                const missing=localMreqs.filter(r=>uuidRe.test(r.id||"")&&!sbMrIds.has(r.id)&&pushable("material_requests",r));
                 if(missing.length){console.info("[FabHub] Auto-syncing",missing.length,"local-only MRs to Supabase");missing.forEach(r=>sbSyncOne("material_requests",r,toSbMR));}
                 return localMreqs;
               });
               setBreqs(localBreqs=>{
-                const missing=localBreqs.filter(r=>uuidRe.test(r.id||"")&&!sbBrIds.has(r.id));
+                const missing=localBreqs.filter(r=>uuidRe.test(r.id||"")&&!sbBrIds.has(r.id)&&pushable("budget_requests",r));
                 if(missing.length){console.info("[FabHub] Auto-syncing",missing.length,"local-only BRs to Supabase");missing.forEach(r=>sbSyncOne("budget_requests",r,toSbBR));}
                 return localBreqs;
               });
@@ -5189,8 +5207,8 @@ export default function App(){
         // once/30s) — far more often than a manual page refresh — so a blind
         // overwrite here was the single biggest way to lose a just-added record
         // that hadn't synced yet (e.g. still in flight when the user tabbed away).
-        if(data?.deals?.length) setDeals(prev=>mlo(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,standbyPO:d.standby_po||false,dpWaivedBy:d.dp_waived_by||"",dpWaivedAt:d.dp_waived_at||null,dpWaivedReason:d.dp_waived_reason||"",poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,signedCeUrl:d.signed_ce_url||"",signedCeOnFile:d.signed_ce_on_file||false,clientPoNo:d.client_po_no||"",isCostCenter:!!d.is_cost_center,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})),prev));
-        if(data?.jos?.length){const js=data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no}));setJos(prev=>mlo(js,dropStaleJos(js,prev)));}
+        if(data?.deals?.length) setDeals(prev=>mlo(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,standbyPO:d.standby_po||false,dpWaivedBy:d.dp_waived_by||"",dpWaivedAt:d.dp_waived_at||null,dpWaivedReason:d.dp_waived_reason||"",poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,signedCeUrl:d.signed_ce_url||"",signedCeOnFile:d.signed_ce_on_file||false,clientPoNo:d.client_po_no||"",isCostCenter:!!d.is_cost_center,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})),prev));
+        if(data?.jos?.length){const js=data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned}));setJos(prev=>mlo(js,dropStaleJos(js,prev)));}
         if(Object.keys(data?.pcards||{}).length) setPcards(prev=>mergeLocalOnlyObj(data.pcards,prev));
         // Map the same camelCase fields the initial load does. Omitting dueDate
         // (leaving only the raw due_date) made the Field Board — which filters on
@@ -5226,7 +5244,7 @@ export default function App(){
     if(data.deals?.length){const ds=data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,standbyPO:d.standby_po||false,dpWaivedBy:d.dp_waived_by||"",dpWaivedAt:d.dp_waived_at||null,dpWaivedReason:d.dp_waived_reason||"",poBudget:d.standby_po?(Number(d.po_budget)||0):"",leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,boqData:d.boq_data||null,bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,signedCeUrl:d.signed_ce_url||"",signedCeOnFile:d.signed_ce_on_file||false,clientPoNo:d.client_po_no||"",isCostCenter:!!d.is_cost_center,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null}));setDeals(prev=>mlo(ds,prev));idbE.push([KEYS.deals,ds]);}
     if(data.jos?.length){const js=data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned}));setJos(prev=>mlo(js,dropStaleJos(js,prev)));idbE.push([KEYS.jos,js]);}
     if(Object.keys(data.pcards||{}).length){setPcards(data.pcards);idbE.push([KEYS.pcards,data.pcards]);}
-    if(data.billings?.length){const bs=data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by,retentionHeld:m.retention_held!=null?Number(m.retention_held):undefined,isRetentionRelease:m.is_retention_release||undefined,plannedDate:m.planned_bill_date||undefined,msType:m.ms_type||undefined,payments:(m.payments||[]).map(p=>({...p,milestoneId:p.milestone_id??p.milestoneId,refNo:p.ref_no??p.refNo,recordedBy:p.recorded_by??p.recordedBy,valueDate:p.value_date??p.valueDate,method:p.payment_method??p.method,bounced:!!(p.bounced??false)}))}));setBillings(prev=>mlo(bs,prev));idbE.push([KEYS.billings,bs]);}
+    if(data.billings?.length){const bs=data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by,receiptType:m.receipt_type||null,withholding:m.withholding??null,retentionHeld:m.retention_held!=null?Number(m.retention_held):undefined,isRetentionRelease:m.is_retention_release||undefined,plannedDate:m.planned_bill_date||undefined,msType:m.ms_type||undefined,payments:(m.payments||[]).map(p=>({...p,milestoneId:p.milestone_id??p.milestoneId,refNo:p.ref_no??p.refNo,recordedBy:p.recorded_by??p.recordedBy,valueDate:p.value_date??p.valueDate,method:p.payment_method??p.method,bounced:!!(p.bounced??false)}))}));setBillings(prev=>mlo(bs,prev));idbE.push([KEYS.billings,bs]);}
     if(data.exps?.length){const mappedExps=data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,createdBy:e.created_by,bankAccount:e.bank_account||"",expDate:e.date||null,poRef:e.po_ref||"",payee:e.supplier||"",vatable:e.vatable??undefined,inputVat:e.input_vat!=null?Number(e.input_vat):undefined,ewtRate:e.ewt_rate!=null?Number(e.ewt_rate):undefined,ewtAmount:e.ewt_amount!=null?Number(e.ewt_amount):undefined,netAmount:e.net_amount!=null?Number(e.net_amount):undefined,month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};});setExps(prev=>mlo(mappedExps,prev));idbE.push([KEYS.expenses,mappedExps]);}
     if(data.swos?.length){const ws=data.swos.map(swoFromSb);setSwos(prev=>mlo(ws,prev));idbE.push([KEYS.swos,ws]);}
     if(data.inflows?.length){const infs=data.inflows.map(i=>({...i,dealId:i.deal_id,refNo:i.ref_no}));setInfs(prev=>mlo(infs,prev));idbE.push([KEYS.inflows,infs]);}
@@ -5797,10 +5815,14 @@ export default function App(){
   const migrateToCloud=useCallback(async()=>{
     if(!isSupabaseReady()){toastEmit("Supabase is not connected — check environment variables","error",5000);return;}
     toastEmit("Pushing all data to cloud…","info",2500);
+    // Insert-only since 2026-11-19: this pushes rows the server is MISSING and
+    // never overwrites a row it already has. It used to full-row upsert this
+    // device's whole cache, reverting other people's newer edits (stage, values,
+    // PO status, WO details) to whatever this device last saw.
     // Skip tables the current role can't INSERT (see roleCanInsert): re-pushing
     // them only produces false "NOT saved — please redo" toasts for rows RLS
     // rejects, which already exist on the server.
-    const syncAll=(table,arr,mapper)=>(arr?.length&&roleCanInsert(table))?Promise.all(arr.map(r=>{const p=mapper?mapper(r):r;return hasValidUUIDs(p)?sbUpsert(table,p,'id'):Promise.resolve();})).catch(e=>console.error("migrate "+table+":",e.message)):Promise.resolve();
+    const syncAll=(table,arr,mapper)=>(arr?.length&&roleCanInsert(table))?Promise.all(arr.map(r=>{const p=mapper?mapper(r):r;return hasValidUUIDs(p)?sbInsertIfMissing(table,p):Promise.resolve();})).catch(e=>console.error("migrate "+table+":",e.message)):Promise.resolve();
     await syncAll("deals",deals,toSbDeal);
     await syncAll("job_orders",jos,toSbJO);
     await syncAll("expenses",exps,toSbExpense);
@@ -5813,7 +5835,7 @@ export default function App(){
     await syncAll("checklists",checklist,toSbChecklist);
     await syncAll("activity_log",actLog,toSbActivity);
     if(billings?.length){
-      await Promise.all(billings.map(m=>{if(!isUUID(m.id))return Promise.resolve();sbSyncOne("billing_milestones",m,toSbBilling);return Promise.all((m.payments||[]).map(p=>isUUID(p.id)?sbSyncOne("billing_payments",{...p,milestoneId:m.id},toSbPayment):Promise.resolve()));})).catch(()=>{});
+      await Promise.all(billings.map(m=>{if(!isUUID(m.id))return Promise.resolve();if(roleCanInsert("billing_milestones")) sbInsertIfMissing("billing_milestones",toSbBilling(m));return Promise.all((m.payments||[]).map(p=>isUUID(p.id)&&roleCanInsert("billing_payments")?sbInsertIfMissing("billing_payments",toSbPayment({...p,milestoneId:m.id})):Promise.resolve()));})).catch(()=>{});
     }
     // A role that may create but not edit budgets (Sales/SalesOpsAdmin) can only
     // fill in budgets missing on the server — an upsert is refused for it outright.
@@ -7095,14 +7117,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     logActivity(dealId,"Billing Deleted",`All ${ms.length} milestone${ms.length!==1?"s":""} removed — ${why}`,session?.name||role);
     toastEmit("🗑 Billing deleted and archived to Audit Trail.","success",5000);
   };
-  const logBillingPayment=(msId,payment)=>{
+  const logBillingPayment=async(msId,payment)=>{
     const payId=uid();
     const milestone=billings.find(b=>b.id===msId);
     const dealId=milestone?.dealId;
     const payDeal=dealId?deals.find(d=>d.id===dealId):null;
     if(!isSupabaseReady()) toastEmit("⚠️ Collection saved on this device only — no server connection. It won't appear on other devices until reconnected.","warning",9000);
     const msTx=calcTax(milestone?.amount||0,milestone?.receiptType??milestone?.receipt_type??payDeal?.receiptType??"OR",milestone?.withholding??payDeal?.withholding??false);
-    const totalPaidAfter=(milestone?.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0)+Number(payment.amount||0);
+    // Bounced cheques don't count toward the balance (as in submitPay / updateMilestone).
+    const totalPaidAfter=(milestone?.payments||[]).filter(p=>!p.bounced).reduce((s,p)=>s+Number(p.amount||0),0)+Number(payment.amount||0);
     const isFullyPaid=totalPaidAfter>=msTx.netReceivable;
     // Where the money landed: resolve the stored bank code (e.g. "bpi") to its
     // short name, then append the method (Bank Transfer / Cheque / Cash…).
@@ -7115,7 +7138,22 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // the date received, then today.
     const creditedOn=payment.valueDate||payment.value_date||payment.date||today;
     const payMsg=`💵 <b>Payment Received</b>\nProject: <b>${payDeal?.contact||milestone?.name||milestone?.title||"—"}</b>\nClient: ${payDeal?.client||"—"}\nDeposited to: ${depositedTo}\nAmount: ₱${Number(payment.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nCredited: ${creditedOn}\nRef: ${payment.refNo||payment.ref_no||"—"}\nRecorded by: ${payment.recordedBy||session?.name||"Finance"}${isFullyPaid?"\n✅ Milestone fully paid!":""}`;
-    if(isOffsetPayment(payment)){
+    // Save the payment and wait for the server BEFORE telling anyone. Until
+    // 2026-11-19 Telegram "Payment Received" went out first and the save ran
+    // unawaited inside a state updater, so a refused payment (own-deal rule,
+    // offset rule, RLS) still reached management and showed as collected.
+    let notify=true;
+    if(isSupabaseReady()){
+      const res=await sbUpsertDetailed("billing_payments",toSbPayment({...payment,id:payId,milestoneId:msId}),"id");
+      if(!res.ok){
+        if(!res.queued){toastEmit(`Payment NOT saved. The server refused it: ${res.message||"unknown error"}`,"error",12000);return false;}
+        toastEmit("⚠️ Payment queued: the server hasn't confirmed it yet. Keep this tab open. Telegram was not sent.","warning",10000);
+        notify=false;
+      }
+    }
+    if(!notify){
+      // queued: management is not told about money the server hasn't confirmed
+    }else if(isOffsetPayment(payment)){
       // No money moved — say so, and tell Financial Control as well.
       const offMsg=`🔁 <b>Invoice Settled by Offset / Credit Note — no cash</b>\nProject: <b>${payDeal?.contact||milestone?.name||"—"}</b>\nClient: ${payDeal?.client||"—"}\nInvoice: ${milestone?.invoiceNo||milestone?.name||"—"}\nAmount: ₱${Number(payment.amount||0).toLocaleString("en-PH",{maximumFractionDigits:2})}\nCredit note / agreement: ${payment.refNo||"—"}\nWhat was offset: ${payment.note||"—"}\nRecorded by: ${payment.recordedBy||session?.name||"Manager"}${isFullyPaid?"\n✅ Milestone settled in full":""}`;
       sendTelegramNotification("management",offMsg);
@@ -7129,16 +7167,18 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     upBillings(bs=>bs.map(b=>{
       if(b.id!==msId) return b;
       const payments=[...(b.payments||[]),{...payment,id:payId,date:payment.date||today}];
-      const totalPaid=payments.reduce((s,p)=>s+Number(p.amount||0),0);
+      const totalPaid=payments.filter(p=>!p.bounced).reduce((s,p)=>s+Number(p.amount||0),0);
       const bTx=calcTax(b.amount||0,b.receiptType??b.receipt_type??payDeal?.receiptType??"OR",b.withholding??payDeal?.withholding??false);
       const status=totalPaid>=bTx.netReceivable?'Fully Paid':totalPaid>0?'Partially Paid':b.status;
-      if(isSupabaseReady()){
-        sbUpsert("billing_payments",toSbPayment({...payment,id:payId,milestoneId:msId}),"id")
-          .catch(e=>{console.error("billing_payments sync:",e.message);toastEmit("⚠️ Payment saved locally but NOT synced to server — do not close this tab!","warning",9000);});
-        sbUpdate('billing_milestones',msId,{status,updated_at:new Date().toISOString()}).catch(e=>{toastEmit("⚠️ Payment status not synced — do not close this tab!","warning",9000);console.error("billing sync:",e);});
-      }
       return{...b,payments,status};
     }));
+    // Milestone status: same rule, written once, outside the state updater
+    // (React may run an updater twice).
+    if(isSupabaseReady()&&milestone){
+      const msPaid=(milestone.payments||[]).filter(p=>!p.bounced).reduce((s,p)=>s+Number(p.amount||0),0)+Number(payment.amount||0);
+      const msStatus=msPaid>=msTx.netReceivable?'Fully Paid':msPaid>0?'Partially Paid':milestone.status;
+      if(msStatus!==milestone.status) sbUpdate('billing_milestones',msId,{status:msStatus});
+    }
     // Sync deal.amountPaid so Finance KPIs reflect billing collections.
     // Recompute from ALL surviving non-bounced payments (mirroring
     // deleteBillingPayment) rather than incrementing a possibly-stale base —
@@ -7161,6 +7201,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // billing payments (counting each on its clearance date), so the payment
     // record is the single source of truth — no hidden bank-balance write to
     // keep in sync, and deleting a payment reverses automatically.
+    return true;
   };
   const deleteBillingPayment=async(msId,payId)=>{
     const milestone=billings.find(b=>b.id===msId);
@@ -9374,23 +9415,35 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       amount:Number(rec.amount)||0,status:"Recorded",payBank:rec.payBank||"",payMethod:rec.payMethod||"",payRef:rec.payRef||"",notes:rec.notes||"",
       recordedBy:session?.name||"",recordedAt:new Date().toISOString(),approvedBy:"",approvedAt:null,createdAt:new Date().toISOString()};
     upPayouts(ps=>[row,...ps]);
-    if(isSupabaseReady()) sbUpsert("commission_payouts",commissionPayoutToSb(row),"id")
-      .catch(e=>{console.error("commission_payouts sync:",e.message);toastEmit("⚠️ Payout saved locally but NOT synced to server.","warning",8000);});
+    // sbUpsert resolves false (never rejects) when the server refuses, so check
+    // the result instead of a .catch that could never fire.
+    if(isSupabaseReady()&&!await sbUpsert("commission_payouts",commissionPayoutToSb(row),"id")){
+      toastEmit("⚠️ Payout not confirmed by the server yet. Check Commission before recording it again.","warning",9000);
+      return false;
+    }
     toastEmit("Commission payout recorded — pending Manager approval.","success");
+    return true;
   };
   // Manager approves a recorded payout, which makes it count as paid.
   const approvePayout=async(id)=>{
     if(role!=="Manager"){toastEmit("Only a Manager can approve payouts.","warning");return;}
     const patch={status:"Approved",approvedBy:session?.name||"",approvedAt:new Date().toISOString()};
+    // Update only the decision fields. (Before 2026-11-19 this upserted
+    // {id,...commissionPayoutToSb(patch)}: the mapper's id:undefined replaced the
+    // real id and blanked payee/amount, so the approval never reached the payout.)
+    if(isSupabaseReady()&&!await sbUpdate("commission_payouts",id,{status:"Approved",approved_by:patch.approvedBy,approved_at:patch.approvedAt})){
+      toastEmit("⚠️ Approval not confirmed by the server. Try again.","warning",9000);return;
+    }
     upPayouts(ps=>ps.map(p=>p.id===id?{...p,...patch}:p));
-    if(isSupabaseReady()) sbUpsert("commission_payouts",{id,...commissionPayoutToSb({...patch})},"id").catch(()=>{});
     toastEmit("Payout approved.","success");
   };
   const voidPayout=async(id)=>{
     if(!await guardWrite("update","commission_payouts","void a commission payout")) return;
     if(!await uiConfirm("Void this commission payout? It will no longer count as paid.")) return;
+    if(isSupabaseReady()&&!await sbUpdate("commission_payouts",id,{status:"Void"})){
+      toastEmit("⚠️ Void not confirmed by the server. Try again.","warning",9000);return;
+    }
     upPayouts(ps=>ps.map(p=>p.id===id?{...p,status:"Void"}:p));
-    if(isSupabaseReady()) sbUpsert("commission_payouts",{id,status:"Void"},"id").catch(()=>{});
   };
   // AP / PRV numbers (AP-YYYY-NNNN, PRV-YYYY-NNNN) are assigned by the server
   // when a payable is first inserted (trigger payables_assign_number, migration
@@ -9854,9 +9907,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const r2=v=>Math.round((Number(v)||0)*100)/100;
   const pesoFmt=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
   const paysOf=id=>payPays.filter(x=>x.payableId===id);
+  const recordPaymentsBusy=useRef(false);
   // entries: [{payableId, amount (cash), retentionAmount?, kind?}]
   // common:  {date, method, bank, ref, note?, cvId?}
   const recordPayments=async(entries,common={})=>{
+    // One payment save at a time: a double click on Record Payment / Pay several
+    // made two payable_payments rows (new ids each). Overrides re-enter on purpose.
+    if(recordPaymentsBusy.current&&!common.overrideReason){toastEmit("A payment is already being saved…","info",3000);return false;}
+    recordPaymentsBusy.current=true;
+    try{return await recordPaymentsInner(entries,common);}finally{recordPaymentsBusy.current=false;}
+  };
+  const recordPaymentsInner=async(entries,common={})=>{
     if(!roleCanInsert("payable_payments")){toastEmit("Only Finance, Accounting or a Manager can record payments.","error",7000);return false;}
     const list=(entries||[]).filter(e=>r2(e.amount)+r2(e.retentionAmount)>0);
     if(!list.length) return false;
@@ -9918,9 +9979,18 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         setPayPays(payPays);persist(KEYS.payPays,payPays);
         setPayables(payables);persist(KEYS.payables,payables);
         const reason=await askDupOverride(res);
-        return reason?recordPayments(entries,{...common,overrideReason:reason}):false;
+        return reason?recordPaymentsInner(entries,{...common,overrideReason:reason}):false;
       }
-      if(!res.ok) toastEmit("⚠️ Payment saved on this device but NOT confirmed by the server — do not close this tab.","warning",9000);
+      if(!res.ok&&!res.queued){
+        // Refused by a rule (not approved, over the bill, delivery, RLS): undo the
+        // screen and keep the form open. Before 2026-11-19 this returned true, so
+        // the modal closed and the bill showed as paid until the next reload.
+        setPayPays(payPays);persist(KEYS.payPays,payPays);
+        setPayables(payables);persist(KEYS.payables,payables);
+        toastEmit(`Payment NOT recorded. The server refused it: ${res.message||"unknown error"}`,"error",12000);
+        return false;
+      }
+      if(!res.ok) toastEmit("⚠️ Payment saved on this device but NOT confirmed by the server yet (queued). Do not close this tab.","warning",9000);
     } else toastEmit("⚠️ Payment saved on this device only — no server connection. Do not close this tab.","warning",9000);
     nextPayables.filter(p=>touched.has(p.id)&&p.status==="Paid"&&p.expenseId).forEach(p=>markExpensePaid(p.expenseId));
     const cash=rows.reduce((s,r)=>s+r.amount,0),held=rows.reduce((s,r)=>s+r.retentionAmount,0);
@@ -14416,12 +14486,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             <Fld label="Notes"><Inp value={payoutDraft.notes} onChange={e=>setPayoutDraft(d=>({...d,notes:e.target.value}))} placeholder="Optional"/></Fld>
             <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:4}}>
               <button onClick={()=>setPayoutDraft(null)} style={{border:"1px solid #e2e8f0",background:"#fff",color:"#475569",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",padding:"9px 16px",borderRadius:9,cursor:"pointer"}}>Cancel</button>
-              <button onClick={async()=>{
+              <button disabled={!!payoutDraft._saving} onClick={async()=>{
+                  if(payoutDraft._saving) return;
                   if(!payoutDraft.payee){toastEmit("Please select a rep.","warning");return;}
                   if(!(Number(payoutDraft.amount)>0)){toastEmit("Enter a payout amount.","warning");return;}
-                  await recordPayout(payoutDraft);
-                  setPayoutDraft(null);
-                }} style={{border:"none",background:"#059669",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",padding:"9px 18px",borderRadius:9,cursor:"pointer"}}>Record payout</button>
+                  setPayoutDraft(d=>d&&{...d,_saving:true});
+                  const ok=await recordPayout(payoutDraft);
+                  if(ok===false) setPayoutDraft(d=>d&&{...d,_saving:false}); else setPayoutDraft(null);
+                }} style={{border:"none",background:"#059669",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",padding:"9px 18px",borderRadius:9,cursor:payoutDraft._saving?"wait":"pointer",opacity:payoutDraft._saving?.6:1}}>{payoutDraft._saving?"Saving…":"Record payout"}</button>
             </div>
           </div>
         </Modal>
@@ -15734,7 +15806,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           const maxBar=Math.max(...monthlyRev,...monthlyExp,1);
           const clientMap={};billings.forEach(b=>{const d=wonDeals.find(x=>x.id===b.dealId)||completedDeals.find(x=>x.id===b.dealId);if(!d)return;const k=d.client;if(!clientMap[k])clientMap[k]=0;clientMap[k]+=(b.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);});
           const topClients=Object.entries(clientMap).sort(([,a],[,b])=>b-a).slice(0,5);
-          const totalPayables=payables.filter(p=>p.status==="Unpaid").reduce((s,p)=>s+Number(p.amount||0),0);
+          const totalPayables=payables.filter(payIsOpen).reduce((s,p)=>s+payBalance(p),0);
           const overduePayables=payables.filter(p=>p.status==="Unpaid"&&p.dueDate&&p.dueDate<today).length;
 
           // ── DAILY DIGEST ─────────────────────────────────────────────────
@@ -26021,6 +26093,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const[msGrossStr,setMsGrossStr]=useState("");
   const msNetToGross=(v)=>{const x=Number(v)||0;return x?String(Math.round(x*1.12*100)/100):"";};
   const[payForm,  setPayForm]  =useState({amount:"",date:today,refNo:"",note:"",valueDate:"",bank:"",method:"Bank Transfer"});
+  const[paySaving,setPaySaving]=useState(false);
   const[editPayForm,setEditPayForm]=useState({});
   const[billingSearch,setBillingSearch]=useState("");
   const[billingFilter,setBillingFilter]=useState("all"); // all | outstanding | overdue | collected | uncollected | paid
@@ -26255,7 +26328,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     toastEmit&&toastEmit(`Retention release drafted: ₱${out.toLocaleString("en-PH")}.`,"success",6000);
   };
   const submitPay=async()=>{
-    if(!payForm.amount||!showPay) return;
+    if(paySaving||!payForm.amount||!showPay) return;
     const amt=Number(payForm.amount);
     if(!isFinite(amt)||amt<=0){toastEmit("Enter a payment amount greater than zero.","warning");return;}
     // Offset / credit note: settles the invoice without cash. Manager only, with a
@@ -26294,7 +26367,11 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         message:`A payment with the same amount and date (or the same reference no.) is already logged on this PO family:\n\n${lines}\n\nRecording it again double-counts Collected. Only continue if the client really paid twice.`});
       if(!ok) return;
     }
-    logBillingPayment(showPay,{...payForm,...(isOffset?{bank:"",valueDate:""}:{}),recordedBy:session?.name||role});
+    setPaySaving(true);
+    let ok=false;
+    try{ok=await logBillingPayment(showPay,{...payForm,...(isOffset?{bank:"",valueDate:""}:{}),recordedBy:session?.name||role});}
+    finally{setPaySaving(false);}
+    if(ok===false) return; // refused: keep the form open so nothing is lost
     setPayForm({amount:"",date:today,refNo:"",note:"",valueDate:"",bank:"",method:"Bank Transfer"});
     setShowPay(null);
   };
@@ -27776,9 +27853,9 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                             </div>
                           )}
                           <div style={{display:"flex",gap:8,marginTop:8}}>
-                            <button onClick={submitPay} disabled={!payForm.amount}
+                            <button onClick={submitPay} disabled={!payForm.amount||paySaving}
                               style={{background:payForm.amount?"#1d4ed8":"#e2e8f0",border:"none",borderRadius:7,padding:"7px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:payForm.amount?"#fff":"#94a3b8",cursor:payForm.amount?"pointer":"not-allowed"}}>
-                              {isOffsetPayment(payForm)?"Record Offset":"Save Payment"}
+                              {paySaving?"Saving…":isOffsetPayment(payForm)?"Record Offset":"Save Payment"}
                             </button>
                             <button onClick={()=>setShowPay(null)} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 12px",fontFamily:"inherit",fontWeight:600,fontSize:".78rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
                           </div>
