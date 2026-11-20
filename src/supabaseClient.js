@@ -548,8 +548,9 @@ export const sbUpsertDetailed = async (table, data, conflictCol = 'id') => {
   if (dup) return { ok: false, message, duplicate: dup[1] === 'REVIEW' ? 'review' : 'block' }
   console.error(`SB UPSERT ${table}:`, message)
   const kind = _writeFailed('upsert', table, message, code)
-  if (_isRetryable(kind)) _enqueue({ kind: 'upsert', table, data, conflictCol }); else _notifyDropped({ kind: 'upsert', table, data, conflictCol }, kind, message)
-  return { ok: false, message }
+  const queued = _isRetryable(kind)
+  if (queued) _enqueue({ kind: 'upsert', table, data, conflictCol }); else _notifyDropped({ kind: 'upsert', table, data, conflictCol }, kind, message)
+  return { ok: false, message, queued }
 }
 
 // Create a row only if it doesn't exist yet; never overwrite. Unlike sbUpsert

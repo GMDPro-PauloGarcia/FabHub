@@ -289,10 +289,24 @@ export const Card=({children,onClick,accent,ariaLabel,style:sx={}})=>(
 );
 export const Modal=({open,onClose,title,children,wide,maxWidth})=>{
   const mob=window.innerWidth<768;
+  // A click on the dark backdrop used to close every form at once and throw
+  // away what was typed (deals, expenses, payments, loans). Now: a backdrop
+  // click closes only if nothing was typed, or after a confirm; and a drag that
+  // starts inside the form (selecting text) and ends outside no longer counts.
+  const dirty=React.useRef(false);
+  const downOnBackdrop=React.useRef(false);
+  React.useEffect(()=>{if(open) dirty.current=false;},[open]);
   if(!open) return null;
+  const onBackdrop=e=>{
+    if(e.target!==e.currentTarget||!downOnBackdrop.current) return;
+    if(dirty.current&&!window.confirm("Close this window? What you typed will be lost.")) return;
+    onClose&&onClose();
+  };
   return(
-    <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.5)",zIndex:1000,display:"flex",alignItems:mob?"flex-end":"center",justifyContent:"center",padding:mob?0:16}} onClick={mob?undefined:onClose}>
-      <div style={{background:T.surface,borderRadius:mob?"18px 18px 0 0":18,padding:mob?"20px 16px 28px":28,width:"100%",maxWidth:mob?undefined:(maxWidth||wide?640:480),maxHeight:mob?"92vh":"94vh",overflowY:"auto",boxShadow:T.shadow.modal}} onClick={e=>e.stopPropagation()}>
+    <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.5)",zIndex:1000,display:"flex",alignItems:mob?"flex-end":"center",justifyContent:"center",padding:mob?0:16}}
+      onMouseDown={e=>{downOnBackdrop.current=e.target===e.currentTarget;}} onClick={mob?undefined:onBackdrop}>
+      <div style={{background:T.surface,borderRadius:mob?"18px 18px 0 0":18,padding:mob?"20px 16px 28px":28,width:"100%",maxWidth:mob?undefined:(maxWidth||(wide?640:480)),maxHeight:mob?"92vh":"94vh",overflowY:"auto",boxShadow:T.shadow.modal}}
+        onClick={e=>e.stopPropagation()} onInput={()=>{dirty.current=true;}} onChange={()=>{dirty.current=true;}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:mob?16:22}}>
           <div style={{fontWeight:800,fontSize:mob?"1rem":"1.1rem",color:T.ink}}>{title}</div>
           <button onClick={onClose} aria-label="Close" style={{background:T.surface3,border:"none",borderRadius:T.radius.md,width:32,height:32,cursor:"pointer",color:T.inkMuted,fontSize:"1rem",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>

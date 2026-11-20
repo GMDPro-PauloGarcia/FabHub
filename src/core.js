@@ -306,6 +306,20 @@ export const ownsDealCommission=(deal, userName, role)=>
 // commission can't be moved after the fact. Mirrors migration
 // 20261026063739_deals_sales_owner_lock.sql (which also counts bounced
 // payments; amountPaid here excludes them). Keep them in sync.
+// Approving a change order or an addendum deal rolls its value into the contract,
+// billing and the Sales Owner's commission (Paulo, 2026-11-19): Managers and
+// SalesOpsAdmin only, and SalesOpsAdmin never on a deal (or its parent) where they
+// are the Sales Owner. Sales, Ops and PMs still move a CO through the early
+// statuses. Mirrors trg_addenda_approval_guard / trg_deals_addendum_approval_guard
+// (migration 20261121010000) — keep them in sync.
+export const ADDENDUM_APPROVER_ROLES=["Manager","SalesOpsAdmin"];
+export const ADDENDUM_APPROVER_MSG="Only a Manager or Sales Ops Admin can approve a change order or addendum (and not on their own deal).";
+export const canApproveAddendum=(role, userName, deal, parent)=>{
+  const r=canonRole(role);
+  if(r==="Manager") return true;
+  if(r!=="SalesOpsAdmin") return false;
+  return !ownsDealCommission(deal,userName,role)&&!ownsDealCommission(parent,userName,role);
+};
 export const salesOwnerLocked=(deal, role)=>
   !!deal&&canonRole(role)!=="Manager"&&(Number(deal.amountPaid)||0)!==0;
 

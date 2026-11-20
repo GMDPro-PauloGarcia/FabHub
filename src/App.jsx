@@ -8,12 +8,12 @@ import {useSharePdf,openPdfTab as openPdfTabShared} from "./views/SharePdf";
 import SupplierDocsPanel from "./views/SupplierDocsPanel";
 import CashOutModal,{openCashOut,closeCashOut,cashOutHas,OrderPicker} from "./views/CashOutModal";
 import BillHistoryModal,{openBillHistory} from "./views/BillHistory";
-import {buildOrders} from "./data/ledger";
+import {buildOrders,payIsOpen,payBalance} from "./data/ledger";
 import {fmt,addPrintClose,docLogo,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable,HIDDEN_NAV_IDS,AP_HIDDEN,WAREHOUSE_HIDDEN,isHiddenView,HIDDEN_FIN_TABS,HIDDEN_PIPE_TABS,pageOn,cashCanEdit,ProjectSelect,setProjectSearchIndex} from './shared';
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {projProgressPct, isConstructionDeal, projStageFlow, projStepIndex, projStepLabel, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, canRecordDeduction, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel, pendingCostByProject, poSplitTotal, canRaiseOrder, woSignStep, WO_SIGN_MSG, arAgeBucket, arCallOrder, dealHasBoq, MOTHER_PO_BOQ_MSG, ledgerCosts, poVatSet, isBilledRevenue, paymentBaseFactor, invoiceContractProgress, billingPosition, statementLine, orderForLabel, PO_ISSUED_STATUSES, WO_COMMITTED_STATUSES, billingDueTerms, billingDefaultNetDays, billingTermsLabel, projectProgressPct} from './core';
+import {projProgressPct, isConstructionDeal, projStageFlow, projStepIndex, projStepLabel, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, canApproveAddendum, ADDENDUM_APPROVER_MSG, PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, canRecordDeduction, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel, pendingCostByProject, poSplitTotal, canRaiseOrder, woSignStep, WO_SIGN_MSG, arAgeBucket, arCallOrder, dealHasBoq, MOTHER_PO_BOQ_MSG, ledgerCosts, poVatSet, isBilledRevenue, paymentBaseFactor, invoiceContractProgress, billingPosition, statementLine, orderForLabel, PO_ISSUED_STATUSES, WO_COMMITTED_STATUSES, billingDueTerms, billingDefaultNetDays, billingTermsLabel, projectProgressPct} from './core';
 import ProgressReportModal from './views/ProgressReportModal';
 
 // Returns a component whose function IDENTITY is stable across renders while its
@@ -1675,7 +1675,7 @@ function ClientAutocomplete({value:initVal, onChange, existingNames=[]}){
 }
 
 // ─── CLIENT DIRECTORY ────────────────────────────────────────────────────────
-function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId,deals=[],addenda=[],role}){
+function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId,deals=[],addenda=[],role,me=""}){
   // Local state — prevents App re-render on every keystroke (fixes focus bug)
   const[form,setForm]=useState(initialForm||emptyDeal);
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
@@ -1804,7 +1804,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
                   const on=(form.addendumStatus||"Pending")===st;
                   const clr=st==="Approved"?"#059669":"#d97706";
                   return(
-                    <button type="button" key={st} onClick={()=>f("addendumStatus",st)}
+                    <button type="button" key={st} disabled={!canApproveAddendum(role,me,form,deals.find(d=>d.id===form.parentDealId))} title={canApproveAddendum(role,me,form,deals.find(d=>d.id===form.parentDealId))?"":ADDENDUM_APPROVER_MSG} onClick={()=>f("addendumStatus",st)}
                       style={{flex:1,padding:"7px 12px",borderRadius:8,cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",
                         border:`1.5px solid ${on?clr:"#e2e8f0"}`,background:on?clr:"#fff",color:on?"#fff":"#64748b"}}>
                       {st==="Approved"?"✅ Approved":"⏳ Pending"}
@@ -2853,6 +2853,7 @@ function AddendaPageContent({role,wonDeals,deals,jos,session,addenda,upAddenda,u
   // can approve. (Server-side RLS must allow the same set — see migration 054.)
   const canApprove=["Manager","Sales","Operations","ProjectMover","SalesOpsAdmin"].includes(role)&&typeof updateAddendum==="function";
   const myName=session?.name||"";
+  const CO_ROLLED_STATUS=s=>["Approved","Billed","Collected"].includes(s);
   const myProjects=wonDeals.filter(d=>{
     const jo=dealJo(jos,d.id);
     return jo&&[jo.pm1,jo.pm2,jo.pm3,jo.coordinator].filter(Boolean).some(p=>
@@ -2948,11 +2949,18 @@ function AddendaPageContent({role,wonDeals,deals,jos,session,addenda,upAddenda,u
                           {!a._linkedDeal&&canCreate&&onOpenCoBoq&&<button onClick={()=>onOpenCoBoq(a.id)} title="Build this change order's BOQ (sections, rate card, markup)" style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:6,padding:"3px 9px",fontSize:".66rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>🧮 BOQ{(a.coBoqData?.items?.length)?` (${a.coBoqData.items.length})`:""}</button>}
                           {!a._linkedDeal&&!canCreate&&onOpenCoBoq&&(a.coBoqData?.items?.length)>0&&<button onClick={()=>onOpenCoBoq(a.id,true)} title="View & print this change order's BOQ to send to the client" style={{background:"#f5f3ff",border:"1.5px solid #ddd6fe",borderRadius:6,padding:"3px 9px",fontSize:".66rem",fontWeight:700,color:"#7c3aed",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>📄 Print BOQ</button>}
                           {a._linkedDeal&&<span title="This addendum is a linked deal, managed from the Sales Pipeline. It has its own billing and rolls into the parent's Total Contract when awarded." style={{fontSize:".62rem",fontWeight:700,color:"#0369a1",background:"#f0f9ff",border:"1px solid #bae6fd",borderRadius:6,padding:"2px 7px",whiteSpace:"nowrap"}}>🔗 linked deal</span>}
-                          {canApprove&&!a._linkedDeal
+                          {canApprove&&!a._linkedDeal&&(()=>{
+                              // Into or out of Approved / Billed / Collected: approvers only.
+                              const coDeal=wonDeals.find(d=>d.id===(a.dealId||a.projectId));
+                              const coApprover=canApproveAddendum(role,myName,coDeal,null);
+                              return !coApprover&&CO_ROLLED_STATUS(a.status);
+                            })()
+                            ? <span title={ADDENDUM_APPROVER_MSG} style={{fontSize:".68rem",fontWeight:700,color:statusClr[a.status]||"#64748b",background:(statusClr[a.status]||"#64748b")+"18",borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap"}}>{a.status}</span>
+                            : canApprove&&!a._linkedDeal
                             ? <select value={a.status} title="Advance this change order's status. Set to Approved once the client agrees — it rolls into the contract and creates its billing claim."
                                 onChange={e=>{const v=e.target.value;updateAddendum(a.id,v==="Approved"?{status:v,clientApproved:true}:{status:v});}}
                                 style={{fontSize:".68rem",fontWeight:700,color:statusClr[a.status]||"#64748b",background:(statusClr[a.status]||"#64748b")+"18",border:`1px solid ${(statusClr[a.status]||"#64748b")}55`,borderRadius:20,padding:"2px 8px",fontFamily:"inherit",cursor:"pointer",whiteSpace:"nowrap"}}>
-                                {ADDENDUM_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
+                                {ADDENDUM_STATUSES.filter(s=>!CO_ROLLED_STATUS(s)||canApproveAddendum(role,myName,wonDeals.find(d=>d.id===(a.dealId||a.projectId)),null)).map(s=><option key={s} value={s}>{s}</option>)}
                               </select>
                             : <span style={{fontSize:".68rem",fontWeight:700,color:statusClr[a.status]||"#64748b",background:(statusClr[a.status]||"#64748b")+"18",borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap"}}>{a.status}</span>}
                         </div>
@@ -4179,8 +4187,11 @@ const _marginClr=m=>m==null?"#94a3b8":m>=25?"#059669":m>=10?"#f59e0b":"#ef4444";
 
 function FinancialOverview({deals=[],wonDeals=[],exps=[],payables=[],prs=[],swos=[],pcards={},loans=[],cashPositions={},billings=[],today,setPage,setFinTab,onOpenProject,onViewAllMargins,isMobile}){
   const cash=bankCashSummary(cashPositions,today);
-  const payTotal=(payables||[]).filter(p=>p.status!=="Paid"&&p.status!=="Cancelled"&&Number(p.amount)>0).reduce((s,p)=>s+Number(p.amount||0),0);
-  const payCount=(payables||[]).filter(p=>p.status!=="Paid"&&p.status!=="Cancelled"&&Number(p.amount)>0).length;
+  // Open balance, same rule as Manager Home and the Ledgers (payIsOpen +
+  // payBalance): Void excluded, part-payments netted off. It used to sum the
+  // full amount of every bill not Paid/Cancelled, Void and part-paid included.
+  const payTotal=(payables||[]).filter(payIsOpen).reduce((s,p)=>s+payBalance(p),0);
+  const payCount=(payables||[]).filter(payIsOpen).length;
   const loanPrincipal=(loans||[]).reduce((s,l)=>s+(Number(l.principal)||0),0);
   const loanPaid=(loans||[]).reduce((s,l)=>s+(l.payments||[]).reduce((a,p)=>a+Number(p.amount||0),0),0);
   const loanOutstanding=Math.max(0,loanPrincipal-loanPaid);
@@ -4966,34 +4977,49 @@ export default function App(){
               const sbSwoIds=new Set((data.swos||[]).map(s=>s.id));
               const sbMrIds=new Set((data.mreqs||[]).map(r=>r.id));
               const sbBrIds=new Set((data.breqs||[]).map(r=>r.id));
+              // Guards (2026-11-19). "Not on the server" also means "deleted by
+              // someone else" or "beyond the read limit" (job_orders loads 500),
+              // and when a table's read FAILED the server list is empty, so every
+              // cached row looked missing and was full-row upserted over newer
+              // server data. Push only rows that are queued on this device or were
+              // created in the last 3 days, and never for a table whose read failed.
+              const failedReads=new Set(data._failed||[]);
+              const pendingIds=new Set(sbPendingIds?.()||[]);
+              const recentCut=Date.now()-3*86400000;
+              const pushable=(table,r)=>{
+                if(failedReads.has(table)) return false;
+                if(pendingIds.has(r.id)) return true;
+                const t=Date.parse(r.createdAt||r.created_at||r.addedAt||r.added_at||"");
+                return isFinite(t)&&t>=recentCut;
+              };
               // Read current local state via functional updater pattern (read-only)
               setDeals(localDeals=>{
-                const missing=localDeals.filter(d=>uuidRe.test(d.id||"")&&!sbDealIds.has(d.id));
+                const missing=localDeals.filter(d=>uuidRe.test(d.id||"")&&!sbDealIds.has(d.id)&&pushable("deals",d));
                 if(missing.length){console.info("[FabHub] Auto-syncing",missing.length,"local-only deals to Supabase");missing.forEach(d=>sbSyncOne("deals",d,toSbDeal));}
                 return localDeals;
               });
               setPrs(localPrs=>{
-                const missing=localPrs.filter(r=>uuidRe.test(r.id||"")&&!sbPrIds.has(r.id));
+                const missing=localPrs.filter(r=>uuidRe.test(r.id||"")&&!sbPrIds.has(r.id)&&pushable("purchase_requests",r));
                 if(missing.length){console.info("[FabHub] Auto-syncing",missing.length,"local-only POs to Supabase");missing.forEach(r=>sbSyncOne("purchase_requests",r,toSbPR));}
                 return localPrs;
               });
               setJos(localJos=>{
-                const missing=dropStaleJos(sbJos,localJos).filter(j=>uuidRe.test(j.id||"")&&!sbJoIds.has(j.id));
+                const missing=dropStaleJos(sbJos,localJos).filter(j=>uuidRe.test(j.id||"")&&!sbJoIds.has(j.id)&&pushable("job_orders",j));
                 if(missing.length){console.info("[FabHub] Auto-syncing",missing.length,"local-only JOs to Supabase");missing.forEach(j=>sbSyncOne("job_orders",j,toSbJO));}
                 return localJos;
               });
               setSwos(localSwos=>{
-                const missing=localSwos.filter(s=>uuidRe.test(s.id||"")&&!sbSwoIds.has(s.id));
+                const missing=localSwos.filter(s=>uuidRe.test(s.id||"")&&!sbSwoIds.has(s.id)&&pushable("subcon_work_orders",s));
                 if(missing.length){console.info("[FabHub] Auto-syncing",missing.length,"local-only WOs to Supabase");missing.forEach(s=>sbSyncOne("subcon_work_orders",s,swoToSb));}
                 return localSwos;
               });
               setMreqs(localMreqs=>{
-                const missing=localMreqs.filter(r=>uuidRe.test(r.id||"")&&!sbMrIds.has(r.id));
+                const missing=localMreqs.filter(r=>uuidRe.test(r.id||"")&&!sbMrIds.has(r.id)&&pushable("material_requests",r));
                 if(missing.length){console.info("[FabHub] Auto-syncing",missing.length,"local-only MRs to Supabase");missing.forEach(r=>sbSyncOne("material_requests",r,toSbMR));}
                 return localMreqs;
               });
               setBreqs(localBreqs=>{
-                const missing=localBreqs.filter(r=>uuidRe.test(r.id||"")&&!sbBrIds.has(r.id));
+                const missing=localBreqs.filter(r=>uuidRe.test(r.id||"")&&!sbBrIds.has(r.id)&&pushable("budget_requests",r));
                 if(missing.length){console.info("[FabHub] Auto-syncing",missing.length,"local-only BRs to Supabase");missing.forEach(r=>sbSyncOne("budget_requests",r,toSbBR));}
                 return localBreqs;
               });
@@ -5190,8 +5216,8 @@ export default function App(){
         // once/30s) — far more often than a manual page refresh — so a blind
         // overwrite here was the single biggest way to lose a just-added record
         // that hadn't synced yet (e.g. still in flight when the user tabbed away).
-        if(data?.deals?.length) setDeals(prev=>mlo(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,standbyPO:d.standby_po||false,dpWaivedBy:d.dp_waived_by||"",dpWaivedAt:d.dp_waived_at||null,dpWaivedReason:d.dp_waived_reason||"",poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,signedCeUrl:d.signed_ce_url||"",signedCeOnFile:d.signed_ce_on_file||false,clientPoNo:d.client_po_no||"",isCostCenter:!!d.is_cost_center,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})),prev));
-        if(data?.jos?.length){const js=data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no}));setJos(prev=>mlo(js,dropStaleJos(js,prev)));}
+        if(data?.deals?.length) setDeals(prev=>mlo(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,standbyPO:d.standby_po||false,dpWaivedBy:d.dp_waived_by||"",dpWaivedAt:d.dp_waived_at||null,dpWaivedReason:d.dp_waived_reason||"",poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,signedCeUrl:d.signed_ce_url||"",signedCeOnFile:d.signed_ce_on_file||false,clientPoNo:d.client_po_no||"",isCostCenter:!!d.is_cost_center,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})),prev));
+        if(data?.jos?.length){const js=data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned}));setJos(prev=>mlo(js,dropStaleJos(js,prev)));}
         if(Object.keys(data?.pcards||{}).length) setPcards(prev=>mergeLocalOnlyObj(data.pcards,prev));
         // Map the same camelCase fields the initial load does. Omitting dueDate
         // (leaving only the raw due_date) made the Field Board — which filters on
@@ -5227,7 +5253,7 @@ export default function App(){
     if(data.deals?.length){const ds=data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,addendumStatus:d.addendum_status||null,standbyPO:d.standby_po||false,dpWaivedBy:d.dp_waived_by||"",dpWaivedAt:d.dp_waived_at||null,dpWaivedReason:d.dp_waived_reason||"",poBudget:d.standby_po?(Number(d.po_budget)||0):"",leadOrigin:d.lead_origin||DEFAULT_LEAD_ORIGIN,leadOriginStatus:d.lead_origin_status||"Approved",leadOriginApprovedBy:d.lead_origin_approved_by||"",leadOriginApprovedAt:d.lead_origin_approved_at||null,boqData:d.boq_data||null,bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,signedCeUrl:d.signed_ce_url||"",signedCeOnFile:d.signed_ce_on_file||false,clientPoNo:d.client_po_no||"",isCostCenter:!!d.is_cost_center,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null}));setDeals(prev=>mlo(ds,prev));idbE.push([KEYS.deals,ds]);}
     if(data.jos?.length){const js=data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned}));setJos(prev=>mlo(js,dropStaleJos(js,prev)));idbE.push([KEYS.jos,js]);}
     if(Object.keys(data.pcards||{}).length){setPcards(data.pcards);idbE.push([KEYS.pcards,data.pcards]);}
-    if(data.billings?.length){const bs=data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by,retentionHeld:m.retention_held!=null?Number(m.retention_held):undefined,isRetentionRelease:m.is_retention_release||undefined,plannedDate:m.planned_bill_date||undefined,msType:m.ms_type||undefined,payments:(m.payments||[]).map(p=>({...p,milestoneId:p.milestone_id??p.milestoneId,refNo:p.ref_no??p.refNo,recordedBy:p.recorded_by??p.recordedBy,valueDate:p.value_date??p.valueDate,method:p.payment_method??p.method,bounced:!!(p.bounced??false)}))}));setBillings(prev=>mlo(bs,prev));idbE.push([KEYS.billings,bs]);}
+    if(data.billings?.length){const bs=data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by,receiptType:m.receipt_type||null,withholding:m.withholding??null,retentionHeld:m.retention_held!=null?Number(m.retention_held):undefined,isRetentionRelease:m.is_retention_release||undefined,plannedDate:m.planned_bill_date||undefined,msType:m.ms_type||undefined,payments:(m.payments||[]).map(p=>({...p,milestoneId:p.milestone_id??p.milestoneId,refNo:p.ref_no??p.refNo,recordedBy:p.recorded_by??p.recordedBy,valueDate:p.value_date??p.valueDate,method:p.payment_method??p.method,bounced:!!(p.bounced??false)}))}));setBillings(prev=>mlo(bs,prev));idbE.push([KEYS.billings,bs]);}
     if(data.exps?.length){const mappedExps=data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,createdBy:e.created_by,bankAccount:e.bank_account||"",expDate:e.date||null,poRef:e.po_ref||"",payee:e.supplier||"",vatable:e.vatable??undefined,inputVat:e.input_vat!=null?Number(e.input_vat):undefined,ewtRate:e.ewt_rate!=null?Number(e.ewt_rate):undefined,ewtAmount:e.ewt_amount!=null?Number(e.ewt_amount):undefined,netAmount:e.net_amount!=null?Number(e.net_amount):undefined,month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};});setExps(prev=>mlo(mappedExps,prev));idbE.push([KEYS.expenses,mappedExps]);}
     if(data.swos?.length){const ws=data.swos.map(swoFromSb);setSwos(prev=>mlo(ws,prev));idbE.push([KEYS.swos,ws]);}
     if(data.inflows?.length){const infs=data.inflows.map(i=>({...i,dealId:i.deal_id,refNo:i.ref_no}));setInfs(prev=>mlo(infs,prev));idbE.push([KEYS.inflows,infs]);}
@@ -5798,10 +5824,14 @@ export default function App(){
   const migrateToCloud=useCallback(async()=>{
     if(!isSupabaseReady()){toastEmit("Supabase is not connected — check environment variables","error",5000);return;}
     toastEmit("Pushing all data to cloud…","info",2500);
+    // Insert-only since 2026-11-19: this pushes rows the server is MISSING and
+    // never overwrites a row it already has. It used to full-row upsert this
+    // device's whole cache, reverting other people's newer edits (stage, values,
+    // PO status, WO details) to whatever this device last saw.
     // Skip tables the current role can't INSERT (see roleCanInsert): re-pushing
     // them only produces false "NOT saved — please redo" toasts for rows RLS
     // rejects, which already exist on the server.
-    const syncAll=(table,arr,mapper)=>(arr?.length&&roleCanInsert(table))?Promise.all(arr.map(r=>{const p=mapper?mapper(r):r;return hasValidUUIDs(p)?sbUpsert(table,p,'id'):Promise.resolve();})).catch(e=>console.error("migrate "+table+":",e.message)):Promise.resolve();
+    const syncAll=(table,arr,mapper)=>(arr?.length&&roleCanInsert(table))?Promise.all(arr.map(r=>{const p=mapper?mapper(r):r;return hasValidUUIDs(p)?sbInsertIfMissing(table,p):Promise.resolve();})).catch(e=>console.error("migrate "+table+":",e.message)):Promise.resolve();
     await syncAll("deals",deals,toSbDeal);
     await syncAll("job_orders",jos,toSbJO);
     await syncAll("expenses",exps,toSbExpense);
@@ -5814,7 +5844,7 @@ export default function App(){
     await syncAll("checklists",checklist,toSbChecklist);
     await syncAll("activity_log",actLog,toSbActivity);
     if(billings?.length){
-      await Promise.all(billings.map(m=>{if(!isUUID(m.id))return Promise.resolve();sbSyncOne("billing_milestones",m,toSbBilling);return Promise.all((m.payments||[]).map(p=>isUUID(p.id)?sbSyncOne("billing_payments",{...p,milestoneId:m.id},toSbPayment):Promise.resolve()));})).catch(()=>{});
+      await Promise.all(billings.map(m=>{if(!isUUID(m.id))return Promise.resolve();if(roleCanInsert("billing_milestones")) sbInsertIfMissing("billing_milestones",toSbBilling(m));return Promise.all((m.payments||[]).map(p=>isUUID(p.id)&&roleCanInsert("billing_payments")?sbInsertIfMissing("billing_payments",toSbPayment({...p,milestoneId:m.id})):Promise.resolve()));})).catch(()=>{});
     }
     // A role that may create but not edit budgets (Sales/SalesOpsAdmin) can only
     // fill in budgets missing on the server — an upsert is refused for it outright.
@@ -7096,14 +7126,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     logActivity(dealId,"Billing Deleted",`All ${ms.length} milestone${ms.length!==1?"s":""} removed — ${why}`,session?.name||role);
     toastEmit("🗑 Billing deleted and archived to Audit Trail.","success",5000);
   };
-  const logBillingPayment=(msId,payment)=>{
+  const logBillingPayment=async(msId,payment)=>{
     const payId=uid();
     const milestone=billings.find(b=>b.id===msId);
     const dealId=milestone?.dealId;
     const payDeal=dealId?deals.find(d=>d.id===dealId):null;
     if(!isSupabaseReady()) toastEmit("⚠️ Collection saved on this device only — no server connection. It won't appear on other devices until reconnected.","warning",9000);
     const msTx=calcTax(milestone?.amount||0,milestone?.receiptType??milestone?.receipt_type??payDeal?.receiptType??"OR",milestone?.withholding??payDeal?.withholding??false);
-    const totalPaidAfter=(milestone?.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0)+Number(payment.amount||0);
+    // Bounced cheques don't count toward the balance (as in submitPay / updateMilestone).
+    const totalPaidAfter=(milestone?.payments||[]).filter(p=>!p.bounced).reduce((s,p)=>s+Number(p.amount||0),0)+Number(payment.amount||0);
     const isFullyPaid=totalPaidAfter>=msTx.netReceivable;
     // Where the money landed: resolve the stored bank code (e.g. "bpi") to its
     // short name, then append the method (Bank Transfer / Cheque / Cash…).
@@ -7116,7 +7147,22 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // the date received, then today.
     const creditedOn=payment.valueDate||payment.value_date||payment.date||today;
     const payMsg=`💵 <b>Payment Received</b>\nProject: <b>${payDeal?.contact||milestone?.name||milestone?.title||"—"}</b>\nClient: ${payDeal?.client||"—"}\nDeposited to: ${depositedTo}\nAmount: ₱${Number(payment.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nCredited: ${creditedOn}\nRef: ${payment.refNo||payment.ref_no||"—"}\nRecorded by: ${payment.recordedBy||session?.name||"Finance"}${isFullyPaid?"\n✅ Milestone fully paid!":""}`;
-    if(isOffsetPayment(payment)){
+    // Save the payment and wait for the server BEFORE telling anyone. Until
+    // 2026-11-19 Telegram "Payment Received" went out first and the save ran
+    // unawaited inside a state updater, so a refused payment (own-deal rule,
+    // offset rule, RLS) still reached management and showed as collected.
+    let notify=true;
+    if(isSupabaseReady()){
+      const res=await sbUpsertDetailed("billing_payments",toSbPayment({...payment,id:payId,milestoneId:msId}),"id");
+      if(!res.ok){
+        if(!res.queued){toastEmit(`Payment NOT saved. The server refused it: ${res.message||"unknown error"}`,"error",12000);return false;}
+        toastEmit("⚠️ Payment queued: the server hasn't confirmed it yet. Keep this tab open. Telegram was not sent.","warning",10000);
+        notify=false;
+      }
+    }
+    if(!notify){
+      // queued: management is not told about money the server hasn't confirmed
+    }else if(isOffsetPayment(payment)){
       // No money moved — say so, and tell Financial Control as well.
       const offMsg=`🔁 <b>Invoice Settled by Offset / Credit Note — no cash</b>\nProject: <b>${payDeal?.contact||milestone?.name||"—"}</b>\nClient: ${payDeal?.client||"—"}\nInvoice: ${milestone?.invoiceNo||milestone?.name||"—"}\nAmount: ₱${Number(payment.amount||0).toLocaleString("en-PH",{maximumFractionDigits:2})}\nCredit note / agreement: ${payment.refNo||"—"}\nWhat was offset: ${payment.note||"—"}\nRecorded by: ${payment.recordedBy||session?.name||"Manager"}${isFullyPaid?"\n✅ Milestone settled in full":""}`;
       sendTelegramNotification("management",offMsg);
@@ -7130,16 +7176,18 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     upBillings(bs=>bs.map(b=>{
       if(b.id!==msId) return b;
       const payments=[...(b.payments||[]),{...payment,id:payId,date:payment.date||today}];
-      const totalPaid=payments.reduce((s,p)=>s+Number(p.amount||0),0);
+      const totalPaid=payments.filter(p=>!p.bounced).reduce((s,p)=>s+Number(p.amount||0),0);
       const bTx=calcTax(b.amount||0,b.receiptType??b.receipt_type??payDeal?.receiptType??"OR",b.withholding??payDeal?.withholding??false);
       const status=totalPaid>=bTx.netReceivable?'Fully Paid':totalPaid>0?'Partially Paid':b.status;
-      if(isSupabaseReady()){
-        sbUpsert("billing_payments",toSbPayment({...payment,id:payId,milestoneId:msId}),"id")
-          .catch(e=>{console.error("billing_payments sync:",e.message);toastEmit("⚠️ Payment saved locally but NOT synced to server — do not close this tab!","warning",9000);});
-        sbUpdate('billing_milestones',msId,{status,updated_at:new Date().toISOString()}).catch(e=>{toastEmit("⚠️ Payment status not synced — do not close this tab!","warning",9000);console.error("billing sync:",e);});
-      }
       return{...b,payments,status};
     }));
+    // Milestone status: same rule, written once, outside the state updater
+    // (React may run an updater twice).
+    if(isSupabaseReady()&&milestone){
+      const msPaid=(milestone.payments||[]).filter(p=>!p.bounced).reduce((s,p)=>s+Number(p.amount||0),0)+Number(payment.amount||0);
+      const msStatus=msPaid>=msTx.netReceivable?'Fully Paid':msPaid>0?'Partially Paid':milestone.status;
+      if(msStatus!==milestone.status) sbUpdate('billing_milestones',msId,{status:msStatus});
+    }
     // Sync deal.amountPaid so Finance KPIs reflect billing collections.
     // Recompute from ALL surviving non-bounced payments (mirroring
     // deleteBillingPayment) rather than incrementing a possibly-stale base —
@@ -7162,6 +7210,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // billing payments (counting each on its clearance date), so the payment
     // record is the single source of truth — no hidden bank-balance write to
     // keep in sync, and deleting a payment reverses automatically.
+    return true;
   };
   const deleteBillingPayment=async(msId,payId)=>{
     const milestone=billings.find(b=>b.id===msId);
@@ -7297,6 +7346,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     }));
   };
   const updateAddendum=(id,ch)=>{
+    // Moving a CO into/out of Approved·Billed·Collected, or changing the value of
+    // one that is in, rolls the contract and billing: approvers only
+    // (canApproveAddendum; the database keeps the old values otherwise).
+    {const cur=addenda.find(x=>x.id===id);
+     if(cur){const nx={...cur,...ch};
+       const touchesRolled=ADDENDUM_ROLLED(cur.status)!==ADDENDUM_ROLLED(nx.status)||(ADDENDUM_ROLLED(cur.status)&&coSignedValue(cur)!==coSignedValue(nx));
+       if(touchesRolled&&!canApproveAddendum(role,session?.name,deals.find(d=>d.id===(cur.dealId||cur.projectId)),null)){toastEmit(ADDENDUM_APPROVER_MSG,"error",8000);return;}}}
     upAddenda(as=>as.map(a=>{
       if(a.id!==id) return a;
       const n={...a,...ch};
@@ -8645,6 +8701,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // Standalone deals keep addendumStatus null.
     if(rec.parentDealId){
       const _parent=deals.find(d=>d.id===rec.parentDealId);
+      // Approving (or un-approving) an addendum is for approvers only; anyone
+      // else keeps the status it had (canApproveAddendum, migration 20261121010000).
+      {const _prev=editDeal?deals.find(d=>d.id===editDeal):null;
+       const _was=_prev?.addendumStatus||"Pending";
+       if((rec.addendumStatus||"Pending")!==_was&&!canApproveAddendum(role,session?.name,_prev||rec,_parent)){
+         toastEmit(ADDENDUM_APPROVER_MSG,"warning",8000);rec.addendumStatus=_was;}}
       if(rec.addendumStatus==="Approved"){
         if(_parent&&!isLostStage(_parent.stage)) rec.stage=_parent.stage;
         rec.probability=WON_STAGES.includes(rec.stage)?100:rec.probability;
@@ -9375,23 +9437,35 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       amount:Number(rec.amount)||0,status:"Recorded",payBank:rec.payBank||"",payMethod:rec.payMethod||"",payRef:rec.payRef||"",notes:rec.notes||"",
       recordedBy:session?.name||"",recordedAt:new Date().toISOString(),approvedBy:"",approvedAt:null,createdAt:new Date().toISOString()};
     upPayouts(ps=>[row,...ps]);
-    if(isSupabaseReady()) sbUpsert("commission_payouts",commissionPayoutToSb(row),"id")
-      .catch(e=>{console.error("commission_payouts sync:",e.message);toastEmit("⚠️ Payout saved locally but NOT synced to server.","warning",8000);});
+    // sbUpsert resolves false (never rejects) when the server refuses, so check
+    // the result instead of a .catch that could never fire.
+    if(isSupabaseReady()&&!await sbUpsert("commission_payouts",commissionPayoutToSb(row),"id")){
+      toastEmit("⚠️ Payout not confirmed by the server yet. Check Commission before recording it again.","warning",9000);
+      return false;
+    }
     toastEmit("Commission payout recorded — pending Manager approval.","success");
+    return true;
   };
   // Manager approves a recorded payout, which makes it count as paid.
   const approvePayout=async(id)=>{
     if(role!=="Manager"){toastEmit("Only a Manager can approve payouts.","warning");return;}
     const patch={status:"Approved",approvedBy:session?.name||"",approvedAt:new Date().toISOString()};
+    // Update only the decision fields. (Before 2026-11-19 this upserted
+    // {id,...commissionPayoutToSb(patch)}: the mapper's id:undefined replaced the
+    // real id and blanked payee/amount, so the approval never reached the payout.)
+    if(isSupabaseReady()&&!await sbUpdate("commission_payouts",id,{status:"Approved",approved_by:patch.approvedBy,approved_at:patch.approvedAt})){
+      toastEmit("⚠️ Approval not confirmed by the server. Try again.","warning",9000);return;
+    }
     upPayouts(ps=>ps.map(p=>p.id===id?{...p,...patch}:p));
-    if(isSupabaseReady()) sbUpsert("commission_payouts",{id,...commissionPayoutToSb({...patch})},"id").catch(()=>{});
     toastEmit("Payout approved.","success");
   };
   const voidPayout=async(id)=>{
     if(!await guardWrite("update","commission_payouts","void a commission payout")) return;
     if(!await uiConfirm("Void this commission payout? It will no longer count as paid.")) return;
+    if(isSupabaseReady()&&!await sbUpdate("commission_payouts",id,{status:"Void"})){
+      toastEmit("⚠️ Void not confirmed by the server. Try again.","warning",9000);return;
+    }
     upPayouts(ps=>ps.map(p=>p.id===id?{...p,status:"Void"}:p));
-    if(isSupabaseReady()) sbUpsert("commission_payouts",{id,status:"Void"},"id").catch(()=>{});
   };
   // AP / PRV numbers (AP-YYYY-NNNN, PRV-YYYY-NNNN) are assigned by the server
   // when a payable is first inserted (trigger payables_assign_number, migration
@@ -9855,9 +9929,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const r2=v=>Math.round((Number(v)||0)*100)/100;
   const pesoFmt=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
   const paysOf=id=>payPays.filter(x=>x.payableId===id);
+  const recordPaymentsBusy=useRef(false);
   // entries: [{payableId, amount (cash), retentionAmount?, kind?}]
   // common:  {date, method, bank, ref, note?, cvId?}
   const recordPayments=async(entries,common={})=>{
+    // One payment save at a time: a double click on Record Payment / Pay several
+    // made two payable_payments rows (new ids each). Overrides re-enter on purpose.
+    if(recordPaymentsBusy.current&&!common.overrideReason){toastEmit("A payment is already being saved…","info",3000);return false;}
+    recordPaymentsBusy.current=true;
+    try{return await recordPaymentsInner(entries,common);}finally{recordPaymentsBusy.current=false;}
+  };
+  const recordPaymentsInner=async(entries,common={})=>{
     if(!roleCanInsert("payable_payments")){toastEmit("Only Finance, Accounting or a Manager can record payments.","error",7000);return false;}
     const list=(entries||[]).filter(e=>r2(e.amount)+r2(e.retentionAmount)>0);
     if(!list.length) return false;
@@ -9919,9 +10001,18 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         setPayPays(payPays);persist(KEYS.payPays,payPays);
         setPayables(payables);persist(KEYS.payables,payables);
         const reason=await askDupOverride(res);
-        return reason?recordPayments(entries,{...common,overrideReason:reason}):false;
+        return reason?recordPaymentsInner(entries,{...common,overrideReason:reason}):false;
       }
-      if(!res.ok) toastEmit("⚠️ Payment saved on this device but NOT confirmed by the server — do not close this tab.","warning",9000);
+      if(!res.ok&&!res.queued){
+        // Refused by a rule (not approved, over the bill, delivery, RLS): undo the
+        // screen and keep the form open. Before 2026-11-19 this returned true, so
+        // the modal closed and the bill showed as paid until the next reload.
+        setPayPays(payPays);persist(KEYS.payPays,payPays);
+        setPayables(payables);persist(KEYS.payables,payables);
+        toastEmit(`Payment NOT recorded. The server refused it: ${res.message||"unknown error"}`,"error",12000);
+        return false;
+      }
+      if(!res.ok) toastEmit("⚠️ Payment saved on this device but NOT confirmed by the server yet (queued). Do not close this tab.","warning",9000);
     } else toastEmit("⚠️ Payment saved on this device only — no server connection. Do not close this tab.","warning",9000);
     nextPayables.filter(p=>touched.has(p.id)&&p.status==="Paid"&&p.expenseId).forEach(p=>markExpensePaid(p.expenseId));
     const cash=rows.reduce((s,r)=>s+r.amount,0),held=rows.reduce((s,r)=>s+r.retentionAmount,0);
@@ -10894,7 +10985,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {/* Global Modals */}
       <CashOutModal kinds={cashOutKinds}/>
       <BillHistoryModal payPays={payPays}/>
-      <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal} deals={deals} addenda={addenda} role={role}/>
+      <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal} deals={deals} addenda={addenda} role={role} me={session?.name||""}/>
       <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={spendProjList} clientName={clientName} chartOfAccounts={chartOfAccounts} suppliers={suppliers} exps={exps} poRefOptions={[...new Set([...prs.map(p=>p.poNumber),...swos.map(w=>w.woNumber)].filter(Boolean))]}/>
       <Modal open={confirmDel!==null} onClose={()=>{setConfirmDel(null);setDelAck(false);}} title="Delete this deal?">
         {(()=>{
@@ -14417,12 +14508,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             <Fld label="Notes"><Inp value={payoutDraft.notes} onChange={e=>setPayoutDraft(d=>({...d,notes:e.target.value}))} placeholder="Optional"/></Fld>
             <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:4}}>
               <button onClick={()=>setPayoutDraft(null)} style={{border:"1px solid #e2e8f0",background:"#fff",color:"#475569",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",padding:"9px 16px",borderRadius:9,cursor:"pointer"}}>Cancel</button>
-              <button onClick={async()=>{
+              <button disabled={!!payoutDraft._saving} onClick={async()=>{
+                  if(payoutDraft._saving) return;
                   if(!payoutDraft.payee){toastEmit("Please select a rep.","warning");return;}
                   if(!(Number(payoutDraft.amount)>0)){toastEmit("Enter a payout amount.","warning");return;}
-                  await recordPayout(payoutDraft);
-                  setPayoutDraft(null);
-                }} style={{border:"none",background:"#059669",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",padding:"9px 18px",borderRadius:9,cursor:"pointer"}}>Record payout</button>
+                  setPayoutDraft(d=>d&&{...d,_saving:true});
+                  const ok=await recordPayout(payoutDraft);
+                  if(ok===false) setPayoutDraft(d=>d&&{...d,_saving:false}); else setPayoutDraft(null);
+                }} style={{border:"none",background:"#059669",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",padding:"9px 18px",borderRadius:9,cursor:payoutDraft._saving?"wait":"pointer",opacity:payoutDraft._saving?.6:1}}>{payoutDraft._saving?"Saving…":"Record payout"}</button>
             </div>
           </div>
         </Modal>
@@ -14748,7 +14841,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             .sort((a,b)=>b._wait-a._wait);
           if(!pend.length) return null;
           const totalPend=pend.reduce((s,d)=>s+Math.abs(Number(d.value)||0),0);
-          const canApprove=role==="Manager"||role==="Sales";
+          // Managers and SalesOpsAdmin (not on their own deal) — canApproveAddendum.
+          const canApprove=c=>canApproveAddendum(role,session?.name,c,deals.find(d=>d.id===c.parentDealId));
           const money=v=>"₱"+Math.abs(Number(v)||0).toLocaleString("en-PH");
           const approve=async(c)=>{
             const parent=deals.find(d=>d.id===c.parentDealId);
@@ -14756,8 +14850,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             if(!(await uiConfirm(`Approve this addendum?\n\n${c.contact||c.client} — ${money(c.value)}\n\nThis marks it client-approved: it rolls into ${pname}'s Total Contract and unlocks billing & design. Reversible from the deal's edit screen.`))) return;
             const newStage=(parent&&!isLostStage(parent.stage))?parent.stage:c.stage;
             const prob=WON_STAGES.includes(newStage)?100:c.probability;
+            if(!canApprove(c)){toastEmit&&toastEmit(ADDENDUM_APPROVER_MSG,"error",8000);return;}
+            // Server first: before 2026-11-19 a refused update still showed as approved.
+            if(isSupabaseReady()&&!await sbUpdate('deals',c.id,{addendum_status:"Approved",stage:newStage,probability:prob})){
+              toastEmit&&toastEmit("Addendum NOT approved: the server didn't confirm it. Try again.","error",9000);return;
+            }
             upDeals(ds=>ds.map(d=>d.id===c.id?{...d,addendumStatus:"Approved",stage:newStage,probability:prob}:d));
-            if(isSupabaseReady()) sbUpdate('deals',c.id,{addendum_status:"Approved",stage:newStage,probability:prob,updated_at:new Date().toISOString()}).catch(()=>{});
             logActivity(c.id,"Addendum approved",`${c.contact||c.client} — addendum approved by client (${money(c.value)}) → rolled into ${pname}`,session?.name);
             toastEmit&&toastEmit(`✅ Addendum approved — ${money(c.value)} now in ${pname}'s contract`,"success",6000);
           };
@@ -14781,7 +14879,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     </div>
                     {!BUDGET_ONLY.includes(role)&&<div style={{fontFamily:"'IBM Plex Mono',monospace",fontWeight:700,fontSize:".8rem",color:"#d97706",whiteSpace:"nowrap"}}>{money(c.value)}</div>}
                     <span title={`Waiting ${c._wait} day${c._wait!==1?"s":""} since acquired`} style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".64rem",fontWeight:700,padding:"2px 8px",borderRadius:20,whiteSpace:"nowrap",background:stale?"#fef2f2":"#f8fafc",color:stale?"#dc2626":"#64748b",border:`1px solid ${stale?"#fecaca":"#e2e8f0"}`}}>{stale?"⚠ ":""}{c._wait}d{stale?" · chase client":""}</span>
-                    {canApprove&&<button onClick={()=>approve(c)} style={{background:"#059669",border:"none",borderRadius:7,padding:"6px 14px",fontSize:".78rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700,flexShrink:0}}>✅ Approve</button>}
+                    {canApprove(c)&&<button onClick={()=>approve(c)} style={{background:"#059669",border:"none",borderRadius:7,padding:"6px 14px",fontSize:".78rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700,flexShrink:0}}>✅ Approve</button>}
                   </div>
                 );
               })}
@@ -15735,7 +15833,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           const maxBar=Math.max(...monthlyRev,...monthlyExp,1);
           const clientMap={};billings.forEach(b=>{const d=wonDeals.find(x=>x.id===b.dealId)||completedDeals.find(x=>x.id===b.dealId);if(!d)return;const k=d.client;if(!clientMap[k])clientMap[k]=0;clientMap[k]+=(b.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);});
           const topClients=Object.entries(clientMap).sort(([,a],[,b])=>b-a).slice(0,5);
-          const totalPayables=payables.filter(p=>p.status==="Unpaid").reduce((s,p)=>s+Number(p.amount||0),0);
+          const totalPayables=payables.filter(payIsOpen).reduce((s,p)=>s+payBalance(p),0);
           const overduePayables=payables.filter(p=>p.status==="Unpaid"&&p.dueDate&&p.dueDate<today).length;
 
           // ── DAILY DIGEST ─────────────────────────────────────────────────
@@ -25931,6 +26029,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const[msGrossStr,setMsGrossStr]=useState("");
   const msNetToGross=(v)=>{const x=Number(v)||0;return x?String(Math.round(x*1.12*100)/100):"";};
   const[payForm,  setPayForm]  =useState({amount:"",date:today,refNo:"",note:"",valueDate:"",bank:"",method:"Bank Transfer"});
+  const[paySaving,setPaySaving]=useState(false);
   const[editPayForm,setEditPayForm]=useState({});
   const[billingSearch,setBillingSearch]=useState("");
   const[billingFilter,setBillingFilter]=useState("all"); // all | outstanding | overdue | collected | uncollected | paid
@@ -26175,7 +26274,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     toastEmit&&toastEmit(`Retention release drafted: ₱${out.toLocaleString("en-PH")}.`,"success",6000);
   };
   const submitPay=async()=>{
-    if(!payForm.amount||!showPay) return;
+    if(paySaving||!payForm.amount||!showPay) return;
     const amt=Number(payForm.amount);
     if(!isFinite(amt)||amt<=0){toastEmit("Enter a payment amount greater than zero.","warning");return;}
     // Offset / credit note: settles the invoice without cash. Manager only, with a
@@ -26214,7 +26313,11 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         message:`A payment with the same amount and date (or the same reference no.) is already logged on this PO family:\n\n${lines}\n\nRecording it again double-counts Collected. Only continue if the client really paid twice.`});
       if(!ok) return;
     }
-    logBillingPayment(showPay,{...payForm,...(isOffset?{bank:"",valueDate:""}:{}),recordedBy:session?.name||role});
+    setPaySaving(true);
+    let ok=false;
+    try{ok=await logBillingPayment(showPay,{...payForm,...(isOffset?{bank:"",valueDate:""}:{}),recordedBy:session?.name||role});}
+    finally{setPaySaving(false);}
+    if(ok===false) return; // refused: keep the form open so nothing is lost
     setPayForm({amount:"",date:today,refNo:"",note:"",valueDate:"",bank:"",method:"Bank Transfer"});
     setShowPay(null);
   };
@@ -27345,7 +27448,15 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                           <div style={{fontWeight:700,color:"#1d4ed8",marginBottom:8,fontSize:".82rem"}}>Edit Milestone</div>
                           <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:8}}>
                             <Fld label="Milestone Name"><Inp value={editMsForm.name||""} onChange={e=>fme("name",e.target.value)} placeholder="e.g. 30% Down Payment"/></Fld>
-                            <Fld label="Amount (₱)"><Inp type="number" value={editMsForm.amount||""} onChange={e=>fme("amount",e.target.value)} placeholder="0.00"/></Fld>
+                            {(()=>{
+                              // Only a Manager changes the amount of a sent invoice; others
+                              // request a deduction. Mirrors trg_billing_milestone_amount_guard
+                              // (migration 20261121010000), which keeps the old amount otherwise.
+                              const orig=billings.find(b=>b.id===editMs);
+                              const amtLocked=canonRole(role)!=="Manager"&&!!orig&&orig.status!=="Draft";
+                              return(<Fld label="Amount (₱)"><Inp type="number" value={editMsForm.amount||""} readOnly={amtLocked} onChange={e=>fme("amount",e.target.value)} placeholder="0.00"/>
+                                {amtLocked&&<div style={{fontSize:".7rem",color:"#b45309",fontWeight:600,marginTop:3}}>This invoice has been sent. Only a Manager can change its amount. To lower it, request a deduction.</div>}</Fld>);
+                            })()}
                             <Fld label="Invoice No"><Inp value={editMsForm.invoiceNo||""} onChange={e=>fme("invoiceNo",e.target.value)} placeholder="INV-0001"/></Fld>
                             <Fld label="Invoice Date"><Inp type="date" value={editMsForm.invoiceDate||""} onChange={e=>fme("invoiceDate",e.target.value)}/></Fld>
                             {editMsForm.isDraft&&<Fld label="Bill on" hint="When this invoice should go out. Billing Check flags it 3 days after."><Inp type="date" value={editMsForm.plannedDate||""} onChange={e=>fme("plannedDate",e.target.value)}/></Fld>}
@@ -27401,9 +27512,9 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                             </div>
                           )}
                           <div style={{display:"flex",gap:8,marginTop:8}}>
-                            <button onClick={submitPay} disabled={!payForm.amount}
+                            <button onClick={submitPay} disabled={!payForm.amount||paySaving}
                               style={{background:payForm.amount?"#1d4ed8":"#e2e8f0",border:"none",borderRadius:7,padding:"7px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:payForm.amount?"#fff":"#94a3b8",cursor:payForm.amount?"pointer":"not-allowed"}}>
-                              {isOffsetPayment(payForm)?"Record Offset":"Save Payment"}
+                              {paySaving?"Saving…":isOffsetPayment(payForm)?"Record Offset":"Save Payment"}
                             </button>
                             <button onClick={()=>setShowPay(null)} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 12px",fontFamily:"inherit",fontWeight:600,fontSize:".78rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
                           </div>
