@@ -1,5 +1,6 @@
 import React,{useState,useMemo,useEffect,useRef} from "react";
 import {fmt,today,uid,toastEmit,Fld,Inp,Sel,KPI,uiConfirm,uiAlert,ProjectSelect} from "../shared";
+import {checkSupplier} from "../dataGuard";
 import {moveNeedsWitness,SCRAP_MOVE_TYPE,emptyPR,isProcurementRole} from "../core";
 
 const INV_CATEGORIES = [
@@ -60,7 +61,11 @@ function SupplierPicker({value,onChange,suppliers=[],addSupplier,placeholder="Su
             </div>
           ))}
           {q.trim()&&!exactMatch&&(
-            <div onMouseDown={()=>{addSupplier&&addSupplier({companyName:q.trim()});onChange(q.trim());setOpen(false);}}
+            <div onMouseDown={async()=>{
+                // Data guard: don't add a second record for a supplier already on the list.
+                const r=checkSupplier(q,suppliers);
+                if(r.kind==="ambiguous"||r.kind==="similar"){setOpen(false);if(!(await uiConfirm({title:"Add a new supplier?",tone:"warning",confirmLabel:"Add anyway",cancelLabel:"Go back",message:`Similar suppliers already exist:\n\n• ${r.matches.join("\n• ")}\n\nAdding "${q.trim()}" makes a second record for what may be the same supplier.`}))) return;}
+                addSupplier&&addSupplier({companyName:q.trim()});onChange(q.trim());setOpen(false);}}
               style={{padding:"9px 13px",fontSize:".82rem",cursor:"pointer",color:"#2563eb",fontWeight:600}}
               onMouseEnter={e=>e.currentTarget.style.background="#eff6ff"}
               onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
