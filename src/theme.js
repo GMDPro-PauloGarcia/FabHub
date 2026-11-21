@@ -8,6 +8,14 @@
 // this file. The values below are the canonical versions of the colors already
 // in use — adopting T.* is a no-op visually, but centralizes the definition.
 export const T = {
+  // GMD brand (2026-11-21 visual refresh): the navy + orange of the GMD logo
+  // (public/gmd-logo-doc-dark.png). Used for the app chrome (sidebar, phone bars).
+  brandNavy:   "#0B2545",
+  brandNavy2:  "#13315C", // hover / raised surface on navy
+  brandAccent: "#F0901E", // the logo's hexagon orange
+  brandAccentSoft:"rgba(240,144,30,.16)",
+  uiFont:      "'Inter','Segoe UI',system-ui,-apple-system,sans-serif",
+
   // Brand
   accent:      "#f59e0b", // amber — primary brand accent (active nav, focus ring, CTAs)
   accentSoft:  "rgba(245,158,11,.15)",
@@ -39,8 +47,8 @@ export const T = {
 
   // Shape scale
   radius:   { sm:6, md:8, lg:12, xl:14, pill:20 },
-  shadow:   { card:"0 1px 6px rgba(0,0,0,.05)", cardHover:"0 6px 20px rgba(0,0,0,.1)",
-              kpi:"0 1px 4px rgba(0,0,0,.04)", modal:"0 24px 80px rgba(0,0,0,.2)",
+  shadow:   { card:"0 1px 2px rgba(15,23,42,.04),0 1px 3px rgba(15,23,42,.04)", cardHover:"0 8px 24px rgba(15,23,42,.08)",
+              kpi:"0 1px 2px rgba(15,23,42,.04)", modal:"0 24px 64px rgba(15,23,42,.22)",
               toast:"0 8px 24px rgba(0,0,0,.12)" },
   // Display typeface used for figures / headings
   displayFont: "'Barlow Condensed',sans-serif",
