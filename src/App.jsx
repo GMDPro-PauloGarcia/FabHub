@@ -11,6 +11,9 @@ import BillHistoryModal,{openBillHistory} from "./views/BillHistory";
 import {buildOrders,payIsOpen,payBalance} from "./data/ledger";
 import {fmt,addPrintClose,docLogo,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable,HIDDEN_NAV_IDS,AP_HIDDEN,WAREHOUSE_HIDDEN,isHiddenView,HIDDEN_FIN_TABS,HIDDEN_PIPE_TABS,pageOn,cashCanEdit,ProjectSelect,setProjectSearchIndex} from './shared';
 import {T} from './theme';
+import {Icon,NavIcon} from './icons';
+import {checkSupplier,supplierSavePrompt,checkBill} from './dataGuard';
+import SupplierHint from './SupplierHint';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
 import {projProgressPct, isConstructionDeal, projStageFlow, projStepIndex, projStepLabel, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, canApproveAddendum, ADDENDUM_APPROVER_MSG, PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, canRecordDeduction, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel, pendingCostByProject, poSplitTotal, canRaiseOrder, woSignStep, WO_SIGN_MSG, arAgeBucket, arCallOrder, dealHasBoq, MOTHER_PO_BOQ_MSG, ledgerCosts, poVatSet, isBilledRevenue, paymentBaseFactor, invoiceContractProgress, billingPosition, statementLine, orderForLabel, PO_ISSUED_STATUSES, WO_COMMITTED_STATUSES, billingDueTerms, billingDefaultNetDays, billingTermsLabel, projectProgressPct} from './core';
@@ -4536,7 +4539,7 @@ function PayableForm({opexOnly=false,initial,editId=null,onSave,onCancel,swos=[]
         </Sel>
         {!editId&&<div style={{fontSize:".72rem",color:"#64748b",marginTop:3}}>The {payForm.docType==="PRV"?"PRV":"AP"} number is assigned by the server when it saves, so two people can never get the same number.</div>}
       </Fld>
-      <Fld label="Vendor / Payee"><Inp value={payForm.vendor||""} onChange={e=>setPayForm(p=>({...p,vendor:e.target.value}))} placeholder="e.g. ABC Steel Supply"/></Fld>
+      <Fld label="Vendor / Payee"><Inp value={payForm.vendor||""} onChange={e=>setPayForm(p=>({...p,vendor:e.target.value}))} placeholder="e.g. ABC Steel Supply"/>{!isSubconPayable(payForm)&&<SupplierHint value={payForm.vendor} suppliers={suppliers} onPick={v=>setPayForm(p=>({...p,vendor:v}))}/>}</Fld>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
         <Fld label={isSubconPayable(payForm)&&payForm.poNumber?"Subcon billing no.":"Invoice No."}><Inp value={payForm.invoiceNumber||""} onChange={e=>setPayForm(p=>({...p,invoiceNumber:e.target.value}))} placeholder="Vendor invoice #"/></Fld>
         <Fld label="Invoice Date"><Inp type="date" value={payForm.invoiceDate||""} onChange={e=>setPayForm(p=>({...p,invoiceDate:e.target.value}))}/></Fld>
@@ -9807,6 +9810,19 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         if(!ok) return;
       }
     }
+    // Data guard (2026-11-21 cleanup): supplier name must be one supplier from
+    // the list; the PO/WO number must exist; the project must still exist; and a
+    // same-vendor, same-amount bill on another PO is flagged. Prompts, not silent
+    // fixes. Subcon bills carry a subcontractor's name, which isn't in Suppliers.
+    {
+      const sp=isSubconPayable(data)?null:supplierSavePrompt(data.vendor,checkSupplier(data.vendor,suppliers));
+      if(sp&&sp.block){await uiAlert({title:sp.title,tone:"warning",message:sp.message});return;}
+      const issues=checkBill(data,{prs,swos,payables,deals},editPayId);
+      const blocker=issues.find(i=>i.level==="block");
+      if(blocker){toastEmit(blocker.text,"error",9000);return;}
+      const warns=[...(sp?[sp.message]:[]),...issues.map(i=>"• "+i.text)];
+      if(warns.length&&!(await uiConfirm({title:"Check before saving",tone:"warning",confirmLabel:"Save anyway",cancelLabel:"Go back",message:warns.join("\n\n")}))) return;
+    }
     // Due date drives the cash-flow forecast — nudge (don't hard-block) if missing.
     if(!String(data.dueDate||"").trim()){
       const ok=await uiConfirm({title:"No due date set",tone:"warning",confirmLabel:"Save without due date",cancelLabel:"Go back & set it",
@@ -10466,17 +10482,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     else if(id==="finance") setPage("acctdash");
     else setPage(id);
   };
+  const sideBtn={background:"rgba(255,255,255,.05)",border:"none",borderRadius:7,height:32,color:"#AFC0D6",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit"};
   const Nav=useStableComponent(()=>{
-    const NAV_ICONS={
-      home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   cashposition:"🏦",   supplierbills:"📦",   cashflow:"📈",   payables:"📤",   billing:"🧾",
-      reports:"📈", "sales-reports":"📈", "finance-reports":"📈", projectmargins:"🪙", acctdash:"📒", executive:"🎯", expmon:"🧾", payrun:"💸", liquidations:"🧾", bir2307:"📑", monboard:"🚦", subconmon:"🔨", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
-      ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅", financecal:"📅",
-      drf:"🖌️",    procurement:"📦", purchasing:"🛒", orderboard:"📋", progress:"📶", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
-      masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆", audit:"🔎", syshealth:"🩺", tvboard:"📺",
-      deliveries:"🚚",stockmove:"🔄",addenda:"⚠️",   pmupdates:"📝",  pmfeed:"📋",  suppliers:"🏭",
-      subcontractors:"👷",materialreq:"🔧",subconcert:"🔨",budgetreq:"💳",collections:"💵",
-      checklist:"✅",joborders:"📄", ops:"⚙️",        datamanagement:"⚙️", myfolder:"📁",
-    };
     const groups=hubbedNav(role);
     const allItems=groups.flatMap(g=>g.items||[]);
     const favPool=visibleNav(role).flatMap(g=>g.items||[]);
@@ -10485,15 +10492,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       // "payables" is a virtual nav entry: it opens the Finance page pinned to the
       // Accounts Payable tab, so the AP Ledger reads as its own top-level item.
       const active=navIsActive(id,hub);
-      const icon=(hub&&NAV_HUBS[hub].icon)||NAV_ICONS[id]||NAV_ICONS[l]||"•";
       const fav=favNav.includes(id);
       return(
-        <button key={id} onClick={()=>{navGo(id);setSelProj(null);setDealModal(false);setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(null);}}
-          title={collapsed?l:""}
-          style={{display:"flex",alignItems:"center",gap:10,width:"100%",border:"none",borderRadius:0,padding:collapsed?"10px 0":"8px 16px",justifyContent:collapsed?"center":"flex-start",background:active?"rgba(245,158,11,.15)":"transparent",color:active?"#f59e0b":"#94a3b8",fontFamily:"inherit",fontSize:".82rem",fontWeight:active?700:400,cursor:"pointer",borderLeft:active?"3px solid #f59e0b":"3px solid transparent",transition:"all .12s"}}>
-          <span style={{fontSize:"1rem",flexShrink:0}}>{icon}</span>
+        <button key={id} className={"fh-nav"+(active?" on":"")} onClick={()=>{navGo(id);setSelProj(null);setDealModal(false);setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(null);}}
+          title={collapsed?l:""} aria-current={active?"page":undefined}
+          style={{display:"flex",alignItems:"center",gap:11,width:collapsed?44:"calc(100% - 16px)",margin:collapsed?"2px auto":"1px 8px",border:"none",borderRadius:8,padding:collapsed?"10px 0":"8px 10px",justifyContent:collapsed?"center":"flex-start",background:active?T.brandAccentSoft:"transparent",color:active?T.brandAccent:"#AFC0D6",fontFamily:"inherit",fontSize:".84rem",fontWeight:active?650:500,cursor:"pointer",position:"relative",transition:"background .12s,color .12s"}}>
+          {active&&!collapsed&&<span aria-hidden="true" style={{position:"absolute",left:-8,top:8,bottom:8,width:3,borderRadius:"0 3px 3px 0",background:T.brandAccent}}/>}
+          <NavIcon id={id} hub={hub} size={18}/>
           {!collapsed&&<span style={{flex:1,textAlign:"left",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l}</span>}
-          {!collapsed&&<span role="button" tabIndex={-1} onClick={(e)=>{e.stopPropagation();toggleFav(id);}} title={fav?"Remove from favorites":"Pin to favorites"} style={{flexShrink:0,fontSize:".82rem",lineHeight:1,color:fav?"#f59e0b":"#475569",cursor:"pointer",padding:"0 2px"}}>{fav?"★":"☆"}</span>}
+          {!collapsed&&<span role="button" tabIndex={-1} className="fh-fav" onClick={(e)=>{e.stopPropagation();toggleFav(id);}} title={fav?"Remove from favorites":"Pin to favorites"} style={{flexShrink:0,fontSize:".8rem",lineHeight:1,color:fav?T.brandAccent:"#5B7392",cursor:"pointer",padding:"0 2px",opacity:fav?1:undefined}}>{fav?"★":"☆"}</span>}
         </button>
       );
     };
@@ -10502,19 +10509,24 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const favItems=favNav.map(id=>itemLookup[id]).filter(Boolean);
     const W = navCollapsed ? 64 : 220;
     return(
-      <aside style={{position:"fixed",left:0,top:0,height:"100vh",width:W,background:"#1e293b",display:"flex",flexDirection:"column",zIndex:200,transition:"width .2s",overflow:"hidden",boxShadow:"2px 0 12px rgba(0,0,0,.15)"}} className="noprint">
+      <aside style={{position:"fixed",left:0,top:0,height:"100vh",width:W,background:`linear-gradient(180deg,${T.brandNavy} 0%,#0A2140 100%)`,display:"flex",flexDirection:"column",zIndex:200,transition:"width .2s",overflow:"hidden",borderRight:"1px solid rgba(255,255,255,.04)"}} className="noprint fh-side">
         {/* Logo + collapse toggle */}
-        <div style={{display:"flex",alignItems:"center",justifyContent:navCollapsed?"center":"space-between",padding:navCollapsed?"16px 0":"14px 16px",borderBottom:"1px solid rgba(255,255,255,.08)",minHeight:56,flexShrink:0}}>
-          {!navCollapsed&&<img src="/gmd-logo.png" alt="GMD" style={{height:28,objectFit:"contain",filter:"brightness(0) invert(1)"}}/>}
-          <button onClick={()=>setNavCollapsed(c=>!c)} style={{background:"rgba(255,255,255,.08)",border:"none",borderRadius:6,width:28,height:28,cursor:"pointer",color:"#94a3b8",fontSize:"1rem",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-            {navCollapsed?"→":"←"}
+        <div style={{display:"flex",alignItems:"center",justifyContent:navCollapsed?"center":"space-between",padding:navCollapsed?"16px 0":"16px 14px 14px 18px",minHeight:60,flexShrink:0}}>
+          {!navCollapsed&&(
+            <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0}}>
+              <img src="/gmd-logo-doc-dark.png" alt="GMD" style={{height:26,objectFit:"contain"}}/>
+              <span style={{color:"#fff",fontWeight:700,fontSize:".95rem",letterSpacing:"-.01em"}}>FabHub</span>
+            </div>
+          )}
+          <button onClick={()=>setNavCollapsed(c=>!c)} aria-label={navCollapsed?"Expand sidebar":"Collapse sidebar"} title={navCollapsed?"Expand":"Collapse"} className="fh-side-btn" style={{background:"rgba(255,255,255,.06)",border:"none",borderRadius:7,width:28,height:28,cursor:"pointer",color:"#AFC0D6",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            <Icon name={navCollapsed?"chevR":"chevL"} size={16}/>
           </button>
         </div>
         {cashOutKinds.length>0&&(
           <div style={{padding:navCollapsed?"10px 0 2px":"10px 12px 2px",display:"flex",justifyContent:"center",flexShrink:0}}>
             <button onClick={()=>openCashOut()} title="Cash Out: order, bill or pay" aria-label="Cash Out"
-              style={{width:navCollapsed?40:"100%",height:36,border:"none",borderRadius:9,background:"#C9A24B",color:"#0B2545",fontFamily:"inherit",fontWeight:800,fontSize:".84rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
-              <span>💸</span>{!navCollapsed&&<span>Cash Out</span>}
+              style={{width:navCollapsed?40:"100%",height:36,border:"none",borderRadius:8,background:T.brandAccent,color:T.brandNavy,fontFamily:"inherit",fontWeight:700,fontSize:".84rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7,boxShadow:"0 1px 0 rgba(255,255,255,.25) inset"}}>
+              <Icon name="cash" size={17}/>{!navCollapsed&&<span>Cash Out</span>}
             </button>
           </div>
         )}
@@ -10526,9 +10538,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             <>
               {favItems.length>0&&(
                 <div style={{marginBottom:4}}>
-                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 16px 3px"}}>
-                    <span style={{fontSize:".58rem",fontWeight:800,color:"#f59e0b",textTransform:"uppercase",letterSpacing:"0.08em"}}>★ Favorites</span>
-                    <span role="button" tabIndex={-1} onClick={()=>setFavOnly(v=>!v)} title={favOnly?"Show all pages":"Hide the pages you haven't favorited"} style={{fontSize:".58rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:"0.04em",cursor:"pointer"}}>{favOnly?"Show all":"Hide rest"}</span>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 18px 4px"}}>
+                    <span style={{fontSize:".64rem",fontWeight:700,color:T.brandAccent,textTransform:"uppercase",letterSpacing:".08em"}}>Favorites</span>
+                    <span role="button" tabIndex={-1} onClick={()=>setFavOnly(v=>!v)} title={favOnly?"Show all pages":"Hide the pages you haven't favorited"} style={{fontSize:".62rem",fontWeight:600,color:"#7D93B0",letterSpacing:".02em",cursor:"pointer"}}>{favOnly?"Show all":"Hide rest"}</span>
                   </div>
                   {favItems.map(({id,l})=><NavBtn key={"fav-"+id} id={id} l={l} collapsed={false}/>)}
                 </div>
@@ -10542,9 +10554,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 <div key={si} style={{marginBottom:4}}>
                   <div role="button" tabIndex={-1} onClick={()=>toggleNavGroup(section.group)}
                     title={open?"Collapse":"Expand"}
-                    style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 16px 3px",fontSize:".58rem",fontWeight:800,color:"#475569",textTransform:"uppercase",letterSpacing:"0.08em",cursor:"pointer",userSelect:"none"}}>
+                    style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 18px 5px",fontSize:".64rem",fontWeight:700,color:"#6F86A6",textTransform:"uppercase",letterSpacing:".08em",cursor:"pointer",userSelect:"none"}}>
                     <span>{section.group}</span>
-                    <span style={{fontSize:".7rem",color:"#334155",transform:open?"rotate(90deg)":"rotate(0deg)",transition:"transform .15s",lineHeight:1}}>›</span>
+                    <span style={{color:"#4F6685",transform:open?"rotate(90deg)":"rotate(0deg)",transition:"transform .15s",lineHeight:1}}><Icon name="chevR" size={12} stroke={2.2}/></span>
                   </div>
                   {open&&(section.items||[]).map(({id,l,hub})=><NavBtn key={id} id={id} l={l} hub={hub} collapsed={false}/>)}
                 </div>
@@ -10554,14 +10566,18 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           )}
         </div>
         {/* Bottom: user info + actions */}
-        <div style={{borderTop:"1px solid rgba(255,255,255,.08)",padding:navCollapsed?"12px 0":"12px 14px",flexShrink:0}}>
+        <div style={{borderTop:"1px solid rgba(255,255,255,.07)",padding:navCollapsed?"12px 0":"12px 12px 14px",flexShrink:0}}>
           {!navCollapsed&&(
             <>
-              <div style={{background:roleColor+"22",borderRadius:20,padding:"4px 10px",fontSize:".7rem",fontWeight:700,color:roleColor,marginBottom:8,textAlign:"center"}}>
-                {session?.name?.split(" ")[0]} · {roleLabel(session?.title||role)}
-              </div>
-              <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"center",marginBottom:8}}>
-                <span onClick={async()=>{
+              <div style={{display:"flex",alignItems:"center",gap:10,padding:"4px 6px 10px"}}>
+                <div aria-hidden="true" style={{width:32,height:32,borderRadius:"50%",background:roleColor,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:".8rem",flexShrink:0}}>
+                  {(session?.name||"?").split(" ").filter(Boolean).slice(0,2).map(w=>w[0]).join("").toUpperCase()}
+                </div>
+                <div style={{minWidth:0,flex:1}}>
+                  <div style={{color:"#fff",fontSize:".8rem",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{session?.name||"—"}</div>
+                  <div style={{color:"#7D93B0",fontSize:".68rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{roleLabel(session?.title||role)}</div>
+                </div>
+                <span role="button" tabIndex={0} onClick={async()=>{
                   if(!isSupabaseReady()) return;
                   setSync("saving");
                   // Heal the session (fixes a device that's showing no data due to a stale/expired
@@ -10571,30 +10587,31 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   if(!restoreAppToken()){ appLogout(); }
                   window.location.reload();
                 }}
-                title="Re-sync: reconnect to the server and reload all data"
-                style={{fontSize:".62rem",cursor:"pointer",userSelect:"none"}}>
-                {sync==="saving"?<span style={{color:"#f59e0b"}}>saving…</span>:sync!=="saved"?<span style={{color:"#ef4444"}}>⚠ error</span>:<span style={{color:"#10b981"}}>🔄</span>}
-              </span>
-                {role==="Manager"&&users.filter(u=>u.status==="pending").length>0&&(
-                  <button onClick={()=>setPage("accounts")} style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:6,padding:"3px 8px",fontSize:".65rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>
-                    {users.filter(u=>u.status==="pending").length} pending
-                  </button>
-                )}
+                title={sync==="saving"?"Saving…":sync!=="saved"?"Sync error — click to reconnect and reload":"All changes saved — click to re-sync"}
+                aria-label="Re-sync"
+                style={{display:"flex",alignItems:"center",justifyContent:"center",width:26,height:26,borderRadius:7,cursor:"pointer",color:sync==="saving"?T.brandAccent:sync!=="saved"?"#F87171":"#34D399",background:"rgba(255,255,255,.05)"}}>
+                  <Icon name={sync!=="saved"&&sync!=="saving"?"alert":"refresh"} size={14} stroke={2}/>
+                </span>
               </div>
-              <div style={{display:"flex",gap:5,justifyContent:"center",flexWrap:"wrap"}}>
-                <button onClick={()=>setShowExport(s=>!s)} title="Backup" style={{background:"rgba(255,255,255,.08)",border:"none",borderRadius:6,padding:"5px 8px",color:"#94a3b8",cursor:"pointer",fontSize:".72rem",fontFamily:"inherit"}}>💾</button>
-                <a href="/handbook.html" target="_blank" rel="noopener noreferrer" style={{background:"rgba(245,158,11,.15)",border:"1px solid rgba(245,158,11,.3)",borderRadius:6,padding:"5px 8px",color:"#f59e0b",fontSize:".72rem",fontWeight:700,textDecoration:"none"}}>📘</a>
-                <button onClick={()=>setPage("myaccount")} title="My Account & Settings" style={{background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.1)",borderRadius:6,padding:"5px 8px",color:"#94a3b8",cursor:"pointer",fontSize:".72rem",fontFamily:"inherit"}}>⚙️</button>
-                <button onClick={logout} style={{background:"rgba(239,68,68,.15)",border:"1px solid rgba(239,68,68,.2)",borderRadius:6,padding:"5px 8px",color:"#ef4444",cursor:"pointer",fontSize:".72rem",fontFamily:"inherit"}}>↩ Out</button>
+              {role==="Manager"&&users.filter(u=>u.status==="pending").length>0&&(
+                <button onClick={()=>setPage("accounts")} style={{width:"100%",background:"rgba(248,113,113,.12)",border:"1px solid rgba(248,113,113,.25)",borderRadius:7,padding:"5px 8px",fontSize:".7rem",color:"#FCA5A5",cursor:"pointer",fontFamily:"inherit",fontWeight:600,marginBottom:8}}>
+                  {users.filter(u=>u.status==="pending").length} account{users.filter(u=>u.status==="pending").length!==1?"s":""} pending approval
+                </button>
+              )}
+              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:4}}>
+                <button onClick={()=>setShowExport(s=>!s)} title="Backup" aria-label="Backup" className="fh-side-btn" style={{...sideBtn}}><Icon name="save" size={16}/></button>
+                <a href="/handbook.html" target="_blank" rel="noopener noreferrer" title="Handbook" aria-label="Handbook" className="fh-side-btn" style={{...sideBtn,textDecoration:"none"}}><Icon name="help" size={16}/></a>
+                <button onClick={()=>setPage("myaccount")} title="My Account & Settings" aria-label="My Account & Settings" className="fh-side-btn" style={{...sideBtn}}><Icon name="gear" size={16}/></button>
+                <button onClick={logout} title="Log out" aria-label="Log out" className="fh-side-btn" style={{...sideBtn,color:"#FCA5A5"}}><Icon name="logout" size={16}/></button>
               </div>
             </>
           )}
           {navCollapsed&&(
             <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"center"}}>
-              <button onClick={()=>setShowExport(s=>!s)} title="Backup" style={{background:"rgba(255,255,255,.08)",border:"none",borderRadius:6,padding:"6px",color:"#94a3b8",cursor:"pointer",fontSize:".85rem"}}>💾</button>
-              <a href="/handbook.html" target="_blank" rel="noopener noreferrer" title="Handbook" style={{background:"rgba(245,158,11,.15)",border:"1px solid rgba(245,158,11,.3)",borderRadius:6,padding:"6px",color:"#f59e0b",fontSize:".85rem",textDecoration:"none"}}>📘</a>
-              <button onClick={logout} title="Log out" style={{background:"rgba(239,68,68,.12)",border:"none",borderRadius:6,padding:"6px",color:"#ef4444",cursor:"pointer",fontSize:".75rem",fontFamily:"inherit"}}>↩</button>
-              <button onClick={()=>setPage("myaccount")} title="My Account" style={{background:"rgba(255,255,255,.06)",border:"none",borderRadius:6,padding:"6px",color:"#94a3b8",cursor:"pointer",fontSize:".85rem",fontFamily:"inherit"}}>⚙️</button>
+              <button onClick={()=>setShowExport(s=>!s)} title="Backup" aria-label="Backup" className="fh-side-btn" style={{...sideBtn,width:36}}><Icon name="save" size={16}/></button>
+              <a href="/handbook.html" target="_blank" rel="noopener noreferrer" title="Handbook" aria-label="Handbook" className="fh-side-btn" style={{...sideBtn,width:36,textDecoration:"none"}}><Icon name="help" size={16}/></a>
+              <button onClick={()=>setPage("myaccount")} title="My Account" aria-label="My Account" className="fh-side-btn" style={{...sideBtn,width:36}}><Icon name="gear" size={16}/></button>
+              <button onClick={logout} title="Log out" aria-label="Log out" className="fh-side-btn" style={{...sideBtn,width:36,color:"#FCA5A5"}}><Icon name="logout" size={16}/></button>
             </div>
           )}
         </div>
@@ -10605,15 +10622,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const MobileHeader=useStableComponent(()=>{
     if(!isMobile) return null;
     return(
-      <div style={{position:"fixed",top:0,left:0,right:0,height:48,background:"#1e293b",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 14px",zIndex:300,boxShadow:"0 2px 8px rgba(0,0,0,.25)"}} className="noprint">
-        <img src="/gmd-logo.png" alt="GMD" style={{height:30,objectFit:"contain",filter:"brightness(0) invert(1)"}}/>
+      <div style={{position:"fixed",top:0,left:0,right:0,height:52,background:T.brandNavy,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 12px 0 14px",zIndex:300,boxShadow:"0 1px 0 rgba(255,255,255,.06),0 2px 10px rgba(11,37,69,.25)"}} className="noprint">
+        <div style={{display:"flex",alignItems:"center",gap:8}}><img src="/gmd-logo-doc-dark.png" alt="GMD" style={{height:24,objectFit:"contain"}}/><span style={{color:"#fff",fontWeight:700,fontSize:".92rem"}}>FabHub</span></div>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <span style={{fontSize:".65rem",fontWeight:700,color:roleColor,background:roleColor+"22",borderRadius:20,padding:"2px 8px"}}>
-            {session?.name?.split(" ")[0]} · {roleLabel(session?.title||role)}
+          <span title={roleLabel(session?.title||role)} aria-label={session?.name} style={{width:30,height:30,borderRadius:"50%",background:roleColor,color:"#fff",display:"inline-flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:".72rem"}}>
+            {(session?.name||"?").split(" ").filter(Boolean).slice(0,2).map(w=>w[0]).join("").toUpperCase()}
           </span>
-          {cashOutKinds.length>0&&<button onClick={()=>openCashOut()} aria-label="Cash Out" style={{background:"#C9A24B",border:"none",borderRadius:6,padding:"9px 10px",color:"#0B2545",cursor:"pointer",fontSize:".72rem",fontWeight:800,fontFamily:"inherit",minHeight:36}}>💸</button>}
-          <a href="/handbook.html" target="_blank" rel="noopener noreferrer" style={{background:"rgba(245,158,11,.2)",border:"none",borderRadius:6,padding:"9px 12px",color:"#f59e0b",fontSize:".72rem",fontWeight:700,textDecoration:"none",display:"inline-flex",alignItems:"center",minHeight:36}}>📘</a>
-          <button onClick={logout} style={{background:"rgba(239,68,68,.2)",border:"none",borderRadius:6,padding:"9px 12px",color:"#ef4444",cursor:"pointer",fontSize:".72rem",fontFamily:"inherit",minHeight:36,minWidth:36,display:"inline-flex",alignItems:"center",justifyContent:"center"}}>↩</button>
+          {cashOutKinds.length>0&&<button onClick={()=>openCashOut()} aria-label="Cash Out" style={{background:T.brandAccent,border:"none",borderRadius:8,width:36,height:36,color:T.brandNavy,cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center"}}><Icon name="cash" size={18}/></button>}
+          <a href="/handbook.html" target="_blank" rel="noopener noreferrer" aria-label="Handbook" style={{background:"rgba(255,255,255,.07)",borderRadius:8,width:36,height:36,color:"#AFC0D6",textDecoration:"none",display:"inline-flex",alignItems:"center",justifyContent:"center"}}><Icon name="help" size={18}/></a>
+          <button onClick={logout} aria-label="Log out" style={{background:"rgba(248,113,113,.14)",border:"none",borderRadius:8,width:36,height:36,color:"#FCA5A5",cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center"}}><Icon name="logout" size={18}/></button>
         </div>
       </div>
     );
@@ -10625,16 +10642,6 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const groups=hubbedNav(role);
     const allItems=groups.flatMap(g=>g.items||[]);
     const favPool=visibleNav(role).flatMap(g=>g.items||[]);
-    const NAV_ICONS={
-      home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   cashposition:"🏦",   supplierbills:"📦",   cashflow:"📈",   payables:"📤",   billing:"🧾",
-      reports:"📈", "sales-reports":"📈", "finance-reports":"📈", projectmargins:"🪙", acctdash:"📒", executive:"🎯", expmon:"🧾", payrun:"💸", liquidations:"🧾", bir2307:"📑", monboard:"🚦", subconmon:"🔨", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
-      ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅", financecal:"📅",
-      drf:"🖌️",    procurement:"📦", purchasing:"🛒", orderboard:"📋", progress:"📶", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
-      masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆", audit:"🔎", syshealth:"🩺", tvboard:"📺",
-      deliveries:"🚚",stockmove:"🔄",addenda:"⚠️",   pmupdates:"📝",  pmfeed:"📋",  suppliers:"🏭",
-      subcontractors:"👷",materialreq:"🔧",subconcert:"🔨",budgetreq:"💳",collections:"💵",
-      checklist:"✅",joborders:"📄", ops:"⚙️",        datamanagement:"⚙️", myfolder:"📁",
-    };
     const NAV_LABELS={
       home:"Home",pipeline:"Pipeline",projects:"Projects",finance:"Finance",executive:"Executive",expmon:"Expenses",payrun:"Pay Run",bir2307:"2307",monboard:"Board",subconmon:"Subcons",
       billing:"Billing",checklist:"Checklist",joborders:"JOs",
@@ -10690,9 +10697,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         )}
         {/* More drawer sheet */}
         {moreNavOpen&&(
-          <div style={{position:"fixed",bottom:62,left:0,right:0,maxHeight:"70vh",overflowY:"auto",background:"#1e293b",zIndex:299,borderRadius:"18px 18px 0 0",borderTop:"1px solid rgba(255,255,255,.12)",boxShadow:"0 -4px 24px rgba(0,0,0,.35)",paddingBottom:8}}>
+          <div style={{position:"fixed",bottom:62,left:0,right:0,maxHeight:"70vh",overflowY:"auto",background:T.brandNavy,zIndex:299,borderRadius:"18px 18px 0 0",borderTop:"1px solid rgba(255,255,255,.12)",boxShadow:"0 -4px 24px rgba(0,0,0,.35)",paddingBottom:8}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px 8px",borderBottom:"1px solid rgba(255,255,255,.08)"}}>
-              <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:".95rem",color:"#f8fafc",letterSpacing:.5}}>All Sections</span>
+              <span style={{fontWeight:700,fontSize:".95rem",color:"#fff"}}>All sections</span>
               <div style={{display:"flex",alignItems:"center",gap:10}}>
                 {favItemsM.length>0&&(
                   <button onClick={()=>setFavOnly(v=>!v)} style={{background:"transparent",border:"none",color:"#94a3b8",cursor:"pointer",fontSize:".62rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".04em",fontFamily:"inherit"}}>{favOnly?"Show all":"Hide rest"}</button>
@@ -10702,16 +10709,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             </div>
             {favItemsM.length>0&&(
               <div style={{padding:"6px 0"}}>
-                <div style={{padding:"4px 16px 2px",fontSize:".58rem",fontWeight:800,color:"#f59e0b",textTransform:"uppercase",letterSpacing:".08em"}}>★ Favorites</div>
+                <div style={{padding:"4px 16px 2px",fontSize:".58rem",fontWeight:800,color:T.brandAccent,textTransform:"uppercase",letterSpacing:".08em"}}>Favorites</div>
                 <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:0}}>
                   {favItemsM.map(({id,l})=>{
                     const active=navIsActive(id);
-                    const icon=NAV_ICONS[id]||"•";
                     const label=NAV_LABELS[id]||l?.replace(/📅|📋|📝|⚠️|📊|📦/g,"").trim()||l;
                     return(
                       <button key={"favm-"+id} onClick={()=>navigate(id)}
-                        style={{display:"flex",alignItems:"center",gap:10,border:"none",padding:"10px 16px",background:active?"rgba(245,158,11,.15)":"transparent",color:active?"#f59e0b":"#cbd5e1",fontFamily:"inherit",fontSize:".82rem",fontWeight:active?700:400,cursor:"pointer",borderLeft:active?"3px solid #f59e0b":"3px solid transparent",textAlign:"left"}}>
-                        <span style={{fontSize:"1rem",flexShrink:0}}>{icon}</span>
+                        style={{display:"flex",alignItems:"center",gap:10,border:"none",padding:"10px 16px",background:active?T.brandAccentSoft:"transparent",color:active?T.brandAccent:"#cbd5e1",fontFamily:"inherit",fontSize:".82rem",fontWeight:active?700:400,cursor:"pointer",borderLeft:active?`3px solid ${T.brandAccent}`:"3px solid transparent",textAlign:"left"}}>
+                        <NavIcon id={id} size={18}/>
                         <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{label}</span>
                       </button>
                     );
@@ -10725,15 +10731,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:0}}>
                   {(sec.items||[]).map(({id,l,hub})=>{
                     const active=navIsActive(id,hub);
-                    const icon=(hub&&NAV_HUBS[hub].icon)||NAV_ICONS[id]||"•";
                     const label=hub?NAV_HUBS[hub].l:(NAV_LABELS[id]||l?.replace(/📅|📋|📝|⚠️|📊|📦/g,"").trim()||l);
                     const fav=favNav.includes(id);
                     return(
                       <button key={id} onClick={()=>navigate(id)}
-                        style={{display:"flex",alignItems:"center",gap:10,border:"none",padding:"10px 16px",background:active?"rgba(245,158,11,.15)":"transparent",color:active?"#f59e0b":"#cbd5e1",fontFamily:"inherit",fontSize:".82rem",fontWeight:active?700:400,cursor:"pointer",borderLeft:active?"3px solid #f59e0b":"3px solid transparent",textAlign:"left"}}>
-                        <span style={{fontSize:"1rem",flexShrink:0}}>{icon}</span>
+                        style={{display:"flex",alignItems:"center",gap:10,border:"none",padding:"10px 16px",background:active?T.brandAccentSoft:"transparent",color:active?T.brandAccent:"#cbd5e1",fontFamily:"inherit",fontSize:".82rem",fontWeight:active?700:400,cursor:"pointer",borderLeft:active?`3px solid ${T.brandAccent}`:"3px solid transparent",textAlign:"left"}}>
+                        <NavIcon id={id} hub={hub} size={18}/>
                         <span style={{flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{label}</span>
-                        <span role="button" tabIndex={-1} onClick={(e)=>{e.stopPropagation();toggleFav(id);}} title={fav?"Remove from favorites":"Pin to favorites"} style={{flexShrink:0,fontSize:"1rem",lineHeight:1,color:fav?"#f59e0b":"#475569",padding:"0 4px"}}>{fav?"★":"☆"}</span>
+                        <span role="button" tabIndex={-1} onClick={(e)=>{e.stopPropagation();toggleFav(id);}} title={fav?"Remove from favorites":"Pin to favorites"} style={{flexShrink:0,fontSize:"1rem",lineHeight:1,color:fav?T.brandAccent:"#475569",padding:"0 4px"}}>{fav?"★":"☆"}</span>
                       </button>
                     );
                   })}
@@ -10742,22 +10747,22 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             ))}
             <div style={{padding:"6px 0 0",borderTop:"1px solid rgba(255,255,255,.08)",marginTop:4}}>
               <button onClick={()=>navigate("myaccount")}
-                style={{display:"flex",alignItems:"center",gap:10,width:"100%",border:"none",padding:"10px 16px",background:page==="myaccount"?"rgba(245,158,11,.15)":"transparent",color:page==="myaccount"?"#f59e0b":"#cbd5e1",fontFamily:"inherit",fontSize:".82rem",cursor:"pointer",borderLeft:page==="myaccount"?"3px solid #f59e0b":"3px solid transparent"}}>
-                <span style={{fontSize:"1rem"}}>⚙️</span>
+                style={{display:"flex",alignItems:"center",gap:10,width:"100%",border:"none",padding:"10px 16px",background:page==="myaccount"?T.brandAccentSoft:"transparent",color:page==="myaccount"?T.brandAccent:"#cbd5e1",fontFamily:"inherit",fontSize:".82rem",cursor:"pointer",borderLeft:page==="myaccount"?`3px solid ${T.brandAccent}`:"3px solid transparent"}}>
+                <Icon name="gear" size={18}/>
                 <span>My Account</span>
               </button>
             </div>
           </div>
         )}
         {/* Bottom tab bar */}
-        <div style={{position:"fixed",bottom:0,left:0,right:0,height:62,background:"#1e293b",display:"flex",alignItems:"stretch",zIndex:300,borderTop:"1px solid rgba(255,255,255,.08)",boxShadow:"0 -2px 12px rgba(0,0,0,.2)"}} className="noprint">
+        <div style={{position:"fixed",bottom:0,left:0,right:0,height:62,background:T.brandNavy,display:"flex",alignItems:"stretch",zIndex:300,borderTop:"1px solid rgba(255,255,255,.08)",boxShadow:"0 -2px 12px rgba(0,0,0,.2)"}} className="noprint">
           {tabs.map(({id,l,hub})=>{
             if(id==="__more__"){
               return(
                 <button key="__more__" onClick={()=>setMoreNavOpen(o=>!o)}
-                  style={{flex:1,position:"relative",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,border:"none",background:moreNavOpen?"rgba(245,158,11,.15)":"transparent",color:moreNavOpen?"#f59e0b":"#64748b",fontFamily:"inherit",cursor:"pointer",padding:"6px 0",borderTop:moreNavOpen?"2px solid #f59e0b":"2px solid transparent",transition:"all .12s"}}>
-                  <span style={{fontSize:"1.1rem",lineHeight:1}}>☰</span>
-                  <span style={{fontSize:".55rem",fontWeight:moreNavOpen?700:400,letterSpacing:".2px"}}>More</span>
+                  style={{flex:1,position:"relative",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,border:"none",background:moreNavOpen?T.brandAccentSoft:"transparent",color:moreNavOpen?T.brandAccent:"#64748b",fontFamily:"inherit",cursor:"pointer",padding:"6px 0",borderTop:moreNavOpen?`2px solid ${T.brandAccent}`:"2px solid transparent",transition:"all .12s"}}>
+                  <Icon name="menu" size={21}/>
+                  <span style={{fontSize:".6rem",fontWeight:moreNavOpen?700:400,letterSpacing:".2px"}}>More</span>
                   <BadgeDot count={moreBadge}/>
                 </button>
               );
@@ -10766,21 +10771,20 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               const active=page==="myaccount";
               return(
                 <button key="myaccount" onClick={()=>navigate("myaccount")}
-                  style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,border:"none",background:active?"rgba(245,158,11,.15)":"transparent",color:active?"#f59e0b":"#64748b",fontFamily:"inherit",cursor:"pointer",padding:"6px 0",borderTop:active?"2px solid #f59e0b":"2px solid transparent",transition:"all .12s"}}>
-                  <span style={{fontSize:"1.1rem",lineHeight:1}}>👤</span>
-                  <span style={{fontSize:".55rem",fontWeight:active?700:400,letterSpacing:".2px"}}>Me</span>
+                  style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,border:"none",background:active?T.brandAccentSoft:"transparent",color:active?T.brandAccent:"#64748b",fontFamily:"inherit",cursor:"pointer",padding:"6px 0",borderTop:active?`2px solid ${T.brandAccent}`:"2px solid transparent",transition:"all .12s"}}>
+                  <Icon name="users" size={21}/>
+                  <span style={{fontSize:".6rem",fontWeight:active?700:400,letterSpacing:".2px"}}>Me</span>
                 </button>
               );
             }
             const active=navIsActive(id,hub);
-            const icon=(hub&&NAV_HUBS[hub].icon)||NAV_ICONS[id]||"•";
             const label=hub?NAV_HUBS[hub].l:(NAV_LABELS[id]||l?.replace(/📅|📋|📝|⚠️|📊|📦/g,"").trim()||l);
             const bc=BADGE_MAP[id]||0;
             return(
               <button key={id} onClick={()=>navigate(id)}
-                style={{flex:1,position:"relative",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,border:"none",background:active?"rgba(245,158,11,.15)":"transparent",color:active?"#f59e0b":"#64748b",fontFamily:"inherit",cursor:"pointer",padding:"6px 0",borderTop:active?"2px solid #f59e0b":"2px solid transparent",transition:"all .12s"}}>
-                <span style={{fontSize:"1.1rem",lineHeight:1}}>{icon}</span>
-                <span style={{fontSize:".55rem",fontWeight:active?700:400,letterSpacing:".2px",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:54}}>{label}</span>
+                style={{flex:1,position:"relative",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,border:"none",background:active?T.brandAccentSoft:"transparent",color:active?T.brandAccent:"#64748b",fontFamily:"inherit",cursor:"pointer",padding:"6px 0",borderTop:active?`2px solid ${T.brandAccent}`:"2px solid transparent",transition:"all .12s"}}>
+                <NavIcon id={id} hub={hub} size={21}/>
+                <span style={{fontSize:".6rem",fontWeight:active?700:400,letterSpacing:".2px",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:54}}>{label}</span>
                 <BadgeDot count={bc}/>
               </button>
             );
@@ -10876,9 +10880,28 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const alreadyWrapped=useContext(WrapCtx);
     return(
       <WrapCtx.Provider value={true}>
-      <div style={{minHeight:"100vh",background:"#f8fafc",fontFamily:"'Segoe UI',sans-serif",marginLeft:isMobile?0:W,transition:isMobile?"none":"margin-left .2s",overflowX:"hidden",width:isMobile?"100%":undefined}}>
+      <div style={{minHeight:"100vh",background:"#F4F6FA",fontFamily:T.uiFont,color:T.inkStrong,marginLeft:isMobile?0:W,transition:isMobile?"none":"margin-left .2s",overflowX:"hidden",width:isMobile?"100%":undefined}}>
         <style>{`
-          @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&display=swap');
+          @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Inter:wght@400;500;600;700;800&display=swap');
+          body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;background:#F4F6FA}
+          ::selection{background:rgba(240,144,30,.25)}
+          /* Visual refresh 2026-11-21: shared feedback that inline styles can't express */
+          .fh-nav:hover:not(.on){background:rgba(255,255,255,.06)!important;color:#fff!important}
+          .fh-nav .fh-fav{opacity:0;transition:opacity .12s}
+          .fh-nav:hover .fh-fav,.fh-nav:focus-visible .fh-fav{opacity:1}
+          .fh-side-btn:hover{background:rgba(255,255,255,.12)!important;color:#fff!important}
+          .fh-side ::-webkit-scrollbar{width:6px}
+          .fh-side ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:6px}
+          ::-webkit-scrollbar{width:10px;height:10px}
+          ::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:10px;border:2px solid #F4F6FA}
+          ::-webkit-scrollbar-track{background:transparent}
+          input:not([type=checkbox]):not([type=radio]):focus,select:focus,textarea:focus{border-color:${T.brandAccent}!important;box-shadow:0 0 0 3px rgba(240,144,30,.18);outline:none}
+          button:not(:disabled){transition:filter .12s,background-color .12s,box-shadow .12s}
+          button:not(:disabled):not(.fh-nav):not(.fh-side-btn):hover{filter:brightness(.96)}
+          button:not(:disabled):active{filter:brightness(.92)}
+          table{border-collapse:collapse}
+          th{font-weight:600}
+          tbody tr:hover>td{background-color:rgba(241,245,249,.6)}
           .fi{animation:fadeIn .2s ease}
           @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
           @media print{.noprint{display:none}}
@@ -10888,7 +10911,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
              only <input> had any focus style, leaving keyboard users lost. */
           button:focus-visible,a:focus-visible,select:focus-visible,textarea:focus-visible,
           [role="button"]:focus-visible,[tabindex]:focus-visible{
-            outline:2px solid #f59e0b!important;outline-offset:2px!important;
+            outline:2px solid ${T.brandAccent}!important;outline-offset:2px!important;
             border-radius:6px;
           }
           input:focus-visible{outline:none}
@@ -10955,12 +10978,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           </div>
         )}
         {SyncBanner}
-        <div style={{maxWidth:isMobile?undefined:1140,margin:"0 auto",padding:isMobile?"10px 12px":"22px 24px",paddingTop:isMobile?56:undefined,paddingBottom:isMobile?72:undefined}} className="fi">
-          {!isMobile&&!alreadyWrapped&&(
-            <div style={{display:"flex",justifyContent:"flex-end",marginBottom:20,paddingBottom:16,borderBottom:"1.5px solid #e2e8f0"}}>
-              <img src="/gmd-logo.png" alt="GMD Productions" style={{height:56,objectFit:"contain",display:"block"}}/>
-            </div>
-          )}
+        <div style={{maxWidth:isMobile?undefined:1140,margin:"0 auto",padding:isMobile?"10px 12px":"22px 24px",paddingTop:isMobile?64:28,paddingBottom:isMobile?76:undefined}} className="fi">
           {fromHome&&page!=="home"&&(
             <button onClick={()=>{setPage("home");setFromHome(false);}}
               style={{display:"inline-flex",alignItems:"center",gap:6,background:"#1e293b",color:"#fff",border:"none",borderRadius:20,padding:"7px 16px",fontFamily:"inherit",fontSize:".8rem",fontWeight:700,cursor:"pointer",marginBottom:14,boxShadow:"0 2px 8px rgba(0,0,0,.18)"}}>
@@ -10974,12 +10992,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             const cnt=h==="payables"?financeErpCounts():{};
             const badge={payables:cnt.ap,checkvouchers:cnt.cv,purchaseorders:cnt.po};
             return(
-              <div className="noprint" role="tablist" aria-label={NAV_HUBS[h].l} style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:14,background:"#fff",border:"1px solid #e2e8f0",borderRadius:10,padding:4,width:"fit-content",maxWidth:"100%"}}>
+              <div className="noprint" role="tablist" aria-label={NAV_HUBS[h].l} style={{display:"flex",gap:2,flexWrap:"wrap",marginBottom:18,background:"#E9EDF3",borderRadius:10,padding:3,width:"fit-content",maxWidth:"100%"}}>
                 {members.map(it=>{
                   const on=navLoc===it.id;
                   return(
                     <button key={it.id} role="tab" aria-selected={on} onClick={()=>{navGo(it.id);setSelProj(null);}}
-                      style={{border:"none",borderRadius:7,padding:"7px 14px",background:on?"#1e293b":"transparent",color:on?"#fff":"#475569",fontFamily:"inherit",fontSize:".8rem",fontWeight:on?700:600,cursor:"pointer",whiteSpace:"nowrap"}}>
+                      style={{border:"none",borderRadius:8,padding:"7px 14px",background:on?"#fff":"transparent",color:on?T.brandNavy:"#5B6B82",fontFamily:"inherit",fontSize:".8rem",fontWeight:on?650:550,cursor:"pointer",whiteSpace:"nowrap",boxShadow:on?"0 1px 2px rgba(15,23,42,.08),0 1px 1px rgba(15,23,42,.04)":"none"}}>
                       {it.l}
                       {badge[it.id]>0&&<span style={{marginLeft:6,background:on?"rgba(255,255,255,.85)":"#C9A24B",color:"#0B2545",borderRadius:10,padding:"1px 7px",fontSize:".68rem",fontWeight:700}}>{badge[it.id]}</span>}
                     </button>
@@ -14031,9 +14049,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ── Pipeline tab bar (shared) ───────────────────────────────────────────
   // BOQ lives here now (it left the sidebar): the BOQ tab opens the BOQ page,
   // which shows this same bar, for the roles that had BOQ in their nav.
-  const boqInPipeline=["Manager","Sales","Finance","QS","SalesOpsAdmin"].includes(role);
+  // ...unless the page's hub strip already has a BOQ / CE tab (Manager's Sales
+  // hub): two tab rows both offering BOQ was the same choice asked twice.
+  const inSalesHub=id=>{const h=hubOf(role,"pipeline");return !!h&&hubMembers(role,h).some(it=>it.id===id);};
+  const boqInPipeline=["Manager","Sales","Finance","QS","SalesOpsAdmin"].includes(role)&&!inSalesHub("boq");
   // CE Requests: a small tracker standing in for the hidden CE/QS Queue.
-  const ceInPipeline=["Manager","Sales","QS","SalesOpsAdmin"].includes(role);
+  const ceInPipeline=["Manager","Sales","QS","SalesOpsAdmin"].includes(role)&&!inSalesHub("ceqs");
   // Five tabs are wider than a phone: the bar scrolls sideways instead of
   // cutting off the last ones (CE Requests, BOQ).
   const PipeTabBar=()=>(
@@ -21166,15 +21187,16 @@ function AuthScreen({authView,setAuthView,onLogin,onRegister,sbReady}){
   const isLogin = authView==="login";
 
   return(
-    <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0f172a 0%,#1e1b4b 50%,#0f172a 100%)",display:"flex",alignItems:"center",justifyContent:"center",padding:16,fontFamily:"'Segoe UI',system-ui,sans-serif"}}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&display=swap'); *{box-sizing:border-box;} input:focus{border-color:#f59e0b!important;outline:none;box-shadow:0 0 0 3px rgba(245,158,11,.15);} input,select,textarea{font-size:16px;} button:focus-visible,a:focus-visible{outline:2px solid #f59e0b;outline-offset:2px;border-radius:6px;}`}</style>
+    <div style={{minHeight:"100vh",background:`radial-gradient(1200px 600px at 50% -10%,#1B3E6E 0%,${T.brandNavy} 55%,#071A33 100%)`,display:"flex",alignItems:"center",justifyContent:"center",padding:16,fontFamily:T.uiFont}}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Inter:wght@400;500;600;700&display=swap'); *{box-sizing:border-box;} body{-webkit-font-smoothing:antialiased} input:focus{border-color:${T.brandAccent}!important;outline:none;box-shadow:0 0 0 3px rgba(240,144,30,.2);} input,select,textarea{font-size:16px;} button:focus-visible,a:focus-visible{outline:2px solid ${T.brandAccent};outline-offset:2px;border-radius:6px;}`}</style>
       <div style={{width:"100%",maxWidth:400}}>
         {/* Logo */}
         <div style={{textAlign:"center",marginBottom:32}}>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"2.2rem",color:"#fff",letterSpacing:-1}}>
-            GMD <span style={{color:"#f59e0b"}}>PROD</span>
+          <img src="/gmd-logo-doc-dark.png" alt="GMD Productions" style={{height:52,objectFit:"contain",display:"block",margin:"0 auto 16px"}}/>
+          <div style={{fontWeight:700,fontSize:"1.6rem",color:"#fff",letterSpacing:"-.02em"}}>
+            Fab<span style={{color:T.brandAccent}}>Hub</span>
           </div>
-          <div style={{color:"rgba(255,255,255,.4)",fontSize:".8rem",marginTop:4}}>Internal Operations Platform</div>
+          <div style={{color:"rgba(255,255,255,.55)",fontSize:".82rem",marginTop:4}}>GMD Productions · Operations Platform</div>
           {!sbReady&&<div style={{marginTop:12,background:"rgba(245,158,11,.15)",border:"1px solid rgba(245,158,11,.4)",borderRadius:8,padding:"8px 14px",fontSize:".78rem",color:"#fcd34d",display:"flex",alignItems:"center",gap:8}}>
             <span style={{display:"inline-block",width:8,height:8,borderRadius:"50%",background:"#f59e0b",animation:"pulse 1s infinite"}}/>
             Connecting to server… please wait before logging in.
@@ -21235,7 +21257,7 @@ function AuthScreen({authView,setAuthView,onLogin,onRegister,sbReady}){
           </>)}
 
           {/* Submit */}
-          <button onClick={isLogin?doLogin:doRegister} disabled={isLogin&&!sbReady} style={{width:"100%",background:isLogin&&!sbReady?"#475569":"#f59e0b",border:"none",borderRadius:10,padding:"12px",fontFamily:"inherit",fontWeight:700,fontSize:".92rem",color:isLogin&&!sbReady?"#94a3b8":"#0f172a",cursor:isLogin&&!sbReady?"not-allowed":"pointer",marginTop:6,transition:"all .15s"}}
+          <button onClick={isLogin?doLogin:doRegister} disabled={isLogin&&!sbReady} style={{width:"100%",background:isLogin&&!sbReady?"#475569":T.brandAccent,border:"none",borderRadius:10,padding:"12px",fontFamily:"inherit",fontWeight:700,fontSize:".92rem",color:isLogin&&!sbReady?"#94a3b8":"#0f172a",cursor:isLogin&&!sbReady?"not-allowed":"pointer",marginTop:6,transition:"all .15s"}}
             onMouseEnter={e=>{if(!(isLogin&&!sbReady))e.currentTarget.style.background="#fbbf24";}}
             onMouseLeave={e=>{if(!(isLogin&&!sbReady))e.currentTarget.style.background="#f59e0b";}}>
             {isLogin&&!sbReady?"⏳ Connecting…":isLogin?"Log In →":"Create Account →"}
@@ -21244,14 +21266,14 @@ function AuthScreen({authView,setAuthView,onLogin,onRegister,sbReady}){
           {isLogin&&(
             <div style={{textAlign:"center",marginTop:16,fontSize:".75rem",color:"rgba(255,255,255,.3)"}}>
               No account yet?{" "}
-              <button onClick={()=>setAuthView("register")} style={{background:"none",border:"none",color:"#f59e0b",cursor:"pointer",fontFamily:"inherit",fontSize:".75rem",fontWeight:600}}>Register here</button>
+              <button onClick={()=>setAuthView("register")} style={{background:"none",border:"none",color:T.brandAccent,cursor:"pointer",fontFamily:"inherit",fontSize:".75rem",fontWeight:600}}>Register here</button>
             </div>
           )}
           {!isLogin&&(
             <div style={{textAlign:"center",marginTop:16,fontSize:".75rem",color:"rgba(255,255,255,.5)"}}>
               Already have an account?{" "}
               <button onClick={()=>{setAuthView("login");setErr("");setOk("");}}
-                style={{background:"none",border:"none",color:"#f59e0b",cursor:"pointer",fontFamily:"inherit",fontSize:".75rem",fontWeight:600}}>
+                style={{background:"none",border:"none",color:T.brandAccent,cursor:"pointer",fontFamily:"inherit",fontSize:".75rem",fontWeight:600}}>
                 Back to Login
               </button>
             </div>
@@ -24276,6 +24298,11 @@ function ProcurementView2({jos=[],embedded=false,onEmbeddedDone,poDraft=null,cle
 
   const submitPO=async()=>{
     if(!poSupplier){toastEmit&&toastEmit("Please enter a supplier name.","error");return;}
+    // Data guard: the supplier must be one supplier from the list (2026-11-21:
+    // "FCI" was saved on 51 lines and fits two suppliers).
+    {const sp=supplierSavePrompt(poSupplier,checkSupplier(poSupplier,suppliers));
+     if(sp&&sp.block){await uiAlert({title:sp.title,tone:"warning",message:sp.message});return;}
+     if(sp&&!(await uiConfirm({title:sp.title,tone:"warning",confirmLabel:sp.confirmLabel||"Continue",cancelLabel:"Go back",message:sp.message}))) return;}
     if(!poNumber){toastEmit&&toastEmit("Please enter a PO number.","error");return;}
     if(poItems.some(i=>!i.itemName)){toastEmit&&toastEmit("Every item must have a description.","error");return;}
     if(poItems.some(i=>!(Number(i.qty)>0))){toastEmit&&toastEmit("Every item must have a quantity greater than 0.","error");return;}
@@ -24458,7 +24485,7 @@ function ProcurementView2({jos=[],embedded=false,onEmbeddedDone,poDraft=null,cle
             </Fld>
             <div style={{gridColumn:"1/-1"}}><Fld label="Item Name" required><Inp value={editForm.itemName} onChange={e=>ef("itemName",e.target.value)}/></Fld></div>
             <Fld label="Category"><Sel value={editForm.category} onChange={e=>ef("category",e.target.value)}>{PR_CATS.map(c=><option key={c}>{c}</option>)}</Sel></Fld>
-            <Fld label="Supplier"><Inp value={editForm.supplier} onChange={e=>ef("supplier",e.target.value)}/></Fld>
+            <Fld label="Supplier"><Inp value={editForm.supplier} onChange={e=>ef("supplier",e.target.value)}/><SupplierHint value={editForm.supplier} suppliers={suppliers} onPick={v=>ef("supplier",v)}/></Fld>
             <Fld label="Qty"><Inp type="number" value={editForm.qty} onChange={e=>ef("qty",e.target.value)}/></Fld>
             <Fld label="Unit"><input list="po-units-dl" value={editForm.unit} onChange={e=>ef("unit",e.target.value)} placeholder="pcs, meters, sqm…" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box",outline:"none"}}/><datalist id="po-units-dl">{PO_UNITS.map(u=><option key={u} value={u}/>)}</datalist></Fld>
             <Fld label="Est Unit Cost (₱)"><Inp type="number" value={editForm.estUnitCost} onChange={e=>ef("estUnitCost",e.target.value)}/></Fld>
@@ -24535,8 +24562,11 @@ function ProcurementView2({jos=[],embedded=false,onEmbeddedDone,poDraft=null,cle
               <datalist id="po-supplier-list">
                 {[...new Map((suppliers||[]).map(s=>{const n=(s.company_name||s.companyName||"").trim();return[n,n];})).values()].filter(Boolean).sort().map(n=><option key={n} value={n}/>)}
               </datalist>
+              <SupplierHint value={poSupplier} suppliers={suppliers} onPick={setPoSupplier}/>
               {poSupplier.trim()&&!(suppliers||[]).some(s=>(s.company_name||s.companyName||"").toLowerCase()===poSupplier.trim().toLowerCase())&&(
-                <button type="button" onClick={()=>{
+                <button type="button" onClick={async()=>{
+                  {const r=checkSupplier(poSupplier,suppliers);
+                   if(r.kind==="ambiguous"||r.kind==="similar"){if(!(await uiConfirm({title:"Add a new supplier?",tone:"warning",confirmLabel:"Add anyway",cancelLabel:"Go back",message:`Similar suppliers already exist:\n\n• ${r.matches.join("\n• ")}\n\nAdding "${poSupplier.trim()}" makes a second record for what may be the same supplier.`}))) return;}}
                   if(addSupplier) addSupplier({companyName:poSupplier.trim(),company_name:poSupplier.trim(),contactPerson:"",contactNos:"",email:"",address:"",tinNo:"",paymentTerms:"",notes:""});
                   toastEmit&&toastEmit(`✅ "${poSupplier.trim()}" added to suppliers`,"success");
                 }} style={{marginTop:5,background:"none",border:"none",color:"#1d4ed8",fontSize:".72rem",fontWeight:700,cursor:"pointer",padding:0,textAlign:"left",fontFamily:"inherit"}}>
