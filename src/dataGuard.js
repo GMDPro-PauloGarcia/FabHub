@@ -75,6 +75,14 @@ export function checkSupplier(name, suppliers = []) {
 /** Text for a confirm dialog before saving with a supplier that isn't an exact match. */
 export function supplierSavePrompt(name, res) {
   const typed = String(name || "").trim();
+  // An exact name from the list (e.g. "RGB" next to "RGB/VR CONCEPT", "MRDH"
+  // next to "MRDH Glass & Aluminum Enterprises") is a valid pick: ask, never block.
+  if (res.kind === "ambiguous" && res.exact) return {
+    title: "Is this the right supplier?",
+    message: `"${typed}" is in the supplier list, but these are close to it:\n\n• ${res.matches.filter(n => n !== res.exact).join("\n• ")}\n\nContinue if "${res.exact}" is the supplier on the invoice.`,
+    confirmLabel: `Yes, ${res.exact}`,
+    block: false,
+  };
   if (res.kind === "ambiguous") return {
     title: "Which supplier is this?",
     message: `"${typed}" fits more than one supplier:\n\n• ${res.matches.join("\n• ")}\n\nPick the full name from the list so the bill, payments and reports land on the right supplier.`,
