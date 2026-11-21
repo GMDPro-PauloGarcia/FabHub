@@ -189,12 +189,12 @@ export const dropPhantomCashDays=(obj)=>{
 
 export const Inp=({value,onChange,type="text",placeholder,min,max,readOnly,rows,style:sx})=>{
   // Using key+defaultValue pattern — safest focus fix, no hooks needed
-  const base={width:"100%",border:`1.5px solid ${T.line}`,borderRadius:T.radius.md,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:T.inkStrong,background:readOnly?T.surface2:T.surface,boxSizing:"border-box",transition:"border-color .15s",...(sx||{})};
+  const base={width:"100%",border:`1px solid ${T.line}`,borderRadius:T.radius.md,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:T.inkStrong,background:readOnly?T.surface2:T.surface,boxSizing:"border-box",transition:"border-color .15s,box-shadow .15s",...(sx||{})};
   if(rows) return <textarea value={value||""} onChange={onChange} placeholder={placeholder} rows={rows} style={{...base,resize:"vertical"}}/>;
   return <input type={type} value={value||""} onChange={onChange} placeholder={placeholder} min={min} max={max} readOnly={readOnly} style={base}/>;
 };
 export const Sel=({value,onChange,children,disabled})=>(
-  <select value={value} onChange={onChange} disabled={disabled} style={{width:"100%",border:`1.5px solid ${T.line}`,borderRadius:T.radius.md,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:T.inkStrong,background:disabled?T.line:T.surface,boxSizing:"border-box",cursor:disabled?"not-allowed":"pointer"}}>
+  <select value={value} onChange={onChange} disabled={disabled} style={{width:"100%",border:`1px solid ${T.line}`,borderRadius:T.radius.md,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:T.inkStrong,background:disabled?T.line:T.surface,boxSizing:"border-box",cursor:disabled?"not-allowed":"pointer"}}>
     {children}
   </select>
 );
@@ -268,7 +268,7 @@ export const ProjectSelect=({value,onChange,children,disabled,style:sx,placehold
 
 export const Fld=({label,required,children,hint})=>(
   <div style={{marginBottom:16}}>
-    <label style={{display:"block",fontSize:".72rem",fontWeight:700,color:T.inkSoft,textTransform:"uppercase",letterSpacing:".8px",marginBottom:6}}>
+    <label style={{display:"block",fontSize:".7rem",fontWeight:600,color:T.inkMuted,textTransform:"uppercase",letterSpacing:".05em",marginBottom:6}}>
       {label}{required&&<span style={{color:T.danger,marginLeft:2}}>*</span>}
     </label>
     {children}
@@ -281,7 +281,7 @@ export const Card=({children,onClick,accent,ariaLabel,style:sx={}})=>(
   // ring; a plain card stays a non-interactive <div>.
   <div onClick={onClick}
     {...(onClick?{role:"button",tabIndex:0,"aria-label":ariaLabel,onKeyDown:e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();onClick(e);}}}:{})}
-    style={{background:T.surface,borderRadius:T.radius.xl,border:`1.5px solid ${accent||T.line}`,padding:20,marginBottom:12,cursor:onClick?"pointer":"default",boxShadow:T.shadow.card,transition:"box-shadow .15s,border-color .15s",...sx}}
+    style={{background:T.surface,borderRadius:T.radius.lg,border:`1px solid ${accent||T.line}`,padding:20,marginBottom:12,cursor:onClick?"pointer":"default",boxShadow:T.shadow.card,transition:"box-shadow .15s,border-color .15s",...sx}}
     onMouseEnter={e=>{if(onClick){e.currentTarget.style.boxShadow=T.shadow.cardHover;e.currentTarget.style.borderColor=accent||T.inkFaint;}}}
     onMouseLeave={e=>{if(onClick){e.currentTarget.style.boxShadow=T.shadow.card;e.currentTarget.style.borderColor=accent||T.line;}}}>
     {children}
@@ -303,12 +303,12 @@ export const Modal=({open,onClose,title,children,wide,maxWidth})=>{
     onClose&&onClose();
   };
   return(
-    <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.5)",zIndex:1000,display:"flex",alignItems:mob?"flex-end":"center",justifyContent:"center",padding:mob?0:16}}
+    <div style={{position:"fixed",inset:0,background:"rgba(11,37,69,.45)",backdropFilter:"blur(2px)",WebkitBackdropFilter:"blur(2px)",zIndex:1000,display:"flex",alignItems:mob?"flex-end":"center",justifyContent:"center",padding:mob?0:16}}
       onMouseDown={e=>{downOnBackdrop.current=e.target===e.currentTarget;}} onClick={mob?undefined:onBackdrop}>
-      <div style={{background:T.surface,borderRadius:mob?"18px 18px 0 0":18,padding:mob?"20px 16px 28px":28,width:"100%",maxWidth:mob?undefined:(maxWidth||(wide?640:480)),maxHeight:mob?"92vh":"94vh",overflowY:"auto",boxShadow:T.shadow.modal}}
+      <div style={{background:T.surface,borderRadius:mob?"16px 16px 0 0":16,padding:mob?"20px 16px 28px":28,width:"100%",maxWidth:mob?undefined:(maxWidth||(wide?640:480)),maxHeight:mob?"92vh":"94vh",overflowY:"auto",boxShadow:T.shadow.modal}}
         onClick={e=>e.stopPropagation()} onInput={()=>{dirty.current=true;}} onChange={()=>{dirty.current=true;}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:mob?16:22}}>
-          <div style={{fontWeight:800,fontSize:mob?"1rem":"1.1rem",color:T.ink}}>{title}</div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:mob?16:20,paddingBottom:mob?12:16,borderBottom:`1px solid ${T.lineSoft}`}}>
+          <div style={{fontWeight:700,fontSize:mob?"1rem":"1.1rem",color:T.ink,letterSpacing:"-.01em"}}>{title}</div>
           <button onClick={onClose} aria-label="Close" style={{background:T.surface3,border:"none",borderRadius:T.radius.md,width:32,height:32,cursor:"pointer",color:T.inkMuted,fontSize:"1rem",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
         </div>
         {children}
@@ -316,11 +316,13 @@ export const Modal=({open,onClose,title,children,wide,maxWidth})=>{
     </div>
   );
 };
+// Label first, then the figure: people scan for the label, then read the number.
+// A thin colour bar on the left repeats the KPI's colour.
 export const KPI=({label,value,color,sub,small})=>(
-  <div style={{background:T.surface,borderRadius:T.radius.lg,padding:small?"14px 16px":"18px 20px",border:`1.5px solid ${T.line}`,boxShadow:T.shadow.kpi}}>
-    <div style={{fontSize:small?"1.2rem":"1.55rem",fontWeight:800,color,fontFamily:T.displayFont,lineHeight:1}}>{value}</div>
-    {sub&&<div style={{fontSize:".7rem",color,marginTop:3,opacity:.75}}>{sub}</div>}
-    <div style={{fontSize:".65rem",textTransform:"uppercase",letterSpacing:"1px",color:T.inkFaint,marginTop:7}}>{label}</div>
+  <div style={{background:T.surface,borderRadius:T.radius.lg,padding:small?"12px 16px":"16px 20px",border:`1px solid ${T.line}`,borderLeft:`3px solid ${color||T.line}`,boxShadow:T.shadow.kpi}}>
+    <div style={{fontSize:".68rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".05em",color:T.inkMuted,marginBottom:small?6:8}}>{label}</div>
+    <div style={{fontSize:small?"1.2rem":"1.55rem",fontWeight:800,color:color||T.ink,fontFamily:T.displayFont,lineHeight:1}}>{value}</div>
+    {sub&&<div style={{fontSize:".72rem",color:color||T.inkMuted,marginTop:5,fontWeight:500}}>{sub}</div>}
   </div>
 );
 // Loading skeleton block — pulls the shimmer class defined in App.jsx's global
