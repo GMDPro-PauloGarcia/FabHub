@@ -36,7 +36,37 @@ export const appTokenExpired = () => {
 let _onSessionExpired = null
 export const setSessionExpiredHandler = (fn) => { _onSessionExpired = fn }
 const _showExpired = () => { try { _onSessionExpired && _onSessionExpired() } catch (_) {} }
+// ── Idle logout (Paulo, 2026-11-15): anyone who used FabHub in the last 4 hours
+// stays logged in (the token is renewed in the background); 4 hours with no
+// click, key, touch or scroll logs them out. Activity is shared across tabs
+// through localStorage. Saves waiting in the queue stay there and go out after
+// the next login (the queue is kept per user).
+export const IDLE_LIMIT_MS = 4 * 60 * 60 * 1000
+const _ACTIVE_KEY = 'gmd:last_active'
+let _lastActiveWrite = 0
+const _markActive = (force) => {
+  const now = Date.now()
+  if (!force && now - _lastActiveWrite < 60 * 1000) return // at most once a minute
+  _lastActiveWrite = now
+  try { localStorage.setItem(_ACTIVE_KEY, String(now)) } catch (e) { /* storage disabled */ }
+}
+// True when this browser has seen no activity for IDLE_LIMIT_MS. No record yet
+// (a token from before this rule) counts as active once: the record starts now.
+export const idleTooLong = () => {
+  let last = 0
+  try { last = Number(localStorage.getItem(_ACTIVE_KEY) || 0) } catch (e) { return false }
+  if (!last) { _markActive(true); return false }
+  return Date.now() - last > IDLE_LIMIT_MS
+}
+let _onIdleLogout = null
+export const setIdleLogoutHandler = (fn) => { _onIdleLogout = fn }
+const _idleLogout = () => {
+  if (!_appToken) return
+  appLogout()
+  try { _onIdleLogout && _onIdleLogout() } catch (_) {}
+}
 const _notifyExpired = () => {
+  if (idleTooLong()) { _idleLogout(); return }
   // A token renewed less than a minute ago is still being refused: renewing
   // again won't help (e.g. the server's JWT secret changed) and would loop
   // renew → flush → refused → renew. Ask the user to log in instead.
@@ -82,6 +112,7 @@ export const appLogin = async (username, password) => {
   let data = {}
   try { data = await res.json() } catch (e) { /* non-JSON */ }
   if (!res.ok) return { error: data.error || `Login failed (${res.status})` }
+  _markActive(true) // logging in is activity
   _storeToken(data)
   return { user: data.user }
 }
@@ -94,9 +125,9 @@ const _storeToken = (data) => {
   } catch (e) { /* storage disabled */ }
 }
 
-// Silent renewal: trade the current token (valid, or expired < 24h ago) for a
-// fresh 12h one. mint-session re-checks the account each time and refuses after
-// 7 days from the last password login. Resolves true on success. Concurrent
+// Silent renewal: trade the current, still-valid token for a fresh 4h one.
+// mint-session re-checks the account each time, never renews an expired token,
+// and refuses after 7 days from the last password login. Resolves true on success. Concurrent
 // callers share one request. Never throws; on any failure the caller falls back
 // to the "log in again" path from before.
 let _refreshing = null
@@ -108,6 +139,8 @@ let _onTokenRenewed = null
 export const setTokenRenewedHandler = (fn) => { _onTokenRenewed = fn }
 export const refreshAppToken = () => {
   if (!_appToken || !SUPABASE_URL || _appToken === _refusedToken) return Promise.resolve(false)
+  // Idle for 4h: never renew; log out instead.
+  if (idleTooLong()) { _idleLogout(); return Promise.resolve(false) }
   if (_refreshing) return _refreshing
   const sent = _appToken
   _refreshing = (async () => {
@@ -146,9 +179,18 @@ export const refreshAppToken = () => {
 const _msLeft = () => {
   try { const exp = Number(localStorage.getItem('gmd:token_exp') || 0); return exp ? exp - Date.now() : null } catch (e) { return null }
 }
-const RENEW_BEFORE_MS = 2 * 60 * 60 * 1000 // renew in the last 2h of the 12h
-const _maybeRenew = () => { const left = _msLeft(); if (_appToken && left != null && left < RENEW_BEFORE_MS) refreshAppToken() }
+// Tokens last 4h (mint-session); renew in the last hour, only for someone still
+// active (refreshAppToken refuses once idle for 4h and logs out instead).
+const RENEW_BEFORE_MS = 60 * 60 * 1000
+const _maybeRenew = () => {
+  if (!_appToken) return
+  if (idleTooLong()) { _idleLogout(); return }
+  const left = _msLeft(); if (left != null && left < RENEW_BEFORE_MS) refreshAppToken()
+}
 if (typeof window !== 'undefined') {
+  // What counts as using FabHub. Opening or focusing the tab alone does not.
+  ;['pointerdown', 'keydown', 'touchstart', 'wheel'].forEach(ev =>
+    window.addEventListener(ev, () => _markActive(false), { passive: true, capture: true }))
   // Every 5 min while open, plus on wake/focus (timers don't run while a laptop sleeps).
   setInterval(_maybeRenew, 5 * 60 * 1000)
   window.addEventListener('focus', _maybeRenew)
@@ -164,10 +206,12 @@ if (typeof window !== 'undefined') {
   })
 }
 
-// Boot: like restoreAppToken, but an expired token still inside the renewal
-// window is exchanged instead of discarded — so reopening FabHub the next
-// morning lands back in the app, not on the login screen.
+// Boot: restore the token, or log out if this browser has been idle for 4h.
+// An expired token is only tried once (the server refuses it since 2026-11-15)
+// and the user lands on the login screen.
 export const restoreOrRefreshAppToken = async () => {
+  // Reopened after 4h or more without activity: back to the login screen.
+  if (idleTooLong()) { appLogout(); return false }
   if (restoreAppToken()) return true
   let t = null
   try { t = localStorage.getItem('gmd:token') } catch (e) { /* storage disabled */ }
@@ -191,7 +235,7 @@ export const restoreAppToken = () => {
 
 export const appLogout = () => {
   _appToken = null
-  try { localStorage.removeItem('gmd:token'); localStorage.removeItem('gmd:token_exp') } catch (e) { /* noop */ }
+  try { localStorage.removeItem('gmd:token'); localStorage.removeItem('gmd:token_exp'); localStorage.removeItem(_ACTIVE_KEY) } catch (e) { /* noop */ }
 }
 
 // App-wide write-failure hook: register a callback to be told when ANY write

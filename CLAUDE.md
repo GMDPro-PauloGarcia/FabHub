@@ -27,6 +27,12 @@ The `DB migrations` GitHub workflow does **not** apply migrations. It has no cre
 
 **Never set up automatic `supabase db push` without fixing migration history first.** The history recorded in production does not match the file names in this repo. The first automatic push would re-run `20260101000000_baseline_schema.sql`, which recreates `fabhub_full_access` policies (full read/write for `anon`) on most tables and undoes the security model.
 
+## Login sessions (4 hours idle, Paulo 2026-11-15)
+- Anyone who used FabHub in the last 4 hours stays logged in; 4 hours with no click, key, touch or scroll logs them out (toast, login screen). Saves still queued go out after the next login.
+- App: `IDLE_LIMIT_MS` / `idleTooLong` / `setIdleLogoutHandler` and the renewal (`refreshAppToken`, renews in the token's last hour only while active) in `src/supabaseClient.js`; the handler in `src/App.jsx`.
+- Server: `supabase/functions/mint-session` issues 4-hour tokens, never renews an expired one (`REFRESH_GRACE_S = 0`), re-reads the user's status and role on every renewal, and forces a password login 7 days after the last one. A password change does not end an open session; deactivating the account does (at the next renewal, within 4h).
+- The function is deployed by hand (Supabase MCP `deploy_edge_function`, `verify_jwt` false) and counts as a release. Keep its constants in sync with the app.
+
 ## Security model
 - Login is FabHub's own (`verify_login` RPC plus bcrypt), not Supabase Auth. The JWT carries `username` and `user_role`; use `public.app_username()`, `public.app_role()`, `public.has_role(...)` and `public.is_mgr()`.
 - Every table has row-level security, and every policy is gated on `user_role`. Never add a policy for `anon`, and never use `using (true)`.

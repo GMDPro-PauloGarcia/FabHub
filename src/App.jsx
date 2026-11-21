@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback, useRef, useContext, c
 const WrapCtx = createContext(false);
 // Roles that must never see contract value — they get the QS budget instead.
 const BUDGET_ONLY=["Design","Operations","ProjectMover"];
-import {deductionFromSb,supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbUpsertDetailed,sbInsertIfMissing,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbPendingIds,sbOnQueueChange,appLogin,appLogout,restoreAppToken,restoreOrRefreshAppToken,hasAppToken,appTokenExpired,refreshAppToken,setSessionExpiredHandler,setTokenRenewedHandler,logClientError} from './supabaseClient';
+import {deductionFromSb,supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbUpsertDetailed,sbInsertIfMissing,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbPendingIds,sbOnQueueChange,appLogin,appLogout,restoreAppToken,restoreOrRefreshAppToken,hasAppToken,appTokenExpired,refreshAppToken,setSessionExpiredHandler,setTokenRenewedHandler,setIdleLogoutHandler,logClientError} from './supabaseClient';
 import{idbGetMany,idbSetMany}from'./idb.js';
 import {useSharePdf,openPdfTab as openPdfTabShared} from "./views/SharePdf";
 import SupplierDocsPanel from "./views/SupplierDocsPanel";
@@ -4749,8 +4749,7 @@ export default function App(){
         const s=localStorage.getItem(KEYS.session);
         // Only restore a session if we still hold a valid role token (RLS needs it).
         // Offline (no Supabase) we allow the cached session so the app still opens.
-        // An expired token from last night is renewed here (if still inside the
-        // 24h window), so reopening FabHub doesn't land on the login screen.
+        // 4 hours idle (or an expired token) lands on the login screen.
         const hasToken = isSupabaseReady() ? await restoreOrRefreshAppToken() : true;
         if(s && hasToken){ const sess=JSON.parse(s); setSession(sess); setRole(sess.role||"Sales"); const lp=sessionStorage.getItem("gmd:lastPage"); if(lp)setPage(lp); }
         else if(s){ localStorage.removeItem(KEYS.session); localStorage.removeItem(KEYS.role); }
@@ -8118,6 +8117,18 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     localStorage.removeItem(KEYS.session);
     localStorage.removeItem(KEYS.role);
   };
+  // 4 hours without a click, key, touch or scroll: back to the login screen
+  // (supabaseClient.js, IDLE_LIMIT_MS). Saves still in the queue go out after the
+  // next login.
+  const logoutRef=useRef(logout); logoutRef.current=logout;
+  useEffect(()=>{
+    setIdleLogoutHandler(()=>{
+      setSessionExpired(false);
+      logoutRef.current();
+      toastEmit("You were logged out after 4 hours without activity. Log in again to continue.","info",12000);
+    });
+    return ()=>setIdleLogoutHandler(null);
+  },[]);
   const register=async(name,username,password,requestedRole)=>{
     if(!name||!username||!password) return "All fields are required.";
     if(users.find(u=>u.username.toLowerCase()===username.toLowerCase())) return "Username already taken.";
