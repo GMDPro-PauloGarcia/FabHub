@@ -2801,7 +2801,7 @@ function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logAc
         <div>
           <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Revised Target Completion <span style={{fontWeight:400,color:"#94a3b8"}}>(optional)</span></label>
           <input type="date" value={revisedDate} onChange={e=>setRevisedDate(e.target.value)} style={{width:"100%",border:`1.5px solid ${revisedDate?"#f97316":"#e2e8f0"}`,borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box"}}/>
-          {revisedDate&&<div style={{fontSize:".72rem",color:"#f97316",marginTop:3,fontWeight:600}}>⚠ This will update the project's target end date visible to Management.</div>}
+          {revisedDate&&<div style={{fontSize:".72rem",color:"#f97316",marginTop:3,fontWeight:600}}>⚠ This moves the project's turnover date. Your update above is kept as the reason and sent to Management.</div>}
         </div>
         <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
           <button onClick={()=>setPmUpdateModal(null)} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"9px 18px",fontFamily:"inherit",fontSize:".85rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>Cancel</button>
@@ -2819,13 +2819,20 @@ function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logAc
               setSaving(false);
               if(!ok) return;
             }
+            // Revised turnover goes to the server first (set_project_card_fields;
+            // the note is the reason). If it is refused, nothing is logged.
+            if(revisedDate&&updateProjectTurnover){
+              setSaving(true);
+              const ok=await updateProjectTurnover(dealId,revisedDate,`[${updateType}] ${note.trim()}`);
+              setSaving(false);
+              if(!ok) return;
+            }
             const entry={id:uid(),type:updateType,date:today,time:new Date().toLocaleTimeString("en-PH",{hour:"2-digit",minute:"2-digit"}),by:session?.name||"Team",stage:deal?(stage||curStage):"",pct:"",note:note.trim(),nextSteps:nextSteps.trim(),revisedDate,...(isBlocker?{blockerDesc:blockerDesc.trim(),decisionMaker:decisionMaker.trim(),actionPlan:actionPlan.trim(),blockerStatus:"Open"}:{})};
             // One Telegram per update: skip the generic ops ping when a more
             // specific message (stage change, blocker, materials) goes to ops.
             const silent=stageChanged||isBlocker||updateType==="Materials Needed";
             logActivityProp&&logActivityProp(dealId,"PM Update",`[${updateType}] ${note.trim()}`,undefined,{silent});
             addPmUpdate&&addPmUpdate(dealId,entry);
-            if(revisedDate&&updateProjectTurnover) updateProjectTurnover(dealId,revisedDate);
             if(isBlocker&&sendTelegramNotification){
               const msg=`🚨 <b>BLOCKER — ${pmUpdateModal.dealName}</b>\n${blockerDesc||note}\nDecision needed from: <b>${decisionMaker||"TBD"}</b>\nAction plan: ${actionPlan||"—"}\nLogged by: ${session?.name||"Team"}`;
               sendTelegramNotification("ops",msg);
@@ -5709,6 +5716,30 @@ export default function App(){
     return sbUpsert('project_cards',{...base,deal_id:dealId,...patch},'deal_id').catch(()=>false);
   };
 
+  // Team / award / turnover / TAT category / location go through ONE server
+  // function: set_project_card_fields (migration 20261121020000). It checks the
+  // role (QS and Coordinators can't write project_cards directly), requires a
+  // reason when an already-set turnover date moves, keeps the first turnover
+  // date as the baseline, logs to audit_log and sends the Telegram itself.
+  // Only after the server says yes does the screen change — no more "saved"
+  // toasts for writes RLS refused. fields are snake_case server columns.
+  const saveCardFields=async(dealId,fields,reason)=>{
+    if(!isSupabaseReady()||!supabase){toastEmit("Can't reach the server — nothing was saved.","error",7000);return false;}
+    const cardId=pcards[dealId]?.id;
+    const payload={...fields,...((cardId&&isUUID(cardId))?{card_id:cardId}:{})};
+    const{data,error}=await supabase.rpc("set_project_card_fields",{p_deal:dealId,p_fields:payload,p_reason:reason||null});
+    if(error){toastEmit(error.message||"The server refused this change.","error",9000);return false;}
+    const r=data||{};
+    upPcards(ps=>({...ps,[dealId]:{...(ps[dealId]||{deal_id:dealId,dealId}),id:r.id||ps[dealId]?.id,
+      aeAssigned:r.ae_assigned||"",pm1:r.pm1||"",pm2:r.pm2||"",pm3:r.pm3||"",designer:r.designer||"",coordinator:r.coordinator||"",
+      warehouseOnly:!!r.warehouse_only,awardDate:r.award_date||null,targetEndDate:r.target_end_date||null,targetDays:r.target_days||null,
+      originalTargetEndDate:r.original_target_end_date||null,tatCategory:r.tat_category||"",tatSetBy:r.tat_set_by||null,tatSetAt:r.tat_set_at||null}}));
+    if("location" in fields) upDeals(ds=>ds.map(d=>d.id===dealId?{...d,location:fields.location||""}:d));
+    return true;
+  };
+  // Log Update's "Revised target completion": the update's note is the reason.
+  const updateProjectTurnover=(dealId,date,reason)=>saveCardFields(dealId,{target_end_date:date},reason);
+
   // ── PERSIST — updates the save indicator; Supabase is the write target ──
   // ── PERSIST — updates save indicator; Supabase is the write target ──
   const persist=useCallback((_key,_val)=>{
@@ -6372,29 +6403,25 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     }
     if(deptJustCompleted) logActivity(dealId,"Department Done",`${dept} completed all tasks for ${baseCard?.client}`,session?.name);
   };
-  const setProjectTAT=(dealId,dateStr,category)=>{
-    if(!dateStr) return;
+  // TAT editor: saved through set_project_card_fields (QS / PMs / Managers;
+  // a reason when it moves an already-set date). The server sends the Telegram
+  // for a move; a first-time date is announced here.
+  const setProjectTAT=async(dealId,dateStr,category,reason)=>{
+    if(!dateStr) return false;
     const card=pcards[dealId];
-    if(!card) return;
-    const award=card.awardDate||today;
-    const targetDays=Math.max(1,Math.ceil((new Date(dateStr)-new Date(award))/86400000));
-    upPcards(ps=>({...ps,[dealId]:{...ps[dealId],
-      targetDays,
-      targetEndDate:dateStr,
-      tatCategory:category||"",
-      tatSetBy:session?.name,
-      tatSetAt:new Date().toISOString(),
-    }}));
-    if(isSupabaseReady()){
-      syncProjectCard(dealId,{target_days:targetDays,target_end_date:dateStr,tat_category:category||"",tat_set_by:session?.name,tat_set_at:new Date().toISOString()});
+    if(!card) return false;
+    const first=!card.targetEndDate;
+    const ok=await saveCardFields(dealId,{target_end_date:dateStr,tat_category:category||"",...(card.awardDate?{}:{award_date:today})},reason);
+    if(!ok) return false;
+    toastEmit("Turnover date saved — due "+dateStr,"success");
+    logActivity(dealId,"TAT Set",`Turnover → ${dateStr}${reason?` · Why: ${reason}`:""}`,session?.name,{silent:true});
+    if(first){
+      const deal=deals.find(d=>d.id===dealId);
+      const tgMsg=`📅 <b>Turnover Date Set</b>\nProject: <b>${deal?.client||card.client||"?"}</b> — ${deal?.ceNo||card.ceNo||"(no CE)"}\n🏁 Turnover Date: <b>${dateStr}</b>${category?`\nCategory: ${category}`:""}\nSet by: ${session?.name||"?"}`;
+      sendTelegramNotification("ops",tgMsg);
+      sendTelegramNotification("management",tgMsg);
     }
-    toastEmit("Turnover date set — Due "+dateStr,"success");
-    logActivity(dealId,"TAT Set",`Target: ${targetDays} days → Due ${dateStr}`,session?.name);
-    const deal=deals.find(d=>d.id===dealId);
-    const tgMsg=`📅 <b>Turnover Date Set</b>\nProject: <b>${deal?.client||card.client||"?"}</b> — ${deal?.ceNo||card.ceNo||"(no CE)"}\nTarget: ${targetDays} days from award (${award})\n🏁 Turnover Date: <b>${dateStr}</b>${category?`\nCategory: ${category}`:""}\nSet by: ${session?.name||"?"}`;
-    sendTelegramNotification("ops",tgMsg);
-    sendTelegramNotification("management",tgMsg);
-    toastEmit("Turnover date set — Due "+dateStr,"success");
+    return true;
   };
 
   const markDeptDone=(dealId,dept,done)=>{
@@ -12295,7 +12322,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       addOpsEvent={data=>{const rec={...data,id:uid(),dept:"Operations",createdDate:today,createdBy:session?.name||role};upChecklist(cs=>[...cs,rec]);if(isSupabaseReady())sbInsert('checklists',toSbChecklist(rec)).catch(err=>{console.error("Calendar item sync:",err);toastEmit&&toastEmit("Calendar item saved locally only — tap 🔄 sync to push it to the server.","warning",8000);});const proj=wonDeals.find(d=>d.id===rec.projectId);const msg=`📅 <b>Calendar Item Added</b>\n<b>${rec.type||"Event"}</b>: ${rec.title||""}\nDate: ${rec.dueDate||"—"}${proj?`\nProject: ${proj.client}${proj.ceNo?" ("+proj.ceNo+")":""}`:""}\nBy: ${rec.createdBy||"—"}`;const _t=(rec.type||"").toLowerCase();if(_t==="turnover"){sendTelegramNotification("ops",msg);sendTelegramNotification("sales",msg);sendTelegramNotification("management",msg);}else if(_t==="po delivery"){sendTelegramNotification("procurement",msg);sendTelegramNotification("warehouse",msg);}else if(_t.includes("billing")){sendTelegramNotification("financialcontrol",msg);sendTelegramNotification("management",msg);}else if(_t.includes("drf")||_t.includes("design")){sendTelegramNotification("design",msg);}else if(_t==="inspection"){sendTelegramNotification("ops",msg);sendTelegramNotification("management",msg);}else if(_t==="maintenance"){sendTelegramNotification("ops",msg);}else{sendTelegramNotification("ops",msg);sendTelegramNotification("sales",msg);}}}
       updateOpsEvent={(id,ch)=>{upChecklist(cs=>cs.map(c=>c.id===id?{...c,...ch}:c));if(isSupabaseReady())sbUpdate('checklists',id,toSbChecklist({...checklist.find(c=>c.id===id),...ch})).catch(()=>{});}}
       deleteOpsEvent={delOpsEvent}
-      updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())syncProjectCard(dealId,{target_end_date:date});}}
+      updateProjectTurnover={updateProjectTurnover}
     />
   );
 
@@ -12433,7 +12460,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       })()}
 
       {/* PM Update Modal (also accessible from home) */}
-      {pmUpdateModal&&<PmUpdateModal {...pmModalExtra} pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate} updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())syncProjectCard(dealId,{target_end_date:date});}}/>}
+      {pmUpdateModal&&<PmUpdateModal {...pmModalExtra} pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate} updateProjectTurnover={updateProjectTurnover}/>}
     </Wrap>
   );
 
@@ -13266,7 +13293,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       addOpsEvent={data=>{const rec={...data,id:uid(),dept:"Operations",createdDate:today,createdBy:session?.name||role};upChecklist(cs=>[...cs,rec]);if(isSupabaseReady())sbInsert('checklists',toSbChecklist(rec)).catch(err=>{console.error("Calendar item sync:",err);toastEmit&&toastEmit("Calendar item saved locally only — tap 🔄 sync to push it to the server.","warning",8000);});const proj=wonDeals.find(d=>d.id===rec.projectId);const msg=`📅 <b>Calendar Item Added</b>\n<b>${rec.type||"Event"}</b>: ${rec.title||""}\nDate: ${rec.dueDate||"—"}${proj?`\nProject: ${proj.client}${proj.ceNo?" ("+proj.ceNo+")":""}`:""}\nBy: ${rec.createdBy||"—"}`;const _t=(rec.type||"").toLowerCase();if(_t==="turnover"){sendTelegramNotification("ops",msg);sendTelegramNotification("sales",msg);sendTelegramNotification("management",msg);}else if(_t==="po delivery"){sendTelegramNotification("procurement",msg);sendTelegramNotification("warehouse",msg);}else if(_t.includes("billing")){sendTelegramNotification("financialcontrol",msg);sendTelegramNotification("management",msg);}else if(_t.includes("drf")||_t.includes("design")){sendTelegramNotification("design",msg);}else if(_t==="inspection"){sendTelegramNotification("ops",msg);sendTelegramNotification("management",msg);}else if(_t==="maintenance"){sendTelegramNotification("ops",msg);}else{sendTelegramNotification("ops",msg);sendTelegramNotification("sales",msg);}}}
       updateOpsEvent={(id,ch)=>{upChecklist(cs=>cs.map(c=>c.id===id?{...c,...ch}:c));if(isSupabaseReady())sbUpdate('checklists',id,toSbChecklist({...checklist.find(c=>c.id===id),...ch})).catch(()=>{});}}
       deleteOpsEvent={delOpsEvent}
-      updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())syncProjectCard(dealId,{target_end_date:date});}}
+      updateProjectTurnover={updateProjectTurnover}
     />
   );
 
@@ -17754,7 +17781,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
       {/* PM Update Modal */}
       {/* PM Update Modal */}
-      {pmUpdateModal&&<PmUpdateModal {...pmModalExtra} pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate} updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())syncProjectCard(dealId,{target_end_date:date});}}/>}
+      {pmUpdateModal&&<PmUpdateModal {...pmModalExtra} pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate} updateProjectTurnover={updateProjectTurnover}/>}
     </Wrap>
   );
 
@@ -17768,7 +17795,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   if(page==="projects") return(
     <Wrap>
-      <ProjectCards changeDealStage={changeDealStage} syncProjectCard={syncProjectCard}
+      <ProjectCards changeDealStage={changeDealStage} syncProjectCard={syncProjectCard} saveCardFields={saveCardFields} updateProjectTurnover={updateProjectTurnover} users={users}
         pcards={pcards} wonDeals={wonDeals} completedDeals={completedDeals} deals={deals} payables={payables}
         toggleDeptTask={toggleDeptTask} markDeptDone={markDeptDone}
         setProjectTAT={setProjectTAT} jos={jos}
@@ -27627,6 +27654,8 @@ function TATSetter({deal,card,onSet,refTable,ceType}){
   const[open,setOpen]    =useState(!card?.targetDays);
   const[date,setDate]    =useState(card?.targetEndDate||"");
   const[category,setCategory]=useState(card?.tatCategory||"");
+  const[reason,setReason]=useState("");
+  const[busy,setBusy]=useState(false);
 
   const refEntries=Object.entries(refTable||{});
 
@@ -27647,7 +27676,10 @@ function TATSetter({deal,card,onSet,refTable,ceType}){
     </button>
   );
 
-  const canSave=date&&(computedDays===null||computedDays>=0);
+  // Moving a turnover date that is already set needs a reason (the server
+  // refuses without one: set_project_card_fields). The first date doesn't.
+  const moving=!!card?.targetEndDate&&!!date&&date!==card.targetEndDate;
+  const canSave=!busy&&date&&(computedDays===null||computedDays>=0)&&(!moving||reason.trim().length>=10);
 
   return(
     <div style={{background:"#fff",borderRadius:10,border:"1.5px solid #e2e8f0",padding:"12px 14px",minWidth:280}}>
@@ -27683,9 +27715,17 @@ function TATSetter({deal,card,onSet,refTable,ceType}){
           {computedDays<0?"⚠ Date is before award date":`→ ${computedDays} days from award date`}
         </div>
       )}
+      {moving&&(
+        <div style={{marginTop:8}}>
+          <span style={{fontSize:".72rem",color:"#b45309",fontWeight:700}}>Why is the turnover moving from {card.targetEndDate}? (required)</span>
+          <textarea value={reason} onChange={e=>setReason(e.target.value)} rows={2} placeholder="e.g. Mall moved handover; client added scope (CO #3)"
+            style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #fde68a",borderRadius:7,padding:"7px 10px",fontFamily:"inherit",fontSize:".82rem",marginTop:3}}/>
+          <div style={{fontSize:".66rem",color:"#94a3b8"}}>Kept in the audit trail and sent to Management.{card.originalTargetEndDate?` Original turnover: ${card.originalTargetEndDate}.`:""}</div>
+        </div>
+      )}
 
       <div style={{display:"flex",gap:8,marginTop:10}}>
-        <button onClick={()=>{if(canSave)onSet(card.dealId,date,category);setOpen(false);}}
+        <button onClick={async()=>{if(!canSave)return;setBusy(true);const ok=await onSet(deal?.id||card.dealId,date,category,moving?reason.trim():null);setBusy(false);if(ok){setReason("");setOpen(false);}}}
           disabled={!canSave}
           style={{background:canSave?"#1e293b":"#e2e8f0",border:"none",borderRadius:8,padding:"8px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:canSave?"#fff":"#94a3b8",cursor:canSave?"pointer":"not-allowed"}}>
           Set Target
@@ -27700,8 +27740,14 @@ function TATSetter({deal,card,onSet,refTable,ceType}){
 }
 
 // ─── INVENTORY VIEW ───────────────────────────────────────────────────────────
-function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completedDeals,deals,payables=[],toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,prs=[],exps=[],isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,upDeals,ceReqs,toastEmit,sendTelegramNotification,initialDeal,clearJump,initialFilter,clearJumpFilter,loadChecklistTemplate,swos=[],addPmUpdate,setConfirmDel,customMembers=[],setCustomMembers=()=>{},setPage=()=>{},setJumpDeal=()=>{}}){
-  const todayStr=new Date().toISOString().split("T")[0];
+function ProjectCards({changeDealStage,syncProjectCard,saveCardFields,updateProjectTurnover,users=[],pcards,wonDeals,completedDeals,deals,payables=[],toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,prs=[],exps=[],isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,upDeals,ceReqs,toastEmit,sendTelegramNotification,initialDeal,clearJump,initialFilter,clearJumpFilter,loadChecklistTemplate,swos=[],addPmUpdate,setConfirmDel,customMembers=[],setCustomMembers=()=>{},setPage=()=>{},setJumpDeal=()=>{}}){
+  // Manila calendar date, fresh each render (the shared `today` is fixed at
+  // app load, and toISOString() is UTC: before 8 AM it was yesterday).
+  const todayStr=new Date().toLocaleDateString("en-CA",{timeZone:"Asia/Manila"});
+  // Whole days from ISO date a to ISO date b (date-only, no time-zone drift).
+  const diffDays=(a,b)=>{if(!a||!b)return null;const[y1,m1,d1]=String(a).slice(0,10).split("-").map(Number);const[y2,m2,d2]=String(b).slice(0,10).split("-").map(Number);return Math.round((Date.UTC(y2,m2-1,d2)-Date.UTC(y1,m1-1,d1))/86400000);};
+  const dLeftOf=ymd=>ymd?diffDays(todayStr,ymd):null;
+  const isClosedDeal=d=>d?.stage==="12 · Close-Out"||d?.stage==="14 · Completed";
   const[selDealRaw,setSelDeal]=useState(initialDeal||null);
   // A selection whose deal isn't loaded/won (deleted, moved to a lost stage, or a
   // jump-link opened before data arrived) counts as no selection. Derived during
@@ -27723,19 +27769,14 @@ function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completed
   const[teamLoadTab,setTeamLoadTab]=useState("pm");
   const[pcOwner,setPcOwner]=useState(null); // {tab:"pm"|"coor"|"subcon",name}
   const[pcFilter,setPcFilter]=useState(null);
-  const[pcDeptFilter,setPcDeptFilter]=useState("All");
   const[pcSort,setPcSort]=useState("tat");
   const[pcShowClosed,setPcShowClosed]=useState(false);
   const[pcSearch,setPcSearch]=useState("");
   const[showBForm,setShowBForm]=useState(false);
   const[bfTitle,setBfTitle]=useState(""); const[bfDept,setBfDept]=useState("Operations"); const[bfDetail,setBfDetail]=useState("");
-  const[showUForm,setShowUForm]=useState(false); const[uText,setUText]=useState("");
   const[tatOpen,setTatOpen]=useState(false);
   const[showTeamEdit,setShowTeamEdit]=useState(false);
   const[teamForm,setTeamForm]=useState({ae:"",pm1:"",pm2:"",pm3:"",designer:"",coordinator:"",warehouseOnly:false});
-  const[showScopeForm,setShowScopeForm]=useState(false);
-  const[scopeForm,setScopeForm]=useState({title:"",desc:"",value:"",ceNo:""});
-  const fsc=(k,v)=>setScopeForm(p=>({...p,[k]:v}));
   const[showDateEdit,setShowDateEdit]=useState(false);
   const[hqTab,setHqTab]=useState("progress");
   const[pctDraft,setPctDraft]=useState("");
@@ -27743,6 +27784,15 @@ function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completed
   const[dateForm,setDateForm]=useState({awardDate:"",targetEndDate:""});
   const fdt=(k,v)=>setDateForm(p=>({...p,[k]:v}));
   const[pmUpdateModal,setPmUpdateModal]=useState(null);
+  const[savingCard,setSavingCard]=useState(false);
+  // Every editor and draft belongs to ONE project. Switching project (back to
+  // the grid, a jump-link, another card) closes them all — before this, an
+  // open Dates editor kept project A's dates/location/CE type and saved them
+  // onto project B.
+  useEffect(()=>{
+    setShowBForm(false);setTatOpen(false);setShowTeamEdit(false);setShowDateEdit(false);
+    setPctDraft("");setReportPct(null);setHqTab("progress");
+  },[selDealRaw]);
 
   // useMemo — projectCostBreakdown scans the FULL company-wide prs/exps arrays,
   // and the blockers/actLog/addenda/billings filters scan full company-wide
@@ -27774,7 +27824,6 @@ function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completed
     return{projBlockers,openProjB,projUpdates,projAddenda,projBillings,totalBilled,totalColl,totalOutstanding,projCommitted,projActual,projCost,pendingMRs,pendingBRs};
   },[selDeal,blockers,actLog,addenda,billings,prs,exps,mreqs,breqs,deals,costByDeal]);
 
-  const today2=new Date();
   const card=selDeal?pcards[selDeal]:null;
   const jo=dealJo(jos,selDeal);
 
@@ -27789,79 +27838,42 @@ function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completed
   };
   const editableDepts={Manager:DEPT_ORDER,Sales:["Sales"],Design:["Design"],QS:["QS"],Procurement:["Procurement"],Operations:["Operations"],Finance:["Finance"],SalesOpsAdmin:DEPT_ORDER}[role]||[];
   const projPct=(pc,deal=null)=>projProgressPct(pc,deal);
-  const getHealth=(d,pc)=>{
-    if(!pc||!d)return "none";
-    const end=pc.targetEndDate?new Date(pc.targetEndDate):null;
-    const ob=(blockers||[]).some(b=>b.status==="Open"&&b.dealId===d.id);
-    if(end&&today2>end)return "red";
-    if(ob)return "yellow";
-    if(end){const dl=Math.ceil((end-today2)/86400000);if(dl/(pc.targetDays||30)<0.25)return "yellow";}
-    return "green";
-  };
-  const HC={green:["#10b981","On Track"],yellow:["#f59e0b","At Risk"],red:["#ef4444","Overdue"],none:["#94a3b8","No TAT"]};
-
-  const calcCardGrade=(deal,pc)=>{
-    if(!pc||!deal) return{score:0,grade:"F",color:"#ef4444",gcolor:"#fef2f2",breakdown:{completeness:{earned:0,max:40,items:{hasPM:false,hasDate:false,hasBudget:false,hasDesigner:false,hasCE:false}},recency:{earned:0,max:30,label:"No updates yet",count:0},timeline:{earned:0,max:30,label:"—"}}};
-    let score=0;
-    // ─ Completeness (40pts) ────────────────────────────────────────────────
-    const joR=dealJo(jos,deal.id);
-    const hasPM=!!(pc.pm1||joR?.pm1);
-    const hasDate=!!pc.targetEndDate;
-    const b=budgets[deal.id];
-    const hasBudget=b&&["Materials","Labor","Overhead","Subcon"].some(k=>Number(b[k]||0)>0);
-    const hasDesigner=!!(pc.designer||joR?.designer);
-    const hasCE=!!deal.ceNo;
-    const completeness=(hasPM?10:0)+(hasDate?12:0)+(hasBudget?10:0)+(hasDesigner?5:0)+(hasCE?3:0);
-    score+=completeness;
-    // ─ Update recency (30pts) ─────────────────────────────────────────────
-    const updates=(actLog||[]).filter(a=>a.dealId===deal.id&&a.action==="PM Update");
-    const lastUpd=updates[0];
-    let recency=0,recencyLabel="No updates yet";
-    if(lastUpd){
-      const ds=Math.ceil((today2-new Date(lastUpd.date))/86400000);
-      if(ds<=2){recency=30;recencyLabel=ds===0?"Today":ds===1?"Yesterday":`${ds}d ago`;}
-      else if(ds<=7){recency=22;recencyLabel=`${ds}d ago`;}
-      else if(ds<=14){recency=12;recencyLabel=`${ds}d ago`;}
-      else if(ds<=30){recency=5;recencyLabel=`${ds}d ago`;}
-      else{recency=0;recencyLabel=`${ds}d ago (stale)`;}
+  // Health compares progress with time used, not just the calendar: a job at
+  // 30 % with 88 % of its time gone is Behind even with days still left.
+  //   done   – Close-Out / Completed (never "Overdue" again)
+  //   red    – past turnover, or 30+ points behind (time used % − progress %)
+  //   yellow – 15+ points behind, no progress set past half the time, an open
+  //            blocker, or under 25 % of the time left and not yet at 90 %
+  const healthOf=(d,pc)=>{
+    if(!d) return {key:"none",why:""};
+    if(isClosedDeal(d)) return {key:"done",why:"Closed out"};
+    if(!pc||!pc.targetEndDate) return {key:"none",why:"No turnover date"};
+    const dl=dLeftOf(pc.targetEndDate);
+    if(dl<0) return {key:"red",why:`${Math.abs(dl)}d past turnover`};
+    const pct=projPct(pc,d);
+    const total=pc.awardDate?diffDays(pc.awardDate,pc.targetEndDate):null;
+    const used=total&&total>0?Math.min(100,Math.max(0,Math.round(diffDays(pc.awardDate,todayStr)/total*100))):null;
+    if(used!=null&&pct!=null){
+      const behind=used-pct;
+      if(behind>=30) return {key:"red",why:`Behind: ${used}% of time used, ${pct}% done`};
+      if(behind>=15) return {key:"yellow",why:`Slipping: ${used}% of time used, ${pct}% done`};
     }
-    score+=recency;
-    // ─ Timeline health (30pts) ────────────────────────────────────────────
-    let timeline=10,timelineLabel="No target date";
-    const end=pc.targetEndDate?new Date(pc.targetEndDate):null;
-    if(end){
-      const dl=Math.ceil((end-today2)/86400000);
-      if(dl<0){timeline=0;timelineLabel=`${Math.abs(dl)}d overdue`;}
-      else if(dl===0){timeline=5;timelineLabel="Due today";}
-      else if(dl<=7){timeline=10;timelineLabel=`${dl}d left`;}
-      else if(dl<=14){timeline=18;timelineLabel=`${dl}d left`;}
-      else if(dl<=30){timeline=24;timelineLabel=`${dl}d left`;}
-      else{timeline=30;timelineLabel=`${dl}d left`;}
-    }
-    score+=timeline;
-    // ─ Grade ─────────────────────────────────────────────────────────────
-    let grade,color,gcolor;
-    if(score>=85){grade="A+";color="#059669";gcolor="#dcfce7";}
-    else if(score>=75){grade="A";color="#10b981";gcolor="#d1fae5";}
-    else if(score>=65){grade="B";color="#3b82f6";gcolor="#dbeafe";}
-    else if(score>=50){grade="C";color="#f59e0b";gcolor="#fef3c7";}
-    else if(score>=30){grade="D";color="#f97316";gcolor="#ffedd5";}
-    else{grade="F";color="#ef4444";gcolor="#fef2f2";}
-    return{score,grade,color,gcolor,breakdown:{completeness:{earned:completeness,max:40,items:{hasPM,hasDate,hasBudget,hasDesigner,hasCE}},recency:{earned:recency,max:30,label:recencyLabel,count:updates.length},timeline:{earned:timeline,max:30,label:timelineLabel}}};
+    if(used!=null&&pct==null&&used>=50) return {key:"yellow",why:`No progress set, ${used}% of time used`};
+    if((blockers||[]).some(b=>b.status==="Open"&&b.dealId===d.id)) return {key:"yellow",why:"Open blocker"};
+    if(total&&dl/total<0.25&&(pct??0)<90) return {key:"yellow",why:`${dl}d left`};
+    return {key:"green",why:used!=null?`${used}% of time used${pct!=null?`, ${pct}% done`:""}`:"On track"};
   };
+  const getHealth=(d,pc)=>healthOf(d,pc).key;
+  const HC={green:["#10b981","On Track"],yellow:["#f59e0b","At Risk"],red:["#ef4444","Behind / Overdue"],done:["#059669","Closed"],none:["#94a3b8","No TAT"]};
+  const activeWon=wonDeals.filter(d=>!isClosedDeal(d));
+  const isPastDeadline=d=>!isClosedDeal(d)&&!!pcards[d.id]?.targetEndDate&&pcards[d.id].targetEndDate<todayStr;
 
   const totalCards=Object.keys(pcards).length;
-  const fullyDone=Object.values(pcards).filter(p=>DEPT_ORDER.every(d=>p.departments?.[d]?.done)).length;
-  const needsAttn=wonDeals.filter(d=>{const h=getHealth(d,pcards[d.id]);return h==="yellow"||h==="red";}).length;
+  const needsAttn=activeWon.filter(d=>{const h=getHealth(d,pcards[d.id]);return h==="yellow"||h==="red";}).length;
   const openBCount=(blockers||[]).filter(b=>b.status==="Open").length;
 
   // ── Team-load rollups (by PM / Coordinator / Subcon) ──────────────────────
-  const dealStatus=(d)=>{
-    const pc=pcards[d.id];
-    if(d.stage==="12 · Close-Out"||d.stage==="14 · Completed")return "done";
-    if(pc&&DEPT_ORDER.every(dep=>pc.departments?.[dep]?.done))return "done";
-    return getHealth(d,pc); // green | yellow | red | none
-  };
+  const dealStatus=d=>getHealth(d,pcards[d.id]); // done | red | yellow | green | none
   // Shared owner-key resolver — used by both the rollup and the grid filter
   const ownerKeys=(d,tab)=>{
     const pc=pcards[d.id],jo=dealJo(jos,d.id);
@@ -27910,7 +27922,7 @@ function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completed
               ))}
             </div>
           )}
-          {selDeal&&<button onClick={()=>{setSelDeal(null);setShowBForm(false);setShowUForm(false);setTatOpen(false);setShowTeamEdit(false);setShowScopeForm(false);setScopeForm({title:"",desc:"",value:"",ceNo:""});setPcSearch("");}} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".82rem",color:"#475569",cursor:"pointer",fontWeight:600}}>← All Projects</button>}
+          {selDeal&&<button onClick={()=>{setSelDeal(null);setPcSearch("");}} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".82rem",color:"#475569",cursor:"pointer",fontWeight:600}}>← All Projects</button>}
         </div>
       </div>
 
@@ -27918,11 +27930,11 @@ function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completed
       {!selDeal&&(
         <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(5,1fr)",gap:10,marginBottom:16}}>
           {[
-            {l:"Active",       v:wonDeals.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed").length, c:"#0f172a",    f:null},
-            {l:"Completed",    v:wonDeals.filter(d=>d.stage==="12 · Close-Out"||d.stage==="14 · Completed").length, c:"#059669", f:"completed"},
+            {l:"Active",       v:activeWon.length, c:"#0f172a",    f:null},
+            {l:"Completed",    v:wonDeals.length-activeWon.length, c:"#059669", f:"completed"},
             {l:"Needs Attention",v:needsAttn,c:"#f59e0b",f:"attention"},
             {l:"Open Blockers",v:openBCount,c:openBCount>0?"#ef4444":"#94a3b8",f:"blockers"},
-            {l:"Past Deadline",v:wonDeals.filter(d=>pcards[d.id]?.targetEndDate&&pcards[d.id].targetEndDate<today&&!DEPT_ORDER.every(dept=>pcards[d.id]?.departments?.[dept]?.done)).length,c:"#c2410c",f:"overdue"},
+            {l:"Past Deadline",v:wonDeals.filter(isPastDeadline).length,c:"#c2410c",f:"overdue"},
             {l:"All Projects", v:wonDeals.length,c:"#64748b",f:"all"},
           ].map(({l,v,c,f})=>(
             <div key={l} {...clickable(()=>setPcFilter(x=>x===f?null:f))} aria-label={`Filter ${l}`}
@@ -28012,16 +28024,10 @@ function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completed
         <div>
           <div style={{marginBottom:8,position:"relative"}}>
             <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",fontSize:".85rem",pointerEvents:"none"}}>🔍</span>
-            <input value={pcSearch} onChange={e=>setPcSearch(e.target.value)} placeholder="Search projects, clients, CE#…"
+            <input value={pcSearch} onChange={e=>setPcSearch(e.target.value)} placeholder="Search project, client, CE#, JO#, location, AE…"
               style={{width:"100%",boxSizing:"border-box",padding:"7px 10px 7px 30px",borderRadius:8,border:"1.5px solid #e2e8f0",fontFamily:"inherit",fontSize:".82rem",outline:"none",background:"#f8fafc"}}/>
           </div>
           <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:12,flexWrap:"wrap"}}>
-            {["All",...DEPT_ORDER].map(dept=>(
-              <button key={dept} onClick={()=>setPcDeptFilter(f=>f===dept?"All":dept)}
-                style={{padding:"3px 10px",borderRadius:20,border:`1.5px solid ${pcDeptFilter===dept&&dept!=="All"?(DEPT_CLR[dept]||"#1e293b"):"#e2e8f0"}`,background:pcDeptFilter===dept&&dept!=="All"?(DEPT_CLR[dept]||"#1e293b"):"#fff",color:pcDeptFilter===dept&&dept!=="All"?"#fff":"#64748b",fontFamily:"inherit",fontWeight:pcDeptFilter===dept?700:400,fontSize:".72rem",cursor:"pointer"}}>
-                {dept}
-              </button>
-            ))}
             {[["tat","⏰ Urgent"],["pct","📊 Least done"],["project","🔤 Project"],["client","📁 Client"]].map(([v,l])=>(
               <button key={v} onClick={()=>setPcSort(s=>s===v?null:v)}
                 style={{padding:"3px 10px",borderRadius:20,border:`1.5px solid ${pcSort===v?"#1e293b":"#e2e8f0"}`,background:pcSort===v?"#1e293b":"#fff",color:pcSort===v?"#fff":"#64748b",fontFamily:"inherit",fontWeight:pcSort===v?700:400,fontSize:".72rem",cursor:"pointer"}}>
@@ -28029,36 +28035,26 @@ function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completed
               </button>
             ))}
             {pcOwner&&<button onClick={()=>setPcOwner(null)} style={{padding:"3px 10px",borderRadius:20,border:`1.5px solid ${teamTabMeta[pcOwner.tab]?SC_CLR.green[0]:"#c7d2fe"}`,background:"#eef2ff",color:"#4338ca",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer",whiteSpace:"nowrap"}}>{teamTabMeta[pcOwner.tab][0]} {pcOwner.name} ✕</button>}
-            {(pcFilter||pcDeptFilter!=="All"||pcSearch||pcOwner)&&<button onClick={()=>{setPcFilter(null);setPcDeptFilter("All");setPcSearch("");setPcOwner(null);}} style={{padding:"3px 10px",borderRadius:20,border:"1.5px solid #fecaca",background:"#fef2f2",color:"#dc2626",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer"}}>✕ Clear</button>}
+            {(pcFilter||pcSearch||pcOwner)&&<button onClick={()=>{setPcFilter(null);setPcSearch("");setPcOwner(null);}} style={{padding:"3px 10px",borderRadius:20,border:"1.5px solid #fecaca",background:"#fef2f2",color:"#dc2626",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer"}}>✕ Clear</button>}
           </div>
           {(()=>{
             // shared filter logic
-            let list=pcFilter==="overdue"
-              ?wonDeals
-              :pcFilter==="completed"
-              ?wonDeals.filter(d=>d.stage==="12 · Close-Out"||d.stage==="14 · Completed")
-              :pcFilter==="all"
-                ?wonDeals
-                :wonDeals.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed");
-            if(pcSearch){const q=pcSearch.toLowerCase();list=list.filter(d=>[d.contact,d.client,d.ceNo,d.salesOwner].join(" ").toLowerCase().includes(q));}
+            // Same rules as the KPI tiles above, so a tile's number = its list.
+            let list=pcFilter==="completed"?wonDeals.filter(isClosedDeal)
+              :pcFilter==="all"?wonDeals
+              :activeWon;
+            if(pcSearch){const q=pcSearch.toLowerCase();list=list.filter(d=>{const pc=pcards[d.id],j=dealJo(jos,d.id);return [d.contact,d.client,d.ceNo,d.salesOwner,d.location,j?.joNo,j?.location,pc?.pm1,pc?.coordinator].join(" ").toLowerCase().includes(q);});}
             if(pcFilter==="attention") list=list.filter(d=>{const h=getHealth(d,pcards[d.id]);return h==="yellow"||h==="red";});
             if(pcFilter==="blockers") list=list.filter(d=>(blockers||[]).some(b=>b.dealId===d.id&&b.status==="Open"));
-            if(pcFilter==="overdue") list=list.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed"&&pcards[d.id]?.targetEndDate&&pcards[d.id].targetEndDate<today&&!DEPT_ORDER.every(dept=>pcards[d.id]?.departments?.[dept]?.done));
-            if(pcDeptFilter!=="All") list=list.filter(d=>pcards[d.id]&&!pcards[d.id]?.departments?.[pcDeptFilter]?.done);
+            if(pcFilter==="overdue") list=list.filter(isPastDeadline);
             if(pcOwner) list=list.filter(d=>ownerKeys(d,pcOwner.tab).includes(pcOwner.name));
             list=[...list].sort((a,b)=>{
               if(pcSort==="client")return a.client.localeCompare(b.client);
               if(pcSort==="project")return (a.contact||a.client).localeCompare(b.contact||b.client);
               if(pcSort==="pct")return (projPct(pcards[a.id],a)??-1)-(projPct(pcards[b.id],b)??-1);
-              if(pcSort==="tat"){
-                const da=pcards[a.id]?.targetEndDate?Math.ceil((new Date(pcards[a.id].targetEndDate)-today2)/86400000):999;
-                const db=pcards[b.id]?.targetEndDate?Math.ceil((new Date(pcards[b.id].targetEndDate)-today2)/86400000):999;
-                return da-db;
-              }
+              if(pcSort==="tat") return (dLeftOf(pcards[a.id]?.targetEndDate)??999)-(dLeftOf(pcards[b.id]?.targetEndDate)??999);
               return 0;
             });
-            // Separate parent deals from child deals for nested display
-            const childDeals=list.filter(d=>d.parentDealId);
             // Standby PO umbrellas carry no production of their own — their
             // drawdown jobs are independent fabrications. So in Project HQ we
             // hide the ₱0 umbrella card and promote its jobs to top-level
@@ -28069,40 +28065,7 @@ function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completed
               if(!d.parentDealId) return true;                            // normal top-level project
               return standbyParentIds.has(d.parentDealId);                // promote standby-PO jobs
             });
-            const renderPCRow=(d,idx,total,isChild=false)=>{
-              const pc=pcards[d.id];
-              const g=calcCardGrade(d,pc);
-              const h=getHealth(d,pc);const[hc]=HC[h];
-              const joR=dealJo(jos,d.id);
-              const projB=(blockers||[]).filter(b=>b.dealId===d.id&&b.status==="Open").length;
-              const pct=projPct(pc,d);
-              const pm=[pc?.pm1||joR?.pm1,pc?.pm2||joR?.pm2,pc?.pm3||joR?.pm3].filter(Boolean)[0]||"—";
-              const ae=pc?.aeAssigned||joR?.aeAssigned||d.salesOwner||"—";
-              const dLeft=pc?.targetEndDate?Math.ceil((new Date(pc.targetEndDate)-today2)/86400000):null;
-              return(
-                <div key={d.id} {...clickable(()=>{setSelDeal(d.id);setShowTeamEdit(false);})} aria-label={`Open ${d.client||d.contact||"deal"}`}
-                  style={{display:"grid",gridTemplateColumns:"minmax(160px,1fr) 140px 120px 140px 80px 80px",gap:0,padding:isChild?"7px 14px 7px 28px":"10px 14px",alignItems:"center",cursor:"pointer",borderBottom:idx<total-1?"1px solid #f1f5f9":"none",borderLeft:`3px solid ${isChild?"#f59e0b":g.color}`,background:isChild?"#fffbeb":"#fff",transition:"background .1s",minWidth:720}}
-                  onMouseEnter={e=>e.currentTarget.style.background=isChild?"#fef3c7":"#f8fafc"}
-                  onMouseLeave={e=>e.currentTarget.style.background=isChild?"#fffbeb":"#fff"}>
-                  <div style={{paddingRight:10,minWidth:0}}>
-                    {isChild&&<div style={{fontSize:".55rem",color:"#f59e0b",fontWeight:700,marginBottom:1}}>↳ ADDENDUM</div>}
-                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".83rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.contact||d.client}</div>
-                    <div style={{fontSize:".65rem",color:"#94a3b8",marginTop:1}}>{d.ceNo||"No CE"}{projB>0&&<span style={{marginLeft:6,color:"#ef4444",fontWeight:700}}>⛔ {projB}</span>}{!pc&&<span style={{marginLeft:6,color:"#f59e0b",fontWeight:700}}>⚠ No card</span>}</div>
-                  </div>
-                  <div style={{fontSize:".76rem",color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{d.client}</div>
-                  <div style={{fontSize:".76rem",color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{ae==="—"?<span style={{color:"#cbd5e1"}}>—</span>:ae}</div>
-                  <div style={{fontSize:".76rem",color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{pm==="—"?<span style={{color:"#cbd5e1"}}>Unassigned</span>:pm}</div>
-                  <div style={{lineHeight:1.2}}>
-                    <span style={{fontSize:".72rem",fontWeight:800,color:g.color,background:g.gcolor,borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap",letterSpacing:".3px",display:"inline-block"}}>{pct===100?"✅":g.grade}</span>
-                    <div style={{fontSize:".55rem",color:g.color,marginTop:2,paddingLeft:2,fontWeight:600}}>{g.score}pts</div>
-                  </div>
-                  <div style={{fontSize:".74rem",fontWeight:dLeft!==null&&dLeft<0?700:400,color:dLeft===null?"#cbd5e1":dLeft<0?"#ef4444":dLeft<=7?"#f59e0b":"#64748b"}}>
-                    {dLeft===null?"—":dLeft<0?`${Math.abs(dLeft)}d over`:`${dLeft}d left`}
-                  </div>
-                </div>
-              );
-            };
-            if(parentList.length===0&&childDeals.length===0) return <div style={{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:".84rem"}}>No projects match this filter.</div>;
+            if(parentList.length===0) return <div style={{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:".84rem"}}>No projects match this filter.</div>;
 
             // ── CARD VIEW ────────────────────────────────────────────────────
             if(viewMode==="card") return(
@@ -28111,7 +28074,7 @@ function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completed
                   const pc=pcards[d.id];
                   const h=getHealth(d,pc);const[hc]=HC[h];
                   const joC=dealJo(jos,d.id);
-                  const dLeftC=pc?.targetEndDate?Math.ceil((new Date(pc.targetEndDate)-today2)/86400000):null;
+                  const dLeftC=dLeftOf(pc?.targetEndDate);
                   const isOverC=dLeftC!==null&&dLeftC<0;
                   const projSwos=(swos||[]).filter(w=>w.projectId===d.id||w.dealId===d.id);
                   const pms=[pc?.pm1||joC?.pm1,pc?.pm2||joC?.pm2,pc?.pm3||joC?.pm3].filter(Boolean).join(", ")||"—";
@@ -28119,7 +28082,7 @@ function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completed
                   const designerC=pc?.designer||joC?.designer||"—";
                   const projTypeC=pc?.tatCategory||d.projType||joC?.projType||"";
                   const pctC=projPct(pc,d);
-                  const gradeC=calcCardGrade(d,pc);
+                  const hInfoC=healthOf(d,pc);
                   const lastNoteC=(pc?.pmUpdates||[])[0];
                   const lastNoteTxtC=lastNoteC?(lastNoteC.note||lastNoteC.text||""):"";
                   const[,hLabelC]=HC[h];
@@ -28143,7 +28106,7 @@ function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completed
                         </div>
                         <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:5,flexShrink:0}}>
                           <div style={{display:"flex",alignItems:"center",gap:6}}>
-                            <span title={`Card health: ${hLabelC}`} style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:".92rem",lineHeight:1,minWidth:26,height:26,display:"inline-flex",alignItems:"center",justifyContent:"center",borderRadius:6,background:gradeC.gcolor,color:gradeC.color,border:`1px solid ${gradeC.color}55`,padding:"0 5px"}}>{gradeC.grade}</span>
+                            <span title={hInfoC.why} style={{fontSize:".62rem",fontWeight:800,lineHeight:1,height:22,display:"inline-flex",alignItems:"center",borderRadius:6,background:hc+"18",color:hc,border:`1px solid ${hc}55`,padding:"0 7px",whiteSpace:"nowrap"}}>{hLabelC}</span>
                             {role==="Manager"&&setConfirmDel&&<button onClick={e=>{e.stopPropagation();setConfirmDel(d.id);}} title="Delete project" style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:5,padding:"3px 6px",fontSize:".72rem",lineHeight:1,color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>🗑</button>}
                           </div>
                           <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:600,letterSpacing:".06em",textTransform:"uppercase",padding:"3px 8px",borderRadius:4,background:hc+"18",color:hc,border:`1px solid ${hc}44`,whiteSpace:"nowrap"}}>{projStageLabel(d,pc)}</span>
@@ -28228,7 +28191,7 @@ function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completed
                         const pcL=pcards[d.id];
                         const hL=getHealth(d,pcL);const[hcL]=HC[hL];
                         const joL=dealJo(jos,d.id);
-                        const dLeftL=pcL?.targetEndDate?Math.ceil((new Date(pcL.targetEndDate)-today2)/86400000):null;
+                        const dLeftL=dLeftOf(pcL?.targetEndDate);
                         const isOverL=dLeftL!==null&&dLeftL<0;
                         const aeL=pcL?.aeAssigned||joL?.aeAssigned||d.salesOwner||"—";
                         const pm1L=pcL?.pm1||joL?.pm1||"";
@@ -28306,9 +28269,9 @@ function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completed
         (()=>{
           const pct=projPct(card,deal);
           const h=getHealth(deal,card);const[hc,hl]=HC[h];
-          const elapsed=card?.awardDate?Math.ceil((today2-new Date(card.awardDate))/86400000):0;
-          const end=card?.targetEndDate?new Date(card.targetEndDate):null;
-          const dLeft=end?Math.ceil((end-today2)/86400000):null;
+          const elapsed=card?.awardDate?Math.max(0,diffDays(card.awardDate,todayStr)):0;
+          const dLeft=dLeftOf(card?.targetEndDate);
+          const hInfo=healthOf(deal,card);
           const isOver=dLeft!==null&&dLeft<0;
           const {projBlockers,openProjB,projUpdates,projAddenda,projBillings,totalBilled,totalColl,totalOutstanding,projCost,pendingMRs,pendingBRs}=projStats;
           const contractVal=Number(deal?.value||0);
@@ -28318,7 +28281,9 @@ function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completed
           const canFlagBlocker=["Manager","Operations","ProjectMover","Sales","Design","QS","Procurement","Finance","SalesOpsAdmin"].includes(role);
           const ceType=deal?.ceType||"Fabrication / General";
           const refTable=TAT_REFERENCE[ceType]||TAT_REFERENCE["Fabrication / General"];
-          const canSetTAT=role==="Manager"||role==="QS"||role==="Operations"||role==="SalesOpsAdmin";
+          // These three mirror set_project_card_fields (migration 20261121020000).
+          // ProjectMover is the PM role (no active user has "Operations").
+          const canSetTAT=["Manager","ProjectMover","Operations","QS","SalesOpsAdmin"].includes(role);
 
 
           const projCl=(checklist||[]).filter(c=>c.projectId===selDeal).sort((a,b)=>{
@@ -28327,8 +28292,17 @@ function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completed
             return (sta[a.status]-sta[b.status])||(pri[a.priority]-pri[b.priority]);
           });
 
-          const canEditTeam=role==="Manager"||role==="Operations"||role==="SalesOpsAdmin";
-          const canEditDates=role==="Manager"||role==="Operations"||role==="QS"||role==="SalesOpsAdmin";
+          const canEditTeam=["Manager","ProjectMover","Operations","SalesOpsAdmin"].includes(role);
+          const canEditDates=["Manager","ProjectMover","Operations","QS","SalesOpsAdmin"].includes(role);
+          // CE Type decides the progress rule (construction = any %), so it stays
+          // with the deal editors (deals_upd: Manager, Sales, SalesOpsAdmin, QS).
+          const canEditCeType=["Manager","Sales","SalesOpsAdmin","QS"].includes(role);
+          // Finance tab: contract / billed / collected for finance and sales roles;
+          // cost, profit and margin only for those who can open Project Margins
+          // (the owners and QS). Design, Coordinators, PMs, Procurement and
+          // Warehouse see neither (the grid already hid contract value from PMs).
+          const canSeeFinance=["Manager","Finance","FinanceAssistant","Accounting","QS","Sales","SalesOpsAdmin"].includes(role);
+          const canSeeMargin=OWNER_USERS.includes(session?.username)||role==="QS";
           const hqBtn=(bg,bd,c)=>({background:bg,border:`1px solid ${bd}`,borderRadius:6,padding:"4px 10px",fontSize:".72rem",fontWeight:700,color:c,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"});
           // Same rule as the Progress page: PMs/Operations/Managers on any project, Coordinators on their own.
           const pgNormHq=x=>String(x||"").replace(/\s*\([^)]*\)\s*$/,"").trim().toLowerCase();
@@ -28343,7 +28317,7 @@ function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completed
           };
           const updatesCount=(actLog||[]).filter(a=>a.dealId===selDeal&&a.action==="PM Update").length;
           const clOpen=projCl.filter(c=>c.status!=="Done").length;
-          const hqTabs=[["progress","Progress",openProjB.length],["updates","Updates",updatesCount],["checklist","Checklist",clOpen],["finance","Finance",0]];
+          const hqTabs=[["progress","Progress",openProjB.length],["updates","Updates",updatesCount],["checklist","Checklist",clOpen],...(canSeeFinance?[["finance","Finance",0]]:[])];
 
           return(
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
@@ -28356,6 +28330,7 @@ function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completed
                       <span style={{fontWeight:800,color:"#0f172a",fontSize:isMobile?"1rem":"1.12rem"}}>{deal?.contact||deal?.client}</span>
                       <span style={{fontSize:".68rem",fontWeight:700,color:hc,background:hc+"18",borderRadius:20,padding:"2px 10px",border:`1px solid ${hc}44`}}>{projStageLabel(deal,card)}</span>
                       {pct===100&&<span style={{fontSize:".66rem",fontWeight:700,color:"#059669",background:"#f0fdf4",borderRadius:20,padding:"2px 9px"}}>✅ Done</span>}
+                      {h!=="done"&&<span title="Health compares % done with % of the time used" style={{fontSize:".66rem",fontWeight:700,color:hc,background:"#fff",borderRadius:20,padding:"2px 9px",border:`1px dashed ${hc}88`}}>{hl}{hInfo.why?` · ${hInfo.why}`:""}</span>}
                     </div>
                     <div style={{fontSize:".72rem",color:"#64748b",marginTop:3,display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
                       {deal?.contact&&<span style={{color:"#8b5cf6"}}>📁 {deal?.client}</span>}
@@ -28375,7 +28350,7 @@ function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completed
                       }} style={hqBtn("#f1f5f9","#e2e8f0","#475569")}>✏️ Team</button>
                     )}
                     {canEditDates&&!showDateEdit&&selDeal&&(
-                      <button onClick={()=>{setDateForm({awardDate:card?.awardDate||"",targetEndDate:card?.targetEndDate||"",location:deal?.location||"",ceType:deal?.ceType||"Fabrication / General"});setShowTeamEdit(false);setShowDateEdit(true);}}
+                      <button onClick={()=>{setDateForm({awardDate:card?.awardDate||jo?.startDate||deal?.awardDate||"",targetEndDate:card?.targetEndDate||"",location:deal?.location||"",ceType:deal?.ceType||"Fabrication / General",reason:""});setShowTeamEdit(false);setShowDateEdit(true);}}
                         style={hqBtn("#f1f5f9","#e2e8f0","#475569")}>✏️ Dates &amp; Site</button>
                     )}
                     {/* PRFs for this project — same roles that can read prfs (prf_can_read). */}
@@ -28401,6 +28376,7 @@ function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completed
                       <span style={{color:dLeft===null?"#94a3b8":isOver?"#ef4444":dLeft<=7?"#f59e0b":"#059669",whiteSpace:"nowrap"}}>{card?.targetEndDate||"not set"}</span>
                       {dLeft!==null&&<span style={{marginLeft:6,fontSize:".66rem",fontWeight:700,color:isOver?"#ef4444":dLeft<=7?"#f59e0b":"#64748b",background:isOver?"#fef2f2":dLeft<=7?"#fffbeb":"#f1f5f9",borderRadius:20,padding:"1px 7px",whiteSpace:"nowrap"}}>{isOver?`⚠ ${Math.abs(dLeft)}d overdue`:`${dLeft}d left`}</span>}
                       {card?.targetDays&&card?.awardDate&&<span style={{marginLeft:6,fontSize:".64rem",color:"#94a3b8",fontWeight:500,whiteSpace:"nowrap"}}>day {elapsed}/{card.targetDays}</span>}
+                      {card?.originalTargetEndDate&&card.originalTargetEndDate!==card.targetEndDate&&<span title="The first turnover date set for this project" style={{marginLeft:6,fontSize:".64rem",color:"#b45309",fontWeight:700,whiteSpace:"nowrap"}}>baseline {card.originalTargetEndDate} ({diffDays(card.originalTargetEndDate,card.targetEndDate)>0?"+":""}{diffDays(card.originalTargetEndDate,card.targetEndDate)}d)</span>}
                     </>,wide:true},
                   ].map(({l,v,wide})=>(
                     <div key={l} style={{background:"#f8fafc",borderRadius:8,padding:"6px 10px",minWidth:0,gridColumn:wide?(isMobile?"1/-1":"span 2"):undefined}}>
@@ -28424,22 +28400,35 @@ function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completed
                 })()}
 
                 {/* Inline editors (open one at a time) */}
-                {showTeamEdit&&(
+                {showTeamEdit&&(()=>{
+                  // Pick from real accounts (user_profiles), not free text: "is this
+                  // my project?" checks (PM updates, Coordinator progress) match on
+                  // the name, so a typo silently took someone's rights away. A
+                  // name already on the card that has no account stays selectable.
+                  const active=(users||[]).filter(u=>u&&u.name&&(!u.status||u.status==="active"));
+                  const byRoles=rs=>[...new Set(active.filter(u=>rs.includes(u.role)).map(u=>u.name))].sort();
+                  const FIELDS=[["ae","AE (Account Executive)",byRoles(["Sales","SalesOpsAdmin","Manager"])],["pm1","PM 1",byRoles(["ProjectMover","Operations","Manager"])],["pm2","PM 2",byRoles(["ProjectMover","Operations","Manager"])],["pm3","PM 3",byRoles(["ProjectMover","Operations","Manager"])],["designer","Designer",byRoles(["Design"])],["coordinator","Coordinator",byRoles(["Coordinator","ProjectMover","Operations"])]];
+                  return(
                   <div style={{marginTop:10,background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"12px 14px"}}>
                     <div style={{fontWeight:700,color:"#0f172a",fontSize:".8rem",marginBottom:8}}>👥 Project Team</div>
-                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                    {[["ae","AE (Account Executive)",SALES_TEAM],["pm1","PM 1",OPS_TEAM],["pm2","PM 2",OPS_TEAM],["pm3","PM 3",OPS_TEAM],["designer","Designer",DESIGN_MEMBERS],["coordinator","Coordinator",OPS_TEAM]].map(([k,l,opts])=>{
-                      const sugg=[...new Set([...opts,...customMembers])];
+                  <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:8}}>
+                    {FIELDS.map(([k,l,opts])=>{
+                      const cur=teamForm[k]||"";
+                      const legacy=cur&&!opts.includes(cur);
                       return(
                       <div key={k}>
                         <label style={{fontSize:".72rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:2}}>{l}</label>
-                        <input list={`teamopts_${k}`} value={teamForm[k]} onChange={e=>setTeamForm(f=>({...f,[k]:e.target.value}))} placeholder="— Not assigned — (type to add a new name)"
-                          style={{width:"100%",padding:"7px 8px",borderRadius:6,border:"1.5px solid #e2e8f0",fontFamily:"inherit",fontSize:".82rem",background:"#fff",boxSizing:"border-box"}}/>
-                        <datalist id={`teamopts_${k}`}>{sugg.map(m=><option key={m} value={m}/>)}</datalist>
+                        <select value={cur} onChange={e=>setTeamForm(f=>({...f,[k]:e.target.value}))}
+                          style={{width:"100%",padding:"7px 8px",borderRadius:6,border:`1.5px solid ${legacy?"#fbbf24":"#e2e8f0"}`,fontFamily:"inherit",fontSize:".82rem",background:"#fff",boxSizing:"border-box"}}>
+                          <option value="">— Not assigned —</option>
+                          {legacy&&<option value={cur}>{cur} (no FabHub account)</option>}
+                          {opts.map(m=><option key={m} value={m}>{m}</option>)}
+                        </select>
+                        {legacy&&<div style={{fontSize:".64rem",color:"#b45309",marginTop:2}}>No account with this name, so it can't post updates or set progress. Pick the person's account, or ask a Manager to create one.</div>}
                       </div>
                       );
                     })}
-                    <div>
+                    <div style={{gridColumn:"1/-1"}}>
                       <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",padding:"8px 10px",background:"#fffbeb",borderRadius:8,border:"1.5px solid #fbbf24"}}>
                         <input type="checkbox" checked={!!teamForm.warehouseOnly} onChange={e=>setTeamForm(f=>({...f,warehouseOnly:e.target.checked}))} style={{width:16,height:16,cursor:"pointer"}}/>
                         <div>
@@ -28448,94 +28437,106 @@ function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completed
                         </div>
                       </label>
                     </div>
-                    <div style={{display:"flex",gap:8,marginTop:4}}>
-                      <button onClick={()=>{
+                    <div style={{display:"flex",gap:8,marginTop:4,gridColumn:"1/-1"}}>
+                      <button disabled={savingCard} onClick={async()=>{
                         const tf=teamForm;
-                        // Remember any names typed in that aren't in the built-in roster, so they become reusable suggestions everywhere.
-                        const known=new Set([...SALES_TEAM,...OPS_TEAM,...DESIGN_MEMBERS,...customMembers]);
-                        const fresh=[...new Set([tf.ae,tf.pm1,tf.pm2,tf.pm3,tf.designer,tf.coordinator].map(s=>(s||"").trim()).filter(s=>s&&!known.has(s)))];
-                        if(fresh.length){const nm=[...customMembers,...fresh];setCustomMembers(nm);try{localStorage.setItem("gmdv5:customMembers",JSON.stringify(nm));}catch{}if(isSupabaseReady())sbUpsert('app_settings',{key:'custom_members',value:nm,updated_at:new Date().toISOString()},'key').catch(()=>{});}
-                        // Create the card locally if this project never had one (the ~70 projects
-                        // that reached a project stage without going through the Award flow). The
-                        // sbUpsert below writes/creates the row in Supabase (id auto-generates); on
-                        // next load sbLoadAll fills in the default department structure.
-                        if(upPcards) upPcards(ps=>({...ps,[selDeal]:{...(ps[selDeal]||{deal_id:selDeal,dealId:selDeal}),aeAssigned:tf.ae,pm1:tf.pm1,pm2:tf.pm2,pm3:tf.pm3,designer:tf.designer,coordinator:tf.coordinator,warehouseOnly:tf.warehouseOnly||false}}));
-                        if(isSupabaseReady()){
-                          syncProjectCard(selDeal,{ae_assigned:tf.ae,pm1:tf.pm1,pm2:tf.pm2,pm3:tf.pm3,designer:tf.designer,coordinator:tf.coordinator,warehouse_only:tf.warehouseOnly||false});
-                        }
+                        const before={ae:card?.aeAssigned||jo?.aeAssigned||deal?.salesOwner||"",pm1:card?.pm1||jo?.pm1||"",pm2:card?.pm2||jo?.pm2||"",pm3:card?.pm3||jo?.pm3||"",designer:card?.designer||jo?.designer||"",coordinator:card?.coordinator||jo?.coordinator||"",warehouseOnly:!!card?.warehouseOnly};
+                        const changed=["ae","pm1","pm2","pm3","designer","coordinator","warehouseOnly"].some(k=>(tf[k]||"")!==(before[k]||""));
+                        if(!changed&&card){setShowTeamEdit(false);return;}
+                        // Server first (set_project_card_fields): creates the card if this
+                        // project never had one, checks the role, then the screen updates.
+                        setSavingCard(true);
+                        const ok=await saveCardFields(selDeal,{ae_assigned:tf.ae,pm1:tf.pm1,pm2:tf.pm2,pm3:tf.pm3,designer:tf.designer,coordinator:tf.coordinator,warehouse_only:!!tf.warehouseOnly});
+                        setSavingCard(false);
+                        if(!ok) return;
                         if(jo&&updateJO) updateJO(jo.id,{aeAssigned:tf.ae,pm1:tf.pm1,pm2:tf.pm2,pm3:tf.pm3,designer:tf.designer,coordinator:tf.coordinator});
-                        logActivity(selDeal,"Team Updated",`AE: ${tf.ae||"—"}, PM: ${[tf.pm1,tf.pm2,tf.pm3].filter(Boolean).join(", ")||"—"}, Designer: ${tf.designer||"—"}`,session?.name);
+                        logActivity(selDeal,"Team Updated",`AE: ${tf.ae||"—"}, PM: ${[tf.pm1,tf.pm2,tf.pm3].filter(Boolean).join(", ")||"—"}, Designer: ${tf.designer||"—"}, Coordinator: ${tf.coordinator||"—"}`,session?.name,{silent:true});
                         const pmStr=[tf.pm1,tf.pm2,tf.pm3].filter(Boolean).join(", ")||"—";
                         const tgMsg=`👥 <b>Project Team Assigned</b>\n${deal?.client||""}${deal?.ceNo?` · ${deal.ceNo}`:""}\n👷 PM: ${pmStr}\n🤝 AE: ${tf.ae||"—"}${tf.coordinator?`\n📋 Coordinator: ${tf.coordinator}`:""}${tf.designer?`\n🎨 Designer: ${tf.designer}`:""}\nAssigned by: ${session?.name}`;
                         sendTelegramNotification("ops",tgMsg);
                         sendTelegramNotification("management",tgMsg);
                         toastEmit&&toastEmit("Team saved","success");
                         setShowTeamEdit(false);
-                      }} style={{flex:1,background:"#1e293b",border:"none",borderRadius:8,padding:"8px",fontFamily:"inherit",fontSize:".82rem",color:"#fff",cursor:"pointer",fontWeight:700}}>✓ Save Team</button>
+                      }} style={{flex:1,background:savingCard?"#94a3b8":"#1e293b",border:"none",borderRadius:8,padding:"8px",fontFamily:"inherit",fontSize:".82rem",color:"#fff",cursor:savingCard?"wait":"pointer",fontWeight:700}}>{savingCard?"Saving…":"✓ Save Team"}</button>
                       <button onClick={()=>setShowTeamEdit(false)} style={{flex:1,background:"#f1f5f9",border:"none",borderRadius:8,padding:"8px",fontFamily:"inherit",fontSize:".82rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>Cancel</button>
                     </div>
                   </div>
                   </div>
-                )}
-                {showDateEdit&&(
+                  );
+                })()}
+                {showDateEdit&&(()=>{
+                  const f=dateForm;
+                  const moving=!!card?.targetEndDate&&!!f.targetEndDate&&f.targetEndDate!==card.targetEndDate;
+                  const badOrder=!!(f.awardDate&&f.targetEndDate&&f.awardDate>f.targetEndDate);
+                  const needReason=moving&&(f.reason||"").trim().length<10;
+                  const canSave=!savingCard&&!!f.awardDate&&!badOrder&&!needReason;
+                  const inp={width:"100%",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".84rem",color:"#0f172a",outline:"none",boxSizing:"border-box"};
+                  const lbl={fontSize:".72rem",fontWeight:700,color:"#64748b",marginBottom:4};
+                  return(
                   <div style={{marginTop:10}}>
                   <div style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"14px",marginBottom:10}}>
                     <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10,marginBottom:12}}>
                       <div>
-                        <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",marginBottom:4}}>Award / Start Date</div>
-                        <input type="date" value={dateForm.awardDate} onChange={e=>fdt("awardDate",e.target.value)}
-                          style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".84rem",color:"#0f172a",outline:"none",boxSizing:"border-box"}}/>
+                        <div style={lbl}>Award / Start Date</div>
+                        <input type="date" value={f.awardDate} onChange={e=>fdt("awardDate",e.target.value)} style={inp}/>
                       </div>
                       <div>
-                        <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",marginBottom:4}}>Turnover / Target Due</div>
-                        <input type="date" value={dateForm.targetEndDate} onChange={e=>fdt("targetEndDate",e.target.value)}
-                          style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".84rem",color:"#0f172a",outline:"none",boxSizing:"border-box"}}/>
-                        {dateForm.awardDate&&dateForm.targetEndDate&&(()=>{
-                          const days=Math.ceil((new Date(dateForm.targetEndDate)-new Date(dateForm.awardDate))/86400000);
-                          return days<0
-                            ?<div style={{fontSize:".71rem",color:"#ef4444",marginTop:3,fontWeight:600}}>⚠ Turnover date is before award date</div>
-                            :<div style={{fontSize:".71rem",color:"#059669",marginTop:3,fontWeight:600}}>→ {days} days from award date</div>;
-                        })()}
+                        <div style={lbl}>Turnover / Target Due{card?.originalTargetEndDate?<span style={{fontWeight:500,color:"#94a3b8"}}> · baseline {card.originalTargetEndDate}</span>:null}</div>
+                        <input type="date" value={f.targetEndDate} onChange={e=>fdt("targetEndDate",e.target.value)} style={inp}/>
+                        {f.awardDate&&f.targetEndDate&&(badOrder
+                          ?<div style={{fontSize:".71rem",color:"#ef4444",marginTop:3,fontWeight:600}}>⚠ Turnover date is before award date</div>
+                          :<div style={{fontSize:".71rem",color:"#059669",marginTop:3,fontWeight:600}}>→ {diffDays(f.awardDate,f.targetEndDate)} days from award date</div>)}
                       </div>
                     </div>
+                    {moving&&(
+                      <div style={{marginBottom:12}}>
+                        <div style={{...lbl,color:"#b45309"}}>Why is the turnover moving from {card.targetEndDate}? (required)</div>
+                        <textarea value={f.reason||""} onChange={e=>fdt("reason",e.target.value)} rows={2} placeholder="e.g. Mall moved handover; client added scope (CO #3); permit delayed"
+                          style={{...inp,border:"1.5px solid #fde68a",resize:"vertical"}}/>
+                        <div style={{fontSize:".66rem",color:"#94a3b8",marginTop:2}}>Kept in the audit trail, posted to Team Updates and sent to Management.</div>
+                      </div>
+                    )}
                     <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10,marginBottom:12}}>
                       <div>
-                        <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",marginBottom:4}}>📍 Location</div>
-                        <input type="text" value={dateForm.location||""} onChange={e=>fdt("location",e.target.value)} placeholder="Site / delivery address"
-                          style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".84rem",color:"#0f172a",outline:"none",boxSizing:"border-box"}}/>
+                        <div style={lbl}>📍 Location</div>
+                        <input type="text" value={f.location||""} onChange={e=>fdt("location",e.target.value)} placeholder="Site / delivery address" style={inp}/>
                       </div>
                       <div>
-                        <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",marginBottom:4}}>CE Type</div>
-                        <select value={dateForm.ceType||"Fabrication / General"} onChange={e=>fdt("ceType",e.target.value)}
-                          style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".84rem",color:"#0f172a",outline:"none",boxSizing:"border-box",background:"#fff"}}>
+                        <div style={lbl}>CE Type{!canEditCeType&&<span style={{fontWeight:500,color:"#94a3b8"}}> · set by Sales / QS / Manager</span>}</div>
+                        <select value={f.ceType||"Fabrication / General"} disabled={!canEditCeType} onChange={e=>fdt("ceType",e.target.value)}
+                          style={{...inp,background:canEditCeType?"#fff":"#f1f5f9"}}>
                           {CE_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
                         </select>
                       </div>
                     </div>
                     <div style={{display:"flex",gap:8}}>
-                      <button onClick={()=>{
-                        if(!dateForm.awardDate) return;
-                        const newDays=dateForm.targetEndDate?Math.max(1,Math.ceil((new Date(dateForm.targetEndDate)-new Date(dateForm.awardDate))/86400000)):card?.targetDays;
-                        upPcards(ps=>({...ps,[selDeal]:{...(ps[selDeal]||{deal_id:selDeal,dealId:selDeal}),awardDate:dateForm.awardDate,targetEndDate:dateForm.targetEndDate||ps[selDeal]?.targetEndDate,targetDays:newDays||ps[selDeal]?.targetDays}}));
-                        if(isSupabaseReady()){
-                          syncProjectCard(selDeal,{award_date:dateForm.awardDate,...(dateForm.targetEndDate?{target_end_date:dateForm.targetEndDate,target_days:newDays}:{})});
+                      <button onClick={async()=>{
+                        if(!canSave) return;
+                        const fields={award_date:f.awardDate};
+                        if(f.targetEndDate&&f.targetEndDate!==(card?.targetEndDate||"")) fields.target_end_date=f.targetEndDate;
+                        if((f.location||"")!==(deal?.location||"")) fields.location=f.location||"";
+                        setSavingCard(true);
+                        const ok=await saveCardFields(selDeal,fields,moving?f.reason.trim():null);
+                        let ceOk=true;
+                        if(ok&&canEditCeType&&f.ceType&&f.ceType!==(deal?.ceType||"")){
+                          ceOk=await sbUpdate('deals',selDeal,{ce_type:f.ceType}).catch(()=>false);
+                          if(ceOk) upDeals(ds=>ds.map(d=>d.id===selDeal?{...d,ceType:f.ceType}:d));
+                          else toastEmit("Dates saved, but the CE Type change was refused by the server.","error",8000);
                         }
-                        // Location & CE Type live on the deal, not the card
-                        if(upDeals&&(dateForm.location!==(deal?.location||"")||dateForm.ceType!==(deal?.ceType||""))){
-                          upDeals(ds=>ds.map(d=>d.id===selDeal?{...d,location:dateForm.location||"",ceType:dateForm.ceType||d.ceType}:d));
-                          if(isSupabaseReady()) sbUpdate('deals',selDeal,{location:dateForm.location||"",ce_type:dateForm.ceType||deal?.ceType||""}).catch(()=>{});
-                        }
-                        logActivity(selDeal,"Dates Updated",`Award: ${dateForm.awardDate}${dateForm.targetEndDate?` → Turnover: ${dateForm.targetEndDate}`:""}`,session?.name);
-                        toastEmit&&toastEmit("Dates saved ✓","success");
+                        setSavingCard(false);
+                        if(!ok) return;
+                        logActivity(selDeal,"Dates Updated",`Award: ${f.awardDate}${f.targetEndDate?` → Turnover: ${f.targetEndDate}`:""}`,session?.name,{silent:true});
+                        if(ceOk) toastEmit&&toastEmit("Dates saved ✓","success");
                         setShowDateEdit(false);
-                      }} disabled={!dateForm.awardDate||(dateForm.targetEndDate&&dateForm.awardDate>dateForm.targetEndDate)}
-                        style={{flex:1,background:(dateForm.awardDate&&(!dateForm.targetEndDate||dateForm.awardDate<=dateForm.targetEndDate))?"#1e293b":"#e2e8f0",border:"none",borderRadius:8,padding:"8px",fontFamily:"inherit",fontSize:".82rem",color:(dateForm.awardDate&&(!dateForm.targetEndDate||dateForm.awardDate<=dateForm.targetEndDate))?"#fff":"#94a3b8",cursor:(dateForm.awardDate&&(!dateForm.targetEndDate||dateForm.awardDate<=dateForm.targetEndDate))?"pointer":"not-allowed",fontWeight:700}}>✓ Save Dates</button>
+                      }} disabled={!canSave}
+                        style={{flex:1,background:canSave?"#1e293b":"#e2e8f0",border:"none",borderRadius:8,padding:"8px",fontFamily:"inherit",fontSize:".82rem",color:canSave?"#fff":"#94a3b8",cursor:canSave?"pointer":"not-allowed",fontWeight:700}}>{savingCard?"Saving…":"✓ Save Dates"}</button>
                       <button onClick={()=>setShowDateEdit(false)}
                         style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"8px 14px",fontFamily:"inherit",fontSize:".82rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>Cancel</button>
                     </div>
                   </div>
                   </div>
-                )}
+                  );
+                })()}
 
                 {/* Stage: one stepper (replaces the old Phase timeline + stage buttons).
                     Clickable only where canSetDealStage allows the move. */}
@@ -28869,7 +28870,7 @@ function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completed
                         </div>
                         <div style={{display:"flex",gap:4,flexShrink:0}}>
                           {openEditCl&&role!=="Coordinator"&&<button onClick={()=>openEditCl(c)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>}
-                          {(role==="Manager"||role==="Operations"||role==="SalesOpsAdmin")&&delCl&&<button onClick={()=>delCl(c.id)} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
+                          {(role==="Manager"||role==="Operations"||role==="SalesOpsAdmin")&&delCl&&<button onClick={async()=>{if(await uiConfirm(`Delete the task "${c.title}"?`)) delCl(c.id);}} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
                         </div>
                       </div>
                     ))}
@@ -28878,7 +28879,7 @@ function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completed
               </div>
               </>}
 
-              {hqTab==="finance"&&<>
+              {hqTab==="finance"&&canSeeFinance&&<>
               {/* ── Finance Snapshot ── */}
               <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,gap:8,flexWrap:"wrap"}}>
@@ -28905,19 +28906,19 @@ function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completed
                     </div>
                   ))}
                 </div>
-                <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:8,marginTop:8}}>
+                {canSeeMargin&&<div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:8,marginTop:8}}>
                   {[
                     {l:"Committed Cost (VAT-ex)",v:projCost>0?fmtPHP(projCost):"—",c:projCost>0?"#0f172a":"#94a3b8"},
                     {l:"Profit (est.)",v:contractVal>0?fmtPHP(projProfit):"—",c:contractVal<=0?"#94a3b8":projProfit>=0?"#059669":"#dc2626"},
                     {l:marginEarly?"Profit Margin (est.)":"Profit Margin",v:profitMargin!==null?profitMargin+"%":"—",c:profitMargin===null?"#94a3b8":profitMargin>=20?"#059669":profitMargin>=10?"#f59e0b":"#ef4444"},
-                    {l:"% Done",v:pct+"%",c:marginEarly?"#b45309":"#475569"},
+                    {l:"% Done",v:pct==null?"Not set":pct+"%",c:marginEarly?"#b45309":"#475569"},
                   ].map(({l,v,c})=>(
                     <div key={l} style={{background:"#f8fafc",borderRadius:8,padding:"10px 12px"}}>
                       <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:2}}>{l}</div>
                       <div style={{fontWeight:800,fontSize:".88rem",color:c,lineHeight:1.3,wordBreak:"break-all"}}>{v}</div>
                     </div>
                   ))}
-                </div>
+                </div>}
                 {(pendingMRs>0||pendingBRs>0)&&(
                   <div style={{marginTop:10,display:"flex",gap:6,flexWrap:"wrap"}}>
                     {pendingMRs>0&&<span style={{fontSize:".72rem",background:"#fff3ed",color:"#f97316",border:"1px solid #fed7aa",borderRadius:6,padding:"3px 10px",fontWeight:700}}>🔧 {pendingMRs} MR{pendingMRs>1?"s":""} pending</span>}
@@ -28967,7 +28968,7 @@ function ProjectCards({changeDealStage,syncProjectCard,pcards,wonDeals,completed
         logActivity(selDeal,"PM Update",feed,session?.name,{localOnly:true,silent:true});
         setReportPct(null);
       }}/>}
-    {pmUpdateModal&&<PmUpdateModal deals={deals} role={role} changeDealStage={changeDealStage} sendTelegramNotification={sendTelegramNotification} pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate} updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())syncProjectCard(dealId,{target_end_date:date});}}/>}
+    {pmUpdateModal&&<PmUpdateModal deals={deals} role={role} changeDealStage={changeDealStage} sendTelegramNotification={sendTelegramNotification} pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate} updateProjectTurnover={updateProjectTurnover}/>}
     </>
   );
 }
