@@ -1,5 +1,5 @@
 import React,{useState,useEffect,useCallback,useMemo} from "react";
-import {today as TODAY,Modal,Fld,Inp,Sel,uiAlert,uiConfirm,uiPrompt,useIsMobile} from "../shared";
+import {today as TODAY,Modal,Fld,Inp,ProjectSelect,uiAlert,uiConfirm,uiPrompt,useIsMobile} from "../shared";
 import {projDisplayName} from "../core";
 import {supabase,isSupabaseReady,sbUploadFile,sbGetPublicUrl} from "../supabaseClient";
 import {num,r2,php2} from "../data/ledger";
@@ -21,7 +21,10 @@ export const LIQ_STATUS={
   Paid:{l:"Refilled",c:C.ok},
   Cancelled:{l:"Cancelled",c:C.faint},
 };
-export const CHARGE_TO=["OPEX","Admin","Office","Warehouse","Vehicle","Other"];
+// Charged to a project or to a cost center (deals.is_cost_center: GMD OPEX,
+// GMD Tools…), the same buckets supplier bills use, so a refill lands in the
+// same cost reports. Stored in project_id either way. charge_to (free text) is
+// kept only for display of older rows; new rows never set it.
 const FIN_ROLES=["Manager","Finance","FinanceAssistant"];
 const btnS=(clr,ghost)=>({background:ghost?"#fff":clr,color:ghost?clr:"#fff",border:`1px solid ${clr}`,borderRadius:8,padding:"7px 12px",fontSize:".76rem",fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"});
 export const liqFromSb=r=>({...r,items:Array.isArray(r.items)?r.items:[],amount:num(r.amount)});
@@ -31,7 +34,7 @@ const blankLine=()=>({date:TODAY,supplier:"",description:"",amount:"",receipt_pa
 // whether the page was already open or mounts now. Module-level so a later
 // remount with the same value doesn't reopen it.
 let lastNewSeq=0;
-export default function Liquidations({deals=[],role="",session,today=TODAY,newSeq=0}){
+export default function Liquidations({deals=[],costCenters=[],role="",session,today=TODAY,newSeq=0}){
   const mob=useIsMobile();
   const me=session?.username||"";
   const myName=session?.name||"";
@@ -56,9 +59,10 @@ export default function Liquidations({deals=[],role="",session,today=TODAY,newSe
   },[]);
   useEffect(()=>{load();},[load]);
 
-  const dealById=useMemo(()=>new Map(deals.map(d=>[d.id,d])),[deals]);
-  const projOpts=useMemo(()=>deals.filter(d=>d&&d.id).map(d=>({value:d.id,label:projDisplayName(d)})).sort((a,b)=>a.label.localeCompare(b.label)),[deals]);
-  const chargeLabel=r=>r.project_id?(projDisplayName(dealById.get(r.project_id))||"Project"):(r.charge_to||"—");
+  const dealById=useMemo(()=>new Map([...deals,...costCenters].filter(d=>d&&d.id).map(d=>[d.id,d])),[deals,costCenters]);
+  const projOpts=useMemo(()=>deals.filter(d=>d&&d.id&&!d.isCostCenter).map(d=>({value:d.id,label:projDisplayName(d)})).sort((a,b)=>a.label.localeCompare(b.label)),[deals]);
+  const ccOpts=useMemo(()=>costCenters.filter(d=>d&&d.id).map(d=>({value:d.id,label:d.contact||d.client||"Cost center"})),[costCenters]);
+  const chargeLabel=r=>{if(!r.project_id) return r.charge_to||"—";const d=dealById.get(r.project_id);return d?(d.isCostCenter?"🏷 "+(d.contact||d.client):projDisplayName(d)):"Project";};
   const mineRow=r=>r.requested_by===me;
   const ownForCheck=r=>mineRow(r)||String(r.payee||"").trim().toLowerCase()===myName.trim().toLowerCase();
 
@@ -106,7 +110,7 @@ export default function Liquidations({deals=[],role="",session,today=TODAY,newSe
       amount:r2(it.amount),receipt_path:it.receipt_path||"",no_receipt:it.receipt_path?"":String(it.no_receipt||"").trim()}));
     // Same checks as liquidations_guard, so the person sees them before saving.
     if(String(f.purpose||"").trim().length<3){await uiAlert("Say what the money was for.");return;}
-    if(!f.project_id&&!f.charge_to){await uiAlert("Pick the project, or what it is charged to.");return;}
+    if(!f.project_id){await uiAlert("Pick the project or cost center this is charged to.");return;}
     if(!items.length){await uiAlert("Add at least one receipt line.");return;}
     for(let i=0;i<items.length;i++){
       const it=items[i];
@@ -114,7 +118,7 @@ export default function Liquidations({deals=[],role="",session,today=TODAY,newSe
       if(it.description.length<3){await uiAlert(`Line ${i+1}: say what it was for.`);return;}
       if(!it.receipt_path&&it.no_receipt.length<3){await uiAlert(`Line ${i+1}: attach the receipt, or say why there is none.`);return;}
     }
-    const body={payee:String(f.payee||"").trim()||myName,purpose:String(f.purpose).trim(),project_id:f.project_id||null,charge_to:f.project_id?"":f.charge_to,items};
+    const body={payee:String(f.payee||"").trim()||myName,purpose:String(f.purpose).trim(),project_id:f.project_id||null,charge_to:"",items};
     if(f.id){
       const ok=await patch(f.id,{...body,...(f.status==="Returned"?{status:"Submitted"}:{})});
       if(ok) setForm(null);
@@ -225,18 +229,15 @@ export default function Liquidations({deals=[],role="",session,today=TODAY,newSe
               <Inp value={form.payee} onChange={e=>setF("payee",e.target.value)} readOnly={!isFin}/>
             </Fld>
             <Fld label="What was it for?" required><Inp value={form.purpose} onChange={e=>setF("purpose",e.target.value)} placeholder="e.g. PRF cash purchases 11.10, site meals, pull-out"/></Fld>
-            <Fld label="Project" hint="Leave blank if it isn't for a project.">
-              <Sel value={form.project_id} onChange={e=>setF("project_id",e.target.value)}>
-                <option value="">— not a project —</option>
-                {projOpts.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
-              </Sel>
-            </Fld>
-            {!form.project_id&&<Fld label="Charge to" required>
-              <Sel value={form.charge_to} onChange={e=>setF("charge_to",e.target.value)}>
-                <option value="">— pick —</option>
-                {CHARGE_TO.map(c=><option key={c} value={c}>{c}</option>)}
-              </Sel>
-            </Fld>}
+            <div style={{gridColumn:mob?undefined:"1 / -1"}}>
+              <Fld label="Charged to" required hint={form.charge_to&&!form.project_id?`Was "${form.charge_to}" (old list). Pick the project or cost center.`:"A client project, or a GMD cost center for GMD's own spending (office, tools, renovation). Not listed? Ask a Manager to add a cost center."}>
+                <ProjectSelect value={form.project_id} onChange={e=>setF("project_id",e.target.value)} placeholder="Search project, CE no., JO no., client or cost center…">
+                  <option value="">— pick a project or cost center —</option>
+                  {ccOpts.length>0&&<optgroup label="GMD cost centers (not a client project)">{ccOpts.map(o=><option key={o.value} value={o.value}>🏷 {o.label}</option>)}</optgroup>}
+                  <optgroup label="Projects">{projOpts.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</optgroup>
+                </ProjectSelect>
+              </Fld>
+            </div>
           </div>
           <div style={{fontWeight:700,fontSize:".8rem",margin:"12px 0 6px",color:C.ink}}>Receipts</div>
           {form.items.map((it,i)=>(

@@ -16829,7 +16829,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ─── SALES ────────────────────────────────────────────────────────────────
   // Progress (30/60/90/100), replaces PM Updates / Scope Changes (2026-11-07).
   if(page==="liquidations") return(
-    <Wrap><Liquidations deals={wonDeals} role={canonRole(role)} session={session} today={today} newSeq={liqNewSeq}/></Wrap>
+    <Wrap><Liquidations deals={wonDeals} costCenters={costCenterDeals} role={canonRole(role)} session={session} today={today} newSeq={liqNewSeq}/></Wrap>
   );
   if(page==="progress"&&["Manager","Operations","ProjectMover","Coordinator"].includes(role)) return(
     <Wrap><ProjectProgress deals={wonDeals} pcards={pcards} role={role} session={session} upPcards={upPcards}/></Wrap>
