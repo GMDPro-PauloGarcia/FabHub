@@ -11,6 +11,8 @@ import BillHistoryModal,{openBillHistory} from "./views/BillHistory";
 import {buildOrders,payIsOpen,payBalance} from "./data/ledger";
 import {fmt,addPrintClose,docLogo,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable,HIDDEN_NAV_IDS,AP_HIDDEN,WAREHOUSE_HIDDEN,isHiddenView,HIDDEN_FIN_TABS,HIDDEN_PIPE_TABS,pageOn,cashCanEdit,ProjectSelect,setProjectSearchIndex} from './shared';
 import {T} from './theme';
+import {checkSupplier,supplierSavePrompt,checkBill} from './dataGuard';
+import SupplierHint from './SupplierHint';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
 import {projProgressPct, isConstructionDeal, projStageFlow, projStepIndex, projStepLabel, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, canApproveAddendum, ADDENDUM_APPROVER_MSG, PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, canRecordDeduction, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel, pendingCostByProject, poSplitTotal, canRaiseOrder, woSignStep, WO_SIGN_MSG, arAgeBucket, arCallOrder, dealHasBoq, MOTHER_PO_BOQ_MSG, ledgerCosts, poVatSet, isBilledRevenue, paymentBaseFactor, invoiceContractProgress, billingPosition, statementLine, orderForLabel, PO_ISSUED_STATUSES, WO_COMMITTED_STATUSES, billingDueTerms, billingDefaultNetDays, billingTermsLabel, projectProgressPct} from './core';
@@ -4529,7 +4531,7 @@ function PayableForm({opexOnly=false,initial,editId=null,onSave,onCancel,swos=[]
         </Sel>
         {!editId&&<div style={{fontSize:".72rem",color:"#64748b",marginTop:3}}>The {payForm.docType==="PRV"?"PRV":"AP"} number is assigned by the server when it saves, so two people can never get the same number.</div>}
       </Fld>
-      <Fld label="Vendor / Payee"><Inp value={payForm.vendor||""} onChange={e=>setPayForm(p=>({...p,vendor:e.target.value}))} placeholder="e.g. ABC Steel Supply"/></Fld>
+      <Fld label="Vendor / Payee"><Inp value={payForm.vendor||""} onChange={e=>setPayForm(p=>({...p,vendor:e.target.value}))} placeholder="e.g. ABC Steel Supply"/>{!isSubconPayable(payForm)&&<SupplierHint value={payForm.vendor} suppliers={suppliers} onPick={v=>setPayForm(p=>({...p,vendor:v}))}/>}</Fld>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
         <Fld label={isSubconPayable(payForm)&&payForm.poNumber?"Subcon billing no.":"Invoice No."}><Inp value={payForm.invoiceNumber||""} onChange={e=>setPayForm(p=>({...p,invoiceNumber:e.target.value}))} placeholder="Vendor invoice #"/></Fld>
         <Fld label="Invoice Date"><Inp type="date" value={payForm.invoiceDate||""} onChange={e=>setPayForm(p=>({...p,invoiceDate:e.target.value}))}/></Fld>
@@ -9779,6 +9781,19 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             `.\n\nThis looks like the same bill entered twice — entering it again would double the amount owed. Save it anyway?`});
         if(!ok) return;
       }
+    }
+    // Data guard (2026-11-21 cleanup): supplier name must be one supplier from
+    // the list; the PO/WO number must exist; the project must still exist; and a
+    // same-vendor, same-amount bill on another PO is flagged. Prompts, not silent
+    // fixes. Subcon bills carry a subcontractor's name, which isn't in Suppliers.
+    {
+      const sp=isSubconPayable(data)?null:supplierSavePrompt(data.vendor,checkSupplier(data.vendor,suppliers));
+      if(sp&&sp.block){await uiAlert({title:sp.title,tone:"warning",message:sp.message});return;}
+      const issues=checkBill(data,{prs,swos,payables,deals},editPayId);
+      const blocker=issues.find(i=>i.level==="block");
+      if(blocker){toastEmit(blocker.text,"error",9000);return;}
+      const warns=[...(sp?[sp.message]:[]),...issues.map(i=>"• "+i.text)];
+      if(warns.length&&!(await uiConfirm({title:"Check before saving",tone:"warning",confirmLabel:"Save anyway",cancelLabel:"Go back",message:warns.join("\n\n")}))) return;
     }
     // Due date drives the cash-flow forecast — nudge (don't hard-block) if missing.
     if(!String(data.dueDate||"").trim()){
@@ -24249,6 +24264,11 @@ function ProcurementView2({jos=[],embedded=false,onEmbeddedDone,poDraft=null,cle
 
   const submitPO=async()=>{
     if(!poSupplier){toastEmit&&toastEmit("Please enter a supplier name.","error");return;}
+    // Data guard: the supplier must be one supplier from the list (2026-11-21:
+    // "FCI" was saved on 51 lines and fits two suppliers).
+    {const sp=supplierSavePrompt(poSupplier,checkSupplier(poSupplier,suppliers));
+     if(sp&&sp.block){await uiAlert({title:sp.title,tone:"warning",message:sp.message});return;}
+     if(sp&&!(await uiConfirm({title:sp.title,tone:"warning",confirmLabel:sp.confirmLabel||"Continue",cancelLabel:"Go back",message:sp.message}))) return;}
     if(!poNumber){toastEmit&&toastEmit("Please enter a PO number.","error");return;}
     if(poItems.some(i=>!i.itemName)){toastEmit&&toastEmit("Every item must have a description.","error");return;}
     if(poItems.some(i=>!(Number(i.qty)>0))){toastEmit&&toastEmit("Every item must have a quantity greater than 0.","error");return;}
@@ -24431,7 +24451,7 @@ function ProcurementView2({jos=[],embedded=false,onEmbeddedDone,poDraft=null,cle
             </Fld>
             <div style={{gridColumn:"1/-1"}}><Fld label="Item Name" required><Inp value={editForm.itemName} onChange={e=>ef("itemName",e.target.value)}/></Fld></div>
             <Fld label="Category"><Sel value={editForm.category} onChange={e=>ef("category",e.target.value)}>{PR_CATS.map(c=><option key={c}>{c}</option>)}</Sel></Fld>
-            <Fld label="Supplier"><Inp value={editForm.supplier} onChange={e=>ef("supplier",e.target.value)}/></Fld>
+            <Fld label="Supplier"><Inp value={editForm.supplier} onChange={e=>ef("supplier",e.target.value)}/><SupplierHint value={editForm.supplier} suppliers={suppliers} onPick={v=>ef("supplier",v)}/></Fld>
             <Fld label="Qty"><Inp type="number" value={editForm.qty} onChange={e=>ef("qty",e.target.value)}/></Fld>
             <Fld label="Unit"><input list="po-units-dl" value={editForm.unit} onChange={e=>ef("unit",e.target.value)} placeholder="pcs, meters, sqm…" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box",outline:"none"}}/><datalist id="po-units-dl">{PO_UNITS.map(u=><option key={u} value={u}/>)}</datalist></Fld>
             <Fld label="Est Unit Cost (₱)"><Inp type="number" value={editForm.estUnitCost} onChange={e=>ef("estUnitCost",e.target.value)}/></Fld>
@@ -24508,8 +24528,11 @@ function ProcurementView2({jos=[],embedded=false,onEmbeddedDone,poDraft=null,cle
               <datalist id="po-supplier-list">
                 {[...new Map((suppliers||[]).map(s=>{const n=(s.company_name||s.companyName||"").trim();return[n,n];})).values()].filter(Boolean).sort().map(n=><option key={n} value={n}/>)}
               </datalist>
+              <SupplierHint value={poSupplier} suppliers={suppliers} onPick={setPoSupplier}/>
               {poSupplier.trim()&&!(suppliers||[]).some(s=>(s.company_name||s.companyName||"").toLowerCase()===poSupplier.trim().toLowerCase())&&(
-                <button type="button" onClick={()=>{
+                <button type="button" onClick={async()=>{
+                  {const r=checkSupplier(poSupplier,suppliers);
+                   if(r.kind==="ambiguous"||r.kind==="similar"){if(!(await uiConfirm({title:"Add a new supplier?",tone:"warning",confirmLabel:"Add anyway",cancelLabel:"Go back",message:`Similar suppliers already exist:\n\n• ${r.matches.join("\n• ")}\n\nAdding "${poSupplier.trim()}" makes a second record for what may be the same supplier.`}))) return;}}
                   if(addSupplier) addSupplier({companyName:poSupplier.trim(),company_name:poSupplier.trim(),contactPerson:"",contactNos:"",email:"",address:"",tinNo:"",paymentTerms:"",notes:""});
                   toastEmit&&toastEmit(`✅ "${poSupplier.trim()}" added to suppliers`,"success");
                 }} style={{marginTop:5,background:"none",border:"none",color:"#1d4ed8",fontSize:".72rem",fontWeight:700,cursor:"pointer",padding:0,textAlign:"left",fontFamily:"inherit"}}>
