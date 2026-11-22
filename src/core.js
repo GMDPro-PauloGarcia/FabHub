@@ -1644,9 +1644,9 @@ export const PO_TIERS_ON=true;
 // be cut into small POs. The database also checks the requester is in Procurement.
 // Mirrors po_split_total() / po_line_approver_name() (migration 20261114030000).
 // Raised to ₱150,000 (same as Cost Control) on 2026-11-22 (procurement audit:
-// she had approved no PO since her tier went live). Migration 20261122040000.
+// she had approved no PO since her tier went live). Migration 20261123010000.
 export const PO_PROC_MGR_LIMIT=150000;
-// Small POs (Paulo, 2026-11-22; migration 20261122040000): a PO of ₱10,000 or less,
+// Small POs (Paulo, 2026-11-22; migration 20261123010000): a PO of ₱10,000 or less,
 // with everything ordered from that supplier that day ₱10,000 or less (poSplitTotal,
 // so an order can't be cut into small POs), is issued by Procurement / the
 // Procurement Manager / a Manager without a second person. approved_by reads

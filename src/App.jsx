@@ -24333,7 +24333,7 @@ function ProcurementView2({jos=[],embedded=false,onEmbeddedDone,poDraft=null,cle
     // create/save a PO already in "PO Issued". Everyone else (the preparer) is
     // held at "Pending Approval" so they can't self-approve their own PO.
     // Small POs (₱10,000 or less, that supplier's POs that day included) are
-    // issued on save by Procurement (canAutoIssuePO, migration 20261122040000).
+    // issued on save by Procurement (canAutoIssuePO, migration 20261123010000).
     const poTot=poLinesTotal(poItems.map(i=>({qty:i.qty,estUnitCost:i.estUnitCost})));
     const canIssueNow=canApprovePOLine(role,session?.name||"",session?.name||"",poTot,poSplitTotalFor(prs,poSupplier,poDate,poNo,poTot));
     const dpBlocked=ISSUED_ST.includes(poStatus)&&poItems.map(i=>dpBlockedDeal(i.projectId)).find(Boolean);

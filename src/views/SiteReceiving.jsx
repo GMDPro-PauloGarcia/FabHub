@@ -11,7 +11,7 @@ import {supabase,isSupabaseReady,sbUploadFile,sbGetPublicUrl} from "../supabaseC
 // Server side: site_deliveries() lists open PO lines without prices (these roles
 // have no read on purchase_requests); confirm_po_receipt() checks the role, the
 // coordinator's own projects, the photo (all but Warehouse), no more than was
-// ordered and never a PO you requested (migration 20261122040000). Photos go to
+// ordered and never a PO you requested (migration 20261123010000). Photos go to
 // fabhub-files/po-receipts/ (storage policy fabhub_po_receipts_ins). Keep in sync.
 
 export const SITE_RECEIVING_ROLES=["ProjectMover","Operations","Coordinator","Warehouse","Manager"];

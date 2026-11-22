@@ -4,7 +4,7 @@ import {canApprovePOLine,poLinesTotal,poSplitTotal,dealDpClear,prfRuleOn,canonRo
 import {supabase,isSupabaseReady} from "../supabaseClient";
 
 // ─── PO APPROVALS (Purchase Orders page) ───────────────────────────────────
-// Procurement issues POs of ₱10,000 or less itself (canAutoIssuePO, 20261122040000);
+// Procurement issues POs of ₱10,000 or less itself (canAutoIssuePO, 20261123010000);
 // Cost Control (QS) up to ₱150,000 or a Manager (any amount) may move a PO to
 // "PO Issued" (canApprovePOLine; the database checks it too, 20261107010000). Approving meant opening
 // each PO line's status dropdown, so POs piled up at "Pending Approval" and,
