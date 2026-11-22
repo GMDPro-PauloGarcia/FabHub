@@ -742,6 +742,12 @@
     "id",
     "last_no"
   ],
+  "po_prf_waivers": [
+    "po_number",
+    "reason",
+    "waived_at",
+    "waived_by"
+  ],
   "project_blockers": [
     "created_at",
     "deal_id",
@@ -861,6 +867,7 @@
     "po_discount_type",
     "po_discount_value",
     "po_number",
+    "prf_line_id",
     "project_name",
     "qty",
     "qty_delivered",

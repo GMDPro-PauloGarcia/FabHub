@@ -1,6 +1,7 @@
-import React,{useState,useMemo} from "react";
+import React,{useState,useMemo,useEffect,useCallback} from "react";
 import {uiConfirm} from "../shared";
-import {canApprovePOLine,poLinesTotal,poSplitTotal,dealDpClear} from "../core";
+import {canApprovePOLine,poLinesTotal,poSplitTotal,dealDpClear,prfRuleOn,canonRole} from "../core";
+import {supabase,isSupabaseReady} from "../supabaseClient";
 
 // ─── PO APPROVALS (Purchase Orders page) ───────────────────────────────────
 // Cost Control (QS) up to ₱150,000 or a Manager (any amount) may move a PO to
@@ -9,6 +10,9 @@ import {canApprovePOLine,poLinesTotal,poSplitTotal,dealDpClear} from "../core";
 // because a PO raises its supplier bill only once issued, no payables were
 // created either. This panel lists every pending PO the viewer may approve,
 // grouped by PO number, and approves the ticked ones in one go (approvePOs).
+// From 1 Dec 2026 a project PO needs an approved PRF (migration 20261122010000):
+// the server says which pending POs are held (po_prf_status) and a Manager may
+// override one with a reason (waive_po_prf: logged, Telegram to management).
 
 const num=v=>Number(String(v??"").replace(/,/g,""))||0;
 const pesoAmt=v=>"₱"+num(v).toLocaleString("en-PH",{maximumFractionDigits:0});
@@ -23,6 +27,10 @@ export default function POApprovals({prs=[],deals=[],role,session,approvePOs}){
   const[sel,setSel]=useState(()=>new Set());
   const[limit,setLimit]=useState(PAGE);
   const[busy,setBusy]=useState(false);
+  const[prfHeld,setPrfHeld]=useState({}); // po_number -> project name
+  const[waiveFor,setWaiveFor]=useState(null);
+  const[waiveWhy,setWaiveWhy]=useState("");
+  const isMgr=canonRole(role)==="Manager";
 
   const dealName=id=>{const d=id&&deals.find(x=>x.id===id);return d?[d.client,d.ceNo].filter(Boolean).join(" · "):"";};
   // One row per pending PO the viewer may approve. A PO with any line the viewer
@@ -45,6 +53,26 @@ export default function POApprovals({prs=[],deals=[],role,session,approvePOs}){
       .sort((a,b)=>String(a.date).localeCompare(String(b.date)));
   },[prs,deals,role,me]);
 
+  const posKey=pos.map(p=>p.no).join("|");
+  const loadPrf=useCallback(async()=>{
+    if(!prfRuleOn()||!posKey||!isSupabaseReady()||!supabase){setPrfHeld({});return;}
+    const{data,error}=await supabase.rpc("po_prf_status",{p_pos:posKey.split("|")});
+    if(error){console.warn("[FabHub] po_prf_status",error.message);return;}
+    const m={};(data||[]).forEach(r=>{m[r.po_number]=r.project||"this project";});
+    setPrfHeld(m);
+  },[posKey]);
+  useEffect(()=>{loadPrf();},[loadPrf]);
+  const held=p=>p.dpHold||prfHeld[p.no];
+  const waive=async()=>{
+    const why=waiveWhy.trim();
+    if(!waiveFor||why.length<10||busy) return;
+    setBusy(true);
+    const{error}=await supabase.rpc("waive_po_prf",{p_po:waiveFor,p_reason:why});
+    setBusy(false);
+    if(error){await uiConfirm({title:"Override not saved",confirmLabel:"OK",message:error.message});return;}
+    setWaiveFor(null);setWaiveWhy("");loadPrf();
+  };
+
   if(!pos.length) return null;
   const requesters=["All",...new Set(pos.map(p=>p.requestedBy||"(blank)"))];
   const qq=q.trim().toLowerCase();
@@ -52,11 +80,12 @@ export default function POApprovals({prs=[],deals=[],role,session,approvePOs}){
   const shown=rows.slice(0,limit);
   const picked=pos.filter(p=>sel.has(p.no));
   const pickedTotal=picked.reduce((s,p)=>s+p.gross,0);
-  const allShown=shown.some(p=>!p.dpHold)&&shown.filter(p=>!p.dpHold).every(p=>sel.has(p.no));
+  const allShown=shown.some(p=>!held(p))&&shown.filter(p=>!held(p)).every(p=>sel.has(p.no));
   const toggle=no=>setSel(prev=>{const n=new Set(prev);n.has(no)?n.delete(no):n.add(no);return n;});
-  const toggleShown=()=>setSel(prev=>{const n=new Set(prev);shown.filter(p=>!p.dpHold).forEach(p=>allShown?n.delete(p.no):n.add(p.no));return n;});
+  const toggleShown=()=>setSel(prev=>{const n=new Set(prev);shown.filter(p=>!held(p)).forEach(p=>allShown?n.delete(p.no):n.add(p.no));return n;});
   const approve=async()=>{
     if(!picked.length||busy) return;
+    if(picked.some(held)){setSel(new Set(picked.filter(p=>!held(p)).map(p=>p.no)));return;}
     if(!(await uiConfirm({title:`Approve ${picked.length} PO${picked.length>1?"s":""}`,confirmLabel:"Approve and issue",
       message:`${picked.length} PO${picked.length>1?"s":""} · ${picked.reduce((s,p)=>s+p.lines,0)} lines · about ${pesoAmt(pickedTotal)}.\n\nEach is set to "PO Issued" with you as approver, and its supplier bill is raised for Finance. Only approve POs you have actually reviewed.`}))) return;
     setBusy(true);
@@ -97,9 +126,18 @@ export default function POApprovals({prs=[],deals=[],role,session,approvePOs}){
             <tbody>
               {shown.map(p=>(
                 <tr key={p.no} style={{borderTop:"1px solid #f1f5f9",background:sel.has(p.no)?"#f0fdf4":undefined}}>
-                  <td style={td}><input type="checkbox" aria-label={`Select PO ${p.no}`} checked={sel.has(p.no)} disabled={!!p.dpHold} title={p.dpHold?"No down payment yet: a Manager must waive it on the deal first":undefined} onChange={()=>toggle(p.no)}/></td>
+                  <td style={td}><input type="checkbox" aria-label={`Select PO ${p.no}`} checked={sel.has(p.no)} disabled={!!held(p)} title={p.dpHold?"No down payment yet: a Manager must waive it on the deal first":prfHeld[p.no]?"No approved PRF: create the PO from the Order Board, or a Manager overrides the rule":undefined} onChange={()=>toggle(p.no)}/></td>
                   <td style={td}><div style={{fontWeight:700,color:"#0f172a"}}>{p.no}</div><div style={{fontSize:".68rem",color:"#94a3b8"}}>{p.date||"—"} · {p.lines} line{p.lines>1?"s":""}</div></td>
-                  <td style={td}><div style={{fontWeight:600,color:"#0f172a"}}>{p.supplier||"—"}</div><div style={{fontSize:".7rem",color:"#64748b"}}>{p.project}</div>{p.dpHold&&<div style={{fontSize:".68rem",color:"#b91c1c",fontWeight:700,marginTop:2}}>No down payment yet on {p.dpHold}: waive it on the deal first</div>}</td>
+                  <td style={td}><div style={{fontWeight:600,color:"#0f172a"}}>{p.supplier||"—"}</div><div style={{fontSize:".7rem",color:"#64748b"}}>{p.project}</div>{p.dpHold&&<div style={{fontSize:".68rem",color:"#b91c1c",fontWeight:700,marginTop:2}}>No down payment yet on {p.dpHold}: waive it on the deal first</div>}
+                    {prfHeld[p.no]&&<div style={{fontSize:".68rem",color:"#b91c1c",fontWeight:700,marginTop:2}}>No approved PRF on {prfHeld[p.no]}: link one from the Order Board{isMgr?"":", or ask a Manager to override"}
+                      {isMgr&&waiveFor!==p.no&&<button type="button" onClick={()=>{setWaiveFor(p.no);setWaiveWhy("");}} style={{marginLeft:6,background:"none",border:"none",color:"#b91c1c",textDecoration:"underline",fontWeight:700,cursor:"pointer",fontFamily:"inherit",fontSize:".68rem",padding:0}}>Override (Manager)</button>}
+                    </div>}
+                    {isMgr&&waiveFor===p.no&&<div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:6}}>
+                      <input value={waiveWhy} onChange={e=>setWaiveWhy(e.target.value)} placeholder="Why order without a PRF? e.g. site emergency, night install" aria-label={`Reason to order PO ${p.no} without a PRF`}
+                        style={{flex:"1 1 200px",minWidth:0,border:"1.5px solid #fecaca",borderRadius:7,padding:"5px 8px",fontFamily:"inherit",fontSize:".74rem"}}/>
+                      <button type="button" disabled={busy||waiveWhy.trim().length<10} onClick={waive} style={{background:waiveWhy.trim().length<10?"#fca5a5":"#b91c1c",color:"#fff",border:"none",borderRadius:7,padding:"5px 10px",fontFamily:"inherit",fontSize:".72rem",fontWeight:700,cursor:waiveWhy.trim().length<10?"not-allowed":"pointer"}}>{busy?"Saving…":"Override PRF rule"}</button>
+                      <button type="button" onClick={()=>setWaiveFor(null)} style={{background:"none",border:"none",color:"#475569",fontFamily:"inherit",fontSize:".72rem",cursor:"pointer"}}>Cancel</button>
+                    </div>}</td>
                   <td style={{...td,color:"#475569"}}>{p.requestedBy||"—"}</td>
                   <td style={{...td,textAlign:"right",fontWeight:800,whiteSpace:"nowrap"}}>{pesoAmt(p.gross)}</td>
                 </tr>
