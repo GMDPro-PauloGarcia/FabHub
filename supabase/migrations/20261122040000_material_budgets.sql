@@ -80,7 +80,10 @@ returns boolean language sql stable security definer set search_path = pg_catalo
   select public.has_role('Manager','QS','Procurement','ProcurementManager','ProjectMover','Operations',
                          'Coordinator','Finance','Accounting','FinanceAssistant','Warehouse')
 $$;
-revoke execute on function public.mb_can_read() from public, anon, authenticated;
+-- The select policies call it as the logged-in user, so authenticated needs execute
+-- (it only answers "may this role read budgets"; no data).
+revoke execute on function public.mb_can_read() from public, anon;
+grant  execute on function public.mb_can_read() to authenticated;
 
 do $$ begin
   if not exists (select 1 from pg_policies where schemaname='public' and tablename='material_budgets' and policyname='material_budgets_sel') then
