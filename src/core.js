@@ -444,6 +444,11 @@ export const isProcurementRole = r => r === "Procurement" || r === "ProcurementM
 // Managers. Finance pays, so it never raises an order (Paulo, 2026-11-11). The
 // database refuses a new PO line / WO from Finance roles (migration 20261114050000).
 export const canRaiseOrder = r => r === "Manager" || isProcurementRole(r);
+// Who adds an internal cost center (GMD OPEX, GMD Tools, an office renovation…):
+// a Manager or the Finance role (Paulo, 2026-11-22). Mirrors create_cost_center
+// (migration 20261122010000_cost_center_create_finance.sql). Keep in sync.
+export const COST_CENTER_CREATOR_ROLES = ["Manager","Finance"];
+export const canCreateCostCenter = r => COST_CENTER_CREATOR_ROLES.includes(canonRole(r));
 
 // Human-readable labels for role codes that aren't self-explanatory when shown
 // raw (role codes are used directly in ===/object-key comparisons, so we keep
@@ -1282,7 +1287,7 @@ export const dealDpClear = (deal, deals = []) => {
 // a PO line on a client project is issued only when it comes from an approved PRF
 // (prfLineId, set by the Order Board) or a Manager overrode the rule for that PO.
 // Stock POs (no deal) and internal GMD jobs are exempt; lines created before
-// 1 Dec are grandfathered. Enforced by migration 20261122010000_po_require_approved_prf.sql
+// 1 Dec are grandfathered. Enforced by migration 20261122020000_po_require_approved_prf.sql
 // (po_require_prf / po_line_prf_gap / waive_po_prf) — keep in sync.
 export const PRF_RULE_START = "2026-12-01";
 const _manilaDay = (d = new Date()) => new Date(d.getTime() + 8 * 3600e3).toISOString().slice(0, 10);

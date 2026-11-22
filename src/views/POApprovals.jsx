@@ -10,7 +10,7 @@ import {supabase,isSupabaseReady} from "../supabaseClient";
 // because a PO raises its supplier bill only once issued, no payables were
 // created either. This panel lists every pending PO the viewer may approve,
 // grouped by PO number, and approves the ticked ones in one go (approvePOs).
-// From 1 Dec 2026 a project PO needs an approved PRF (migration 20261122010000):
+// From 1 Dec 2026 a project PO needs an approved PRF (migration 20261122020000):
 // the server says which pending POs are held (po_prf_status) and a Manager may
 // override one with a reason (waive_po_prf: logged, Telegram to management).
 
