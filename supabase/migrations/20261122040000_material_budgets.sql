@@ -19,7 +19,8 @@
 -- No enforcement here: phase 2 adds "PO line needs a budget line or a PRF line,
 -- within the quantity" (prf_rule_on / po_line_prf_gap, now dormant).
 --
--- Writes only through the RPCs (no insert/update/delete policies). Idempotent;
+-- Writes only through the RPCs (no insert/update/delete policies). Nothing is ever
+-- deleted: a line QS takes out of a draft is flagged `removed`; readers skip those. Idempotent;
 -- no DROP (Supabase MCP hangs on DROP).
 -- App mirror: src/views/MaterialBudget.jsx (MB_* in src/core.js), the Order
 -- Board's "From material budgets" list, mb_line_key in toSbPR. Keep in sync.
@@ -57,6 +58,7 @@ create table if not exists public.material_budget_lines (
   est_unit_cost numeric not null default 0,
   need_by       date,
   remarks       text not null default '',
+  removed       boolean not null default false,
   created_at    timestamptz not null default now(),
   constraint mbl_qty_chk  check (qty > 0),
   constraint mbl_cost_chk check (est_unit_cost >= 0),
@@ -146,7 +148,8 @@ begin
   elsif b.status <> 'Draft' then
     raise exception 'This budget is %: use Revise to change a locked budget', b.status using errcode = '42501';
   end if;
-  delete from public.material_budget_lines where deal_id = p_deal and rev = b.rev;
+  -- Nothing is deleted: lines left out of this save are flagged removed (kept on record).
+  update public.material_budget_lines set removed = true where deal_id = p_deal and rev = b.rev;
   for v in select * from jsonb_array_elements(p_lines) loop
     n := n + 1;
     if btrim(coalesce(v->>'item', '')) = '' then
@@ -169,7 +172,12 @@ begin
             left(coalesce(v->>'boq_item_id', ''), 100), left(coalesce(v->>'boq_item', ''), 300),
             left(coalesce(nullif(btrim(v->>'category'), ''), 'Materials'), 60),
             left(btrim(v->>'item'), 300), left(coalesce(v->>'spec', ''), 300), v_qty,
-            left(btrim(v->>'unit'), 30), v_cost, nullif(v->>'need_by', '')::date, left(coalesce(v->>'remarks', ''), 500));
+            left(btrim(v->>'unit'), 30), v_cost, nullif(v->>'need_by', '')::date, left(coalesce(v->>'remarks', ''), 500))
+    on conflict (deal_id, rev, line_key) do update set
+      line_no = excluded.line_no, boq_item_id = excluded.boq_item_id, boq_item = excluded.boq_item,
+      category = excluded.category, item = excluded.item, spec = excluded.spec, qty = excluded.qty,
+      unit = excluded.unit, est_unit_cost = excluded.est_unit_cost, need_by = excluded.need_by,
+      remarks = excluded.remarks, removed = false;
   end loop;
   update public.material_budgets set prepared_by = coalesce(me.o_name, prepared_by), updated_at = now() where deal_id = p_deal;
   return n;
@@ -189,7 +197,7 @@ begin
     raise exception 'Only a Draft budget can be sent for review' using errcode = '42501';
   end if;
   select count(*), coalesce(sum(qty * est_unit_cost), 0) into v_n, v_tot
-    from public.material_budget_lines where deal_id = p_deal and rev = b.rev;
+    from public.material_budget_lines where deal_id = p_deal and rev = b.rev and not removed;
   if v_n = 0 then raise exception 'Add at least one material line first' using errcode = '22023'; end if;
   update public.material_budgets set status = 'For PM Review', submitted_at = now(),
          prepared_by = coalesce(me.o_name, prepared_by), returned_by = null, returned_at = null, return_reason = null,
@@ -264,7 +272,7 @@ begin
     raise exception 'A PM must confirm the list first (a Manager may lock it while it waits for the PM)' using errcode = '42501';
   end if;
   select count(*), coalesce(sum(qty * est_unit_cost), 0) into v_n, v_tot
-    from public.material_budget_lines where deal_id = p_deal and rev = b.rev;
+    from public.material_budget_lines where deal_id = p_deal and rev = b.rev and not removed;
   update public.material_budgets set status = 'Locked', locked_rev = b.rev, locked_by = me.o_name, locked_at = now(),
          pm_skipped = v_skip, updated_at = now()
    where deal_id = p_deal;
@@ -297,7 +305,7 @@ begin
   insert into public.material_budget_lines(deal_id, rev, line_key, line_no, boq_item_id, boq_item, category, item, spec,
                                            qty, unit, est_unit_cost, need_by, remarks)
   select deal_id, b.rev + 1, line_key, line_no, boq_item_id, boq_item, category, item, spec, qty, unit, est_unit_cost, need_by, remarks
-    from public.material_budget_lines where deal_id = p_deal and rev = b.rev;
+    from public.material_budget_lines where deal_id = p_deal and rev = b.rev and not removed;
   update public.material_budgets set rev = b.rev + 1, status = 'Draft', revise_reason = left(v_reason, 500),
          prepared_by = coalesce(me.o_name, prepared_by), submitted_at = null, pm_confirmed_by = null, pm_confirmed_at = null,
          pm_note = '', returned_by = null, returned_at = null, return_reason = null, updated_at = now()
