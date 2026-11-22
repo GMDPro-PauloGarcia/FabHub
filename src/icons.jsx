@@ -62,7 +62,7 @@ export const NAV_ICON_OF = {
   boq:"calc", ceqs:"ruler", costanalysis:"coins", projectmargins:"coins", clients:"building",
   projects:"clipboard", progress:"signal", subconcert:"hammer", subconmon:"hammer", subconwo:"hammer", addenda:"alert", pmupdates:"file", pmfeed:"clipboard", checklist:"check", joborders:"file",
   design:"pen", designboard:"pen", drf:"pen", designstatus:"pen", swatchboard:"layers", myfolder:"folder",
-  orders:"box", orderboard:"clipboard", purchasing:"cart", procurement:"box", purchaseorders:"box", materialreq:"wrench", requests:"clipboard", budgetreq:"wallet",
+  orders:"box", orderboard:"clipboard", purchasing:"cart", procurement:"box", purchaseorders:"box", materialreq:"wrench", materialbudget:"calc", requests:"clipboard", budgetreq:"wallet",
   warehouse:"archive", inventory:"archive", deliveries:"truck", stockmove:"swap",
   masters:"database", suppliers:"database", subcontractors:"users",
   executive:"target", exectxns:"swap", execpl:"trend", execloans:"wallet", monitoring:"pulse", monboard:"pulse",

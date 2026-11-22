@@ -1,5 +1,5 @@
 import React,{useState,useEffect,useMemo,useCallback} from "react";
-import {isSupabaseReady,sbListAll} from "../supabaseClient";
+import {supabase,isSupabaseReady,sbListAll} from "../supabaseClient";
 import {useIsMobile} from "../shared";
 import {projDisplayName} from "../core";
 
@@ -18,7 +18,12 @@ import {projDisplayName} from "../core";
 //     missed its day is shown as Urgent. Urgent PRFs are listed first.
 //   • Coming: PRFs still at PM / Warehouse / Cost Control, so nothing surprises
 //     Procurement at 10:15.
-// Display only. The rules that block (from 1 Dec 2026) live in the database.
+//   • From material budgets (2026-11-22, GMD department split): every line of
+//     the last locked revision of a QS material budget with quantity still to
+//     order (budget qty − PO lines already linked to it by mb_line_key), grouped
+//     by suggested supplier, soonest need-by first. Create PO hands the lines to
+//     the PO form with their mbLineKey (migration 20261122040000).
+// Display only.
 
 const C={ink:"#0f172a",muted:"#475569",faint:"#64748b",line:"#e2e8f0",navy:"#0B2545",ok:"#047857",warn:"#b45309",bad:"#b91c1c",urg:"#b91c1c"};
 const CUTOFF="10:15";
@@ -58,12 +63,24 @@ export default function OrderBoard({deals=[],prs=[],suppliers=[],role,onCreatePo
   const[q,setQ]=useState("");
   const[urgentOnly,setUrgentOnly]=useState(false);
   const[now,setNow]=useState(()=>Date.now());
+  const[mbBudgets,setMbBudgets]=useState([]);
+  const[mbLines,setMbLines]=useState([]);
 
   const load=useCallback(async()=>{
     if(!isSupabaseReady()){setLoading(false);return;}
     const[p,l]=await Promise.all([sbListAll("prfs",{order:"created_at"}),sbListAll("prf_lines",{order:"line_no",asc:true})]);
     const rev=Object.fromEntries(p.map(x=>[x.id,x.lines_rev]));
     setPrfs(p);setLines(l.filter(x=>rev[x.prf_id]===x.rev));setLoading(false);
+    // Material budgets: only the last locked revision is ordered from. Until the
+    // tables exist (migration not applied) this section simply stays empty.
+    if(supabase){
+      const{data:b,error}=await supabase.from("material_budgets").select("deal_id,locked_rev,status").not("locked_rev","is",null);
+      if(!error){
+        const lr=Object.fromEntries((b||[]).map(x=>[x.deal_id,x.locked_rev]));
+        const ml=Object.keys(lr).length?await sbListAll("material_budget_lines",{order:"line_no",asc:true}):[];
+        setMbBudgets(b||[]);setMbLines(ml.filter(x=>!x.removed&&lr[x.deal_id]===x.rev));
+      }
+    }
   },[]);
   useEffect(()=>{load();const t=setInterval(load,60000);const c=setInterval(()=>setNow(Date.now()),30000);return()=>{clearInterval(t);clearInterval(c);};},[load]);
 
@@ -106,6 +123,36 @@ export default function OrderBoard({deals=[],prs=[],suppliers=[],role,onCreatePo
       rank:Math.min(...ls.map(l=>TAG_RANK[l.tag])),total:ls.reduce((t,l)=>t+obBuyQty(l)*obUnitCost(l),0)}))
       .sort((a,b)=>(a.supplier?0:1)-(b.supplier?0:1)||a.rank-b.rank||b.total-a.total);
   },[ready]);
+
+  // ── From material budgets ──────────────────────────────────────────────────
+  const mbOrdered=useMemo(()=>{
+    const m={};
+    prs.forEach(p=>{if(p.mbLineKey&&p.status!=="Cancelled") m[p.mbLineKey]=(m[p.mbLineKey]||0)+obNum(p.qty);});
+    return m;
+  },[prs]);
+  const mbSuggest=l=>suggest({description:l.item,spec:l.spec});
+  const mbReady=useMemo(()=>{
+    const qq=q.trim().toLowerCase();
+    return mbLines.map(l=>({...l,remaining:obNum(l.qty)-(mbOrdered[l.line_key]||0)}))
+      .filter(l=>l.remaining>0)
+      .filter(l=>!qq||[l.item,l.spec,l.boq_item,projName(l.deal_id),supOf["mb:"+l.id]||mbSuggest(l)].some(x=>String(x||"").toLowerCase().includes(qq)))
+      .map(l=>({...l,supplier:(supOf["mb:"+l.id]??mbSuggest(l))||""}));
+  },[mbLines,mbOrdered,q,supOf,lastSupplier,dealById]);
+  const mbGroups=useMemo(()=>{
+    const g={};
+    mbReady.forEach(l=>{(g[l.supplier]=g[l.supplier]||[]).push(l);});
+    const nb=l=>l.need_by||"9999-12-31";
+    return Object.entries(g).map(([s,ls])=>({supplier:s,lines:ls.sort((a,b)=>nb(a).localeCompare(nb(b))||String(a.item).localeCompare(String(b.item))),
+      first:ls.reduce((m,l)=>nb(l)<m?nb(l):m,"9999-12-31"),total:ls.reduce((t,l)=>t+l.remaining*obNum(l.est_unit_cost),0)}))
+      .sort((a,b)=>(a.supplier?0:1)-(b.supplier?0:1)||a.first.localeCompare(b.first)||b.total-a.total);
+  },[mbReady]);
+  const mbTicked=l=>pick["mb:"+l.id]!==false;
+  const createMbPo=g=>{
+    const ls=g.lines.filter(mbTicked);
+    if(!ls.length) return;
+    onCreatePo&&onCreatePo({supplier:g.supplier,lines:ls.map(l=>({mbLineKey:l.line_key,dealId:l.deal_id,
+      itemName:[l.item,l.spec].filter(Boolean).join(" · "),qty:l.remaining,unit:l.unit||"pcs",estUnitCost:obNum(l.est_unit_cost),category:l.category||"Materials"}))});
+  };
 
   const coming=prfs.filter(p=>STEPS.includes(p.status));
   const ticked=l=>pick[l.id]!==false;
@@ -152,6 +199,50 @@ export default function OrderBoard({deals=[],prs=[],suppliers=[],role,onCreatePo
         <label style={{fontSize:".76rem",color:C.muted,display:"flex",alignItems:"center",gap:6}}><input type="checkbox" checked={urgentOnly} onChange={e=>setUrgentOnly(e.target.checked)}/> Urgent only</label>
         <button onClick={load} style={{...obInp,cursor:"pointer",fontWeight:700,color:C.muted}}>↻ Refresh</button>
       </div>
+
+      {mbGroups.length>0&&(
+        <div style={{marginBottom:16}}>
+          <div style={{fontWeight:800,color:C.navy,fontSize:".95rem",margin:"4px 0 8px"}}>From material budgets <span style={{fontSize:".72rem",color:C.faint,fontWeight:600}}>· {mbReady.length} line{mbReady.length!==1?"s":""} still to order on {[...new Set(mbReady.map(l=>l.deal_id))].length} project{[...new Set(mbReady.map(l=>l.deal_id))].length!==1?"s":""} · locked by Cost Control</span></div>
+          {mbGroups.map(g=>{
+            const sel=g.lines.filter(mbTicked);
+            const selTotal=sel.reduce((t,l)=>t+l.remaining*obNum(l.est_unit_cost),0);
+            return(
+              <div key={"mb_"+(g.supplier||"_none")} style={{...obBox,marginBottom:12,overflow:"hidden",borderLeft:"4px solid #10b981"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap",padding:"10px 14px",background:"#f0fdf4",borderBottom:`1px solid ${C.line}`}}>
+                  <div>
+                    <span style={{fontWeight:800,color:g.supplier?C.navy:C.warn,fontSize:".95rem"}}>{g.supplier||"No supplier yet"}</span>
+                    <span style={{fontSize:".72rem",color:C.faint,marginLeft:8}}>{g.lines.length} line{g.lines.length>1?"s":""} · {obPeso(g.total)}</span>
+                  </div>
+                  {canOrder&&<button disabled={!g.supplier||!sel.length} onClick={()=>createMbPo(g)} title={!g.supplier?"Pick a supplier for these lines first":""}
+                    style={{background:g.supplier&&sel.length?C.navy:"#cbd5e1",color:"#fff",border:"none",borderRadius:8,padding:"8px 14px",fontWeight:700,fontSize:".78rem",cursor:g.supplier&&sel.length?"pointer":"not-allowed",fontFamily:"inherit"}}>
+                    Create PO · {sel.length} line{sel.length!==1?"s":""} · {obPeso(selTotal)}</button>}
+                </div>
+                <div style={{overflowX:"auto"}}>
+                  <table style={{width:"100%",borderCollapse:"collapse",minWidth:760}}>
+                    <tbody>
+                      {g.lines.map(l=>{const late=l.need_by&&l.need_by<today;return(
+                        <tr key={l.id} style={{borderBottom:"1px solid #f1f5f9",opacity:mbTicked(l)?1:.55}}>
+                          <td style={{padding:"8px 10px",width:28}}><input type="checkbox" checked={mbTicked(l)} onChange={e=>setPick(p=>({...p,["mb:"+l.id]:e.target.checked}))} aria-label="Include in PO"/></td>
+                          <td style={{padding:"8px 10px",fontSize:".78rem"}}>
+                            <div style={{fontWeight:700,color:C.ink}}>{l.item}{l.spec?<span style={{color:C.faint,fontWeight:500}}> · {l.spec}</span>:null}</div>
+                            <div style={{fontSize:".7rem",color:C.faint}}>{projName(l.deal_id)}{l.boq_item?` · ${l.boq_item}`:""} · budget {obNum(l.qty)} {l.unit}</div>
+                          </td>
+                          <td style={{padding:"8px 10px",fontSize:".78rem",whiteSpace:"nowrap",textAlign:"right"}}>{l.remaining} {l.unit}</td>
+                          <td style={{padding:"8px 10px",fontSize:".78rem",whiteSpace:"nowrap",textAlign:"right",fontVariantNumeric:"tabular-nums"}}>{obPeso(l.remaining*obNum(l.est_unit_cost))}</td>
+                          <td style={{padding:"8px 10px"}}>{l.need_by?obChip(`Need by ${l.need_by}`,late?C.bad:C.muted,late?"#fee2e2":"#f1f5f9"):obChip("No need-by date",C.faint)}</td>
+                          <td style={{padding:"8px 10px",width:210}}>
+                            <input list="ob-suppliers" value={supOf["mb:"+l.id]??mbSuggest(l)} onChange={e=>setSupOf(s=>({...s,["mb:"+l.id]:e.target.value}))} placeholder="Supplier…" aria-label="Supplier" style={{...obInp,width:"100%"}}/>
+                          </td>
+                        </tr>);})}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })}
+          <div style={{fontWeight:800,color:C.navy,fontSize:".95rem",margin:"14px 0 8px"}}>From PRFs (special items)</div>
+        </div>
+      )}
 
       {loading?<div style={{...obBox,padding:20,color:C.faint}}>Loading PRFs…</div>
       :groups.length===0?<div style={{...obBox,padding:20,color:C.faint}}>Nothing to order: no PRF line is waiting for a PO.</div>
@@ -204,7 +295,7 @@ export default function OrderBoard({deals=[],prs=[],suppliers=[],role,onCreatePo
         </div>
       )}
       <div style={{fontSize:".7rem",color:C.faint,marginTop:10}}>
-        Suggested supplier = the last supplier GMD bought the same item from. From 1 Dec 2026: a project PO needs an approved PRF; a PRF in after 10:15 AM is ordered the same day only if Cost Control (QS) releases it; Urgent PRFs need Cost Control and the Procurement Manager.
+        Suggested supplier = the last supplier GMD bought the same item from. Project materials come from the material budgets Cost Control locks (Material Budget page); PRFs are for special items Operations asks for. The 10:15 AM cut-off is a guide, not a block.
       </div>
     </div>
   );
