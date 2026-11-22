@@ -149,6 +149,11 @@ For the smoke test locally, run `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers
 - Read-only: its buttons open the existing screens (bill form via `purchasingPage` in `src/App.jsx`, Supplier Bills, Subcon Billing, Purchase Orders, Work Orders). Never add writes here; money rules stay in the database and `savePayable` / `approvePayable` / `recordPayments`.
 - PO lines closed at the AP cutover count as received but are labelled "Closed at cutover, not proven".
 
+## Cost centers (GMD's own spending)
+- Internal cost centers are deals with `is_cost_center` (GMD OPEX, GMD Tools…), offered with projects in every "charged to" picker and kept out of `wonDeals`. A Manager or the Finance role adds one, only through `create_cost_center(name)` (3–80 chars, unique name, logged to `audit_log` action `cost_center_add`). FinanceAssistant / Accounting don't. `trg_deals_cost_center_guard` strips `is_cost_center` from any other non-Manager write; the RPC lets its own insert through with the transaction-local `fabhub.cost_center_rpc` flag. Migration `20261122010000_cost_center_create_finance.sql`. App: `canCreateCostCenter` / `COST_CENTER_CREATOR_ROLES` (`src/core.js`), `createCostCenter` (`src/App.jsx`), the Cost centers panel on Purchase Orders, "+ New cost center" in Liquidations. Keep them in sync.
+- GMD's own capital work (e.g. an office renovation) gets its own cost center, not GMD OPEX.
+- Liquidations are charged to a project or a cost center through one `ProjectSelect` (saved as `project_id`); the old free-text `charge_to` list is gone and `charge_to` is only shown for older rows.
+
 ## Cash sheet ↔ bills
 - A Daily Cash Position disbursement row can carry `payableIds` (the bills it paid) or `noBill` (payroll, bank transfer, loan, petty cash, tax, owner, other). It is set from the row's 🔗 on the sheet (a normal sheet edit, saved with Save) or from Expense Monitoring (which first checks the server's copy of the day with `cashDayIsCurrent`). Transaction History and Expense Monitoring match disbursements to AP payments from these tags; same-day same-amount moves between two GMD banks are paired as transfers.
 
