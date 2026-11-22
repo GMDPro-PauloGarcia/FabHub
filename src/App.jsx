@@ -4503,7 +4503,7 @@ function PayHistoryList({rows,onCancel,canCancel}){
 // re-renders only this form, not the whole App (the old page-level Payables
 // modal kept payForm in App and rebuilt everything on every keystroke).
 // onSave(form, editId) is App's savePayable: every rule stays there.
-function PayableForm({opexOnly=false,initial,editId=null,onSave,onCancel,onCreateCostCenter=null,swos=[],payables=[],chartOfAccounts=[],costCenterDeals=[],wonDeals=[],deals=[],today,role,sendTelegramNotification,prs,drs,suppliers,upPayables}){
+function PayableForm({opexOnly=false,initial,editId=null,onSave,onCancel,onSaved=null,onCreateCostCenter=null,swos=[],payables=[],chartOfAccounts=[],costCenterDeals=[],wonDeals=[],deals=[],today,role,sendTelegramNotification,prs,drs,suppliers,upPayables}){
   const[payForm,setPayForm]=useState(()=>({...initial}));
   const[busy,setBusy]=useState(false);
   const accounts=useMemo(()=>[...chartOfAccounts].filter(a=>a.active!==false&&(a.type==="COGS"||a.type==="Expense"||a.type==="Asset")).sort((a,b)=>String(a.code).localeCompare(String(b.code))),[chartOfAccounts]);
@@ -4523,7 +4523,7 @@ function PayableForm({opexOnly=false,initial,editId=null,onSave,onCancel,onCreat
   const save=async()=>{
     if(busy) return;
     setBusy(true);
-    try{ if(await onSave(payForm,editId)) onCancel&&onCancel(); }
+    try{ if(await onSave(payForm,editId)){const done=onSaved||onCancel; done&&done();} }
     finally{ setBusy(false); }
   };
   return(
@@ -8403,7 +8403,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const emptyPayForm=()=>({vendor:"",amount:"",paidAmount:"",dueDate:"",invoiceNumber:"",invoiceDate:"",projectId:null,category:"Supplier",accountCode:"",notes:"",invoiceRef:""});
   // Cash Out (src/views/CashOutModal.jsx) is the one form for new and edited
   // bills; it keeps its own state, so opening it doesn't re-render App.
-  const openBillForm=(form,id=null)=>openCashOut("bill",{form,id});
+  const openBillForm=(form,id=null,extra=null)=>openCashOut("bill",{form,id,...(extra||{})});
   // A subcon progress billing on a Work Order: one bill per billing (2026-11-05).
   const subconBillForm=wo=>{
     const pid=(wo.dealId&&isUUID(wo.dealId))?wo.dealId:((wo.projectId&&isUUID(wo.projectId))?wo.projectId:null);
@@ -10843,21 +10843,22 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       render:(_,close)=><SubconWOView jos={jos} embedded onEmbeddedDone={close} deals={deals} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms} swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/>},
     (canBillPo||canBillOpex)&&{id:"bill",group:"bill",icon:"🧾",label:canBillPo?"Supplier bill (AP)":"OPEX bill (no PO)",editLabel:"Edit bill",
       desc:canBillPo?"A supplier's invoice. Pick its PO to fill in the details, or enter a bill with no PO (rent, utilities, OPEX).":"Rent, utilities, permits and other bills with no PO, charged to GMD OPEX or another cost center. Bills on a PO are entered by Procurement.",
-      render:(p,close)=>p?.form
-        ?<PayableForm {...billFormProps} onCancel={close} initial={p.form} editId={p.id||null} opexOnly={!canBillPo}/>
+      // Picked from a list (back set): Cancel returns to that list; Save closes.
+      render:(p,close,cancel)=>p?.form
+        ?<PayableForm {...billFormProps} onCancel={cancel} onSaved={close} initial={p.form} editId={p.id||null} opexOnly={!canBillPo}/>
         :canBillPo
           ?<OrderPicker rows={buildOrders({prs,swos,payables}).filter(r=>r.kind==="PO"&&r.payStatus==="No bill on file")}
-              onPick={r=>openBillForm(poBillForm(r))} onManual={()=>openBillForm({...emptyPayForm(),docType:"AP"})}
+              onPick={r=>openBillForm(poBillForm(r),null,{back:"bill"})} onManual={()=>openBillForm({...emptyPayForm(),docType:"AP"},null,{back:"bill"})}
               manualLabel="Bill with no PO" empty="Every issued PO already has a bill. Use “Bill with no PO” for anything else."/>
           :<PayableForm {...billFormProps} onCancel={close} initial={opexBillForm("AP")} opexOnly/>},
     canBillPo&&{id:"subcon",group:"bill",icon:"👷",label:"Subcon progress billing",
       desc:"The subcontractor's next billing against a Work Order. Paid only up to the % the PM certifies.",
       render:()=><OrderPicker rows={buildOrders({prs,swos,payables}).filter(r=>r.kind==="WO"&&r.issued&&(Number(r.amount)||0)-(Number(r.billed)||0)>1)}
-            onPick={r=>openBillForm(subconBillForm(r.items[0]))} empty="No issued Work Order has anything left to bill."/>},
+            onPick={r=>openBillForm(subconBillForm(r.items[0]),null,{back:"subcon",as:"subcon"})} empty="No issued Work Order has anything left to bill."/>},
     (canBillPo||canBillOpex)&&{id:"prv",group:"bill",icon:"📝",label:"Payment request, no PO (PRV)",
       desc:canBillPo?"Money out with no PO or supplier invoice. Subcon work of ₱50,000+ still needs a Work Order.":"Money out with no PO or supplier invoice, charged to GMD OPEX or another cost center.",
       render:(_,close)=><PayableForm {...billFormProps} onCancel={close} initial={canBillPo?{...emptyPayForm(),docType:"PRV"}:opexBillForm("PRV")} opexOnly={!canBillPo}/>},
-    coCan("payable_payments")&&role!=="Accounting"&&{id:"pay",group:"pay",icon:"💸",label:"Pay bills",wide:true,
+    coCan("payable_payments")&&role!=="Accounting"&&{id:"pay",group:"pay",icon:"💸",label:"Pay bills",wide:true,doneButton:true,
       desc:"Approve and pay bills that are due, one at a time or several in one check or transfer.",
       render:()=><CashPositionPayables payables={payables} payPays={payPays} prs={prs} swos={swos} exps={exps} deals={deals} today={today}
             canApprove={canApprovePayables} enteredByMe={enteredByMe} canPay={roleCanInsert("payable_payments")}
@@ -16238,7 +16239,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         {/* ── SUBCON PAYMENT MONITORING ── one row per WO, payments as columns (read-only). */}
         {finTab==="subconmon"&&(
           <SubconPaymentMonitor swos={swos} payables={payables} payPays={payPays} deals={deals} prs={prs} exps={exps} today={today}
-            onNewBilling={roleCanInsert("payables")?wo=>openBillForm(subconBillForm(wo)):null}/>
+            onNewBilling={roleCanInsert("payables")?wo=>openBillForm(subconBillForm(wo),null,{as:"subcon"}):null}/>
         )}
 
 

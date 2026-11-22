@@ -245,7 +245,7 @@ export const ProjectSelect=({value,onChange,children,disabled,style:sx,placehold
           if(e.key==="ArrowDown"){e.preventDefault();setOpen(true);setHiIdx(h=>Math.min(h+1,list.length-1));}
           else if(e.key==="ArrowUp"){e.preventDefault();setHiIdx(h=>Math.max(h-1,0));}
           else if(e.key==="Enter"){if(open&&list[hiIdx]){e.preventDefault();pick(list[hiIdx]);}}
-          else if(e.key==="Escape"){setOpen(false);setQ(null);}
+          else if(e.key==="Escape"){if(open){e.preventDefault();}setOpen(false);setQ(null);}
         }}
         style={{...base,paddingRight:30,cursor:disabled?"not-allowed":"text"}}/>
       <span aria-hidden="true" style={{position:"absolute",right:11,top:"50%",transform:"translateY(-50%)",color:T.inkFaint,fontSize:".7rem",pointerEvents:"none"}}>▾</span>

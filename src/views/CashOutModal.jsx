@@ -11,7 +11,8 @@
 // Open it from anywhere with openCashOut(kind, payload). It keeps its own open
 // state in a tiny store outside React state, so opening it and typing in it do
 // not re-render the whole App (that is what made the old Payables modal slow).
-import React, { useState, useMemo, useSyncExternalStore } from "react";
+import React, { useState, useMemo, useEffect, useRef, useSyncExternalStore } from "react";
+import { uiConfirm } from "../shared";
 
 let store = { open: false, kind: null, payload: null, seq: 0 };
 const subs = new Set();
@@ -22,17 +23,42 @@ const snap = () => store;
 // kind: null (show the picker) | "po" | "wo" | "bill" | "subcon" | "prv" | "liq" | "pay"
 // A kind with go() instead of render() closes the modal and opens its page (liq).
 // payload: {form, id} to open the bill form pre-filled or to edit a bill
-// (id set = editing; the picker is hidden).
+// (id set = editing; the picker is hidden). Optional: back = the kind whose
+// list the form was picked from (Cancel and "← Back" return there), as = the
+// kind whose name and icon the header shows (a subcon billing uses the bill
+// form but is titled "Subcon progress billing").
+//
+// coDirty: the user typed, picked or ticked something in the current screen.
+// Leaving by accident (click outside, Esc, ✕, Done, ← Back) then asks first; a
+// form's own Save / Cancel buttons never ask. Reset whenever the screen changes.
+let coDirty = false;
 export const openCashOut = (kind = null, payload = null) => {
+  coDirty = false;
   store = { open: true, kind, payload, seq: store.seq + 1 };
   emit();
 };
-export const closeCashOut = () => { store = { ...store, open: false }; emit(); };
+export const closeCashOut = () => { coDirty = false; store = { ...store, open: false }; emit(); };
+let asking = false;
+const confirmLeave = async () => {
+  if (!coDirty) return true;
+  if (asking) return false;
+  asking = true;
+  try {
+    return !!(await uiConfirm({ title: "Discard what you entered?", tone: "warning",
+      message: "You have typed or picked something on this screen that is not saved yet. Leaving now loses it.",
+      confirmLabel: "Discard", cancelLabel: "Keep editing" }));
+  } finally { asking = false; }
+};
+const requestClose = async () => { if (await confirmLeave()) closeCashOut(); };
 // Kind ids this user can open, set each time the modal renders. A page button
 // checks cashOutHas(kind) and keeps its own form for roles without that option.
 let available = new Set();
 export const cashOutHas = kind => available.has(kind);
-const switchKind = kind => { store = { ...store, kind, payload: null, seq: store.seq + 1 }; emit(); };
+const switchKind = kind => { coDirty = false; store = { ...store, kind, payload: null, seq: store.seq + 1 }; emit(); };
+const requestSwitch = async kind => { if (await confirmLeave()) switchKind(kind); };
+// A typed or picked value marks the screen dirty, except fields marked
+// data-co-nodirty (the order list's search box loses nothing worth asking about).
+const markDirty = e => { if (!(e.target && e.target.closest && e.target.closest("[data-co-nodirty]"))) coDirty = true; };
 
 const GROUPS = [
   { id: "order", l: "Order (commit money)" },
@@ -47,29 +73,66 @@ const coPeso = v => "₱" + Number(v || 0).toLocaleString("en-PH", { maximumFrac
 export default function CashOutModal({ kinds = [] }) {
   const s = useSyncExternalStore(subscribe, snap, snap);
   available = new Set(kinds.map(k => k.id));
-  if (!s.open || !kinds.length) return null;
+  const boxRef = useRef(null);
+  const downOnBackdrop = useRef(false);
+  const isOpen = s.open && kinds.length > 0;
+  // Esc closes (asking first when something is entered). Skipped when another
+  // dialog already handled it (FabHub's confirm / prompt boxes call
+  // preventDefault) or when focus is inside a window opened on top of the form.
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const onKey = e => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      const box = boxRef.current;
+      if (box && box.contains(e.target)) {
+        for (let el = e.target; el && el !== box; el = el.parentElement) {
+          if (window.getComputedStyle(el).position === "fixed") return;
+        }
+      }
+      e.preventDefault();
+      requestClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [isOpen]);
+  if (!isOpen) return null;
   const mob = typeof window !== "undefined" && window.innerWidth < 768;
   const editing = !!s.payload?.id;
   const cur = kinds.find(k => k.id === s.kind) || null;
+  const shown = (s.payload?.as && kinds.find(k => k.id === s.payload.as)) || cur;
+  const back = !editing && s.payload?.back && kinds.some(k => k.id === s.payload.back) ? s.payload.back : null;
   const wide = !cur || cur.wide;
-  const title = editing ? (cur?.editLabel || "Edit bill") : cur ? cur.label : "Cash Out";
+  const title = editing ? (cur?.editLabel || "Edit bill") : shown ? shown.label : "Cash Out";
+  // Desktop: a click on the dark backdrop closes, but only when the press also
+  // started there (letting go of a text selection outside the box is not a click
+  // outside), and asks first when something is entered.
+  const onBackdrop = e => {
+    if (e.target !== e.currentTarget || !downOnBackdrop.current) return;
+    requestClose();
+  };
   return (
     <div role="dialog" aria-modal="true" aria-label={title}
       style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,.5)", zIndex: 1000, display: "flex", alignItems: mob ? "flex-end" : "center", justifyContent: "center", padding: mob ? 0 : 16 }}
-      onClick={mob ? undefined : closeCashOut}>
-      <div onClick={e => e.stopPropagation()}
+      onMouseDown={e => { downOnBackdrop.current = e.target === e.currentTarget; }}
+      onClick={mob ? undefined : onBackdrop}>
+      <div ref={boxRef} onClick={e => e.stopPropagation()} onInputCapture={markDirty} onChangeCapture={markDirty}
         style={{ background: "#fff", borderRadius: mob ? "18px 18px 0 0" : 18, padding: mob ? "18px 14px 26px" : 24, width: "100%", maxWidth: wide ? 1120 : 560, maxHeight: mob ? "94vh" : "94vh", overflowY: "auto", boxShadow: "0 24px 64px rgba(15,23,42,.28)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 14 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-            {cur && !editing && kinds.length > 1 && (
-              <button onClick={() => switchKind(null)} style={{ background: "#f1f5f9", border: "none", borderRadius: 8, padding: "6px 10px", cursor: "pointer", fontFamily: "inherit", fontSize: ".78rem", fontWeight: 700, color: "#334155" }}>← Cash Out</button>
+            {cur && !editing && (back || kinds.length > 1) && (
+              <button onClick={() => requestSwitch(back)} style={{ background: "#f1f5f9", border: "none", borderRadius: 8, padding: "6px 10px", cursor: "pointer", fontFamily: "inherit", fontSize: ".78rem", fontWeight: 700, color: "#334155" }}>{back ? "← Back" : "← Cash Out"}</button>
             )}
-            <div style={{ fontWeight: 800, fontSize: "1.1rem", color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cur ? `${cur.icon} ${title}` : "💸 Cash Out"}</div>
+            <div style={{ fontWeight: 800, fontSize: "1.1rem", color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cur ? `${shown.icon} ${title}` : "💸 Cash Out"}</div>
           </div>
-          <button onClick={closeCashOut} aria-label="Close" style={{ background: "#f1f5f9", border: "none", borderRadius: 8, width: 32, height: 32, cursor: "pointer", color: "#64748b", fontSize: "1rem", flexShrink: 0 }}>✕</button>
+          <button onClick={requestClose} aria-label="Close" style={{ background: "#f1f5f9", border: "none", borderRadius: 8, width: 32, height: 32, cursor: "pointer", color: "#64748b", fontSize: "1rem", flexShrink: 0 }}>✕</button>
         </div>
         {!cur ? <Picker kinds={kinds} /> : (
-          <div key={s.seq}>{cur.go ? <button onClick={() => { closeCashOut(); cur.go(); }} style={{ background: "#0B2545", color: "#fff", border: "none", borderRadius: 8, padding: "10px 16px", fontFamily: "inherit", fontWeight: 700, cursor: "pointer" }}>Open {cur.label}</button> : cur.render(s.payload, closeCashOut)}</div>
+          <div key={s.seq}>{cur.go ? <button onClick={() => { closeCashOut(); cur.go(); }} style={{ background: "#0B2545", color: "#fff", border: "none", borderRadius: 8, padding: "10px 16px", fontFamily: "inherit", fontWeight: 700, cursor: "pointer" }}>Open {cur.label}</button> : cur.render(s.payload, closeCashOut, back ? () => switchKind(back) : closeCashOut)}</div>
+        )}
+        {cur && cur.doneButton && !cur.go && (
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16, paddingTop: 12, borderTop: "1px solid #f1f5f9" }}>
+            <button onClick={requestClose} style={{ background: "#0B2545", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontFamily: "inherit", fontWeight: 700, fontSize: ".84rem", cursor: "pointer" }}>Done</button>
+          </div>
         )}
       </div>
     </div>
@@ -114,7 +177,7 @@ export function OrderPicker({ rows = [], onPick, onManual, manualLabel, empty = 
   return (
     <div>
       <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
-        <input value={q} onChange={e => { setQ(e.target.value); setLimit(40); }} placeholder="Search PO / WO no., supplier or project…" autoFocus
+        <input data-co-nodirty value={q} onChange={e => { setQ(e.target.value); setLimit(40); }} placeholder="Search PO / WO no., supplier or project…" autoFocus
           style={{ flex: 1, minWidth: 200, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "9px 12px", fontFamily: "inherit", fontSize: ".85rem" }} />
         {onManual && <button onClick={onManual} style={{ background: "#fff", border: "1.5px solid #0B2545", color: "#0B2545", borderRadius: 8, padding: "8px 12px", fontFamily: "inherit", fontWeight: 700, fontSize: ".8rem", cursor: "pointer" }}>{manualLabel || "Enter without a PO"}</button>}
       </div>
