@@ -1,7 +1,7 @@
 import React,{useState,useMemo} from "react";
 import {toastEmit,useIsMobile} from "../shared";
 import ProgressReportModal from "./ProgressReportModal";
-import {projDisplayName,isConstructionDeal,PUNCHLIST_MIN_PCT} from "../core";
+import {projDisplayName,isConstructionDeal,PUNCHLIST_MIN_PCT,LOST_STAGES,isMotherPO} from "../core";
 
 // ─── PROGRESS (Operations › Progress) ───────────────────────────────────────
 // Agreed with Paulo 2026-11-07: instead of PM Updates, Blockers and Scope
@@ -34,6 +34,14 @@ function PctInput({pct,min,disabled,onSave,lowerBlocked}){
 const STEP_CLR={30:"#f59e0b",60:"#3b82f6",90:"#8b5cf6",100:"#059669"};
 const C={ink:"#0f172a",muted:"#475569",faint:"#64748b",line:"#e2e8f0",navy:"#0B2545"};
 const pgNorm=s=>String(s||"").replace(/\s*\([^)]*\)\s*$/,"").trim().toLowerCase();
+// Not on this page: work already done (Close-Out = punchlist complete, waiting
+// for retention; Completed), dead deals, and mother POs (a standby umbrella has
+// no work of its own; its sub-projects carry the progress). Before 2026-11-21
+// only Completed was hidden, so 95 closed-out jobs sat here as "Not set".
+const PG_DONE_STAGES=["12 · Close-Out","14 · Completed",...LOST_STAGES];
+const pgOnProgressPage=d=>!PG_DONE_STAGES.includes(d.stage)&&!isMotherPO(d);
+const pgToday=()=>new Date(Date.now()+8*3600000).toISOString().slice(0,10); // Manila
+const pgDaysLate=due=>{if(!due) return 0;const t=pgToday();return due<t?Math.round((new Date(t)-new Date(due))/86400000):0;};
 const pgAgo=t=>{if(!t) return "";const d=Math.floor((Date.now()-new Date(t).getTime())/86400000);return d<=0?"today":d===1?"yesterday":`${d} days ago`;};
 
 export default function ProjectProgress({deals=[],pcards={},role,session,upPcards}){
@@ -46,7 +54,7 @@ export default function ProjectProgress({deals=[],pcards={},role,session,upPcard
   const canSet=pc=>["Manager","Operations","ProjectMover"].includes(role)||(role==="Coordinator"&&pc&&pgNorm(pc.coordinator)===me);
   const rows=useMemo(()=>{
     const qq=q.trim().toLowerCase();
-    return deals.filter(d=>pcards[d.id]&&d.stage!=="14 · Completed")
+    return deals.filter(d=>pcards[d.id]&&pgOnProgressPage(d))
       .filter(d=>scope==="all"||isMine(pcards[d.id]))
       .filter(d=>!qq||[projDisplayName(d),d.project,d.client,d.ceNo,pcards[d.id]?.pm1,pcards[d.id]?.pm2].some(v=>String(v||"").toLowerCase().includes(qq)))
       .map(d=>({d,pc:pcards[d.id],pct:pcards[d.id]?.manualProgress}))
@@ -73,7 +81,7 @@ export default function ProjectProgress({deals=[],pcards={},role,session,upPcard
     <div>
       <div style={{marginBottom:12}}>
         <div style={{fontWeight:800,color:C.navy,fontSize:"1.15rem"}}>Progress</div>
-        <div style={{fontSize:".78rem",color:C.muted,marginTop:2}}>One estimate per active project: 30, 60, 90 or 100 % done (construction projects: the actual % on site, 0–100). Each change asks for a short update (work done, next step with a date, issues); it goes to Team Updates and the Operations chat. Only a Manager can lower it.</div>
+        <div style={{fontSize:".78rem",color:C.muted,marginTop:2}}>One estimate per project still in production or on site (Close-Out and Completed jobs are not listed): 30, 60, 90 or 100 % done (construction projects: the actual % on site, 0–100). Each change asks for a short update (work done, next step with a date, issues); it goes to Team Updates and the Operations chat. Only a Manager can lower it.</div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:mob?"repeat(3,1fr)":"repeat(5,1fr)",gap:8,marginBottom:12}}>
         {[["Not set",notSet,C.faint],...BANDS.map(([a,b],i)=>[`${a}–${b}%`,counts[i],STEP_CLR[STEPS[i]]])].map(([l,v,c])=>(
@@ -92,7 +100,11 @@ export default function ProjectProgress({deals=[],pcards={},role,session,upPcard
           <div key={d.id} style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",padding:"10px 14px",borderBottom:"1px solid #f1f5f9"}}>
             <div style={{flex:"1 1 260px",minWidth:0}}>
               <div style={{fontWeight:700,color:C.ink,fontSize:".84rem"}}>{projDisplayName(d)}{d.project?<span style={{color:C.faint,fontWeight:500}}> · {d.project}</span>:null}</div>
-              <div style={{fontSize:".7rem",color:C.faint}}>{[pc.pm1,pc.pm2,pc.pm3].filter(Boolean).join(", ")||"No PM"}{pc.targetEndDate?` · due ${pc.targetEndDate}`:""}{pc.progressSetBy?` · set by ${pc.progressSetBy} ${pgAgo(pc.progressSetAt)}`:""}</div>
+              {(pgDaysLate(pc.targetEndDate)>0||d.paymentStatus==="Paid")&&<div style={{display:"flex",gap:6,flexWrap:"wrap",margin:"2px 0"}}>
+                {pgDaysLate(pc.targetEndDate)>0&&<span title="Turnover date has passed. If the work is finished, move the project to Close-Out; if not, move the turnover date in the Project HQ (Dates & Site), with a reason." style={{fontSize:".66rem",fontWeight:700,color:"#b91c1c",background:"#fef2f2",border:"1px solid #fecaca",borderRadius:6,padding:"1px 6px"}}>due {pc.targetEndDate} · {pgDaysLate(pc.targetEndDate)} days late</span>}
+                {d.paymentStatus==="Paid"&&<span title="The client has paid in full. If the work is finished, move the project to Close-Out." style={{fontSize:".66rem",fontWeight:700,color:"#92400e",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:6,padding:"1px 6px"}}>Paid in full · finished?</span>}
+              </div>}
+              <div style={{fontSize:".7rem",color:C.faint}}>{[pc.pm1,pc.pm2,pc.pm3].filter(Boolean).join(", ")||"No PM"}{pc.targetEndDate&&!pgDaysLate(pc.targetEndDate)?` · due ${pc.targetEndDate}`:""}{pc.progressSetBy?` · set by ${pc.progressSetBy} ${pgAgo(pc.progressSetAt)}`:""}</div>
             </div>
             {isConstructionDeal(d)?(
               <PctInput key={pct??"none"} pct={pct} lowerBlocked={role!=="Manager"} min={d.stage==="11 · Punchlist"?PUNCHLIST_MIN_PCT:0} disabled={!canSet(pc)} onSave={v=>set(d,v)}/>
