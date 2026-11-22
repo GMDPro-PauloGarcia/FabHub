@@ -1289,9 +1289,14 @@ export const dealDpClear = (deal, deals = []) => {
 // Stock POs (no deal) and internal GMD jobs are exempt; lines created before
 // 1 Dec are grandfathered. Enforced by migration 20261122020000_po_require_approved_prf.sql
 // (po_require_prf / po_line_prf_gap / waive_po_prf) — keep in sync.
+// Switched OFF the same day (Paulo, 2026-11-22: GMD split into Operations and
+// back-end; Procurement orders from the QS-locked material budget, PRFs are only
+// for special items). Migration 20261122030000_prf_rule_off.sql. It returns as
+// "PRF line or locked material budget line" once QS budgets exist.
+export const PRF_RULE_ON = false;
 export const PRF_RULE_START = "2026-12-01";
 const _manilaDay = (d = new Date()) => new Date(d.getTime() + 8 * 3600e3).toISOString().slice(0, 10);
-export const prfRuleOn = (now = new Date()) => _manilaDay(now) >= PRF_RULE_START;
+export const prfRuleOn = (now = new Date()) => PRF_RULE_ON && _manilaDay(now) >= PRF_RULE_START;
 // A not-yet-saved line (no createdAt) counts as created today.
 export const poLineNeedsPrf = (line, deal) => {
   if (!line || !deal) return false;
