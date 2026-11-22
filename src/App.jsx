@@ -121,6 +121,7 @@ const PrfView=_lazyView(()=>import('./views/PrfView'));
 const SubconCertView=_lazyView(()=>import('./views/SubconCertView'));
 const PurchasingHub=_lazyView(()=>import('./views/PurchasingHub'));
 const OrderBoard=_lazyView(()=>import('./views/OrderBoard'));
+const MaterialBudget=_lazyView(()=>import('./views/MaterialBudget'));
 const ProjectProgress=_lazyView(()=>import('./views/ProjectProgress'));
 const ManagerHome=_lazyView(()=>import('./views/ManagerHome'));
 const LoansView=_lazyView(()=>import('./views/LoansView'));
@@ -4897,7 +4898,7 @@ export default function App(){
             }
             const _exps=data.exps!=null?data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,projectId:e.deal_id||null,receiptNo:e.receipt_no,bankAccount:e.bank_account||"",expDate:e.date||null,poRef:e.po_ref||"",note:e.note||e.description||"",accountCode:e.account_code||"",month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};}) : null;
             if(_exps!=null){setExps(prev=>mlo(_exps,prev));idbE.push([KEYS.expenses,_exps]);}
-            const _prs=data.prs?.length?data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",paymentTerms:p.payment_terms||"",termsText:p.terms_text||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",fromMrId:p.from_mr_id||null,prfLineId:p.prf_line_id||null,createdAt:p.created_at||p.createdAt,urgency:p.urgency||"Normal",approvedAt:p.approved_at||null,deliveryHistory:p.delivery_history?(() => { try { return JSON.parse(p.delivery_history); } catch(e) { return []; } })():undefined,acctStatus:p.acct_status||"",acctNotes:p.acct_notes||"",acctCheckedBy:p.acct_checked_by||"",acctCheckedAt:p.acct_checked_at||"",paymentBank:p.payment_bank||"",paymentRef:p.payment_ref||"",paymentOrderedBy:p.payment_ordered_by||"",paymentOrderedAt:p.payment_ordered_at||"",paidRef:p.paid_ref||"",paidDate:p.paid_date||"",paidAmt:p.paid_amt!=null?Number(p.paid_amt):null,paidBy:p.paid_by||"",discType:p.disc_type||"none",discValue:Number(p.disc_value)||0,poDiscType:p.po_discount_type||"none",poDiscValue:Number(p.po_discount_value)||0,withVat:p.with_vat||false,accountCode:p.account_code||""})):null;
+            const _prs=data.prs?.length?data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",paymentTerms:p.payment_terms||"",termsText:p.terms_text||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",fromMrId:p.from_mr_id||null,prfLineId:p.prf_line_id||null,mbLineKey:p.mb_line_key||null,createdAt:p.created_at||p.createdAt,urgency:p.urgency||"Normal",approvedAt:p.approved_at||null,deliveryHistory:p.delivery_history?(() => { try { return JSON.parse(p.delivery_history); } catch(e) { return []; } })():undefined,acctStatus:p.acct_status||"",acctNotes:p.acct_notes||"",acctCheckedBy:p.acct_checked_by||"",acctCheckedAt:p.acct_checked_at||"",paymentBank:p.payment_bank||"",paymentRef:p.payment_ref||"",paymentOrderedBy:p.payment_ordered_by||"",paymentOrderedAt:p.payment_ordered_at||"",paidRef:p.paid_ref||"",paidDate:p.paid_date||"",paidAmt:p.paid_amt!=null?Number(p.paid_amt):null,paidBy:p.paid_by||"",discType:p.disc_type||"none",discValue:Number(p.disc_value)||0,poDiscType:p.po_discount_type||"none",poDiscValue:Number(p.po_discount_value)||0,withVat:p.with_vat||false,accountCode:p.account_code||""})):null;
             if(_prs){setPrs(prev=>{const sbIds=new Set(_prs.map(p=>p.id));const localOnly=prev.filter(p=>!sbIds.has(p.id));return localOnly.length?[..._prs,...localOnly]:_prs;});idbE.push([KEYS.prs,_prs]);}
             const _mreqs=data.mreqs?.length?data.mreqs.map(m=>({...m,dealId:m.deal_id,projectId:m.deal_id,itemName:m.item||"",estimatedCost:Number(m.estimated_cost)||0,estUnitCost:Number(m.estimated_cost)||0,submittedBy:m.submitted_by,requestedBy:m.submitted_by||"",statusChangedAt:m.status_changed_at,urgency:m.urgency||"Normal"})):null;
             if(_mreqs){setMreqs(prev=>mlo(_mreqs,prev));idbE.push([KEYS.mreqs,_mreqs]);}
@@ -5478,6 +5479,7 @@ export default function App(){
     with_vat:r.withVat||false,
     from_mr_id:r.fromMrId||null,
     prf_line_id:r.prfLineId||null,
+    mb_line_key:r.mbLineKey||null,
     urgency:r.urgency||"Normal",
     approved_at:r.approvedAt||null,
     delivery_history:r.deliveryHistory?JSON.stringify(r.deliveryHistory):null,
@@ -6618,7 +6620,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           deliveryDate:rec.delivery_date,deliveryNote:rec.delivery_note||"",drNo:rec.dr_no,
           createdBy:rec.created_by,poNumber:rec.po_number||"",poDate:rec.po_date||"",paymentTerms:rec.payment_terms||"",termsText:rec.terms_text||"",
           requestedBy:rec.requested_by||rec.created_by||"",approvedBy:rec.approved_by||"",
-          projectName:rec.project_name||"",fromMrId:rec.from_mr_id||null,prfLineId:rec.prf_line_id||null,createdAt:rec.created_at||rec.createdAt,urgency:rec.urgency||"Normal",
+          projectName:rec.project_name||"",fromMrId:rec.from_mr_id||null,prfLineId:rec.prf_line_id||null,mbLineKey:rec.mb_line_key||null,createdAt:rec.created_at||rec.createdAt,urgency:rec.urgency||"Normal",
           approvedAt:rec.approved_at||null,
           deliveryHistory:rec.delivery_history?(()=>{try{return JSON.parse(rec.delivery_history);}catch(e){return [];}})():undefined,
           acctStatus:rec.acct_status||"",acctNotes:rec.acct_notes||"",acctCheckedBy:rec.acct_checked_by||"",
@@ -10349,7 +10351,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Work",        items:[{id:"pipeline",l:"Pipeline"},{id:"boq",l:"BOQ"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Sales Reports"},{id:"ceqs",l:"CE/QS Queue"},
                                    {id:"projects",l:"Projects"},{id:"progress",l:"Progress"},{id:"subconcert",l:"Subcon Billing"},
                                    {id:"designboard",l:"Design Board"},{id:"drf",l:"Design Requests"},
-                                   {id:"materialreq",l:"PRF"},{id:"orderboard",l:"Order Board"},{id:"purchasing",l:"Purchasing"},{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"deliveries",l:"Deliveries"},{id:"inventory",l:"Inventory"},{id:"masters",l:"Suppliers"}]},
+                                   {id:"materialreq",l:"PRF"},{id:"materialbudget",l:"Material Budget"},{id:"orderboard",l:"Order Board"},{id:"purchasing",l:"Purchasing"},{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"deliveries",l:"Deliveries"},{id:"inventory",l:"Inventory"},{id:"masters",l:"Suppliers"}]},
       {group:"Money",       items:[{id:"executive",l:"Overview"},...[["exectxns","txns","Transactions"],["execpl","pl","P&L"],["execloans","loans","Loans"]].filter(([,t])=>!HIDDEN_FIN_TABS.has(t)).map(([id,,l])=>({id,l})),{id:"monboard",l:"Monitoring Board"},...(OWNER_USERS.includes(session?.username)?[{id:"projectmargins",l:"Project Margins"}]:[]),{id:"costanalysis",l:"Budget & Costs"},{id:"finance-reports",l:"Reports"},
                                    {id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},
                                    {id:"payables",l:"Bills"},{id:"payrun",l:"Payments"},{id:"checkvouchers",l:"Check Vouchers"},...(AP_HIDDEN?[{id:"supplierbills",l:"Supplier Bills (old)"}]:[]),
@@ -10370,7 +10372,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"},{id:"subconcert",l:"Subcon Billing"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
       {group:"Procurement", items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"purchasing",l:"Purchasing"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Suppliers"}]},
-      {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"}]},
+      {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"materialbudget",l:"Material Budget"}]},
       {group:"Admin",       items:[{id:"audit",l:"Audit"},{id:"botsettings",l:"Bot Settings"},{id:"activity",l:"Team Activity"}]},
     ],
     Audit:[
@@ -10390,13 +10392,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     Procurement:[
       {group:"Overview",   items:[{id:"home",l:"Overview"}]},
-      {group:"Orders",     items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"orderboard",l:"Order Board"},{id:"purchasing",l:"Purchasing"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Suppliers"}]},
+      {group:"Orders",     items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"orderboard",l:"Order Board"},{id:"materialbudget",l:"Material Budget"},{id:"purchasing",l:"Purchasing"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Suppliers"}]},
       {group:"Projects",   items:[{id:"projects",l:"Projects"},{id:"clients",l:"Clients"}]},
     ],
     QS:[
       {group:"Overview", items:[{id:"home",l:"Dashboard"}]},
       {group:"Sales",    items:[{id:"pipeline",l:"Sales Pipeline"},{id:"boq",l:"BOQ"}]},
-      {group:"Cost Control", items:[{id:"costanalysis",l:"Budget & Costs"},{id:"projectmargins",l:"Project Margins"},{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"purchaseorders",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"}]},
+      {group:"Cost Control", items:[{id:"materialbudget",l:"Material Budget"},{id:"costanalysis",l:"Budget & Costs"},{id:"projectmargins",l:"Project Margins"},{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"purchaseorders",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"}]},
       {group:"Operations", items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
     ],
     Operations:[
@@ -10404,7 +10406,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Sales",     items:[{id:"pipeline",l:"Sales Pipeline"}]},
       {group:"On-Site",   items:[{id:"projects",l:"Project Cards"},{id:"progress",l:"Progress"}]},
       {group:"Design",    items:[{id:"drf",l:"Design Requests"}]},
-      {group:"Requests",  items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"subconcert",l:"Subcon Billing"}]},
+      {group:"Requests",  items:[{id:"materialbudget",l:"Material Budget"},{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"subconcert",l:"Subcon Billing"}]},
     ],
     Design:[
       {group:"Overview",    items:[{id:"home",l:"Projects"},{id:"designboard",l:"Design Board"},{id:"myfolder",l:"My Projects"}]},
@@ -10417,14 +10419,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Overview", items:[{id:"home",l:"My Projects"},{id:"calendar",l:"Calendar"}]},
       // PM Updates / Scope Changes were replaced by Progress (30/60/90/100), 2026-11-07.
       {group:"Updates",  items:[{id:"progress",l:"Progress"}]},
-      {group:"Work",     items:[{id:"projects",l:"Project Cards"},{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"subconcert",l:"Subcon Billing"}]},
+      {group:"Work",     items:[{id:"projects",l:"Project Cards"},{id:"materialbudget",l:"Material Budget"},{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"subconcert",l:"Subcon Billing"}]},
     ],
     // Coordinators post updates and request materials on the projects they are
     // assigned to (project_cards.coordinator) — nothing else. The database scopes
     // what they can read and write (migration 20261027150000_coordinator_role.sql).
     Coordinator:[
       {group:"Overview", items:[{id:"home",l:"My Projects"}]},
-      {group:"Work",     items:[{id:"projects",l:"Project Cards"},{id:"progress",l:"Progress"},{id:"materialreq",l:"Purchase Requests (PRF)"}]},
+      {group:"Work",     items:[{id:"projects",l:"Project Cards"},{id:"progress",l:"Progress"},{id:"materialbudget",l:"Material Budget"},{id:"materialreq",l:"Purchase Requests (PRF)"}]},
     ],
     Warehouse:[
       {group:"Overview", items:[{id:"home",l:"Dashboard"}]},
@@ -10448,7 +10450,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // difference is authority (they approve POs), not navigation.
     ProcurementManager:[
       {group:"Overview",   items:[{id:"home",l:"Overview"}]},
-      {group:"Orders",     items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"orderboard",l:"Order Board"},{id:"purchasing",l:"Purchasing"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Suppliers"}]},
+      {group:"Orders",     items:[{id:"materialreq",l:"Purchase Requests (PRF)"},{id:"orderboard",l:"Order Board"},{id:"materialbudget",l:"Material Budget"},{id:"purchasing",l:"Purchasing"},{id:"procurement",l:"Purchase Orders"},{id:"inventory",l:"Inventory"},{id:"stockmove",l:"Stock Movements"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Suppliers"}]},
       {group:"Projects",   items:[{id:"projects",l:"Projects"},{id:"clients",l:"Clients"}]},
     ],
   };
@@ -13308,6 +13310,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       <PrfView session={session} role={role} deals={deals} pcards={pcards} prs={prs}
         sendTelegramNotification={sendTelegramNotification} isMobile={isMobile}
         initialDeal={jumpDeal} clearJump={()=>setJumpDeal(null)}/>
+    </Wrap>
+  );
+  // ── MATERIAL BUDGET — QS breaks the BOQ into materials, PM confirms, QS locks;
+  // Procurement orders from the locked revision (migration 20261122040000).
+  if(page==="materialbudget") return(
+    <Wrap>
+      <MaterialBudget session={session} role={role} deals={deals} pcards={pcards} isMobile={isMobile}/>
     </Wrap>
   );
   // ── SUBCON BILLING — PM / Operations certify work done (no cert, no payment).
@@ -24235,7 +24244,7 @@ function ProcurementView2({jos=[],embedded=false,onEmbeddedDone,poDraft=null,cle
     // Purchasing → "+ PO" sends only the supplier: keep the blank line openNewPO made.
     if(!(poDraft.lines||[]).length){clearPoDraft&&clearPoDraft();return;}
     setPoItems(poDraft.lines.map(l=>({...emptyPoItem(),projectId:l.dealId||"",projectName:(()=>{const d=activeDeals.find(x=>x.id===l.dealId)||(allDeals||[]).find(x=>x.id===l.dealId);return d?projDisplayName(d):"";})(),itemName:l.itemName,category:l.category||"Materials",budgetCategory:"Materials",
-      qty:Number(l.qty)||1,unit:l.unit||"pcs",estUnitCost:Number(l.estUnitCost)||0,_prfId:l.prfId,_prfLineId:l.lineId,_prfNo:l.prfNo})));
+      qty:Number(l.qty)||1,unit:l.unit||"pcs",estUnitCost:Number(l.estUnitCost)||0,_prfId:l.prfId,_prfLineId:l.lineId,_prfNo:l.prfNo,_mbLineKey:l.mbLineKey||null})));
     prfDraftRef.current=true;
     clearPoDraft&&clearPoDraft();
   },[poDraft]);
@@ -24257,6 +24266,7 @@ function ProcurementView2({jos=[],embedded=false,onEmbeddedDone,poDraft=null,cle
       _id:Math.random().toString(36).slice(2),
       _existingId:pr.id,
       _prfLineId:pr.prfLineId||null,
+      _mbLineKey:pr.mbLineKey||null,
       createdAt:pr.createdAt||null,
       projectId:pr.projectId||"",
       projectName:pr.projectName||"",
@@ -24372,6 +24382,7 @@ function ProcurementView2({jos=[],embedded=false,onEmbeddedDone,poDraft=null,cle
         accountCode:poAccountCode,paymentTerms:poTerms,termsText:poTermsText,
         projectId:item.projectId,projectName:(deal?projDisplayName(deal):"")||item.projectName||"",
         prfLineId:item._prfLineId||null,
+        mbLineKey:item._mbLineKey||item.mbLineKey||null,
         supplier:poSupplier,poNumber:poNo,poDate:poDate,
         status:effStatus,deliveryDate:poExpectedDelivery||""};
     };

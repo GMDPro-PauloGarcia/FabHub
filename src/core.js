@@ -1293,6 +1293,17 @@ export const dealDpClear = (deal, deals = []) => {
 // back-end; Procurement orders from the QS-locked material budget, PRFs are only
 // for special items). Migration 20261122030000_prf_rule_off.sql. It returns as
 // "PRF line or locked material budget line" once QS budgets exist.
+// Material budgets (phase 1, Paulo 2026-11-22): QS breaks each BOQ item into
+// material lines; a PM confirms the list; QS locks it; Procurement orders from the
+// locked revision. Statuses and editor roles mirror migration
+// 20261122040000_material_budgets.sql (save/submit/confirm/return/lock/revise RPCs)
+// — keep them in sync.
+export const MB_STATUSES = ["Draft","For PM Review","PM Confirmed","Locked"];
+export const MB_EDITOR_ROLES = ["QS","Manager"];
+export const MB_STATUS_CLR = {"Draft":"#94a3b8","For PM Review":"#8b5cf6","PM Confirmed":"#0ea5e9","Locked":"#10b981"};
+export const mbStatusLabel = b => !b ? "No budget"
+  : b.status === "Locked" ? `Locked rev ${b.locked_rev || b.rev}`
+  : b.locked_rev ? `${b.status} (rev ${b.rev}; ordering from rev ${b.locked_rev})` : b.status;
 export const PRF_RULE_ON = false;
 export const PRF_RULE_START = "2026-12-01";
 const _manilaDay = (d = new Date()) => new Date(d.getTime() + 8 * 3600e3).toISOString().slice(0, 10);
