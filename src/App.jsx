@@ -4503,7 +4503,7 @@ function PayHistoryList({rows,onCancel,canCancel}){
 // re-renders only this form, not the whole App (the old page-level Payables
 // modal kept payForm in App and rebuilt everything on every keystroke).
 // onSave(form, editId) is App's savePayable: every rule stays there.
-function PayableForm({opexOnly=false,initial,editId=null,onSave,onCancel,swos=[],payables=[],chartOfAccounts=[],costCenterDeals=[],wonDeals=[],deals=[],today,role,sendTelegramNotification,prs,drs,suppliers,upPayables}){
+function PayableForm({opexOnly=false,initial,editId=null,onSave,onCancel,onCreateCostCenter=null,swos=[],payables=[],chartOfAccounts=[],costCenterDeals=[],wonDeals=[],deals=[],today,role,sendTelegramNotification,prs,drs,suppliers,upPayables}){
   const[payForm,setPayForm]=useState(()=>({...initial}));
   const[busy,setBusy]=useState(false);
   const accounts=useMemo(()=>[...chartOfAccounts].filter(a=>a.active!==false&&(a.type==="COGS"||a.type==="Expense"||a.type==="Asset")).sort((a,b)=>String(a.code).localeCompare(String(b.code))),[chartOfAccounts]);
@@ -4511,6 +4511,15 @@ function PayableForm({opexOnly=false,initial,editId=null,onSave,onCancel,swos=[]
   const chargeDeal=deals.find(d=>d.id===payForm.projectId);
   // Finance enters only no-PO bills charged to a cost center (canBillOpex in App).
   const ccOnly=opexOnly&&!editId;
+  // + New cost center (Manager / Finance only: App passes onCreateCostCenter
+  // just to them). App re-renders the Cash Out form with the new
+  // costCenterDeals, and the form keeps what was typed (same key).
+  const newCostCenter=async()=>{
+    const name=await uiPrompt("Name the new cost center (e.g. GMD Office Renovation 2026). Use it for GMD's own spending, not a client project.");
+    if(!name||!String(name).trim()) return;
+    const id=await onCreateCostCenter(String(name).trim());
+    if(id&&typeof id==="string") setPayForm(p=>({...p,projectId:id}));
+  };
   const save=async()=>{
     if(busy) return;
     setBusy(true);
@@ -4574,7 +4583,7 @@ function PayableForm({opexOnly=false,initial,editId=null,onSave,onCancel,swos=[]
           {payForm.poNumber&&<div style={{fontSize:".72rem",color:"#64748b",marginTop:3}}>Payment waits for Operations to verify % complete. Retention is held at payment.</div>}
         </Fld>
       )}
-      <Fld label={ccOnly?"Charge to (cost center)":"Charge to (project or cost center)"}><ProjectSelect value={payForm.projectId||"none"} onChange={e=>setPayForm(p=>({...p,projectId:e.target.value==="none"?null:e.target.value}))}><option value="none">{ccOnly?"— Select a cost center":"— Select a project or cost center"}</option>{costCenterDeals.length>0&&<optgroup label="Cost centers">{costCenterDeals.map(d=><option key={d.id} value={d.id}>🏷 {d.contact||d.client}</option>)}</optgroup>}{!ccOnly&&<optgroup label="Projects">{wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" — "+d.contact:""}</option>)}</optgroup>}</ProjectSelect></Fld>
+      <Fld label={ccOnly?"Charge to (cost center)":"Charge to (project or cost center)"}><ProjectSelect value={payForm.projectId||"none"} onChange={e=>setPayForm(p=>({...p,projectId:e.target.value==="none"?null:e.target.value}))}><option value="none">{ccOnly?"— Select a cost center":"— Select a project or cost center"}</option>{costCenterDeals.length>0&&<optgroup label="Cost centers">{costCenterDeals.map(d=><option key={d.id} value={d.id}>🏷 {d.contact||d.client}</option>)}</optgroup>}{!ccOnly&&<optgroup label="Projects">{wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" — "+d.contact:""}</option>)}</optgroup>}</ProjectSelect>{onCreateCostCenter&&<button type="button" onClick={newCostCenter} style={{background:"none",border:"none",padding:0,marginTop:6,color:"#2563eb",cursor:"pointer",fontFamily:"inherit",fontSize:".74rem",fontWeight:600,textDecoration:"underline",textUnderlineOffset:2}}>+ New cost center</button>}</Fld>
       {/* BIR: VAT + EWT capture (restored from the legacy expense flow) */}
       {(()=>{
         const amt=Number(payForm.amount)||0;
@@ -10821,7 +10830,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ── CASH OUT ── the one modal for money leaving GMD (src/views/CashOutModal.jsx).
   // Each option renders the existing form; saves go through the same guarded
   // functions (PO / WO approval and DP gates, savePayable, recordPayments).
-  const billFormProps={onSave:savePayable,onCancel:closeCashOut,swos,payables,chartOfAccounts,costCenterDeals,wonDeals,deals,today,role,sendTelegramNotification,prs,drs,suppliers,upPayables};
+  const billFormProps={onSave:savePayable,onCancel:closeCashOut,onCreateCostCenter:canCreateCostCenter(role)?createCostCenter:null,swos,payables,chartOfAccounts,costCenterDeals,wonDeals,deals,today,role,sendTelegramNotification,prs,drs,suppliers,upPayables};
   // roleCanInsert maps Cost Control to Finance, but Cost Control (QS) only reads
   // payables and approves POs through approve_po; it writes none of these.
   const coCan=t=>role!=="Cost Control"&&roleCanInsert(t);
