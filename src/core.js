@@ -1283,6 +1283,24 @@ export const dealDpClear = (deal, deals = []) => {
       || (parent.standbyPO && deals.some(s => s.parentDealId === parent.id && _paidOrWaived(s))))) return true;
   return !!deal.standbyPO && deals.some(c => c.parentDealId === deal.id && _paidOrWaived(c));
 };
+// "No approved PRF = no project PO" (Paulo, 2026-11-22). From 1 Dec 2026 (Manila)
+// a PO line on a client project is issued only when it comes from an approved PRF
+// (prfLineId, set by the Order Board) or a Manager overrode the rule for that PO.
+// Stock POs (no deal) and internal GMD jobs are exempt; lines created before
+// 1 Dec are grandfathered. Enforced by migration 20261122020000_po_require_approved_prf.sql
+// (po_require_prf / po_line_prf_gap / waive_po_prf) — keep in sync.
+export const PRF_RULE_START = "2026-12-01";
+const _manilaDay = (d = new Date()) => new Date(d.getTime() + 8 * 3600e3).toISOString().slice(0, 10);
+export const prfRuleOn = (now = new Date()) => _manilaDay(now) >= PRF_RULE_START;
+// A not-yet-saved line (no createdAt) counts as created today.
+export const poLineNeedsPrf = (line, deal) => {
+  if (!line || !deal) return false;
+  if (/^GMD Production/i.test(deal.client || "")) return false;
+  if (line.prfLineId || line._prfLineId) return false;
+  if (line.createdAt && _manilaDay(new Date(line.createdAt)) < PRF_RULE_START) return false;
+  return true;
+};
+export const PRF_RULE_MSG = "No approved PRF for this project line. From 1 Dec a project PO is issued only from an approved PRF (create it from the Order Board), or a Manager overrides the rule for the PO with a reason";
 const _familyRoot = (dealId, byId) => { const d = byId.get(dealId); return d?.parentDealId || dealId; };
 // The same money already recorded in this contract family (the mother PO / main
 // contract and everything linked under it): same amount to the centavo on the
