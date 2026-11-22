@@ -34,7 +34,7 @@ const blankLine=()=>({date:TODAY,supplier:"",description:"",amount:"",receipt_pa
 // whether the page was already open or mounts now. Module-level so a later
 // remount with the same value doesn't reopen it.
 let lastNewSeq=0;
-export default function Liquidations({deals=[],costCenters=[],role="",session,today=TODAY,newSeq=0}){
+export default function Liquidations({deals=[],costCenters=[],onCreateCostCenter=null,role="",session,today=TODAY,newSeq=0}){
   const mob=useIsMobile();
   const me=session?.username||"";
   const myName=session?.name||"";
@@ -91,6 +91,13 @@ export default function Liquidations({deals=[],costCenters=[],role="",session,to
   const startEdit=r=>setForm({id:r.id,status:r.status,payee:r.payee,purpose:r.purpose,project_id:r.project_id||"",charge_to:r.charge_to||"",
     items:(r.items||[]).map(it=>({...blankLine(),...it,amount:String(it.amount??"")}))});
   const setF=(k,v)=>setForm(f=>({...f,[k]:v}));
+  // Manager / Finance only (App passes onCreateCostCenter just to them).
+  const newCostCenter=async()=>{
+    const name=await uiPrompt("Name the new cost center (e.g. GMD Office Renovation 2026). Use it for GMD's own spending, not a client project.");
+    if(!name||!String(name).trim()) return;
+    const id=await onCreateCostCenter(String(name).trim());
+    if(id&&typeof id==="string") setF("project_id",id);
+  };
   const setLine=(i,k,v)=>setForm(f=>({...f,items:f.items.map((it,j)=>j===i?{...it,[k]:v}:it)}));
   const formTotal=form?r2(form.items.reduce((s,it)=>s+num(it.amount),0)):0;
 
@@ -230,12 +237,13 @@ export default function Liquidations({deals=[],costCenters=[],role="",session,to
             </Fld>
             <Fld label="What was it for?" required><Inp value={form.purpose} onChange={e=>setF("purpose",e.target.value)} placeholder="e.g. PRF cash purchases 11.10, site meals, pull-out"/></Fld>
             <div style={{gridColumn:mob?undefined:"1 / -1"}}>
-              <Fld label="Charged to" required hint={form.charge_to&&!form.project_id?`Was "${form.charge_to}" (old list). Pick the project or cost center.`:"A client project, or a GMD cost center for GMD's own spending (office, tools, renovation). Not listed? Ask a Manager to add a cost center."}>
+              <Fld label="Charged to" required hint={form.charge_to&&!form.project_id?`Was "${form.charge_to}" (old list). Pick the project or cost center.`:`A client project, or a GMD cost center for GMD's own spending (office, tools, renovation).${onCreateCostCenter?"":" Not listed? Ask a Manager or Finance to add a cost center."}`}>
                 <ProjectSelect value={form.project_id} onChange={e=>setF("project_id",e.target.value)} placeholder="Search project, CE no., JO no., client or cost center…">
                   <option value="">— pick a project or cost center —</option>
                   {ccOpts.length>0&&<optgroup label="GMD cost centers (not a client project)">{ccOpts.map(o=><option key={o.value} value={o.value}>🏷 {o.label}</option>)}</optgroup>}
                   <optgroup label="Projects">{projOpts.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</optgroup>
                 </ProjectSelect>
+                {onCreateCostCenter&&<button type="button" onClick={newCostCenter} style={{...linkBtn,marginTop:6,fontSize:".74rem"}}>+ New cost center</button>}
               </Fld>
             </div>
           </div>

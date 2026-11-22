@@ -444,6 +444,11 @@ export const isProcurementRole = r => r === "Procurement" || r === "ProcurementM
 // Managers. Finance pays, so it never raises an order (Paulo, 2026-11-11). The
 // database refuses a new PO line / WO from Finance roles (migration 20261114050000).
 export const canRaiseOrder = r => r === "Manager" || isProcurementRole(r);
+// Who adds an internal cost center (GMD OPEX, GMD Tools, an office renovation…):
+// a Manager or the Finance role (Paulo, 2026-11-22). Mirrors create_cost_center
+// (migration 20261122010000_cost_center_create_finance.sql). Keep in sync.
+export const COST_CENTER_CREATOR_ROLES = ["Manager","Finance"];
+export const canCreateCostCenter = r => COST_CENTER_CREATOR_ROLES.includes(canonRole(r));
 
 // Human-readable labels for role codes that aren't self-explanatory when shown
 // raw (role codes are used directly in ===/object-key comparisons, so we keep
