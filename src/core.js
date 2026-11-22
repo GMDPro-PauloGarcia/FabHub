@@ -1654,7 +1654,19 @@ export const PO_TIERS_ON=true;
 // that supplier on the PO's date is ₱50,000 or less (poSplitTotal), so one order can't
 // be cut into small POs. The database also checks the requester is in Procurement.
 // Mirrors po_split_total() / po_line_approver_name() (migration 20261114030000).
-export const PO_PROC_MGR_LIMIT=50000;
+// Raised to ₱150,000 (same as Cost Control) on 2026-11-22 (procurement audit:
+// she had approved no PO since her tier went live). Migration 20261123010000.
+export const PO_PROC_MGR_LIMIT=150000;
+// Small POs (Paulo, 2026-11-22; migration 20261123010000): a PO of ₱10,000 or less,
+// with everything ordered from that supplier that day ₱10,000 or less (poSplitTotal,
+// so an order can't be cut into small POs), is issued by Procurement / the
+// Procurement Manager / a Manager without a second person. approved_by reads
+// "Auto ≤₱10K: <name>"; proc_mgr_po_approvals_alert lists them next morning.
+// Mirrors po_require_approver(). 66% of POs in Oct-Nov 2026 were ₱10,000 or less.
+export const PO_AUTO_ISSUE_LIMIT=10000;
+export const PO_AUTO_ISSUE_ROLES=["Procurement","ProcurementManager","Manager"];
+export const canAutoIssuePO=(role,total,split)=>PO_TIERS_ON&&PO_AUTO_ISSUE_ROLES.includes(role)
+  &&split!=null&&(Number(total)||0)<=PO_AUTO_ISSUE_LIMIT&&Number(split)<=PO_AUTO_ISSUE_LIMIT;
 // Same key as ap_vendor_key() in the database: first 8 letters/digits, lower case.
 export const poVendorKey=v=>String(v||"").replace(/[^a-zA-Z0-9]/g,"").toLowerCase().slice(0,8);
 const poLineDate=l=>l.poDate||String(l.createdAt||l.createdDate||"").slice(0,10);
@@ -1665,16 +1677,24 @@ export const poSplitTotal=(prs,poNo)=>{
   const k=poVendorKey(f.supplier), d=poLineDate(f); if(!k) return null;
   return poLinesTotal((prs||[]).filter(p=>p.poNumber&&poVendorKey(p.supplier)===k&&poLineDate(p)===d));
 };
+// The same for a PO being saved (not on the server yet, or edited): the supplier's
+// other POs that day plus this PO's total. null with no supplier.
+export const poSplitTotalFor=(prs,supplier,date,poNo,total)=>{
+  const k=poVendorKey(supplier); if(!k) return null;
+  const d=String(date||"").slice(0,10);
+  return poLinesTotal((prs||[]).filter(p=>p.poNumber&&p.poNumber!==poNo&&poVendorKey(p.supplier)===k&&poLineDate(p)===d))+(Number(total)||0);
+};
 export const canApprovePOLine=(role,sessionName,requestedBy,total,split=null)=>{
   const t=Number(total)||0;
   const notMine=!requestedBy||!sessionName||sessionName.trim().toLowerCase()!==requestedBy.trim().toLowerCase();
+  if(canAutoIssuePO(role,t,split)) return true;
   if(role==="Manager") return !PO_TIERS_ON||t<PO_MANAGER_LIMIT||isTopApprover(sessionName);
   if(role==="QS") return t<=PO_COST_CONTROL_LIMIT&&notMine;
   if(role==="ProcurementManager") return PO_TIERS_ON&&!!requestedBy&&notMine
     &&split!=null&&t<=PO_PROC_MGR_LIMIT&&Number(split)<=PO_PROC_MGR_LIMIT;
   return false;
 };
-export const PO_APPROVER_MSG=PO_TIERS_ON?"Marian approves her team's POs up to ₱50,000 (all of that supplier's POs that day), Cost Control up to ₱150,000, Paolo Gomez up to ₱250,000, and Paulo, Mar or Arrius from ₱250,000":"Needs Cost Control (POs up to ₱150,000) or a Manager (above ₱150,000: Paolo Gomez)";
+export const PO_APPROVER_MSG=PO_TIERS_ON?"POs of ₱10,000 or less (all of that supplier's POs that day) are issued by Procurement; Marian approves her team's POs and Cost Control up to ₱150,000, Paolo Gomez up to ₱250,000, and Paulo, Mar or Arrius from ₱250,000":"Needs Cost Control (POs up to ₱150,000) or a Manager (above ₱150,000: Paolo Gomez)";
 
 export const canApprovePO=(role,sessionName,requestedBy)=>{
   // Only a Manager or a Procurement Manager may approve (issue) a PO or subcon

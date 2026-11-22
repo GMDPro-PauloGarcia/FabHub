@@ -4,6 +4,7 @@ import {canApprovePOLine,poLinesTotal,poSplitTotal,dealDpClear,prfRuleOn,canonRo
 import {supabase,isSupabaseReady} from "../supabaseClient";
 
 // ─── PO APPROVALS (Purchase Orders page) ───────────────────────────────────
+// Procurement issues POs of ₱10,000 or less itself (canAutoIssuePO, 20261123010000);
 // Cost Control (QS) up to ₱150,000 or a Manager (any amount) may move a PO to
 // "PO Issued" (canApprovePOLine; the database checks it too, 20261107010000). Approving meant opening
 // each PO line's status dropdown, so POs piled up at "Pending Approval" and,
@@ -147,7 +148,7 @@ export default function POApprovals({prs=[],deals=[],role,session,approvePOs}){
           </table>
         </div>
         {rows.length>limit&&<button onClick={()=>setLimit(l=>l+PAGE)} style={{marginTop:8,background:"#fff",border:"1px solid #fde68a",borderRadius:7,padding:"6px 14px",fontSize:".76rem",fontWeight:600,color:"#92400e",cursor:"pointer",fontFamily:"inherit"}}>Show {Math.min(PAGE,rows.length-limit)} more of {rows.length-limit}</button>}
-        <div style={{fontSize:".7rem",color:"#a16207",marginTop:8}}>Totals are approximate (before PO discounts). POs you requested yourself aren't listed: another approver must issue them.</div>
+        <div style={{fontSize:".7rem",color:"#a16207",marginTop:8}}>Totals are approximate (before PO discounts). POs you requested yourself aren't listed (another approver must issue them), except POs of ₱10,000 or less with that supplier's POs that day, which Procurement issues itself.</div>
       </div>}
     </div>
   );
