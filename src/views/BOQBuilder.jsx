@@ -3,7 +3,7 @@ import {today,uid,KEYS,Card,uiConfirm,addPrintClose,docLogo,ProjectSelect} from 
 import {supabase,isSupabaseReady,sbInsert,sbUpdate,sbDelete} from "../supabaseClient";
 // Clearing a deal's BOQ is Manager-only, also enforced by migration
 // 20261006010000_deals_boq_safeguards.sql — keep in sync.
-import {canonRole,NET_DAY_OPTIONS} from "../core";
+import {canonRole,NET_DAY_OPTIONS,boqPdfClean} from "../core";
 import {downloadBoqXlsx,boqXlsxFileName} from "./boqExcel";
 import {useSharePdf,openPdfTab} from "./SharePdf";
 
@@ -936,10 +936,11 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   // iPhones ignore window.print() in the print pop-up, so the quotation is also
   // built as a real PDF file (./boqPdf) and handed to the phone's share sheet,
   // or downloaded where sharing files isn't supported (most desktops).
-  // Anyone who can open the BOQ can share it, but only a Manager's copy is
-  // clean: everyone else's is watermarked "DRAFT – NOT FOR SUBMISSION", since
-  // every quotation carries the President's name as approver.
-  const pdfIsDraft=canonRole(role)!=="Manager";
+  // Anyone who can open the BOQ can share it, but only Managers and Sales get
+  // a clean copy (BOQ_CLEAN_PDF_ROLES, src/core.js); all other copies are
+  // watermarked "DRAFT – NOT FOR SUBMISSION", since every quotation carries
+  // the President's name as approver.
+  const pdfIsDraft=!boqPdfClean(role);
   // Who prepared it: the BOQ's last editor (FabHub records it on every save),
   // not a fixed name (Paulo, 2026-11-19). Rodney only when nothing is recorded.
   const boqPreparedBy=(lastEditedBy&&lastEditedBy!=="—")?lastEditedBy:"Rodney Erpe";
@@ -990,7 +991,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   const makePdf=()=>pdf.make(async()=>{
     const {buildBoqPdf}=await import("./boqPdf");
     return buildBoqPdf(boqPdfModel());
-  },pdfFileName(),{draft:pdfIsDraft,draftNote:"Only a Manager's copy is clean to send to the client."});
+  },pdfFileName(),{draft:pdfIsDraft,draftNote:"Only a Manager's or a Sales copy is clean to send to the client."});
 
   // Excel export (see ./boqExcel). The internal copy shows direct cost and
   // margin, so only Managers and QS get it; the client copy is the quotation.
@@ -1121,7 +1122,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
             📚 Library{boqLibrary.length>0&&<span style={{background:"#7c3aed",color:"#fff",borderRadius:20,padding:"0 6px",fontSize:".62rem",fontWeight:800,marginLeft:4}}>{boqLibrary.length}</span>}
           </button>}
           {items.length>0&&<button onClick={printBOQ} style={{background:"#f0fdf4",border:"1.5px solid #86efac",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#166534",cursor:"pointer"}}>🖨 Preview / Print</button>}
-          {items.length>0&&<button onClick={makePdf} disabled={pdf.busy} title={pdfIsDraft?"Make the quotation as a PDF to share or download. Your copy is watermarked DRAFT: only a Manager's is clean to send.":"Make the quotation as a PDF to share (Viber, Mail, Files) or download"} style={{background:"#ecfeff",border:"1.5px solid #67e8f9",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#155e75",cursor:pdf.busy?"wait":"pointer"}}>{pdf.busy?"Making PDF…":"📤 Share PDF"}</button>}
+          {items.length>0&&<button onClick={makePdf} disabled={pdf.busy} title={pdfIsDraft?"Make the quotation as a PDF to share or download. Your copy is watermarked DRAFT: only Managers and Sales get a clean one.":"Make the quotation as a PDF to share (Viber, Mail, Files) or download"} style={{background:"#ecfeff",border:"1.5px solid #67e8f9",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#155e75",cursor:pdf.busy?"wait":"pointer"}}>{pdf.busy?"Making PDF…":"📤 Share PDF"}</button>}
           {onDuplicateToDeal&&!coId&&!srvLoading&&items.length>0&&<button onClick={()=>openXfer("duplicate")} title="Copy this BOQ onto another deal (e.g. the same store package at a new location). This BOQ stays as it is." style={{background:"#fdf4ff",border:"1.5px solid #f0abfc",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#a21caf",cursor:"pointer"}}>⧉ Duplicate to deal</button>}
           {items.length>0&&<button onClick={()=>exportXlsx("client")} disabled={!!xlsxBusy} title="Download the quotation as an Excel file — selling prices only, safe to send to the client" style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#1d4ed8",cursor:xlsxBusy?"wait":"pointer"}}>{xlsxBusy==="client"?"Preparing…":"⬇ Excel"}</button>}
           {items.length>0&&canExportInternal&&<button onClick={()=>exportXlsx("internal")} disabled={!!xlsxBusy} title="Internal Excel: direct cost, markup and margin per line. Do not send to the client." style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#b91c1c",cursor:xlsxBusy?"wait":"pointer"}}>{xlsxBusy==="internal"?"Preparing…":"⬇ Excel (internal)"}</button>}

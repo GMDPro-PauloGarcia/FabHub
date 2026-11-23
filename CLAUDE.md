@@ -54,6 +54,7 @@ For the smoke test locally, run `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers
 - Linking a BOQ to a deal is final: Duplicate/Link never replace a deal's existing BOQ. Mother POs never carry a BOQ or a price.
 - Only a Manager can clear a deal's BOQ. Every BOQ change and deal delete keeps the previous BOQ in `deals_boq_history` (restore steps are in the migration).
 - Enforced in `attachBoqToDeal` (`src/App.jsx`), the Clear Draft gate in `src/views/BOQBuilder.jsx`, and migration `20261006010000_deals_boq_safeguards.sql` — keep them in sync.
+- **Clean quotation PDFs** (Paulo, 2026-11-23): Managers, Sales and SalesOpsAdmin get a clean BOQ quotation PDF to send to clients; everyone else's (QS, Finance…) is watermarked "DRAFT – NOT FOR SUBMISSION". No approval step: Paulo chose this over a Manager-approval gate, knowing every quotation prints the President's name as approver. `BOQ_CLEAN_PDF_ROLES` / `boqPdfClean` (`src/core.js`), `pdfIsDraft` in BOQBuilder (Share PDF and Preview / Print). App-only, no database rule.
 - Supabase MCP `execute_sql`/`apply_migration` hang on any `DROP` (they wait for a confirmation that never comes). Write migrations with `create or replace` / `if not exists` instead.
 
 ## Offset / credit note settlements
