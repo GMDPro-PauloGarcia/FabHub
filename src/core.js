@@ -436,6 +436,12 @@ export const ROLE_CLR  = { Manager:"#f59e0b",Sales:"#10b981",Finance:"#3b82f6",A
 // Procurement, so it MUST canonicalize to Procurement here and in mint-session.
 export const RLS_ROLE_MAP = { Operations:"ProjectMover", Ops:"ProjectMover", "Cost Control":"Finance", Admin:"Manager", ProcurementManager:"Procurement" };
 export const canonRole = r => RLS_ROLE_MAP[r] || r;
+// Who gets a clean (unwatermarked) BOQ quotation PDF to send to the client.
+// Everyone else's copy is stamped "DRAFT – NOT FOR SUBMISSION". Sales and
+// SalesOpsAdmin added 2026-11-23 (Paulo: "I'd like for my team to send BOQs
+// without the watermarks"); before that, Managers only.
+export const BOQ_CLEAN_PDF_ROLES = ["Manager","Sales","SalesOpsAdmin"];
+export const boqPdfClean = r => BOQ_CLEAN_PDF_ROLES.includes(canonRole(r));
 // True for anyone on the procurement desk (buyer or the approving manager).
 // Use this for every UI/ability gate that should cover both; keep === checks
 // only where the manager and the buyer must be told apart (i.e. PO approval).
