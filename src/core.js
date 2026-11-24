@@ -320,6 +320,40 @@ export const canApproveAddendum=(role, userName, deal, parent)=>{
   if(r!=="SalesOpsAdmin") return false;
   return !ownsDealCommission(deal,userName,role)&&!ownsDealCommission(parent,userName,role);
 };
+// ── Contract price ↔ billing schedule (2026-11-24) ──────────────────────────
+// Billing has started once a milestone is past Draft (and not Cancelled) or has
+// any payment. From then on only a Manager changes the contract value directly;
+// everyone else raises a change order. Mirrors deal_billing_started() /
+// trg_deals_contract_value_guard (migration 20261124040000_contract_billing_link.sql).
+export const CONTRACT_LOCK_MSG="Billing has started on this project, so only a Manager can change the contract value. Raise a change order (additive or deductive) instead: it adds its own billing line.";
+export const dealBillingStarted=(dealId, billings)=>(billings||[]).some(b=>b.dealId===dealId&&b.status!=="Cancelled"&&(b.status!=="Draft"||(b.payments||[]).length>0));
+export const contractLocked=(deal, billings, role)=>!!deal&&canonRole(role)!=="Manager"&&dealBillingStarted(deal.id, billings);
+// What the non-cancelled milestones add up to vs the contract. gap < 0 = under-billed.
+export const billingContractGap=(deal, billings)=>{
+  const ms=(billings||[]).filter(b=>b.dealId===deal?.id&&b.status!=="Cancelled");
+  const sched=Math.round(ms.reduce((s,b)=>s+(Number(b.amount)||0),0)*100)/100;
+  const contract=Math.round((Number(deal?.value)||0)*100)/100;
+  return {count:ms.length, sched, contract, gap:Math.round((sched-contract)*100)/100};
+};
+// Change-order lines (isCoMilestone, below) keep their own amount.
+// Scale the Draft, unpaid base milestones so the schedule adds up to the contract.
+// Returns null when it can't (billing started, nothing to scale). Last line takes
+// the rounding so the total is exact to the centavo.
+export const rescaleDraftMilestones=(deal, billings)=>{
+  if(!deal||dealBillingStarted(deal.id,billings)) return null;
+  const ms=(billings||[]).filter(b=>b.dealId===deal.id&&b.status!=="Cancelled");
+  const base=ms.filter(b=>!isCoMilestone(b)&&b.status==="Draft"&&!(b.payments||[]).length);
+  const fixed=ms.filter(b=>!base.includes(b)).reduce((s,b)=>s+(Number(b.amount)||0),0);
+  const baseTot=base.reduce((s,b)=>s+(Number(b.amount)||0),0);
+  const target=Math.round(((Number(deal.value)||0)-fixed)*100)/100;
+  if(!base.length||baseTot<=0||target<=0) return null;
+  let left=target;
+  return base.map((b,i)=>{
+    const amt=i===base.length-1?Math.round(left*100)/100:Math.round((Number(b.amount)||0)/baseTot*target*100)/100;
+    left-=amt;
+    return {id:b.id, from:Number(b.amount)||0, to:amt};
+  });
+};
 export const salesOwnerLocked=(deal, role)=>
   !!deal&&canonRole(role)!=="Manager"&&(Number(deal.amountPaid)||0)!==0;
 
