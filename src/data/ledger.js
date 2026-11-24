@@ -152,7 +152,7 @@ export const isTransferKind=k=>/^Bank transfer/.test(String(k||""));
 // (payableIds) is matched only to payments on those bills; an untagged one is
 // matched by supplier + amount within 7 days and shown as a suggestion. Each
 // payment is claimed by one row at most.
-export const reconcileLedger=({movements=[],payables=[],payPays=[],billings=[]})=>{
+export const reconcileLedger=({movements=[],payables=[],payPays=[],billings=[],clientOf=null})=>{
   const payById=new Map((payables||[]).map(p=>[p.id,p]));
   const live=(payPays||[]).filter(x=>x.status!=="Cancelled"&&r2(x.amount)>0);
   const claimed=new Set();
@@ -211,20 +211,47 @@ export const reconcileLedger=({movements=[],payables=[],payPays=[],billings=[]})
   const unmatchedAp=groups.filter(g=>!claimed.has(g.id));
 
   // Collections ↔ client billing payments (cash only: offsets never touch a bank).
-  const bp=[];
+  // One client cheque often settles several invoices (e.g. a 50% DP and a 50%
+  // balance paid together): Billing then holds one payment per invoice with the
+  // same reference, date and bank. Those are one deposit, matched as one group,
+  // like an AP batch (2026-11-24: Omnivores CE-2026-1069, cheque 612GTP1B, was
+  // shown as two "Not in cash position" rows).
+  const bpGroups=[];
+  const bpByRef=new Map();
   (billings||[]).forEach(ms=>(ms.payments||[]).forEach(p=>{
     if(!isCashPayment(p)||!(r2(p.amount)>0)) return;
-    bp.push({id:p.id,ms,p,amount:r2(p.amount),date:p.valueDate||p.date||"",bank:p.bank||""});
+    const it={id:p.id,ms,p,amount:r2(p.amount),date:p.valueDate||p.date||"",bank:p.bank||""};
+    const ref=String(p.refNo||"").replace(/\s+/g,"").toUpperCase();
+    const k=ref?`${ref}|${it.date}|${bankOf(it.bank)?.id||it.bank}`:null;
+    if(k&&bpByRef.has(k)){bpByRef.get(k).items.push(it);return;}
+    const g={id:p.id,items:[it]};
+    if(k) bpByRef.set(k,g);
+    bpGroups.push(g);
   }));
+  bpGroups.forEach(g=>{const f=g.items[0];Object.assign(g,{ms:f.ms,p:f.p,date:f.date,bank:f.bank,amount:r2(g.items.reduce((s,x)=>s+x.amount,0))});});
   const bClaimed=new Set();
-  movements.filter(m=>m.dir==="in"&&!res.has(m.key)).forEach(m=>{
-    const b=bankOf(m.bank);
-    const c=bp.filter(x=>!bClaimed.has(x.id)&&Math.abs(x.amount-m.amount)<0.01&&dayDiff(x.date,m.date)<=7
-      &&(!b||!x.bank||bankOf(x.bank)?.id===b.id))
+  const bankOk=(m,x)=>{const b=bankOf(m.bank);return !b||!x.bank||bankOf(x.bank)?.id===b.id;};
+  const insLeft=movements.filter(m=>m.dir==="in"&&!res.has(m.key));
+  insLeft.forEach(m=>{
+    const c=bpGroups.filter(x=>!bClaimed.has(x.id)&&Math.abs(x.amount-m.amount)<0.01&&dayDiff(x.date,m.date)<=7&&bankOk(m,x))
       .sort((a,b2)=>dayDiff(a.date,m.date)-dayDiff(b2.date,m.date));
     if(c.length){bClaimed.add(c[0].id);res.set(m.key,{status:"suggested",billing:c[0]});}
+  });
+  // Second pass: the bank got less than Billing recorded, the sheet row names
+  // the client, same bank, within 7 days, and the gap is at most 5% (typically
+  // EWT the client withheld but Billing recorded as cash). Flagged, not linked.
+  insLeft.filter(m=>!res.has(m.key)).forEach(m=>{
+    const txt=String(m.payee||"").replace(/[^a-zA-Z0-9]/g,"").toLowerCase();
+    const c=bpGroups.filter(x=>{
+      if(bClaimed.has(x.id)||dayDiff(x.date,m.date)>7||!bankOk(m,x)) return false;
+      const gap=x.amount-m.amount;
+      if(!(gap>0.01&&gap<=x.amount*0.05+0.01)) return false;
+      const ck=clientOf?vendorKey(clientOf(x.ms.dealId)):"";
+      return ck.length>=4&&txt.includes(ck);
+    }).sort((a,b2)=>dayDiff(a.date,m.date)-dayDiff(b2.date,m.date));
+    if(c.length){bClaimed.add(c[0].id);res.set(m.key,{status:"diff",billing:c[0],gap:r2(c[0].amount-m.amount)});}
     else res.set(m.key,{status:"none"});
   });
-  const unmatchedBilling=bp.filter(x=>!bClaimed.has(x.id));
+  const unmatchedBilling=bpGroups.filter(x=>!bClaimed.has(x.id));
   return {byKey:res,unmatchedAp,unmatchedBilling};
 };
