@@ -1104,6 +1104,20 @@ export const ADDENDUM_STATUSES = ["Discovered","Sales Notified","Client Coordina
 export const CO_KINDS = ["Additive","Deductive"];
 export const coSignedValue = (x) => ((x && x.kind === "Deductive" ? -1 : 1) * Math.abs(Number(x && x.value) || 0));
 
+// A deal's contract BEFORE change orders. Approving a CO adds its signed value to
+// deals.value (rollDealContract) and the CO is counted again on its own, so any
+// figure that adds COs on top must start from this base, not deals.value. Derived
+// from the approved COs themselves because the pre-CO value is never stored
+// (the old client-only `originalValue` was lost on every reload, so the sales
+// report counted each approved CO twice).
+export const CO_ROLLED_STATUSES = ["Approved","Billed","Collected"];
+export const dealBaseValue = (d, addenda = []) => {
+  if (!d) return 0;
+  const rolled = (addenda || []).filter(a => a && (a.dealId || a.projectId) === d.id && CO_ROLLED_STATUSES.includes(a.status))
+    .reduce((s, a) => s + coSignedValue(a), 0);
+  return Math.round(((Number(d.value) || 0) - rolled) * 100) / 100;
+};
+
 // A change order can be recorded two ways in FabHub — as an `addenda` record on a
 // parent deal, OR as a linked child deal (parentDealId set). If the SAME change
 // order is entered via both, its value is double-counted in awarded totals (the
