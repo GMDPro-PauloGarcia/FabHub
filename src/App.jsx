@@ -16,7 +16,7 @@ import {checkSupplier,supplierSavePrompt,checkBill} from './dataGuard';
 import SupplierHint from './SupplierHint';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {projProgressPct, isConstructionDeal, projStageFlow, projStepIndex, projStepLabel, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, canApproveAddendum, ADDENDUM_APPROVER_MSG, PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, canRecordDeduction, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel, pendingCostByProject, poSplitTotal, canRaiseOrder, canCreateCostCenter, woSignStep, WO_SIGN_MSG, arAgeBucket, arCallOrder, dealHasBoq, MOTHER_PO_BOQ_MSG, ledgerCosts, poVatSet, isBilledRevenue, paymentBaseFactor, invoiceContractProgress, billingPosition, statementLine, orderForLabel, PO_ISSUED_STATUSES, WO_COMMITTED_STATUSES, billingDueTerms, billingDefaultNetDays, billingTermsLabel, projectProgressPct, prfRuleOn, poLineNeedsPrf, PRF_RULE_MSG, poSplitTotalFor} from './core';
+import {projProgressPct, isConstructionDeal, projStageFlow, projStepIndex, projStepLabel, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, dealBaseValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, canApproveAddendum, ADDENDUM_APPROVER_MSG, PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, canRecordDeduction, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel, pendingCostByProject, poSplitTotal, canRaiseOrder, canCreateCostCenter, woSignStep, WO_SIGN_MSG, arAgeBucket, arCallOrder, dealHasBoq, MOTHER_PO_BOQ_MSG, ledgerCosts, poVatSet, isBilledRevenue, paymentBaseFactor, invoiceContractProgress, billingPosition, statementLine, orderForLabel, PO_ISSUED_STATUSES, WO_COMMITTED_STATUSES, billingDueTerms, billingDefaultNetDays, billingTermsLabel, projectProgressPct, prfRuleOn, poLineNeedsPrf, PRF_RULE_MSG, poSplitTotalFor} from './core';
 import ProgressReportModal from './views/ProgressReportModal';
 
 // Returns a component whose function IDENTITY is stable across renders while its
@@ -6933,8 +6933,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     }
   };
   // Create a project's billing schedule from the Milestone Builder rows. The base
-  // schedule bills the ORIGINAL contract only (originalValue when a legacy CO has
-  // been rolled into deal.value — each CO bills as its own line). Idempotent: the
+  // schedule bills the ORIGINAL contract only (dealBaseValue: deal.value less the
+  // approved COs rolled into it — each CO bills as its own line). Idempotent: the
   // persistent billingGenerated flag and the in-memory check both refuse a second
   // schedule (the 3–5× duplicate-set bug). Invoice numbers come from the server
   // counter one by one, so two people setting up billing at the same time can't
@@ -6944,7 +6944,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const createMilestoneSchedule=async(dealId,active,netDays,notes)=>{
     const _deal=deals.find(d=>d.id===dealId);
     if(!_deal) return false;
-    const val=Number(_deal.originalValue!=null?_deal.originalValue:_deal.value)||0;
+    const val=dealBaseValue(_deal,addenda);
     if(val<=0){toastEmit("Set a contract value for this project first.","error");return false;}
     // VAT is decided by the BOQ (it sets receipt type). Never bill an undecided
     // project: its invoices would silently default to OR and re-tax later.
@@ -7319,14 +7319,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // Once a change order is client-approved (or further along), its value is part
   // of the contract — keep the parent deal's contract value in step automatically.
   const ADDENDUM_ROLLED=s=>["Approved","Billed","Collected"].includes(s);
-  // Apply a delta to a deal's contract value (and remember the pre-addenda base
-  // for transparency). Derives nothing from flags, so it can't double-count.
+  // Apply a delta to a deal's contract value. The pre-CO base is derived when
+  // needed (dealBaseValue in core.js), never stored, so it survives a reload.
   const rollDealContract=(dealId,delta,addendum)=>{
     if(!dealId||!delta) return;
     upDeals(ds=>ds.map(d=>{
       if(d.id!==dealId) return d;
-      const base=d.originalValue!=null?d.originalValue:Number(d.value)||0;
-      const nd={...d,originalValue:base,value:Math.round((Number(d.value||0)+delta)*100)/100};
+      const nd={...d,value:Math.round((Number(d.value||0)+delta)*100)/100};
       if(isSupabaseReady()) sbSyncOne("deals",nd,toSbDeal);
       return nd;
     }));
@@ -13369,7 +13368,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // change orders are counted separately below, in their own awarded month and
     // under their own AE — so using the base here prevents double-counting a CO
     // that rollDealContract already folded into the parent's `value`.
-    const dealBase=(d)=>d.originalValue!=null?Number(d.originalValue)||0:Number(d.value||0);
+    const dealBase=(d)=>dealBaseValue(d,addenda);
     const dealTax=(d)=>calcTax(dealBase(d),d.receiptType||"OR",d.withholding||false);
     // The BOQ is the VAT authority; flag a deal whose receipt type disagrees with
     // its BOQ's decided VAT choice (e.g. set before the BOQ became authoritative).
@@ -14751,7 +14750,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:24}}>
           {[
             {l:"Total Pipeline",    v:fmt(Math.round(deals.filter(d=>isActivePipeline(d.stage)).reduce((s,d)=>s+Number(d.value||0),0))), c:"#3b82f6", sub:"Active stages"},
-            {l:"Awarded Value",     v:fmt(Math.round(wonDeals.reduce((s,d)=>s+Number(d.value||0),0))),   c:"#059669", sub:"All-time · base contract"},
+            {l:"Awarded Value",     v:fmt(Math.round(wonDeals.reduce((s,d)=>s+Number(d.value||0),0))),   c:"#059669", sub:"All-time · incl. approved COs"},
             {l:"Active Deals",      v:deals.filter(d=>isActivePipeline(d.stage)).length, c:"#f59e0b"},
             {l:"Awarded Projects",  v:wonDeals.length, c:"#8b5cf6"},
           ].map(({l,v,c,sub})=>(
@@ -18474,7 +18473,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         projs={projs} overallProg={overallProg}
         toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification}/>
     </Wrap>
-    {payTermsModal&&(()=>{const _d=deals.find(d=>d.id===payTermsModal);const _src=_d&&_d.parentDealId?(deals.find(x=>x.id===_d.parentDealId)||_d):_d;return _d?<MilestoneBuilder deal={_d} contractVal={_d.originalValue!=null?_d.originalValue:_d.value} schedCtx={{awardDate:pcards?.[_d.id]?.awardDate||_d.dateAcquired||pcards?.[_src.id]?.awardDate||"",stageDates:projs?.[_src.id]?.stageDates||projs?.[_d.id]?.stageDates||{}}} onClose={()=>setPayTermsModal(null)} onCreate={async(active,netDays,notes)=>{if(await createMilestoneSchedule(payTermsModal,active,netDays,notes))setPayTermsModal(null);}}/>:null;})()}
+    {payTermsModal&&(()=>{const _d=deals.find(d=>d.id===payTermsModal);const _src=_d&&_d.parentDealId?(deals.find(x=>x.id===_d.parentDealId)||_d):_d;return _d?<MilestoneBuilder deal={_d} contractVal={dealBaseValue(_d,addenda)} schedCtx={{awardDate:pcards?.[_d.id]?.awardDate||_d.dateAcquired||pcards?.[_src.id]?.awardDate||"",stageDates:projs?.[_src.id]?.stageDates||projs?.[_d.id]?.stageDates||{}}} onClose={()=>setPayTermsModal(null)} onCreate={async(active,netDays,notes)=>{if(await createMilestoneSchedule(payTermsModal,active,netDays,notes))setPayTermsModal(null);}}/>:null;})()}
     </>
   );
 
@@ -27278,7 +27277,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
           {(()=>{
             const terms=deal?.paymentTerms;
             const existingMs=billings.filter(b=>b.dealId===selDeal);
-            const val=Number(deal?.originalValue!=null?deal.originalValue:deal?.value||0);
+            const val=dealBaseValue(deal,addenda);
             const gate=dealOnboardingGate(deal,{scheduleInBuilder:true});
             if(existingMs.length>0||deal?.billingGenerated){
               if(!terms) return null;
