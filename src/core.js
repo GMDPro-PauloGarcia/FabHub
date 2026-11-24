@@ -324,7 +324,7 @@ export const canApproveAddendum=(role, userName, deal, parent)=>{
 // Billing has started once a milestone is past Draft (and not Cancelled) or has
 // any payment. From then on only a Manager changes the contract value directly;
 // everyone else raises a change order. Mirrors deal_billing_started() /
-// trg_deals_contract_value_guard (migration 20261124030000_contract_billing_link.sql).
+// trg_deals_contract_value_guard (migration 20261124040000_contract_billing_link.sql).
 export const CONTRACT_LOCK_MSG="Billing has started on this project, so only a Manager can change the contract value. Raise a change order (additive or deductive) instead: it adds its own billing line.";
 export const dealBillingStarted=(dealId, billings)=>(billings||[]).some(b=>b.dealId===dealId&&b.status!=="Cancelled"&&(b.status!=="Draft"||(b.payments||[]).length>0));
 export const contractLocked=(deal, billings, role)=>!!deal&&canonRole(role)!=="Manager"&&dealBillingStarted(deal.id, billings);

@@ -8794,7 +8794,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     }else{
       Object.assign(rec,{leadOriginStatus:_prevDeal.leadOriginStatus||"Pending",leadOriginApprovedBy:_prevDeal.leadOriginApprovedBy||"",leadOriginApprovedAt:_prevDeal.leadOriginApprovedAt||null});
     }
-    // ── Contract price ↔ billing schedule (migration 20261124030000) ─────────
+    // ── Contract price ↔ billing schedule (migration 20261124040000) ─────────
     // Before billing starts the contract moves freely (award adjustments) and its
     // Draft milestones can be rescaled to match. Once an invoice is sent or a
     // payment is in, only a Manager changes it; everyone else raises a change
