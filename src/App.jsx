@@ -26153,6 +26153,13 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   // Gross-entry helper for the milestone amount — staff can type the VAT-inclusive
   // figure and the stored net Amount fills (amount stays net, as the SOA expects).
   const[msGrossStr,setMsGrossStr]=useState("");
+  // "% of contract" box on the milestone forms (Paulo, 2026-11-24): typing a %
+  // fills the net Amount from the contract (deals.value, VAT-ex). Kept as typed;
+  // cleared when the amount is typed directly, which then shows its own %.
+  const[msPct,setMsPct]=useState("");
+  const pctAmt=(contract,pct)=>{const v=Number(String(pct).replace(/,/g,""));return pct===""||!isFinite(v)?"":String(Math.round(contract*v/100*100)/100);};
+  const pctOf=(contract,amt)=>contract>0&&Number(amt)>0?Math.round(Number(amt)/contract*10000)/100:null;
+  const boqNetOf=d=>{const b=d?.boqData||d?.boq_data;const it=Array.isArray(b?.items)?b.items:[];if(!it.length)return null;const g=it.reduce((x,i)=>x+(Number(i.total)||0),0);return Math.round((g-Math.min(Math.max(Number(b.discount)||0,0),g))*100)/100;};
   const msNetToGross=(v)=>{const x=Number(v)||0;return x?String(Math.round(x*1.12*100)/100):"";};
   const[payForm,  setPayForm]  =useState({amount:"",date:today,refNo:"",note:"",valueDate:"",bank:"",method:"Bank Transfer"});
   const[paySaving,setPaySaving]=useState(false);
@@ -26345,7 +26352,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     if(!["OR","AR"].includes(msForm.receiptType||msDeal?.receiptType)&&!msDeal?.standbyPO){toastEmit&&toastEmit("VAT isn't decided for this project yet — choose it in the BOQ, set Project VAT above (no BOQ), or set Receipt Type on this invoice.","error",9000);return;}
     addMilestone({...msForm,dealId:selDeal,invoiceNo:String(msForm.invoiceNo||"").trim()||await claimInv(),createdBy:session?.name||role});
     setMsForm({name:"",description:"",amount:"",invoiceNo:"",invoiceDate:today,dueDate:"",status:"Draft",receiptType:null,withholding:null});
-    setMsGrossStr("");
+    setMsGrossStr("");setMsPct("");
     setShowForm(false);
   };
   // Turn the WIP under-billed figure into an invoice: bill the work completed
@@ -26377,7 +26384,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       receiptType:deal.receiptType||null,withholding:deal.withholding??null,
     });
     setMsGrossStr((deal.receiptType||"OR")==="OR"?msNetToGross(netInvoice):"");
-    setShowForm(true);
+    setMsPct("");setShowForm(true);
     toastEmit&&toastEmit(ret?`Claim drafted: ₱${netInvoice.toLocaleString("en-PH")} net (₱${retHeld.toLocaleString("en-PH")} retention held).`:`Claim drafted: ₱${netInvoice.toLocaleString("en-PH")} (review & save).`,"success",6500);
   };
   // Retention receivable for the selected project: withheld across claims, less
@@ -27414,7 +27421,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
             <div style={{marginBottom:12}}>
               {!showForm?(
                 <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                  <button onClick={()=>setShowForm(true)}
+                  <button onClick={()=>{setMsPct("");setShowForm(true);}}
                     style={{background:"#1e293b",border:"none",borderRadius:9,padding:"8px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>
                     + Add Milestone
                   </button>
@@ -27436,16 +27443,27 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                     <Fld label="Milestone Name" required hint="e.g. 50% Downpayment, Progress Billing, Final Billing">
                       <Inp value={msForm.name} onChange={e=>fm("name",e.target.value)} placeholder="e.g. 50% Downpayment upon PO"/>
                     </Fld>
+                    {(()=>{
+                      const contract=Number(deal?.value||0);
+                      const boqNet=boqNetOf(deal);
+                      const shownPct=msPct!==""?null:pctOf(contract,msForm.amount);
+                      return(
+                        <Fld label="% of contract" hint={contract>0?`Of the contract ₱${contract.toLocaleString("en-PH",{minimumFractionDigits:2})} (VAT-ex). Fills the Amount.`:"Set the contract value first."}>
+                          <Inp type="number" min={0} max={100} value={msPct} readOnly={!(contract>0)} onChange={e=>{const v=e.target.value;setMsPct(v);const a=pctAmt(contract,v);fm("amount",a);setMsGrossStr(msNetToGross(a));}} placeholder={shownPct!=null?`${shownPct}%`:"e.g. 50"}/>
+                          {boqNet!=null&&Math.abs(boqNet-contract)>1&&<div style={{fontSize:".7rem",color:"#b45309",fontWeight:600,marginTop:3}}>⚠ The contract (₱{contract.toLocaleString("en-PH",{minimumFractionDigits:2})}) isn't the BOQ total (₱{boqNet.toLocaleString("en-PH",{minimumFractionDigits:2})}). Bill on the right one: fix the contract value on the deal if the BOQ is the agreed price.</div>}
+                        </Fld>
+                      );
+                    })()}
                     <Fld label="Amount (₱, Net / VAT-exclusive)" hint={(msForm.receiptType??deal?.receiptType??"OR")==="OR"?"Net (ex-VAT). Prefer entering gross? Use the box below — this fills for you.":undefined} required>
                       <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                        <Inp type="number" value={msForm.amount} onChange={e=>{fm("amount",e.target.value);setMsGrossStr(msNetToGross(e.target.value));}} placeholder="0.00" style={{flex:1}}/>
+                        <Inp type="number" value={msForm.amount} onChange={e=>{fm("amount",e.target.value);setMsGrossStr(msNetToGross(e.target.value));setMsPct("");}} placeholder="0.00" style={{flex:1}}/>
                         {selDeal&&(()=>{
                           const d=wonDeals.find(x=>x.id===selDeal)||deals.find(x=>x.id===selDeal);
                           const existingMs=billings.filter(b=>b.dealId===selDeal);
                           const totalMs=existingMs.reduce((s,b)=>s+Number(b.amount||0),0);
                           const remaining=Math.max(0,(Number(d?.value||0)-totalMs));
                           return remaining>0?(
-                            <button type="button" onClick={()=>{fm("amount",String(remaining));setMsGrossStr(msNetToGross(remaining));}}
+                            <button type="button" onClick={()=>{fm("amount",String(remaining));setMsGrossStr(msNetToGross(remaining));setMsPct("");}}
                               style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"5px 10px",color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit",fontSize:".75rem",fontWeight:700,whiteSpace:"nowrap"}}>
                               Bill Remaining ₱{remaining.toLocaleString()}
                             </button>
@@ -27455,7 +27473,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                     </Fld>
                     {(msForm.receiptType??deal?.receiptType??"OR")==="OR"&&(
                       <Fld label="Or enter Gross (VAT-inclusive)" hint="Type the gross figure — the net Amount fills automatically.">
-                        <Inp type="number" min={0} value={msGrossStr} onChange={e=>{const g=e.target.value;setMsGrossStr(g);fm("amount",g===""?"":String(Math.round(Math.max(0,Number(g)||0)/1.12*100)/100));}} placeholder="e.g. 560,000 incl. VAT"/>
+                        <Inp type="number" min={0} value={msGrossStr} onChange={e=>{const g=e.target.value;setMsGrossStr(g);setMsPct("");fm("amount",g===""?"":String(Math.round(Math.max(0,Number(g)||0)/1.12*100)/100));}} placeholder="e.g. 560,000 incl. VAT"/>
                       </Fld>
                     )}
                     <Fld label="Invoice No." hint="Auto-generated if blank"><Inp value={msForm.invoiceNo} onChange={e=>fm("invoiceNo",e.target.value)} placeholder="Leave blank for the next free number"/></Fld>
@@ -27665,8 +27683,13 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                               // (migration 20261121010000), which keeps the old amount otherwise.
                               const orig=billings.find(b=>b.id===editMs);
                               const amtLocked=canonRole(role)!=="Manager"&&!!orig&&orig.status!=="Draft";
-                              return(<Fld label="Amount (₱)"><Inp type="number" value={editMsForm.amount||""} readOnly={amtLocked} onChange={e=>fme("amount",e.target.value)} placeholder="0.00"/>
-                                {amtLocked&&<div style={{fontSize:".7rem",color:"#b45309",fontWeight:600,marginTop:3}}>This invoice has been sent. Only a Manager can change its amount. To lower it, request a deduction.</div>}</Fld>);
+                              const contract=Number(deal?.value||0);
+                              const shown=editMsForm.pctStr!=null&&editMsForm.pctStr!==""?null:pctOf(contract,editMsForm.amount);
+                              return(<><Fld label="% of contract" hint={contract>0?`Of ₱${contract.toLocaleString("en-PH",{minimumFractionDigits:2})} (VAT-ex)`:"Set the contract value first."}>
+                                <Inp type="number" min={0} max={100} value={editMsForm.pctStr??""} readOnly={amtLocked||!(contract>0)} onChange={e=>{const v=e.target.value;setEditMsForm(f=>({...f,pctStr:v,amount:pctAmt(contract,v)}));}} placeholder={shown!=null?`${shown}%`:"e.g. 50"}/>
+                              </Fld>
+                              <Fld label="Amount (₱)"><Inp type="number" value={editMsForm.amount||""} readOnly={amtLocked} onChange={e=>setEditMsForm(f=>({...f,amount:e.target.value,pctStr:""}))} placeholder="0.00"/>
+                                {amtLocked&&<div style={{fontSize:".7rem",color:"#b45309",fontWeight:600,marginTop:3}}>This invoice has been sent. Only a Manager can change its amount. To lower it, request a deduction.</div>}</Fld></>);
                             })()}
                             <Fld label="Invoice No"><Inp value={editMsForm.invoiceNo||""} onChange={e=>fme("invoiceNo",e.target.value)} placeholder="INV-0001"/></Fld>
                             <Fld label="Invoice Date"><Inp type="date" value={editMsForm.invoiceDate||""} onChange={e=>fme("invoiceDate",e.target.value)}/></Fld>
