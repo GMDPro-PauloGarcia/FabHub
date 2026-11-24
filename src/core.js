@@ -324,7 +324,7 @@ export const canApproveAddendum=(role, userName, deal, parent)=>{
 // Billing has started once a milestone is past Draft (and not Cancelled) or has
 // any payment. From then on only a Manager changes the contract value directly;
 // everyone else raises a change order. Mirrors deal_billing_started() /
-// trg_deals_contract_value_guard (migration 20261124010000_contract_billing_link.sql).
+// trg_deals_contract_value_guard (migration 20261124030000_contract_billing_link.sql).
 export const CONTRACT_LOCK_MSG="Billing has started on this project, so only a Manager can change the contract value. Raise a change order (additive or deductive) instead: it adds its own billing line.";
 export const dealBillingStarted=(dealId, billings)=>(billings||[]).some(b=>b.dealId===dealId&&b.status!=="Cancelled"&&(b.status!=="Draft"||(b.payments||[]).length>0));
 export const contractLocked=(deal, billings, role)=>!!deal&&canonRole(role)!=="Manager"&&dealBillingStarted(deal.id, billings);
@@ -1137,6 +1137,20 @@ export const ADDENDUM_STATUSES = ["Discovered","Sales Notified","Client Coordina
 // sign so nothing downstream has to guess from a bare number.
 export const CO_KINDS = ["Additive","Deductive"];
 export const coSignedValue = (x) => ((x && x.kind === "Deductive" ? -1 : 1) * Math.abs(Number(x && x.value) || 0));
+
+// A deal's contract BEFORE change orders. Approving a CO adds its signed value to
+// deals.value (rollDealContract) and the CO is counted again on its own, so any
+// figure that adds COs on top must start from this base, not deals.value. Derived
+// from the approved COs themselves because the pre-CO value is never stored
+// (the old client-only `originalValue` was lost on every reload, so the sales
+// report counted each approved CO twice).
+export const CO_ROLLED_STATUSES = ["Approved","Billed","Collected"];
+export const dealBaseValue = (d, addenda = []) => {
+  if (!d) return 0;
+  const rolled = (addenda || []).filter(a => a && (a.dealId || a.projectId) === d.id && CO_ROLLED_STATUSES.includes(a.status))
+    .reduce((s, a) => s + coSignedValue(a), 0);
+  return Math.round(((Number(d.value) || 0) - rolled) * 100) / 100;
+};
 
 // A change order can be recorded two ways in FabHub — as an `addenda` record on a
 // parent deal, OR as a linked child deal (parentDealId set). If the SAME change
