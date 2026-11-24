@@ -155,6 +155,14 @@ For the smoke test locally, run `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers
 - GMD's own capital work (e.g. an office renovation) gets its own cost center, not GMD OPEX.
 - Liquidations are charged to a project or a cost center through one `ProjectSelect` (saved as `project_id`); the old free-text `charge_to` list is gone and `charge_to` is only shown for older rows.
 
+## Cash sheet ↔ Billing collections (2026-11-24)
+- Omnivores CE-2026-1069 paid two ₱95,000 invoices with one ₱186,200 cheque (2% EWT withheld); Billing recorded ₱190,000, and Transaction History showed it as two "Not in cash position" rows.
+- A collection row on the Daily Cash Position can carry `billingPaymentIds` (the Billing payments it is) or `notBilling` (loan proceeds, GMD-to-GMD transfer, refund, owner, other), set from the row's 🔗 (`src/views/CollectionLink.jsx`), a normal sheet edit saved with Save. Payments are recorded in Billing first; the 🔗 only points at them.
+- `reconcileLedger` (`src/data/ledger.js`) treats Billing payments with the same reference + credit date + bank as one deposit, links tagged rows first, then exact amounts, then flags "Amount differs" (bank up to 5% below Billing, row names the client). Read-only.
+- Log Payment asks "Did the client withhold EWT?" when a cash payment is short by no more than 2% EWT explains (`ewtQuestion` in BillingView); Yes sets the milestone's `withholding` (server first, `logBillingPayment(…, {withholding:true})`). The database computes EWT from `withholding` (2% of the VAT-ex amount), not from the `ewt` column.
+- "💵 Pay several invoices" (`src/views/MultiInvoicePay.jsx`, `saveMultiPay` in BillingView): the amount that reached the bank entered once, split across the project's open invoices; one payment per invoice with the same reference / date / bank; one Telegram.
+- `collections_match_alert()` (migration `20261124020000_collections_match_alert.sql`, applied 2026-11-24 as a weekday exception by Paulo; pg_cron `fabhub-collections-match`, 7:54 AM Manila) posts Billing deposits with no cash-sheet match and linked rows that don't add up to the management chat; `collections_match_alert(false)` is a dry run; runs logged in `ap_health_log` (`details->>'kind' = 'collections_match'`). Keep it in sync with `reconcileLedger`.
+
 ## Cash sheet ↔ bills
 - A Daily Cash Position disbursement row can carry `payableIds` (the bills it paid) or `noBill` (payroll, bank transfer, loan, petty cash, tax, owner, other). It is set from the row's 🔗 on the sheet (a normal sheet edit, saved with Save) or from Expense Monitoring (which first checks the server's copy of the day with `cashDayIsCurrent`). Transaction History and Expense Monitoring match disbursements to AP payments from these tags; same-day same-amount moves between two GMD banks are paired as transfers.
 

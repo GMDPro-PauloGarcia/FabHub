@@ -2,6 +2,7 @@ import React,{useState,useMemo,useEffect,useLayoutEffect,useRef} from "react";
 import {today,uid,BANKS,emptyBankRow,emptyDayPosition,uiConfirm,uiPrompt,addDaysLocalISO,CASH_PREFILL_DAYS,payeeOf,particularsOf,payeeRaw,particularsRaw,cashCanEdit,cashDayLocked} from "../shared";
 import {arSummary} from "../core";
 import {LinkModal} from "./ExpenseMonitoring";
+import CollectionLinkModal from "./CollectionLink";
 
 // ── Currency input: shows grouped digits, edits raw ────────────────────────────
 const CurrInp=({value,onChange,placeholder="—",style:sx={}})=>{
@@ -60,7 +61,7 @@ const WrapCell=({value,onType,placeholder})=>{
 // are computed from three manual entry tables below the report. Floating checks
 // carry from day to day until they are marked cleared.
 function DailyCashPosition({
-  cashPositions={},saveDayPos=()=>{},billings=[],wonDeals=[],payables=[],loans=[],suppliers=[],subcons=[],userName="",
+  cashPositions={},saveDayPos=()=>{},billings=[],wonDeals=[],deals=null,payables=[],loans=[],suppliers=[],subcons=[],userName="",
   role="",username="",cashStale=false,payPays=[],canPay=false,onPayMany=null
 }){
   const[selDate,setSelDate]=useState(today);
@@ -694,6 +695,46 @@ function DailyCashPosition({
     const bs=ids.map(id=>(payables||[]).find(p=>p.id===id));
     return <span title={bs.map(b=>b?`${b.vendor||""} ${b.apNumber||""} ${b.poId||""}`.trim():"bill not loaded").join("\n")}>🔗 {bs.map(b=>b?(b.apNumber||b.poId||"bill"):"?").join(", ")}</span>;
   };
+  // 🔗 Tie a collection row to the Billing payment(s) it is (CollectionLink.jsx).
+  // Same as the disbursement link: a normal edit of this sheet, saved with Save.
+  const[collLink,setCollLink]=useState(null);
+  const collIds=row=>Array.isArray(row?.billingPaymentIds)?row.billingPaymentIds.filter(Boolean):[];
+  // Billing payments already linked on another row (any day) → that day.
+  const linkedElsewhere=useMemo(()=>{
+    const mp=new Map();
+    Object.entries(cashPositions||{}).forEach(([d,p])=>{
+      if(d===selDate) return;
+      (p?.collections?.manualCollections||[]).forEach(r=>collIds(r).forEach(id=>mp.set(id,d)));
+    });
+    (pos.collections?.manualCollections||[]).forEach((r,i)=>{if(i!==collLink?.ri) collIds(r).forEach(id=>mp.set(id,selDate));});
+    return mp;
+  },[cashPositions,selDate,pos,collLink]);
+  const applyCollLink=(ids,kind)=>{
+    const {ri,rowId}=collLink||{};
+    const idx=rowId?manualColl.findIndex(x=>x.id===rowId):ri;
+    if(idx==null||idx<0||!manualColl[idx]) return;
+    const mc=[...manualColl];
+    const row={...mc[idx]};
+    if(ids.length) row.billingPaymentIds=ids; else delete row.billingPaymentIds;
+    if(kind) row.notBilling=kind; else delete row.notBilling;
+    mc[idx]=row;
+    f("collections.manualCollections",mc);
+  };
+  const billingById=useMemo(()=>{
+    const mp=new Map();
+    (billings||[]).forEach(ms=>(ms.payments||[]).forEach(p=>mp.set(p.id,{p,ms})));
+    return mp;
+  },[billings]);
+  const collLinkLabel=row=>{
+    const ids=collIds(row);
+    if(!ids.length) return row?.notBilling?<span title="Not a client payment">{row.notBilling}</span>:<span style={{color:"#cbd5e1"}}>—</span>;
+    const xs=ids.map(id=>billingById.get(id));
+    const sum=Math.round(xs.reduce((s2,x)=>s2+(x?Number(x.p.amount||0):0),0)*100)/100;
+    const diff=Math.abs(sum-n(row.amount))>0.01;
+    return <span title={xs.map(x=>x?`${x.ms.invoiceNo||x.ms.name||""} ₱${Number(x.p.amount||0).toLocaleString("en-PH")} ${x.p.refNo||""}`.trim():"payment not loaded").join("\n")+(diff?`\nBilling total ₱${sum.toLocaleString("en-PH")} ≠ this row`:"")} style={{color:diff?"#b45309":undefined}}>
+      {diff?"⚠":"🔗"} {xs.map(x=>x?(x.ms.invoiceNo||x.ms.name||"invoice"):"?").join(", ")}
+    </span>;
+  };
   const delBtn=(onClick)=>(
     <button onClick={onClick} style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:4,padding:"2px 7px",cursor:"pointer",color:"#dc2626",fontWeight:700,fontSize:".72rem",fontFamily:"inherit"}}>✕</button>
   );
@@ -1032,12 +1073,13 @@ function DailyCashPosition({
                 <th style={{...th,textAlign:"left",width:mob?120:200}}>Bank</th>
                 <th style={{...th,textAlign:"left"}}>Particulars</th>
                 <th style={{...th,width:mob?110:170}}>Amount</th>
+                <th style={{...th,width:mob?90:140}} title="The client payment(s) recorded in Billing that this deposit is. Tap 🔗 to link.">Billing</th>
                 <th style={{...th,width:40,background:"#fff",border:"none"}}></th>
               </tr>
             </thead>
             <tbody>
               {manualColl.length===0&&(
-                <tr><td colSpan={4} style={{...td,color:"#94a3b8",fontStyle:"italic",padding:"10px"}}>No collections recorded for {fmtDate(selDate)}. Add rows below.</td></tr>
+                <tr><td colSpan={5} style={{...td,color:"#94a3b8",fontStyle:"italic",padding:"10px"}}>No collections recorded for {fmtDate(selDate)}. Add rows below.</td></tr>
               )}
               {manualColl.map((row,ri)=>(
                 <tr key={row.id||ri} style={{background:ri%2?C.zebra:"#fff"}}>
@@ -1046,12 +1088,20 @@ function DailyCashPosition({
                   <td style={{...td,padding:2}}>
                     <CurrInp value={row.amount||""} onChange={e=>{const mc=[...manualColl];mc[ri]={...mc[ri],amount:e.target.value};f("collections.manualCollections",mc);}} style={{textAlign:"right",fontSize:".8rem",padding:"5px 8px"}}/>
                   </td>
+                  <td style={{...td,fontSize:".7rem",color:"#475569"}}>
+                    {readOnly||!(n(row.amount)>0)
+                      ?collLinkLabel(row)
+                      :<button onClick={()=>setCollLink({ri,rowId:row.id||null})} title="Tie this deposit to the client payment(s) recorded in Billing" style={{background:"none",border:"1px dashed #cbd5e1",borderRadius:5,padding:"3px 6px",cursor:"pointer",fontFamily:"inherit",fontSize:".7rem",color:"#475569",textAlign:"left",width:"100%"}}>
+                        {(collIds(row).length||row.notBilling)?collLinkLabel(row):"🔗 Link payment"}
+                      </button>}
+                  </td>
                   <td style={{...td,padding:2,textAlign:"center",border:"none"}}>{delBtn(()=>f("collections.manualCollections",manualColl.filter((_,j)=>j!==ri)))}</td>
                 </tr>
               ))}
               <tr style={{background:"#e8edf5"}}>
                 <td style={{...td,fontWeight:900,color:C.navy}} colSpan={2}>TOTAL</td>
                 <td style={{...td,...numCell,fontWeight:900,color:C.blue}}>{fmt2(collTotal)}</td>
+                <td style={td}></td>
                 <td style={{...td,border:"none",background:"#fff"}}></td>
               </tr>
             </tbody>
@@ -1272,6 +1322,13 @@ function DailyCashPosition({
       </div>
       </fieldset>
       {pos.savedAt&&<div style={{textAlign:"right",fontSize:".7rem",color:"#94a3b8",marginTop:6}}>Last saved: {new Date(pos.savedAt).toLocaleString("en-PH")}</div>}
+      {collLink&&(()=>{
+        const idx=collLink.rowId?manualColl.findIndex(x=>x.id===collLink.rowId):collLink.ri;
+        const row=manualColl[idx];
+        if(!row) return null;
+        return <CollectionLinkModal key={`${selDate}#${row.id||idx}`} m={{date:selDate,bank:row.bank||"",payee:String(row.particulars??row.note??""),amount:Math.round(n(row.amount)*100)/100,billingPaymentIds:collIds(row),notBilling:row.notBilling||""}}
+          billings={billings} deals={deals||wonDeals} linkedElsewhere={linkedElsewhere} onApply={applyCollLink} onClose={()=>setCollLink(null)}/>;
+      })()}
       {linkRow&&<LinkModal key={linkRow.m.key} m={linkRow.m} r={{status:linkRow.m.payableIds.length?"linked":"none"}} onClose={()=>setLinkRow(null)}
         payables={payables} payPays={payPays} role={role} username={username} userName={userName} canPay={canPay&&!!onPayMany} onPayMany={onPayMany}
         onSheetLink={applyLink}/>}
