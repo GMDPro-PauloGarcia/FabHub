@@ -8,6 +8,7 @@ import {useSharePdf,openPdfTab as openPdfTabShared} from "./views/SharePdf";
 import SupplierDocsPanel from "./views/SupplierDocsPanel";
 import CashOutModal,{openCashOut,closeCashOut,cashOutHas,OrderPicker} from "./views/CashOutModal";
 import BillHistoryModal,{openBillHistory} from "./views/BillHistory";
+import MultiInvoicePay from "./views/MultiInvoicePay";
 import {buildOrders,payIsOpen,payBalance} from "./data/ledger";
 import {fmt,addPrintClose,docLogo,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable,HIDDEN_NAV_IDS,AP_HIDDEN,WAREHOUSE_HIDDEN,isHiddenView,HIDDEN_FIN_TABS,HIDDEN_PIPE_TABS,pageOn,cashCanEdit,ProjectSelect,setProjectSearchIndex} from './shared';
 import {T} from './theme';
@@ -7169,9 +7170,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     logActivity(dealId,"Billing Deleted",`All ${ms.length} milestone${ms.length!==1?"s":""} removed — ${why}`,session?.name||role);
     toastEmit("🗑 Billing deleted and archived to Audit Trail.","success",5000);
   };
-  const logBillingPayment=async(msId,payment)=>{
+  // opts.withholding: the client withheld 2% EWT on this invoice (asked in Log
+  // Payment / Pay several invoices); set on the milestone first so its net
+  // collectible, Fully Paid and the deal totals use it. opts.quiet: no
+  // Telegram / activity per invoice (the caller sends one message for the
+  // cheque). opts.skipDeal: the caller updates the deal totals on screen once.
+  const logBillingPayment=async(msId,payment,opts={})=>{
     const payId=uid();
-    const milestone=billings.find(b=>b.id===msId);
+    const msRaw=billings.find(b=>b.id===msId);
+    const setWh=opts.withholding===true&&msRaw&&msRaw.withholding!==true;
+    const milestone=setWh?{...msRaw,withholding:true}:msRaw;
     const dealId=milestone?.dealId;
     const payDeal=dealId?deals.find(d=>d.id===dealId):null;
     if(!isSupabaseReady()) toastEmit("⚠️ Collection saved on this device only — no server connection. It won't appear on other devices until reconnected.","warning",9000);
@@ -7194,13 +7202,20 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // 2026-11-19 Telegram "Payment Received" went out first and the save ran
     // unawaited inside a state updater, so a refused payment (own-deal rule,
     // offset rule, RLS) still reached management and showed as collected.
-    let notify=true;
+    let notify=!opts.quiet;
+    if(setWh){
+      if(isSupabaseReady()&&!(await sbUpdate("billing_milestones",msId,{withholding:true}))){
+        toastEmit(`Payment NOT saved: couldn't mark ${milestone.invoiceNo||milestone.name||"the invoice"} as with EWT on the server. Try again.`,"error",12000);return false;
+      }
+      upBillings(bs=>bs.map(b=>b.id===msId?{...b,withholding:true}:b));
+      if(milestone.dealId) logActivity(milestone.dealId,"EWT withheld",`${milestone.invoiceNo||milestone.name||"Invoice"} set to with 2% EWT when logging a payment (client's BIR 2307 to follow)`,payment.recordedBy||session?.name);
+    }
     if(isSupabaseReady()){
       const res=await sbUpsertDetailed("billing_payments",toSbPayment({...payment,id:payId,milestoneId:msId}),"id");
       if(!res.ok){
         if(!res.queued){toastEmit(`Payment NOT saved. The server refused it: ${res.message||"unknown error"}`,"error",12000);return false;}
         toastEmit("⚠️ Payment queued: the server hasn't confirmed it yet. Keep this tab open. Telegram was not sent.","warning",10000);
-        notify=false;
+        notify=false;opts.queued=true;
       }
     }
     if(!notify){
@@ -7220,7 +7235,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       if(b.id!==msId) return b;
       const payments=[...(b.payments||[]),{...payment,id:payId,date:payment.date||today}];
       const totalPaid=payments.filter(p=>!p.bounced).reduce((s,p)=>s+Number(p.amount||0),0);
-      const bTx=calcTax(b.amount||0,b.receiptType??b.receipt_type??payDeal?.receiptType??"OR",b.withholding??payDeal?.withholding??false);
+      const bTx=calcTax(b.amount||0,b.receiptType??b.receipt_type??payDeal?.receiptType??"OR",setWh?true:(b.withholding??payDeal?.withholding??false));
       const status=totalPaid>=bTx.netReceivable?'Fully Paid':totalPaid>0?'Partially Paid':b.status;
       return{...b,payments,status};
     }));
@@ -7235,7 +7250,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // Recompute from ALL surviving non-bounced payments (mirroring
     // deleteBillingPayment) rather than incrementing a possibly-stale base —
     // incrementing drifts after bounces, edits, or duplicate-milestone cleanup.
-    if(dealId){
+    if(dealId&&!opts.skipDeal){
       const d0=deals.find(d=>d.id===dealId);
       const newPaid=billings
         .filter(b=>b.dealId===dealId&&b.status!=='Cancelled')
@@ -7243,7 +7258,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           const ps=b.id===msId?[...(b.payments||[]),{...payment,id:payId}]:(b.payments||[]);
           return ps.filter(p=>!p.bounced).reduce((ss,p)=>ss+Number(p.amount||0),s);
         },0);
-      const refVal=dealNetDue(dealId,billings,d0)||Number(d0?.value||0);
+      const refVal=dealNetDue(dealId,setWh?billings.map(b=>b.id===msId?{...b,withholding:true}:b):billings,d0)||Number(d0?.value||0);
       const newStatus=(newPaid>=refVal&&refVal>0)?'Paid':newPaid>0?'Deposited':'Unpaid';
       // Screen only — the database recomputes and stores the totals (trg_billing_totals_sync).
       upDeals(ds=>ds.map(d=>d.id===dealId?{...d,amountPaid:newPaid,paymentStatus:newStatus}:d));
@@ -16195,7 +16210,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               );
             })()}
             {cashSub==="daily"&&(
-              <DailyCashPosition payPays={payPays} canPay={roleCanInsert("payable_payments")} onPayMany={recordPayments} cashPositions={cashPositions} saveDayPos={saveDayPos} wonDeals={wonDeals} billings={billings} suppliers={suppliers} subcons={subcons} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps} updateMilestone={updateMilestone} upExps={upExps} toSbExpense={toSbExpense} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} vouchers={vouchers} payables={payables} loans={loans} inventory={inventory} userName={session?.name||""} role={role} username={session?.username||""} cashStale={cashStale}/>
+              <DailyCashPosition deals={deals} payPays={payPays} canPay={roleCanInsert("payable_payments")} onPayMany={recordPayments} cashPositions={cashPositions} saveDayPos={saveDayPos} wonDeals={wonDeals} billings={billings} suppliers={suppliers} subcons={subcons} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps} updateMilestone={updateMilestone} upExps={upExps} toSbExpense={toSbExpense} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} vouchers={vouchers} payables={payables} loans={loans} inventory={inventory} userName={session?.name||""} role={role} username={session?.username||""} cashStale={cashStale}/>
             )}
             {cashSub==="weekly"&&(
               <WeeklyCashFlow mode="weekly" cashPositions={cashPositions} billings={billings} loans={loans} exps={exps} chartOfAccounts={chartOfAccounts} setPage={setPage}/>
@@ -17121,6 +17136,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           );
         })()}
         <DailyCashPosition
+          deals={deals}
           payPays={payPays} canPay={roleCanInsert("payable_payments")} onPayMany={recordPayments}
           cashPositions={cashPositions}
           saveDayPos={saveDayPos}
@@ -26129,6 +26145,8 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   // that silently created them for every awarded deal was removed; Jessica is
   // notified on award and sets them up deliberately via the dialogue below.
   const[showPay,  setShowPay]  =useState(null);
+  const[multiPay, setMultiPay] =useState(false);   // "Pay several invoices" form open
+  const[multiSaving,setMultiSaving]=useState(false);
   const[editPay,  setEditPay]  =useState(null);     // {msId, payId} being edited
   const[editMs,   setEditMs]   =useState(null);     // milestone id being edited
   const[editMsForm,setEditMsForm]=useState({});
@@ -26382,6 +26400,72 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     addMilestone({name:"Retention Release",description:`Release of retention withheld across progress billings (${deal.paymentTerms?.retentionRelease||"on completion"}).`,amount:out,dealId:selDeal,isRetentionRelease:true,invoiceNo:await claimInv(),invoiceDate:today,dueDate:"",status:"Draft",receiptType:deal.receiptType||null,withholding:deal.withholding??null,createdBy:session?.name||role});
     toastEmit&&toastEmit(`Retention release drafted: ₱${out.toLocaleString("en-PH")}.`,"success",6000);
   };
+  // When a cash payment leaves an invoice short by no more than 2% EWT would
+  // explain, and the invoice isn't set "with EWT", the question to ask Finance
+  // (else null). Used by Log Payment and Pay several invoices.
+  const ewtQuestion=(ms,amt,paidBefore)=>{
+    const d=deals.find(x=>x.id===ms.dealId);
+    const rt=ms.receiptType??d?.receiptType??"OR";
+    if(rt!=="OR"||(ms.withholding??d?.withholding??false)) return null;
+    const paid=paidBefore??(ms.payments||[]).filter(p=>!p.bounced).reduce((s2,p)=>s2+Number(p.amount||0),0);
+    const tx=calcTax(ms.amount,rt,false), wh=calcTax(ms.amount,rt,true);
+    const gap=Math.round((tx.netReceivable-paid-amt)*100)/100;
+    if(!(gap>0.01)||gap>Math.max(wh.ewt,tx.gross*0.02)+1) return null;
+    const left=Math.round((wh.netReceivable-paid-amt)*100)/100;
+    const f2=v=>`₱${Number(v).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+    return `${ms.invoiceNo||ms.name||"This invoice"} is ${f2(tx.netReceivable-paid)} to collect, and this payment is ${f2(gap)} short.\n\nIf the client withheld 2% EWT, choose Yes: the invoice is set to "with EWT" and its collectible becomes ${f2(wh.netReceivable)} (EWT ${f2(wh.ewt)}). Get the client's BIR 2307 for it.${left>0.01?`\n\n${f2(left)} still stays open: the client withheld more than 2% of the pre-VAT amount. Ask for the difference or check their 2307.`:""}\n\nRecord the amount that actually reached the bank, never the invoice amount.`;
+  };
+  // One cheque / transfer across several invoices (MultiInvoicePay). Each
+  // invoice gets its own billing payment with the same reference, date and
+  // bank; one Telegram for the cheque.
+  const saveMultiPay=async({common,lines,total})=>{
+    if(multiSaving||!lines.length) return;
+    const d=deal;
+    if(!canPayDeal(d)){toastEmit("You can't record payments on this project.","error",8000);return;}
+    if(isMotherPO(d)&&canonRole(role)!=="Manager"){toastEmit(`${d.ceNo||"This project"} is a mother PO. Only a Manager can record payments on it — record it on the sub-project that was billed.`,"error",9000);return;}
+    if(common.date&&common.date>today&&!(await uiConfirm("The Date Received is in the future. Save anyway?")))return;
+    if(common.date&&common.valueDate&&common.valueDate<common.date&&!(await uiConfirm("The Value Date is before the Date Received. Save anyway?")))return;
+    const dup=findDuplicatePayments({dealId:d.id,payment:{amount:total,date:common.date,refNo:common.refNo},billings,deals});
+    if(dup.length){
+      const ls=dup.map(x=>`• ${x.deal?.ceNo||"No CE"} — ${x.milestone.invoiceNo||x.milestone.name}: ₱${Number(x.payment.amount||0).toLocaleString("en-PH",{minimumFractionDigits:2})} on ${x.payment.date||"—"}${x.payment.refNo?` (Ref ${x.payment.refNo})`:""}`).join("\n");
+      if(!(await uiConfirm({title:"This cheque may already be recorded",tone:"warning",confirmLabel:"Record it anyway",cancelLabel:"Go back",
+        message:`A payment with this reference (or the same amount and date) is already logged on this PO family:\n\n${ls}\n\nRecording it again double-counts Collected.`})))return;
+    }
+    const ewtLines=lines.filter(l=>l.withEwt);
+    if(ewtLines.length&&!(await uiConfirm({title:"Set invoices to with EWT",tone:"warning",confirmLabel:"Yes, client withheld EWT",cancelLabel:"Go back",
+      message:`${ewtLines.map(l=>l.ms.invoiceNo||l.ms.name).join(", ")} will be set to "with 2% EWT", which lowers what is collectible on them. Only confirm if the client withheld it; Finance needs their BIR 2307.`})))return;
+    setMultiSaving(true);
+    const saved=[];let queued=false;
+    try{
+      for(const l of lines){
+        const o={quiet:true,skipDeal:true,...(l.withEwt?{withholding:true}:{})};
+        const ok=await logBillingPayment(l.ms.id,{...common,amount:String(l.amount),recordedBy:session?.name||role},o);
+        if(ok===false) break;
+        if(o.queued) queued=true;
+        saved.push(l);
+      }
+    }finally{setMultiSaving(false);}
+    const f2=v=>`₱${Number(v).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+    if(saved.length){
+      const sum=Math.round(saved.reduce((s2,l)=>s2+l.amount,0)*100)/100;
+      // Deal totals on screen once (the database recomputes and stores them).
+      const ewtIds=new Set(saved.filter(l=>l.withEwt).map(l=>l.ms.id));
+      const msAfter=billings.map(b=>ewtIds.has(b.id)?{...b,withholding:true}:b);
+      const paidBefore=billings.filter(b=>b.dealId===d.id&&b.status!=="Cancelled").reduce((s2,b)=>s2+(b.payments||[]).filter(p=>!p.bounced).reduce((x,p)=>x+Number(p.amount||0),0),0);
+      const newPaid=Math.round((paidBefore+sum)*100)/100;
+      const netDue=msAfter.filter(b=>b.dealId===d.id&&b.status!=="Cancelled").reduce((s2,b)=>s2+calcTax(Number(b.amount)||0,b.receiptType??d.receiptType??"OR",b.withholding??d.withholding??false).netReceivable,0);
+      const refVal=netDue||Number(d.value||0);
+      upDeals&&upDeals(ds=>ds.map(x=>x.id===d.id?{...x,amountPaid:newPaid,paymentStatus:newPaid>=refVal&&refVal>0?"Paid":newPaid>0?"Deposited":"Unpaid"}:x));
+      if(!queued){
+        const bk=(BANKS.find(b=>b.id===common.bank)?.short)||(common.bank==="cash"?"Cash":common.bank||"—");
+        const msg=`💵 <b>Payment Received</b> (one ${String(common.method||"payment").toLowerCase()}, ${saved.length} invoices)\nProject: <b>${d.contact||"—"}</b>\nClient: ${d.client||"—"}\nDeposited to: ${bk} · ${common.method||""}\nAmount: ${f2(sum)}\n${saved.map(l=>`• ${l.ms.invoiceNo||l.ms.name}: ${f2(l.amount)}${l.withEwt?" (2% EWT withheld)":""}`).join("\n")}\nCredited: ${common.valueDate||common.date||today}\nRef: ${common.refNo||"—"}\nRecorded by: ${session?.name||role}`;
+        sendTelegramNotification("sales",msg);
+        sendTelegramNotification("management",msg);
+      }
+    }
+    if(saved.length===lines.length){toastEmit(`Recorded ${f2(total)} across ${saved.length} invoices.`,"success",6000);setMultiPay(false);}
+    else if(saved.length) toastEmit(`Only ${saved.length} of ${lines.length} invoices were recorded (${saved.map(l=>l.ms.invoiceNo||l.ms.name).join(", ")}). Check the rest before trying again: don't record those ones twice.`,"error",15000);
+  };
   const submitPay=async()=>{
     if(paySaving||!payForm.amount||!showPay) return;
     const amt=Number(payForm.amount);
@@ -26406,6 +26490,15 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         return;
       }
     }
+    // EWT the client withheld (2026-11-24: Omnivores CE-2026-1069 paid two
+    // ₱95,000 invoices with one ₱186,200 cheque, and ₱190,000 was recorded).
+    let withEwt=false;
+    if(ms&&!isOffset){
+      const q=ewtQuestion(ms,amt);
+      if(q){
+        withEwt=await uiConfirm({title:"Did the client withhold EWT?",tone:"warning",confirmLabel:"Yes, 2% EWT withheld",cancelLabel:"No, partial payment",message:q});
+      }
+    }
     // #4 Date sanity — warn (not block) on illogical dates.
     if(payForm.date&&payForm.date>today&&!(await uiConfirm("The Date Received is in the future. Save anyway?")))return;
     if(payForm.date&&payForm.valueDate&&payForm.valueDate<payForm.date&&!(await uiConfirm("The Value Date is before the Date Received (funds credited before payment received?). Save anyway?")))return;
@@ -26424,7 +26517,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     }
     setPaySaving(true);
     let ok=false;
-    try{ok=await logBillingPayment(showPay,{...payForm,...(isOffset?{bank:"",valueDate:""}:{}),recordedBy:session?.name||role});}
+    try{ok=await logBillingPayment(showPay,{...payForm,...(isOffset?{bank:"",valueDate:""}:{}),recordedBy:session?.name||role},withEwt?{withholding:true}:{});}
     finally{setPaySaving(false);}
     if(ok===false) return; // refused: keep the form open so nothing is lost
     setPayForm({amount:"",date:today,refNo:"",note:"",valueDate:"",bank:"",method:"Bank Transfer"});
@@ -27330,6 +27423,12 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                     style={{background:"#0e7490",border:"none",borderRadius:9,padding:"8px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>
                     📐 Progress Claim
                   </button>
+                  {canPayDeal(deal)&&billings.filter(b=>b.dealId===selDeal&&b.status!=="Fully Paid"&&b.status!=="Cancelled").length>=2&&(
+                    <button onClick={()=>{setMultiPay(v=>!v);setShowPay(null);}} title="One client cheque or transfer that pays several invoices of this project"
+                      style={{background:"#1d4ed8",border:"none",borderRadius:9,padding:"8px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>
+                      💵 Pay several invoices
+                    </button>
+                  )}
                 </div>
               ):(
                 <div style={{background:"#f8fafc",borderRadius:12,border:"1.5px solid #e2e8f0",padding:16,marginBottom:8}}>
@@ -27409,6 +27508,10 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
             </div>
           )}
 
+          {multiPay&&canPayDeal(deal)&&(
+            <MultiInvoicePay key={selDeal} deal={deal} milestones={billings.filter(b=>b.dealId===selDeal)} today={today}
+              saving={multiSaving} onCancel={()=>setMultiPay(false)} onSave={saveMultiPay}/>
+          )}
           {/* Milestone list */}
           {billings.filter(b=>b.dealId===selDeal).length===0&&!showForm&&(
             <div style={{textAlign:"center",padding:"24px",color:"#94a3b8",fontSize:".84rem"}}>No milestones yet. Hit + Add Milestone to create the first billing.</div>

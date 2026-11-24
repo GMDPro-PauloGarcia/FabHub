@@ -284,10 +284,14 @@ function TxnDetail({r,onClose,payById,dealById,orderOf,jos,cashPositions,onSuppl
         {r.particulars&&<Field l="Particulars">{r.particulars}</Field>}
         {lastSave&&<Field l="Sheet last saved">{lastSave.by||"—"} · {String(lastSave.at||"").replace("T"," ").slice(0,16)}</Field>}
         {r.link==="orphan"&&<div style={{fontSize:".74rem",color:C.bad,marginTop:6}}>⚠ No bank movement on the Daily Cash Position matches this within 7 days. Either the sheet is missing it, or it was recorded twice in FabHub.</div>}
-        {r.link==="diff"&&<div style={{fontSize:".74rem",color:C.warn,marginTop:6}}>⚠ The bank received {php2(r.amount)}, but Billing records {php2(r.rec.billing.amount)} as collected for this deposit ({php2(r.rec.gap)} more). Usually this is EWT the client withheld being recorded as cash: Finance should record each payment net of EWT and put the EWT on the milestone (BIR 2307 to receive).</div>}
+        {r.link==="diff"&&(r.rec.gap>0
+          ?<div style={{fontSize:".74rem",color:C.warn,marginTop:6}}>⚠ The bank received {php2(r.amount)}, but Billing records {php2(r.rec.billing.amount)} as collected for this deposit ({php2(r.rec.gap)} more). Usually this is EWT the client withheld being recorded as cash: Finance should record each payment as what reached the bank and set the invoice "with EWT" (BIR 2307 to receive).</div>
+          :<div style={{fontSize:".74rem",color:C.warn,marginTop:6}}>⚠ The bank received {php2(r.amount)}, but the Billing payment(s) linked to it total {php2(r.rec.billing.amount)} ({php2(-r.rec.gap)} less). A payment is missing in Billing, or belongs to this row but is linked elsewhere.</div>)}
+        {r.link==="linked"&&r.rec?.tagged&&<div style={{fontSize:".74rem",color:C.ok,marginTop:6}}>Linked on the Daily Cash Position (🔗).</div>}
+        {r.link==="none"&&r.dir==="in"&&<div style={{fontSize:".74rem",color:C.muted,marginTop:6}}>{r.rec?.staleTag?"Linked on the cash sheet to a Billing payment that no longer exists (deleted or bounced), or that is linked on another row. Re-link it (🔗).":"Not tied to a client payment. Link it on the Daily Cash Position (🔗), or tag it as not a client payment."}</div>}
         {r.link==="short"&&<div style={{fontSize:".74rem",color:C.warn,marginTop:6}}>⚠ Tagged to {bills.length} bill(s), but the AP payments recorded near this date total {php2(r.rec.recorded)} of {php2(r.amount)}. Record the rest in Expense Monitoring.</div>}
         {r.link==="transfer"&&<div style={{fontSize:".74rem",color:"#7c3aed",marginTop:6}}>Money moved between GMD's own banks{r.rec?.pair?` (${r.dir==="out"?"into":"from"} ${bankLabel(r.rec.pair.bank)}, same day, same amount)`:""}. Not counted as money in or out.</div>}
-        {r.link==="nobill"&&<div style={{fontSize:".74rem",color:C.muted,marginTop:6}}>Tagged in Expense Monitoring as <b>{r.rec.kind}</b>: paid no supplier bill.</div>}
+        {r.link==="nobill"&&<div style={{fontSize:".74rem",color:C.muted,marginTop:6}}>{r.dir==="in"?<>Tagged on the cash sheet as <b>{r.rec.kind}</b>: not a client payment.</>:<>Tagged in Expense Monitoring as <b>{r.rec.kind}</b>: paid no supplier bill.</>}</div>}
         {r.link==="none"&&r.dir==="out"&&<div style={{fontSize:".74rem",color:C.muted,marginTop:6}}>Not tied to any bill. Tag it on the Daily Cash Position (🔗) or in Expense Monitoring if it paid a supplier.</div>}
       </TxSection>
       {groups.map(g=>(
@@ -332,7 +336,7 @@ function TxnDetail({r,onClose,payById,dealById,orderOf,jos,cashPositions,onSuppl
           <ProjectFields d={dealById.get(it.ms.dealId)} jos={jos} onProject={onProject}/>
         </TxSection>
       ))}
-      {bp&&r.link==="suggested"&&<div style={{fontSize:".72rem",color:"#2563eb",margin:"-4px 0 10px"}}>Suggested by amount and date (the cash sheet doesn't name the client payment). Check the reference before relying on it.</div>}
+      {bp&&r.link==="suggested"&&!r.rec?.tagged&&<div style={{fontSize:".72rem",color:"#2563eb",margin:"-4px 0 10px"}}>Suggested by amount and date (the cash sheet doesn't name the client payment). Check the reference before relying on it.</div>}
     </Sheet>
   );
 }
