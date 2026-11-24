@@ -1,5 +1,5 @@
 -- ============================================================================
--- Migration 20261124010000 — daily check: Billing collections ↔ the cash sheet
+-- Migration 20261124020000 — daily check: Billing collections ↔ the cash sheet
 --
 -- Why (2026-11-24): Omnivores CE-2026-1069 paid two ₱95,000 invoices with one
 -- ₱186,200 cheque (612GTP1B, 2% EWT withheld). Billing recorded ₱190,000, so
