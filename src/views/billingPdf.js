@@ -95,10 +95,30 @@ export function buildInvoicePdf(m){
   trow("TAX",pdfNum(m.vat));
   trow("TOTAL",pdfNum(m.gross));
   if(m.ewt>0) trow("Less: EWT",`(${pdfNum(m.ewt)})`,{color:RED});
-  if(m.paid>0) trow("AMOUNT PAID",`(${pdfNum(m.paid)})`,{color:BLUE});
+  if(m.paid>0) trow("AMOUNT RECEIVED",`(${pdfNum(m.paid)})`,{color:BLUE});
   doc.setDrawColor(NAVY);doc.setLineWidth(0.6);doc.line(tx,ty-2,R,ty-2);ty+=2.5;
   trow("BALANCE DUE",`PHP ${pdfNum(m.balance)}`,{color:m.balance>0?ORANGE:GREEN,bold:true,big:true});
   y=Math.max(y,ty)+5;
+
+  // Payments received on this billing, one line each, adding up to AMOUNT
+  // RECEIVED above (invoiceModel's `payments`).
+  const pays=(m.payments||[]).filter(p=>p.amount);
+  if(pays.length){
+    if(y>235){doc.addPage();y=24;}
+    doc.setFont(F,"bold");doc.setFontSize(8.5);doc.setTextColor(INK);doc.text("PAYMENTS RECEIVED",L,y);
+    autoTable(doc,{
+      startY:y+2,margin:{left:L,right:W-R,bottom:16},theme:"plain",
+      head:[["DATE RECEIVED","METHOD","BANK","REFERENCE","AMOUNT"]],
+      body:pays.map(p=>[p.date||"—",p.method||"—",String(p.bank||"").toUpperCase()||"—",p.ref||"—",pdfNum(p.amount)]),
+      foot:pays.length>1?[["","","","TOTAL RECEIVED",pdfNum(pays.reduce((s,p)=>s+p.amount,0))]]:undefined,
+      styles:{font:F,fontSize:8.5,textColor:INK,cellPadding:1.8,lineColor:"#f1f5f9",lineWidth:{bottom:0.2}},
+      headStyles:{font:F,fontStyle:"bold",fillColor:NAVY,textColor:255,fontSize:6.5},
+      footStyles:{font:F,fontStyle:"bold",textColor:INK,fontSize:8.5},
+      columnStyles:{0:{cellWidth:28},4:{cellWidth:32,halign:"right"}},
+      didParseCell:d=>{if(d.column.index===4)d.cell.styles.halign="right";},
+    });
+    y=doc.lastAutoTable.finalY+6;
+  }
 
   // Contract summary: four figures and one bar (paid / billed, unpaid / this
   // billing / not yet billed). Same numbers as the print page (invoiceData).
@@ -112,18 +132,25 @@ export function buildInvoicePdf(m){
     doc.setFont(F,"normal");doc.setFontSize(7);doc.setTextColor("#94a3b8");
     doc.text(`as of ${m.asOf||""}${p.vatable?" · amounts incl. VAT":""}`,R-4,cy,{align:"right"});
     cy+=6;
-    const cw=(R-L-8)/4;
-    [["CONTRACT AMOUNT",p.contract,"",INK],
+    // EWT gets its own figure, the same basis as the statement's "Less: EWT"
+    // and "AMOUNT PAID" lines above, so PAID TO DATE is exactly what the
+    // client paid (invoiceContractProgress: cashPaid / ewtBilled / remainingNet).
+    const hasEwt=p.ewtBilled>0.005;
+    const cards=[["CONTRACT AMOUNT",p.contract,"",INK],
      ["BILLED TO DATE",p.billed,`${p.billedPct}% of contract, incl. this billing`,BLUE],
-     ["PAID TO DATE",p.paid,`${p.paidPct}% of contract${p.withholding?", incl. tax withheld":""}`,GREEN],
-     ["REMAINING ON CONTRACT",p.remaining,`${Math.max(0,Math.round((100-p.paidPct)*10)/10)}% of contract`,ORANGE]].forEach(([k,v,sub,c],i)=>{
+     ["RECEIVED TO DATE",p.cashPaid,`${p.cashPaidPct}% of contract`,GREEN],
+     ...(hasEwt?[["TAX WITHHELD (EWT)",p.ewtBilled,"on billed to date, per BIR 2307",RED]]:[]),
+     ["REMAINING ON CONTRACT",p.remainingNet,hasEwt?"after payments and EWT":`${Math.max(0,Math.round((100-p.cashPaidPct)*10)/10)}% of contract`,ORANGE]];
+    const cw=(R-L-8)/cards.length;
+    cards.forEach(([k,v,sub,c],i)=>{
       const x=L+4+i*cw;
       doc.setFont(F,"bold");doc.setFontSize(6.5);doc.setTextColor(SLATE);doc.text(k,x,cy);
       doc.setFontSize(10.5);doc.setTextColor(c);doc.text(pdfNum(v),x,cy+5.5);
       if(sub){doc.setFont(F,"normal");doc.setFontSize(6.5);doc.setTextColor(SLATE);doc.text(doc.splitTextToSize(sub,cw-3)[0],x,cy+9.5);}
     });
     cy+=14;
-    const segs=[[GREEN,"Paid",p.paidPct],["#f59e0b","Billed, unpaid",p.prevUnpaidPct],[ORANGE,p.thisUnpaidPct<p.thisPct-0.05?"This billing, unpaid":"This billing",p.thisUnpaidPct],["#e2e8f0","Not yet billed",p.unbilledPct]];
+    // Same basis as the cards: paid, EWT, then what is still due.
+    const segs=[[GREEN,"Received",p.cashPaidPct],[RED,"EWT",p.ewtBilledPct],["#f59e0b","Billed, unpaid",p.prevDuePct],[ORANGE,p.thisDuePct<p.thisPct-0.05?"This billing, unpaid":"This billing",p.thisDuePct],["#e2e8f0","Not yet billed",p.unbilledPct]];
     const tot=Math.max(100,segs.reduce((s,a)=>s+a[2],0));
     const bx=L+4,bw=R-L-8,bh=4.5;
     doc.setFillColor("#e2e8f0");doc.roundedRect(bx,cy,bw,bh,2,2,"F");

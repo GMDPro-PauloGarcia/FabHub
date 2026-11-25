@@ -26237,6 +26237,10 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       line:{date:ms.invoiceDate||today,service:line.service,tax:tx.vat>0?"12% S":"—",qty:line.qty,rate:line.rate,amount:line.amount,
         description:line.description},
       subtotal:Number(ms.amount)||0,vat:tx.vat,gross:tx.gross,ewt:tx.ewt,paid:totalPaid,balance,
+      // Each payment received on this billing (bounced ones never reached
+      // GMD), listed on the statement so the client can match AMOUNT RECEIVED.
+      payments:(ms.payments||[]).filter(p=>!p.bounced).slice().sort((a,b)=>String(a.date||"").localeCompare(String(b.date||"")))
+        .map(p=>({date:p.date||"",method:p.method||"",bank:p.bank||"",ref:p.refNo||"",amount:Number(p.amount)||0})),
     };
   };
   const shareInvoicePdf=(ms)=>{
