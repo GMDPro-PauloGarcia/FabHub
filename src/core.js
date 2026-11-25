@@ -1608,6 +1608,17 @@ export const nextItemCode=(items)=>{
 };
 
 export const BILLING_STATUSES = ["Draft","Sent to Client","Partially Paid","Fully Paid","Overdue","Cancelled"];
+// "Partially Paid" / "Fully Paid" follow the recorded payments, never a pick
+// from the dropdown (migration 20261125010000_billing_milestone_paid_status_guard:
+// trg_billing_ms_paid_status keeps the server's status and logs the attempt).
+// Same rule as billing_ms_derived_status: paid ≥ net − ₱1 is Fully Paid.
+export const PAID_BILLING_STATUSES = ["Partially Paid","Fully Paid"];
+export const MANUAL_BILLING_STATUSES = BILLING_STATUSES.filter(s=>!PAID_BILLING_STATUSES.includes(s));
+// Options for a status dropdown: the manual ones, plus the current status when
+// it is a paid one (shown, not selectable).
+export const billingStatusOptions = cur => PAID_BILLING_STATUSES.includes(cur) ? [...MANUAL_BILLING_STATUSES, cur] : MANUAL_BILLING_STATUSES;
+export const msPaidStatus = (paid, net, fallback) =>
+  !(net > 0) ? fallback : paid >= net - 1 ? "Fully Paid" : paid > 0 ? "Partially Paid" : fallback;
 
 export const BILLING_STATUS_CLR = {
   "Draft":"#94a3b8","Sent to Client":"#3b82f6",
