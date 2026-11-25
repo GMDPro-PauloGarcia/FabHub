@@ -1,6 +1,6 @@
 import React,{useState,useMemo} from "react";
 import {BANKS,Fld,Inp,Sel} from "../shared";
-import {calcTax,PAYMENT_METHODS} from "../core";
+import {calcTax,PAYMENT_METHODS,paymentNeedsRef,paymentRefOk} from "../core";
 
 // ─── PAY SEVERAL INVOICES WITH ONE CHEQUE (Billing, 2026-11-24) ──────────────
 // One client cheque / transfer that settles several invoices of a project.
@@ -51,7 +51,7 @@ export default function MultiInvoicePay({deal,milestones=[],today,saving=false,o
   const problems=[
     !(total>0)&&"Enter the amount that reached the bank.",
     !form.bank&&"Pick the bank it was deposited to.",
-    !String(form.refNo||"").trim()&&"Enter the cheque / transfer reference.",
+    paymentNeedsRef(form)&&!paymentRefOk(form.refNo)&&"Enter the cheque / transfer reference (at least 4 letters or digits).",
     total>0&&Math.abs(sum-total)>0.01&&`The invoice amounts add up to ${f2(sum)}, not ${f2(total)}.`,
     over.length>0&&`${over.map(l=>l.ms.invoiceNo||l.ms.name).join(", ")}: more than the balance.`,
     !lines.some(l=>l.amt>0)&&"Tick at least one invoice.",
