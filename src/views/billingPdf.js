@@ -102,7 +102,13 @@ export function buildInvoicePdf(m){
   trow("SUBTOTAL",pdfNum(m.subtotal));
   trow("TAX",pdfNum(m.vat));
   trow("TOTAL",pdfNum(m.gross));
-  if(m.ewt>0) trow("Less: EWT",`(${pdfNum(m.ewt)})`,{color:RED});
+  if(m.ewt>0){
+    trow("Less: EWT",`(${pdfNum(m.ewt)})`,{color:RED});
+    // What the client actually pays on this billing once they withhold EWT,
+    // before anything received (TOTAL − EWT).
+    doc.setDrawColor(LINE);doc.setLineWidth(0.3);doc.line(tx,ty-3.2,R,ty-3.2);ty+=0.6;
+    trow("NET AMOUNT DUE",pdfNum(Math.round((m.gross-m.ewt)*100)/100),{bold:true});
+  }
   if(m.paid>0) trow("AMOUNT RECEIVED",`(${pdfNum(m.paid)})`,{color:BLUE});
   doc.setDrawColor(NAVY);doc.setLineWidth(0.6);doc.line(tx,ty-2,R,ty-2);ty+=2.5;
   trow("BALANCE DUE",`PHP ${pdfNum(m.balance)}`,{color:m.balance>0?ORANGE:GREEN,bold:true,big:true});
