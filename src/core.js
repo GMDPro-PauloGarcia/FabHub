@@ -709,6 +709,11 @@ export const arSummary = (billings=[], dealOf=()=>undefined) => {
   let billed=0, receivable=0, collected=0, offset=0, outstanding=0, open=0;
   billings.forEach(b=>{
     if(b.status==="Cancelled") return;
+    // A Draft hasn't gone to the client, so it isn't owed yet: on 2026-11-25
+    // 76 Drafts (PHP 15.07M) were counted as AR, 68% of the total shown. A Draft
+    // that already has a payment (client paid before the invoice went out)
+    // still counts, so collections stay whole.
+    if(b.status==="Draft" && milestonePaid(b)<=0) return;
     const d=dealOf(b.dealId), r=milestoneReceivable(b,d), p=milestonePaid(b), bal=Math.max(0,r-p);
     billed+=Number(b.amount)||0; receivable+=r; collected+=p; outstanding+=bal; if(bal>0.005) open++;
     offset+=(b.payments||[]).filter(x=>!x.bounced&&isOffsetPayment(x)).reduce((s,x)=>s+(Number(x.amount)||0),0);
