@@ -1455,6 +1455,40 @@ export const findDuplicatePayments = ({ dealId, payment, billings = [], deals = 
   return out;
 };
 
+// ── No second copy of a client payment (2026-11-25) ─────────────────────────
+// Mirrors billing_payment_overpay_guard (migration 20261125010000). Every
+// double entry found that day had one copy with no reference (one person logs
+// the payment without it, another the next day with the bank's). Keep in sync.
+export const paymentNeedsRef = p => {
+  const m = String(p?.method ?? p?.payment_method ?? "");
+  return m !== "Cash" && m !== OFFSET_METHOD && String(p?.bank || "") !== "cash";
+};
+export const paymentRefOk = ref => String(ref || "").replace(/[^A-Za-z0-9]/g, "").length >= 4;
+export const PAYMENT_REF_MSG = "Enter the cheque no. or bank transfer reference (at least 4 letters or digits). Two people recording the same deposit is caught by its reference; without one it isn't.";
+const _dayNum = d => { const t = Date.parse(String(d || "").slice(0, 10)); return isNaN(t) ? null : Math.round(t / 86400000); };
+// The other non-bounced payment on this invoice with the same amount, within
+// 30 days, where either of the two has no reference. null when there is none.
+export const nearDuplicatePayment = (ms, payment, excludePaymentId = null) => {
+  if (!ms || !payment || payment.bounced) return null;
+  const amt = Math.round((Number(payment.amount) || 0) * 100) / 100;
+  if (!(amt > 0)) return null;
+  const day = _dayNum(payment.date || payment.valueDate) ?? _dayNum(new Date().toISOString());
+  const mineOk = paymentRefOk(payment.refNo ?? payment.ref_no);
+  let best = null, bestGap = 99;
+  (ms.payments || []).forEach(p => {
+    if (!p || p.bounced || (excludePaymentId && p.id === excludePaymentId)) return;
+    if (Math.abs((Number(p.amount) || 0) - amt) >= 0.005) return;
+    const pd = _dayNum(p.date || p.valueDate);
+    const gap = pd == null || day == null ? 0 : Math.abs(pd - day);
+    if (gap > 30) return;
+    if (mineOk && paymentRefOk(p.refNo ?? p.ref_no)) return;
+    if (gap < bestGap) { best = p; bestGap = gap; }
+  });
+  return best;
+};
+export const nearDuplicateMsg = (ms, p) =>
+  `${ms?.invoiceNo || ms?.name || "This invoice"} already has a payment of ₱${Number(p.amount || 0).toLocaleString("en-PH", { minimumFractionDigits: 2 })} on ${p.date || "—"} (ref ${String(p.refNo || "").trim() || "none"}, recorded by ${p.recordedBy || "unknown"}). This looks like the same payment recorded twice.`;
+
 // ── Billing Check ────────────────────────────────────────────────────────────
 // Project-level double-billing / integrity checks. Pure: pass the loaded deals,
 // billings and addenda. Returns one issue per problem, most severe first.
