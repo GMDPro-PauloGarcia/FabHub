@@ -54,6 +54,9 @@ const VERB = { insert: "Created", update: "Changed", delete: "Deleted", restore:
 const FLAG_ACTIONS = /delete|blocked|override|waiv|turnover_change|role_change|credit_terms|bulk_|renumber|cancel|reverse/i;
 const HIDE_FIELDS = new Set(["updated_at", "created_at"]);
 const lc = s => String(s || "").toLowerCase();
+// audit rows written by database jobs (cron, triggers with no login) carry no
+// username; they are not a person working late.
+const SYSTEM_WHO = /^(|unknown|system|postgres|service_role)$/i;
 
 export default function DailyActivityModal({ deals = [], billings = [] }) {
   const s = useSyncExternalStore(subscribe, snap, snap);
@@ -101,12 +104,12 @@ export default function DailyActivityModal({ deals = [], billings = [] }) {
         const fields = (r.changed_fields || []).filter(f => !HIDE_FIELDS.has(f));
         const amtOld = Number(r.old_snapshot?.amount), amtNew = Number(r.snapshot?.amount);
         out.push({
-          key: "a" + r.id, at: r.performed_at, who: r.performed_by || "system", table: r.table_name, area: AREA[r.table_name] || "Other",
-          verb: VERB[a] || a.replace(/_/g, " "), thing: THING[r.table_name] || r.table_name,
+          key: "a" + r.id, at: r.performed_at, who: SYSTEM_WHO.test(r.performed_by || "") ? "System (server job)" : r.performed_by, table: r.table_name, area: AREA[r.table_name] || "Other",
+          verb: VERB[a] || (a.charAt(0).toUpperCase() + a.slice(1)).replace(/_/g, " "), thing: THING[r.table_name] || r.table_name,
           ref: sn.invoice_no || sn.ap_number || sn.po_number || sn.wo_number || sn.jo_no || sn.ce_no || sn.ref_no || sn.liq_no || "",
           deal: dealName[dealId] || "",
           amount: a === "update" && Number.isFinite(amtOld) && Number.isFinite(amtNew) && amtOld !== amtNew ? [amtOld, amtNew] : (Number.isFinite(amtNew) ? amtNew : (Number.isFinite(amtOld) ? amtOld : null)),
-          note: r.reason || (fields.length ? "Changed: " + fields.join(", ") : ""),
+          note: fields.length ? "Changed: " + fields.join(", ") + (r.reason && r.reason !== "field edit" ? " · " + r.reason : "") : (r.reason || ""),
           fields, old: r.old_snapshot, now: r.snapshot,
           flag: FLAG_ACTIONS.test(a) || /override|locked/i.test(r.reason || ""),
         });
@@ -125,7 +128,7 @@ export default function DailyActivityModal({ deals = [], billings = [] }) {
       created(pp, "payable_payments", r => ({ who: r.recorded_by || "—", ref: r.ref_no || "", amount: Number(r.amount) || 0, note: [r.pay_date, r.method, r.bank, r.status].filter(Boolean).join(" · ") }));
       created(lq, "liquidations", r => ({ who: r.requester_name || "—", ref: r.liq_no || "", amount: Number(r.amount) || 0, note: [r.payee, r.purpose, r.status].filter(Boolean).join(" · ") }));
       act.forEach(r => out.push({ key: "t" + r.id, at: r.created_at, who: r.by || "—", table: "activity_log", area: "Team updates", verb: r.action || "Update", thing: "", ref: "", deal: dealName[r.deal_id] || "", amount: null, note: r.detail || "", fields: [], flag: false, team: true }));
-      out.forEach(e => { const h = manilaHour(e.at); if (!e.team && (h >= 22 || h < 6)) { e.flag = true; e.late = true; } });
+      out.forEach(e => { const h = manilaHour(e.at); if (!e.team && e.who !== "System (server job)" && (h >= 22 || h < 6)) { e.flag = true; e.late = true; } });
       out.sort((x, y) => String(y.at).localeCompare(String(x.at)));
       setRows(out);
     })();
