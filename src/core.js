@@ -895,7 +895,7 @@ export const invoiceContractProgress = ({ deal, milestones = [], ms = null } = {
   const prevDue = billedMs.filter(b => !ms || b.id !== ms.id).reduce((s, b) => s + dueOf(b), 0);
   return {
     vatable,
-    contract: r2(contractBase * k), billed: r2(billedBase * k), paid: r2(paidBase * k),
+    contract: r2(contractBase * k), contractExVat: r2(contractBase), billed: r2(billedBase * k), paid: r2(paidBase * k),
     thisBill: r2(thisBase * k), thisUnpaid: r2(thisUnpaidBase * k), prevUnpaid: r2(prevUnpaidBase * k),
     unbilled: r2(unbilledBase * k), remaining: r2(Math.max(0, contractBase - paidBase) * k),
     paidPct: pct(paidBase), billedPct: pct(billedBase), thisPct: pct(thisBase),
@@ -915,6 +915,41 @@ export const invoiceContractProgress = ({ deal, milestones = [], ms = null } = {
     // due (TOTAL − EWT − paid), as % of the contract.
     thisDuePct: pct(thisDue / k), prevDuePct: pct(prevDue / k),
   };
+};
+// The project's whole billing schedule, for the billing statement: one row
+// per non-cancelled billing (sent ones first, by date, then the upcoming
+// Drafts), VAT-inclusive like the statement's TOTAL. Shown to the client, so
+// it is null unless the schedule adds up to the contract (billingContractGap
+// within ₱1): a schedule that doesn't would print a wrong total. The last
+// upcoming row takes the VAT rounding so the column adds up to the contract.
+export const billingScheduleRows = ({ deal, milestones = [], ms = null } = {}) => {
+  const contractBase = Number(deal && deal.value) || 0;
+  if (!deal || !(contractBase > 0) || deal.standbyPO) return null;
+  const gap = billingContractGap(deal, milestones);
+  if (!gap.count || Math.abs(gap.gap) > 1) return null;
+  const r2 = x => Math.round((Number(x) || 0) * 100) / 100;
+  const rt = deal.receiptType || "OR";
+  const k = calcTax(100, rt).vat > 0 ? 1.12 : 1;
+  const own = milestones.filter(b => b.dealId === deal.id && b.status !== "Cancelled");
+  const sent = own.filter(b => b.status !== "Draft")
+    .sort((a, b) => String(a.invoiceDate || "").localeCompare(String(b.invoiceDate || "")));
+  const upcoming = own.filter(b => b.status === "Draft")
+    .sort((a, b) => String(a.plannedDate || a.invoiceDate || "").localeCompare(String(b.plannedDate || b.invoiceDate || "")));
+  const rows = [...sent, ...upcoming].map(b => {
+    const t = calcTax(b.amount, b.receiptType ?? rt, b.withholding ?? deal.withholding ?? false);
+    const paid = milestonePaid(b);
+    const isThis = !!(ms && b.id === ms.id);
+    const status = b.status === "Draft" ? (isThis ? "This billing" : "Upcoming")
+      : paid >= t.netReceivable - 1 ? "Paid"
+      : isThis ? (paid > 0 ? "This billing · partly received" : "This billing")
+      : paid > 0 ? "Partly received" : "Billed";
+    return { id: b.id, ref: b.status === "Draft" ? "" : (b.invoiceNo || ""), name: b.name || "",
+      pct: Math.round((Number(b.amount) || 0) / contractBase * 1000) / 10, amount: t.gross, status, isThis, upcoming: b.status === "Draft" };
+  });
+  const contractInc = r2(contractBase * k);
+  const lastUp = [...rows].reverse().find(r => r.upcoming);
+  if (lastUp) lastUp.amount = r2(contractInc - rows.filter(r => r !== lastUp).reduce((s, r) => s + r.amount, 0));
+  return { rows, total: r2(rows.reduce((s, r) => s + r.amount, 0)), vatable: k > 1 };
 };
 // A project's completion % for margin screens: the one progress rule (projProgressPct),
 // with "not set yet" counted as 0.

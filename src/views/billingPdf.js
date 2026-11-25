@@ -53,7 +53,8 @@ export function buildInvoicePdf(m){
   [m.billTo.contact,m.billTo.address,m.billTo.email,m.billTo.tin?`TIN: ${m.billTo.tin}`:""].filter(Boolean).forEach(t=>{
     doc.splitTextToSize(t,100).forEach(l=>{doc.text(l,L,y);y+=4;});
   });
-  const meta=[["BILLING NO.",m.invoiceNo||"—"],...(m.poNo?[["PO #",m.poNo]]:[]),["DATE",m.invoiceDate],["TERMS",m.terms],["DUE DATE",m.dueDate]];
+  const meta=[["BILLING NO.",m.invoiceNo||"—"],...(m.poNo?[["PO #",m.poNo]]:[]),["DATE",m.invoiceDate],["TERMS",m.terms],["DUE DATE",m.dueDate],
+    ...(m.contractPrice>0?[["CONTRACT PRICE",`PHP ${pdfNum(m.contractPrice)}`]]:[])];
   let my=topY;
   meta.forEach(([k,v])=>{
     doc.setFont(F,"bold");doc.setFontSize(7);doc.setTextColor(SLATE);doc.text(k,R-58,my);
@@ -61,6 +62,11 @@ export function buildInvoicePdf(m){
     doc.text(doc.splitTextToSize(String(v||"—"),36)[0],R,my,{align:"right"});
     my+=5.2;
   });
+  if(m.contractPrice>0){
+    doc.setFont(F,"normal");doc.setFontSize(6.5);doc.setTextColor("#94a3b8");
+    doc.text(`Agreed contract price${m.contractVatable?", VAT-inclusive":""}, shown for transparency`,R,my-1.6,{align:"right"});
+    my+=3;
+  }
   y=Math.max(y,my)+4;
 
   const asPct=m.line.qty&&m.line.qty!=="1";
@@ -68,7 +74,9 @@ export function buildInvoicePdf(m){
     startY:y,margin:{left:L,right:W-R,bottom:16},theme:"plain",
     // Billed as a share of the contract: % BILLED x CONTRACT PRICE = AMOUNT
     // (statementLine, src/core.js); QTY 1 when the % can't reproduce it.
-    head:[["DATE","SERVICE","DESCRIPTION","TAX",asPct?"% BILLED":"QTY",asPct?"CONTRACT PRICE":"RATE","AMOUNT"]],
+    // Prices in the line are VAT-exclusive (VAT is added below in TAX), so
+    // the header says so; the contract summary shows the VAT-inclusive price.
+    head:[["DATE","SERVICE","DESCRIPTION","TAX",asPct?"% BILLED":"QTY",asPct?(m.vat>0?"CONTRACT PRICE\n(VAT-EX)":"CONTRACT PRICE"):(m.vat>0?"RATE (VAT-EX)":"RATE"),m.vat>0?"AMOUNT\n(VAT-EX)":"AMOUNT"]],
     body:[[m.line.date,m.line.service,m.line.description.join("\n"),m.line.tax,m.line.qty??"1",pdfNum(m.line.rate??m.subtotal),pdfNum(m.line.amount??m.subtotal)]],
     styles:{font:F,fontSize:8.5,textColor:INK,cellPadding:2.2,valign:"top",lineColor:"#f1f5f9",lineWidth:{bottom:0.2}},
     headStyles:{font:F,fontStyle:"bold",fillColor:NAVY,textColor:255,fontSize:6.5},
@@ -120,11 +128,37 @@ export function buildInvoicePdf(m){
     y=doc.lastAutoTable.finalY+6;
   }
 
+  // The whole billing schedule of the contract (billingScheduleRows: only
+  // when it adds up to the contract), so the client sees what the project
+  // costs in full and what is still to come.
+  const sch=m.schedule;
+  if(sch&&sch.rows.length){
+    if(y>225){doc.addPage();y=24;}
+    doc.setFont(F,"bold");doc.setFontSize(8.5);doc.setTextColor(INK);doc.text("BILLING SCHEDULE — FULL CONTRACT",L,y);
+    const thisIdx=sch.rows.findIndex(r=>r.isThis);
+    autoTable(doc,{
+      startY:y+2,margin:{left:L,right:W-R,bottom:16},theme:"plain",
+      head:[["BILLING","BILLING NO.","% OF CONTRACT",sch.vatable?"AMOUNT (VAT-INC)":"AMOUNT","STATUS"]],
+      body:sch.rows.map(r=>[r.name||"—",r.ref||"—",`${r.pct}%`,pdfNum(r.amount),r.status]),
+      foot:[["TOTAL CONTRACT PRICE","","100%",pdfNum(sch.total),""]],
+      styles:{font:F,fontSize:8.5,textColor:INK,cellPadding:1.8,lineColor:"#f1f5f9",lineWidth:{bottom:0.2}},
+      headStyles:{font:F,fontStyle:"bold",fillColor:NAVY,textColor:255,fontSize:6.5},
+      footStyles:{font:F,fontStyle:"bold",textColor:INK,fontSize:8.5,fillColor:"#f8fafc"},
+      columnStyles:{1:{cellWidth:26},2:{cellWidth:26,halign:"right"},3:{cellWidth:34,halign:"right"},4:{cellWidth:44}},
+      didParseCell:d=>{
+        if(d.column.index===2||d.column.index===3)d.cell.styles.halign="right";
+        if(d.section==="body"&&d.row.index===thisIdx){d.cell.styles.fontStyle="bold";d.cell.styles.fillColor="#fff7ed";}
+        if(d.section==="body"&&d.column.index===4&&sch.rows[d.row.index]?.upcoming)d.cell.styles.textColor=SLATE;
+      },
+    });
+    y=doc.lastAutoTable.finalY+6;
+  }
+
   // Contract summary: four figures and one bar (paid / billed, unpaid / this
   // billing / not yet billed). Same numbers as the print page (invoiceData).
   const p=m.progress;
   if(p){
-    if(y>215){doc.addPage();y=24;}
+    if(y>236){doc.addPage();y=24;}
     const boxH=40;
     doc.setDrawColor(LINE);doc.setLineWidth(0.3);doc.roundedRect(L,y,R-L,boxH,1.5,1.5,"S");
     let cy=y+6;
@@ -136,7 +170,7 @@ export function buildInvoicePdf(m){
     // and "AMOUNT PAID" lines above, so PAID TO DATE is exactly what the
     // client paid (invoiceContractProgress: cashPaid / ewtBilled / remainingNet).
     const hasEwt=p.ewtBilled>0.005;
-    const cards=[["CONTRACT AMOUNT",p.contract,"",INK],
+    const cards=[[p.vatable?"CONTRACT PRICE (VAT-INC)":"CONTRACT PRICE",p.contract,p.vatable?`${pdfNum(p.contractExVat)} + 12% VAT`:"",INK],
      ["BILLED TO DATE",p.billed,`${p.billedPct}% of contract, incl. this billing`,BLUE],
      ["RECEIVED TO DATE",p.cashPaid,`${p.cashPaidPct}% of contract`,GREEN],
      ...(hasEwt?[["TAX WITHHELD (EWT)",p.ewtBilled,"on billed to date, per BIR 2307",RED]]:[]),
@@ -168,6 +202,7 @@ export function buildInvoicePdf(m){
   }
 
   if(m.vat>0){
+    if(y>255){doc.addPage();y=24;}
     doc.setFont(F,"bold");doc.setFontSize(8.5);doc.setTextColor(INK);doc.text("TAX SUMMARY",L,y);
     autoTable(doc,{
       startY:y+2,margin:{left:L,right:W-L-90},theme:"plain",
