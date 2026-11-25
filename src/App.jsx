@@ -9,6 +9,7 @@ import SupplierDocsPanel from "./views/SupplierDocsPanel";
 import CashOutModal,{openCashOut,closeCashOut,cashOutHas,OrderPicker} from "./views/CashOutModal";
 import BillHistoryModal,{openBillHistory} from "./views/BillHistory";
 import MultiInvoicePay from "./views/MultiInvoicePay";
+import CollectionsLog from "./views/CollectionsLog";
 import {buildOrders,payIsOpen,payBalance} from "./data/ledger";
 import {fmt,addPrintClose,docLogo,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable,HIDDEN_NAV_IDS,AP_HIDDEN,WAREHOUSE_HIDDEN,isHiddenView,HIDDEN_FIN_TABS,HIDDEN_PIPE_TABS,pageOn,cashCanEdit,ProjectSelect,setProjectSearchIndex} from './shared';
 import {T} from './theme';
@@ -7210,6 +7211,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       upBillings(bs=>bs.map(b=>b.id===msId?{...b,withholding:true}:b));
       if(milestone.dealId) logActivity(milestone.dealId,"EWT withheld",`${milestone.invoiceNo||milestone.name||"Invoice"} set to with 2% EWT when logging a payment (client's BIR 2307 to follow)`,payment.recordedBy||session?.name);
     }
+    opts.payId=payId;  // the caller may need it (Collections: apply_unapplied_collection)
     if(isSupabaseReady()){
       const res=await sbUpsertDetailed("billing_payments",toSbPayment({...payment,id:payId,milestoneId:msId}),"id");
       if(!res.ok){
@@ -26210,6 +26212,12 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const setBillSort=v=>{setBillSortS(v);_lsBSet("sort",v);};
   const[openClients,setOpenClients]=useState(()=>new Set());
   const[showMoreFilters,setShowMoreFilters]=useState(false);
+  // Billing › Collections (2026-11-25): the collection sheet Finance kept in
+  // Google Sheets, built from Billing payments (src/views/CollectionsLog.jsx).
+  const[billTab,setBillTabS]=useState(()=>_lsB("tab","projects"));    // projects | collections
+  const setBillTab=v=>{setBillTabS(v);_lsBSet("tab",v);};
+  const[colEntry,setColEntry]=useState(null);   // {dealId, apply} — "+ Collection" / "Apply →" form
+  const[colReload,setColReload]=useState(0);
   const[showInsights,setShowInsightsS]=useState(()=>_lsB("insights",false));
   const setShowInsights=f=>setShowInsightsS(v=>{const nv=typeof f==="function"?f(v):f;_lsBSet("insights",nv);return nv;});
 
@@ -26467,14 +26475,17 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   // One cheque / transfer across several invoices (MultiInvoicePay). Each
   // invoice gets its own billing payment with the same reference, date and
   // bank; one Telegram for the cheque.
-  const saveMultiPay=async({common,lines,total})=>{
-    if(multiSaving||!lines.length) return;
-    const d=deal;
+  // ctx (Billing › Collections): {deal} to save on a project other than the one
+  // open, {applyId} to mark a "received before invoice" collection applied
+  // once its payments are saved. Returns true when everything was saved.
+  const saveMultiPay=async({common,lines,total,unapplied},ctx={})=>{
+    if(multiSaving||(!lines.length&&!unapplied)) return false;
+    const d=ctx.deal||deal;
     if(!canPayDeal(d)){toastEmit("You can't record payments on this project.","error",8000);return;}
     if(isMotherPO(d)&&canonRole(role)!=="Manager"){toastEmit(`${d.ceNo||"This project"} is a mother PO. Only a Manager can record payments on it — record it on the sub-project that was billed.`,"error",9000);return;}
     if(common.date&&common.date>today&&!(await uiConfirm("The Date Received is in the future. Save anyway?")))return;
     if(common.date&&common.valueDate&&common.valueDate<common.date&&!(await uiConfirm("The Value Date is before the Date Received. Save anyway?")))return;
-    const dup=findDuplicatePayments({dealId:d.id,payment:{amount:total,date:common.date,refNo:common.refNo},billings,deals});
+    const dup=ctx.applyId?[]:findDuplicatePayments({dealId:d.id,payment:{amount:total,date:common.date,refNo:common.refNo},billings,deals});
     if(dup.length){
       const ls=dup.map(x=>`• ${x.deal?.ceNo||"No CE"} — ${x.milestone.invoiceNo||x.milestone.name}: ₱${Number(x.payment.amount||0).toLocaleString("en-PH",{minimumFractionDigits:2})} on ${x.payment.date||"—"}${x.payment.refNo?` (Ref ${x.payment.refNo})`:""}`).join("\n");
       if(!(await uiConfirm({title:"This cheque may already be recorded",tone:"warning",confirmLabel:"Record it anyway",cancelLabel:"Go back",
@@ -26483,16 +26494,29 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     const ewtLines=lines.filter(l=>l.withEwt);
     if(ewtLines.length&&!(await uiConfirm({title:"Set invoices to with EWT",tone:"warning",confirmLabel:"Yes, client withheld EWT",cancelLabel:"Go back",
       message:`${ewtLines.map(l=>l.ms.invoiceNo||l.ms.name).join(", ")} will be set to "with 2% EWT", which lowers what is collectible on them. Only confirm if the client withheld it; Finance needs their BIR 2307.`})))return;
+    if(unapplied&&!isSupabaseReady()){toastEmit("Offline: money received before invoice can only be saved with a server connection.","error",9000);return false;}
     setMultiSaving(true);
-    const saved=[];let queued=false;
+    const saved=[];let queued=false;const payIds=[];let unapOk=!unapplied;
     try{
       for(const l of lines){
         const o={quiet:true,skipDeal:true,...(l.withEwt?{withholding:true}:{})};
         const ok=await logBillingPayment(l.ms.id,{...common,amount:String(l.amount),recordedBy:session?.name||role},o);
         if(ok===false) break;
         if(o.queued) queued=true;
+        if(o.payId) payIds.push(o.payId);
         saved.push(l);
       }
+      if(unapplied&&saved.length===lines.length){
+        const{error}=await _rpcWithTimeout(supabase.rpc("record_unapplied_collection",{p_deal:d.id,p_date:common.date||today,p_amount:unapplied.amount,
+          p_method:common.method||"",p_bank:common.bank||"",p_ref:common.refNo||"",p_note:unapplied.note}));
+        if(error) toastEmit(`${saved.length?"The invoice payments were saved, but the ":"The "}₱${Number(unapplied.amount).toLocaleString("en-PH",{minimumFractionDigits:2})} received before invoice was NOT saved: ${error.message}`,"error",15000);
+        else unapOk=true;
+      }
+      if(ctx.applyId&&saved.length===lines.length&&!queued){
+        const{error}=await _rpcWithTimeout(supabase.rpc("apply_unapplied_collection",{p_id:ctx.applyId,p_payment_ids:payIds}));
+        if(error) toastEmit(`The payments were saved, but the collection wasn't marked applied: ${error.message}. Ask a Manager before recording it again.`,"error",15000);
+      }
+      ctx.onDone&&ctx.onDone();
     }finally{setMultiSaving(false);}
     const f2=v=>`₱${Number(v).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
     if(saved.length){
@@ -26512,8 +26536,12 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         sendTelegramNotification("management",msg);
       }
     }
-    if(saved.length===lines.length){toastEmit(`Recorded ${f2(total)} across ${saved.length} invoices.`,"success",6000);setMultiPay(false);}
+    if(saved.length===lines.length&&unapOk){
+      toastEmit(unapplied?`Recorded ${f2(total)}: ${saved.length?`${f2(total-unapplied.amount)} on ${saved.length} invoice(s), `:""}${f2(unapplied.amount)} received before invoice.`:`Recorded ${f2(total)} across ${saved.length} invoice${saved.length===1?"":"s"}.`,"success",6000);
+      setMultiPay(false);return true;
+    }
     else if(saved.length) toastEmit(`Only ${saved.length} of ${lines.length} invoices were recorded (${saved.map(l=>l.ms.invoiceNo||l.ms.name).join(", ")}). Check the rest before trying again: don't record those ones twice.`,"error",15000);
+    return false;
   };
   const submitPay=async()=>{
     if(paySaving||!payForm.amount||!showPay) return;
@@ -26939,6 +26967,22 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         </div>
       )}
 
+      {/* Projects | Collections */}
+      <div role="tablist" style={{display:"flex",gap:4,borderBottom:"1.5px solid #e2e8f0",marginBottom:16}}>
+        {[["projects","📁 Projects & invoices"],["collections","💵 Collections"]].map(([v,l])=>(
+          <button key={v} role="tab" aria-selected={billTab===v} onClick={()=>setBillTab(v)}
+            style={{background:"none",border:"none",borderBottom:`3px solid ${billTab===v?"#f97316":"transparent"}`,marginBottom:-1.5,padding:"9px 14px",fontFamily:"inherit",fontSize:".84rem",fontWeight:billTab===v?800:600,color:billTab===v?"#0f172a":"#64748b",cursor:"pointer"}}>
+            {l}
+          </button>
+        ))}
+      </div>
+      {billTab==="collections"?(
+        <CollectionsLog billings={billings} deals={deals} today={today} session={session} toastEmit={toastEmit}
+          canRecord={canEdit} isManager={canonRole(role)==="Manager"} reloadKey={colReload}
+          onRecord={()=>setColEntry({dealId:"",apply:null})}
+          onApply={row=>setColEntry({dealId:row.deal_id,apply:row})}
+          onOpenProject={id=>setSelDeal(id)}/>
+      ):(<>
       {/* KPIs */}
       <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(5,1fr)",gap:10,marginBottom:16}}>
         {[
@@ -27355,6 +27399,42 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
           );
         })}
       </div>
+      </>)}
+
+      {/* ── "+ Collection" / "Apply →" (Billing › Collections) ─────────────── */}
+      {colEntry&&(()=>{
+        const cd=colEntry.dealId?deals.find(x=>x.id===colEntry.dealId):null;
+        const ap=colEntry.apply;
+        const close=()=>{if(!multiSaving)setColEntry(null);};
+        // Projects that can take a payment: awarded deals and approved addenda, not your own as Sales Owner.
+        const opts=[..._baseDeals,..._addendumDeals].filter(x=>canPayDeal(x)).sort((a,b)=>String(a.client||"").localeCompare(String(b.client||""))||String(a.contact||"").localeCompare(String(b.contact||"")));
+        return(
+          <Modal open title={ap?`Apply ${fmt(ap.amount)} received before invoice`:"+ Collection"} onClose={close} wide>
+            {!ap&&(
+              <div style={{marginBottom:12}}>
+                <div style={{fontSize:".72rem",fontWeight:700,color:"#475569",marginBottom:4}}>Project <span style={{color:"#dc2626"}}>*</span></div>
+                <ProjectSelect value={colEntry.dealId} onChange={e=>setColEntry(c=>({...c,dealId:e.target.value}))} autoFocus>
+                  <option value="">— Pick the project the client paid for —</option>
+                  {opts.map(x=><option key={x.id} value={x.id}>{x.client}{x.contact?` — ${x.contact}`:""}{x.ceNo?` (${x.ceNo})`:""}</option>)}
+                </ProjectSelect>
+                <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:4}}>Not a client payment (loan, refund, GMD transfer, reimbursement)? It goes on the Daily Cash Position only.</div>
+              </div>
+            )}
+            {ap&&<div style={{fontSize:".76rem",color:"#78350f",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"8px 12px",marginBottom:12}}>
+              {cd?.client} — {cd?.contact||cd?.ceNo} · received {ap.received_date} · {ap.note}
+            </div>}
+            {cd&&(
+              <MultiInvoicePay key={cd.id+(ap?.id||"")} deal={cd} today={today} saving={multiSaving}
+                milestones={billings.filter(b=>b.dealId===cd.id)}
+                title={ap?"Put it on the invoice(s) it paid":"💵 What reached the bank"}
+                allowUnapplied={!ap} lockTotal={!!ap}
+                preset={ap?{total:String(ap.amount),bank:ap.bank||"",method:ap.method||"Bank Transfer",date:ap.received_date,refNo:ap.ref_no||"",note:"Received before invoice"}:{method:"Bank Transfer"}}
+                onCancel={close}
+                onSave={async payload=>{const ok=await saveMultiPay(payload,{deal:cd,applyId:ap?.id,onDone:()=>setColReload(k=>k+1)});if(ok)setColEntry(null);}}/>
+            )}
+          </Modal>
+        );
+      })()}
 
       {/* ── Row-actions menu (⋯) — fixed-position so the overflow:auto list
              doesn't clip it. Anchored to the button that opened it. ─────────── */}
