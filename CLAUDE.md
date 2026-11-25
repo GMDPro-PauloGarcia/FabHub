@@ -71,7 +71,7 @@ For the smoke test locally, run `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers
 
 ## Paid status follows payments (2026-11-25)
 - "Partially Paid" / "Fully Paid" on a billing milestone come only from its non-bounced payments (offsets count): paid ≥ net collectible − ₱1 is Fully Paid. Nobody, Managers included, picks them from the status dropdown; a settlement without cash is an Offset / Credit Note payment. A refused pick is kept silently and logged to `audit_log` (`blocked`); Cancelled and ₱0 milestones are left alone.
-- Database: `billing_ms_derived_status()`, `trg_billing_ms_paid_status` (milestones) and `trg_billing_payment_ms_status` (a deleted / bounced payment takes Fully Paid away), migration `20261125010000_billing_milestone_paid_status_guard.sql` (one-off sync of existing rows logged as `status_sync`, record_id `billing-status-sync-20261125`). **Not yet tested or applied** (2026-11-25).
+- Database: `billing_ms_derived_status()`, `trg_billing_ms_paid_status` (milestones) and `trg_billing_payment_ms_status` (a deleted / bounced payment takes Fully Paid away), migration `20261125010000_billing_milestone_paid_status_guard.sql` (one-off sync of existing rows logged as `status_sync`, record_id `billing-status-sync-20261125`). Tested on production in a rolled-back transaction 2026-11-25 (12 cases, Finance + Manager; the sync changes 12 invoices); **not yet applied** — release day.
 - App: `PAID_BILLING_STATUSES` / `MANUAL_BILLING_STATUSES` / `billingStatusOptions` / `msPaidStatus` (`src/core.js`), the two status dropdowns and `logBillingPayment` / `deleteBillingPayment` (`src/App.jsx`). Keep them in sync. The app change is safe to ship before the migration (it only narrows the dropdown).
 
 ## Contract price ↔ billing schedule (2026-11-24)

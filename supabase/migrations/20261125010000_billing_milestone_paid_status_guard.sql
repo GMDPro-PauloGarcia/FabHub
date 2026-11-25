@@ -44,6 +44,8 @@
 -- (src/core.js), the status dropdowns and logBillingPayment /
 -- deleteBillingPayment (src/App.jsx). Keep them in sync.
 -- No DROP statements (apply_migration hangs on them — CLAUDE.md).
+-- Tested on production 2026-11-25 in a rolled-back transaction: 12 cases
+-- (Finance aerwin, Manager paulo); the one-off sync changed 12 invoices.
 -- ============================================================================
 
 create or replace function public.billing_ms_derived_status(
