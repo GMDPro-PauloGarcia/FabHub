@@ -11,7 +11,7 @@ import {supabase,sbList,isSupabaseReady} from "../supabaseClient";
 //     same reference, date, bank and client are one cheque / transfer, as in
 //     reconcileLedger, src/data/ledger.js);
 //   • money received before the invoice exists (unapplied_collections, migration
-//     20261125010000): it names the project, doesn't reduce AR, and is applied
+//     20261125030000): it names the project, doesn't reduce AR, and is applied
 //     to the invoice once issued ("Apply →"). Open ones 7+ days old go to
 //     management on Telegram every morning.
 // "+ Collection" (BillingView) records through the usual Billing payment save,

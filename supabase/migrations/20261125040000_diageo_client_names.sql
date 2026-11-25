@@ -1,5 +1,5 @@
 -- ============================================================================
--- Migration 20261125020000 — Diageo: 7 client names → its 2 billing entities
+-- Migration 20261125040000 — Diageo: 7 client names → its 2 billing entities
 --
 -- Why (Paulo, 2026-11-25): Billing now groups projects by client. Diageo was
 -- typed 7 ways on 39 deals, so it showed as 7 clients. Diageo bills through

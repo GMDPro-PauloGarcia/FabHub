@@ -1,5 +1,5 @@
 -- ============================================================================
--- Migration 20261125010000 — Collections log: received-before-invoice money
+-- Migration 20261125030000 — Collections log: received-before-invoice money
 -- and a Manager check on every collection
 --
 -- Why (Paulo, 2026-11-25): Finance (Jerwin) still keeps collections in a

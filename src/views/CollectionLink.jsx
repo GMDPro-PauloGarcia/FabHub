@@ -52,6 +52,9 @@ export default function CollectionLinkModal({m,billings=[],deals=[],linkedElsewh
   const sum=r2(picked.reduce((s,x)=>s+x.amount,0));
   const gap=r2(sum-m.amount);
   const elsewhere=picked.filter(x=>linkedElsewhere.has(x.id));
+  // A payment already tied to another row can't be linked again (it would be
+  // dropped from one of the two rows in Transaction History).
+  const canLink=(picked.length>0&&!elsewhere.length)||(!picked.length&&!!notBilling);
   const td={padding:"6px 8px",borderTop:"1px solid #f1f5f9",fontSize:".76rem",verticalAlign:"top"};
   return(
     <Modal open title={`🔗 Collection · ${f2(m.amount)}`} onClose={onClose} wide>
@@ -81,7 +84,7 @@ export default function CollectionLinkModal({m,billings=[],deals=[],linkedElsewh
             :`⚠ Billing records ${f2(sum)}, ${f2(-gap)} less than reached the bank. A payment is missing in Billing, or it's on another row.`}
         </div>
       )}
-      {elsewhere.length>0&&<div style={{fontSize:".74rem",color:"#dc2626",marginTop:4}}>⚠ {elsewhere.length} of these is already linked to another collection row. A payment can be one deposit only.</div>}
+      {elsewhere.length>0&&<div style={{fontSize:".74rem",color:"#dc2626",marginTop:4}}>⚠ {elsewhere.length} of these is already linked on {[...new Set(elsewhere.map(x=>linkedElsewhere.get(x.id)))].join(", ")}. A payment can be one deposit only: untick it, or remove the link on that row first.</div>}
       <div style={{marginTop:12,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",fontSize:".76rem"}}>
         <span style={{color:"#64748b"}}>Or, not a client payment:</span>
         <select value={notBilling} onChange={e=>{setNotBilling(e.target.value);if(e.target.value) setSel(new Set());}} style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 8px",fontFamily:"inherit",fontSize:".76rem"}}>
@@ -92,8 +95,8 @@ export default function CollectionLinkModal({m,billings=[],deals=[],linkedElsewh
       <div style={{display:"flex",gap:8,marginTop:14,justifyContent:"flex-end"}}>
         {(m.billingPaymentIds?.length||m.notBilling)&&<button onClick={()=>{onApply([],"");onClose();}} style={{marginRight:"auto",background:"#fff",border:"1.5px solid #fecaca",borderRadius:7,padding:"7px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:"#dc2626",cursor:"pointer"}}>Remove link</button>}
         <button onClick={onClose} style={{background:"#fff",border:"1.5px solid #cbd5e1",borderRadius:7,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#475569",cursor:"pointer"}}>Cancel</button>
-        <button disabled={!picked.length&&!notBilling} onClick={()=>{onApply(picked.map(x=>x.id),notBilling);onClose();}}
-          style={{background:picked.length||notBilling?"#1d4ed8":"#e2e8f0",border:"none",borderRadius:7,padding:"7px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:picked.length||notBilling?"#fff":"#94a3b8",cursor:picked.length||notBilling?"pointer":"not-allowed"}}>
+        <button disabled={!canLink} onClick={()=>{if(!canLink) return;onApply(picked.map(x=>x.id),notBilling);onClose();}}
+          style={{background:canLink?"#1d4ed8":"#e2e8f0",border:"none",borderRadius:7,padding:"7px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:canLink?"#fff":"#94a3b8",cursor:canLink?"pointer":"not-allowed"}}>
           Link (save the sheet after)
         </button>
       </div>
