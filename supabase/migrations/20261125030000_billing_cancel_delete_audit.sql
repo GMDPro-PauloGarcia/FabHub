@@ -28,6 +28,8 @@
 -- Not done (ask Paulo): a reason on cancel / delete, Telegram to management,
 -- or limiting cancel / delete of a sent or paid invoice to Managers.
 -- No DROP statements (apply_migration hangs on them — CLAUDE.md).
+-- Tested on production 2026-11-25 in a rolled-back transaction (6 cases);
+-- applied 2026-11-25 (weekday exception by Paulo).
 -- ============================================================================
 
 create or replace function public.billing_cancel_delete_audit()
