@@ -46,6 +46,7 @@
 -- No DROP statements (apply_migration hangs on them — CLAUDE.md).
 -- Tested on production 2026-11-25 in a rolled-back transaction: 12 cases
 -- (Finance aerwin, Manager paulo); the one-off sync changed 12 invoices.
+-- Applied 2026-11-25 (weekday exception by Paulo); sync: 12 invoices, as tested.
 -- ============================================================================
 
 create or replace function public.billing_ms_derived_status(
