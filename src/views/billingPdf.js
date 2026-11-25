@@ -112,18 +112,25 @@ export function buildInvoicePdf(m){
     doc.setFont(F,"normal");doc.setFontSize(7);doc.setTextColor("#94a3b8");
     doc.text(`as of ${m.asOf||""}${p.vatable?" · amounts incl. VAT":""}`,R-4,cy,{align:"right"});
     cy+=6;
-    const cw=(R-L-8)/4;
-    [["CONTRACT AMOUNT",p.contract,"",INK],
+    // EWT gets its own figure, the same basis as the statement's "Less: EWT"
+    // and "AMOUNT PAID" lines above, so PAID TO DATE is exactly what the
+    // client paid (invoiceContractProgress: cashPaid / ewtBilled / remainingNet).
+    const hasEwt=p.ewtBilled>0.005;
+    const cards=[["CONTRACT AMOUNT",p.contract,"",INK],
      ["BILLED TO DATE",p.billed,`${p.billedPct}% of contract, incl. this billing`,BLUE],
-     ["PAID TO DATE",p.paid,`${p.paidPct}% of contract${p.withholding?", incl. tax withheld":""}`,GREEN],
-     ["REMAINING ON CONTRACT",p.remaining,`${Math.max(0,Math.round((100-p.paidPct)*10)/10)}% of contract`,ORANGE]].forEach(([k,v,sub,c],i)=>{
+     ["PAID TO DATE",p.cashPaid,`${p.cashPaidPct}% of contract`,GREEN],
+     ...(hasEwt?[["TAX WITHHELD (EWT)",p.ewtBilled,"on billed to date, per BIR 2307",RED]]:[]),
+     ["REMAINING ON CONTRACT",p.remainingNet,hasEwt?"after payments and EWT":`${Math.max(0,Math.round((100-p.cashPaidPct)*10)/10)}% of contract`,ORANGE]];
+    const cw=(R-L-8)/cards.length;
+    cards.forEach(([k,v,sub,c],i)=>{
       const x=L+4+i*cw;
       doc.setFont(F,"bold");doc.setFontSize(6.5);doc.setTextColor(SLATE);doc.text(k,x,cy);
       doc.setFontSize(10.5);doc.setTextColor(c);doc.text(pdfNum(v),x,cy+5.5);
       if(sub){doc.setFont(F,"normal");doc.setFontSize(6.5);doc.setTextColor(SLATE);doc.text(doc.splitTextToSize(sub,cw-3)[0],x,cy+9.5);}
     });
     cy+=14;
-    const segs=[[GREEN,"Paid",p.paidPct],["#f59e0b","Billed, unpaid",p.prevUnpaidPct],[ORANGE,p.thisUnpaidPct<p.thisPct-0.05?"This billing, unpaid":"This billing",p.thisUnpaidPct],["#e2e8f0","Not yet billed",p.unbilledPct]];
+    // Same basis as the cards: paid, EWT, then what is still due.
+    const segs=[[GREEN,"Paid",p.cashPaidPct],[RED,"EWT",p.ewtBilledPct],["#f59e0b","Billed, unpaid",p.prevDuePct],[ORANGE,p.thisDuePct<p.thisPct-0.05?"This billing, unpaid":"This billing",p.thisDuePct],["#e2e8f0","Not yet billed",p.unbilledPct]];
     const tot=Math.max(100,segs.reduce((s,a)=>s+a[2],0));
     const bx=L+4,bw=R-L-8,bh=4.5;
     doc.setFillColor("#e2e8f0");doc.roundedRect(bx,cy,bw,bh,2,2,"F");

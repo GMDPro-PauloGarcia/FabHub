@@ -886,6 +886,13 @@ export const invoiceContractProgress = ({ deal, milestones = [], ms = null } = {
   const prevUnpaidBase = Math.max(0, billedBase - paidBase - thisUnpaidBase);
   const unbilledBase = Math.max(0, contractBase - billedBase);
   const pct = x => Math.round(x / contractBase * 1000) / 10;
+  const cashPaid = own.reduce((s, b) => s + milestonePaid(b), 0);
+  const ewtBilled = billedMs.reduce((s, b) => s + calcTax(b.amount,
+    b.receiptType ?? deal.receiptType ?? "OR", b.withholding ?? deal.withholding ?? false).ewt, 0);
+  const dueOf = b => { const t = calcTax(b.amount, b.receiptType ?? deal.receiptType ?? "OR", b.withholding ?? deal.withholding ?? false);
+    return Math.max(0, t.gross - t.ewt - milestonePaid(b)); };
+  const thisDue = ms ? dueOf(ms) : 0;
+  const prevDue = billedMs.filter(b => !ms || b.id !== ms.id).reduce((s, b) => s + dueOf(b), 0);
   return {
     vatable,
     contract: r2(contractBase * k), billed: r2(billedBase * k), paid: r2(paidBase * k),
@@ -895,6 +902,18 @@ export const invoiceContractProgress = ({ deal, milestones = [], ms = null } = {
     thisUnpaidPct: pct(thisUnpaidBase), prevUnpaidPct: pct(prevUnpaidBase), unbilledPct: pct(unbilledBase),
     overBilled: billedBase - contractBase > 0.5,
     withholding: !!(deal && deal.withholding),
+    // The client's view, matching each statement's own TOTAL / Less: EWT /
+    // AMOUNT PAID lines: payments as recorded (no EWT grossed in), the EWT
+    // the client withholds on everything billed so far (to be covered by
+    // their BIR 2307), and what is left after both. `paid` / `remaining`
+    // above credit EWT only on what was paid, so a client saw two different
+    // "paid" figures on one page (Yobo INV-1951, 2026-11-25).
+    cashPaid: r2(cashPaid), ewtBilled: r2(ewtBilled),
+    remainingNet: r2(Math.max(0, r2(contractBase * k) - r2(cashPaid) - r2(ewtBilled))),
+    cashPaidPct: pct(cashPaid / k), ewtBilledPct: pct(ewtBilled / k),
+    // Same basis for the bar: this billing's and earlier billings' balance
+    // due (TOTAL − EWT − paid), as % of the contract.
+    thisDuePct: pct(thisDue / k), prevDuePct: pct(prevDue / k),
   };
 };
 // A project's completion % for margin screens: the one progress rule (projProgressPct),
