@@ -895,7 +895,7 @@ export const invoiceContractProgress = ({ deal, milestones = [], ms = null } = {
   const prevDue = billedMs.filter(b => !ms || b.id !== ms.id).reduce((s, b) => s + dueOf(b), 0);
   return {
     vatable,
-    contract: r2(contractBase * k), billed: r2(billedBase * k), paid: r2(paidBase * k),
+    contract: r2(contractBase * k), contractExVat: r2(contractBase), billed: r2(billedBase * k), paid: r2(paidBase * k),
     thisBill: r2(thisBase * k), thisUnpaid: r2(thisUnpaidBase * k), prevUnpaid: r2(prevUnpaidBase * k),
     unbilled: r2(unbilledBase * k), remaining: r2(Math.max(0, contractBase - paidBase) * k),
     paidPct: pct(paidBase), billedPct: pct(billedBase), thisPct: pct(thisBase),

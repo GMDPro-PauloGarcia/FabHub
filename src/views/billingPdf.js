@@ -68,7 +68,9 @@ export function buildInvoicePdf(m){
     startY:y,margin:{left:L,right:W-R,bottom:16},theme:"plain",
     // Billed as a share of the contract: % BILLED x CONTRACT PRICE = AMOUNT
     // (statementLine, src/core.js); QTY 1 when the % can't reproduce it.
-    head:[["DATE","SERVICE","DESCRIPTION","TAX",asPct?"% BILLED":"QTY",asPct?"CONTRACT PRICE":"RATE","AMOUNT"]],
+    // Prices in the line are VAT-exclusive (VAT is added below in TAX), so
+    // the header says so; the contract summary shows the VAT-inclusive price.
+    head:[["DATE","SERVICE","DESCRIPTION","TAX",asPct?"% BILLED":"QTY",asPct?(m.vat>0?"CONTRACT PRICE\n(VAT-EX)":"CONTRACT PRICE"):(m.vat>0?"RATE (VAT-EX)":"RATE"),m.vat>0?"AMOUNT\n(VAT-EX)":"AMOUNT"]],
     body:[[m.line.date,m.line.service,m.line.description.join("\n"),m.line.tax,m.line.qty??"1",pdfNum(m.line.rate??m.subtotal),pdfNum(m.line.amount??m.subtotal)]],
     styles:{font:F,fontSize:8.5,textColor:INK,cellPadding:2.2,valign:"top",lineColor:"#f1f5f9",lineWidth:{bottom:0.2}},
     headStyles:{font:F,fontStyle:"bold",fillColor:NAVY,textColor:255,fontSize:6.5},
@@ -136,7 +138,7 @@ export function buildInvoicePdf(m){
     // and "AMOUNT PAID" lines above, so PAID TO DATE is exactly what the
     // client paid (invoiceContractProgress: cashPaid / ewtBilled / remainingNet).
     const hasEwt=p.ewtBilled>0.005;
-    const cards=[["CONTRACT AMOUNT",p.contract,"",INK],
+    const cards=[[p.vatable?"CONTRACT PRICE (VAT-INC)":"CONTRACT PRICE",p.contract,p.vatable?`${pdfNum(p.contractExVat)} + 12% VAT`:"",INK],
      ["BILLED TO DATE",p.billed,`${p.billedPct}% of contract, incl. this billing`,BLUE],
      ["RECEIVED TO DATE",p.cashPaid,`${p.cashPaidPct}% of contract`,GREEN],
      ...(hasEwt?[["TAX WITHHELD (EWT)",p.ewtBilled,"on billed to date, per BIR 2307",RED]]:[]),
