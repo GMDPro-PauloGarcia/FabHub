@@ -8,6 +8,7 @@ import {useSharePdf,openPdfTab as openPdfTabShared} from "./views/SharePdf";
 import SupplierDocsPanel from "./views/SupplierDocsPanel";
 import CashOutModal,{openCashOut,closeCashOut,cashOutHas,OrderPicker} from "./views/CashOutModal";
 import BillHistoryModal,{openBillHistory} from "./views/BillHistory";
+import DailyActivityModal,{openDailyActivity} from "./views/DailyActivity";
 import MultiInvoicePay from "./views/MultiInvoicePay";
 import {buildOrders,payIsOpen,payBalance} from "./data/ledger";
 import {fmt,addPrintClose,docLogo,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable,HIDDEN_NAV_IDS,AP_HIDDEN,WAREHOUSE_HIDDEN,isHiddenView,HIDDEN_FIN_TABS,HIDDEN_PIPE_TABS,pageOn,cashCanEdit,ProjectSelect,setProjectSearchIndex} from './shared';
@@ -3188,7 +3189,7 @@ function AcctHome({exps,vouchers,fmt,today,greeting,todayL,session,setPage,setFi
 
 // Read-only Audit Trail for soft-deleted financial records. Lazy-loads
 // audit_log (so it doesn't slow app startup) and lets Finance restore a row.
-function AuditTrailView({isMobile,fmt,setPage,restoreFinancial,labelFor,Wrap}){
+function AuditTrailView({isMobile,fmt,setPage,restoreFinancial,labelFor,Wrap,openDay}){
   const[rows,setRows]=useState(null);
   const[busy,setBusy]=useState("");
   const load=useCallback(async()=>{
@@ -3214,6 +3215,7 @@ function AuditTrailView({isMobile,fmt,setPage,restoreFinancial,labelFor,Wrap}){
           <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>Billing edits &amp; deletions — who, when, what changed. Deleted rows can be restored.</div>
         </div>
         <div style={{display:"flex",gap:8}}>
+          {openDay&&<button onClick={openDay} style={{background:"#0B2545",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>📅 By day</button>}
           <button onClick={load} style={{background:"#475569",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>↻ Refresh</button>
           <button onClick={()=>setPage("acctdash")} style={{background:"#0f172a",border:"none",borderRadius:9,padding:"8px 16px",color:"#facc15",fontFamily:"inherit",fontWeight:800,fontSize:".8rem",cursor:"pointer"}}>← Accounting</button>
         </div>
@@ -11079,6 +11081,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {/* Global Modals */}
       <CashOutModal kinds={cashOutKinds}/>
       <BillHistoryModal payPays={payPays}/>
+      {canonRole(role)==="Manager"&&<DailyActivityModal deals={deals} billings={billings}/>}
       <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal} deals={deals} addenda={addenda} role={role} me={session?.name||""}/>
       <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={spendProjList} clientName={clientName} chartOfAccounts={chartOfAccounts} suppliers={suppliers} exps={exps} poRefOptions={[...new Set([...prs.map(p=>p.poNumber),...swos.map(w=>w.woNumber)].filter(Boolean))]}/>
       <Modal open={confirmDel!==null} onClose={()=>{setConfirmDel(null);setDelAck(false);}} title="Delete this deal?">
@@ -12541,7 +12544,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     <Wrap>
       <ManagerHome session={session} today={today} deals={deals} billings={billings} payables={payables} prs={prs} pcards={pcards}
         cash={bankCashSummary(cashPositions,today)} arTot={arTot} dealById={dealById} enteredByMe={enteredByMe} isMobile={isMobile}
-        go={setPage} goFin={navGo} openProject={id=>{setJumpDeal(id);setPage("projects");}}/>
+        go={setPage} goFin={navGo} openProject={id=>{setJumpDeal(id);setPage("projects");}} openDay={()=>openDailyActivity()}/>
     </Wrap>
   );
 
@@ -18883,7 +18886,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   // ── ACCOUNTING DASHBOARD (accessible from Finance & Manager navs) ────────────
   if(page==="audittrail"&&(role==="Finance"||role==="Manager"||role==="Accounting")) return(
-    <AuditTrailView isMobile={isMobile} fmt={fmt} setPage={setPage} restoreFinancial={restoreFinancial} labelFor={t=>(FIN_AUDIT[t]||{}).label||t} Wrap={Wrap}/>
+    <AuditTrailView isMobile={isMobile} fmt={fmt} setPage={setPage} openDay={canonRole(role)==="Manager"?()=>openDailyActivity():null} restoreFinancial={restoreFinancial} labelFor={t=>(FIN_AUDIT[t]||{}).label||t} Wrap={Wrap}/>
   );
   if(page==="wip"&&(role==="Finance"||role==="Manager"||role==="Accounting")) return(
     <WIPView wonDeals={wonDeals} projs={projs} billings={billings} exps={exps} prs={prs} overallProg={overallProg} setPage={setPage} Wrap={Wrap} isMobile={isMobile}/>

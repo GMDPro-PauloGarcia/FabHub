@@ -17,7 +17,7 @@ const MH={ink:"#0f172a",muted:"#475569",faint:"#64748b",line:"#e2e8f0",navy:"#0B
 const STEPS=[30,60,90,100];
 const STEP_CLR={30:"#f59e0b",60:"#3b82f6",90:"#8b5cf6",100:"#059669"};
 
-export default function ManagerHome({session,today,deals=[],billings=[],payables=[],prs=[],pcards={},cash,arTot,dealById,enteredByMe,go,goFin,openProject,isMobile}){
+export default function ManagerHome({session,today,deals=[],billings=[],payables=[],prs=[],pcards={},cash,arTot,dealById,enteredByMe,go,goFin,openProject,isMobile,openDay}){
   const first=(session?.name||"").split(" ")[0]||"there";
   const hr=new Date().getHours();
   const greet=hr<12?"Good morning":hr<17?"Good afternoon":"Good evening";
@@ -93,7 +93,10 @@ export default function ManagerHome({session,today,deals=[],billings=[],payables
 
   return(
     <div style={{maxWidth:1100}}>
-      <div style={{fontWeight:800,color:MH.ink,fontSize:"1.35rem"}}>{greet}, {first}</div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+        <div style={{fontWeight:800,color:MH.ink,fontSize:"1.35rem"}}>{greet}, {first}</div>
+        {openDay&&<button onClick={openDay} style={{border:"none",borderRadius:8,padding:"7px 14px",background:MH.navy,color:"#fff",fontWeight:700,fontSize:".78rem",cursor:"pointer",fontFamily:"inherit"}}>📅 What happened today</button>}
+      </div>
       <div style={{fontSize:".8rem",color:MH.faint,marginTop:2}}>{decisions.filter(x=>x.tone!=="info").length?`${decisions.filter(x=>x.tone!=="info").reduce((s,x)=>s+x.n,0)} things are waiting for you.`:"Nothing is waiting for you."} Charts and trends are on Executive.</div>
 
       <H n={1} t="Decisions" sub="waiting for a Manager"/>
