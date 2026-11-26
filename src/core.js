@@ -2124,3 +2124,70 @@ export const PM_TYPE_COLOR={"General Progress":"#0ea5e9","Materials Needed":"#f5
 export const PM_TYPE_ICON={"General Progress":"📋","Materials Needed":"📦","Design Request":"🎨","Blocker":"🚨"};
 
 export const WEATHER_OPTS=["☀️ Sunny","⛅ Cloudy","🌧️ Rainy","⛈️ Storm","🥵 Hot"];
+
+// ── Payroll in the Cash-Flow Forecast (Paulo, 2026-11-26) ──────────────────
+// Salaries never become bills: they are paid straight from the Daily Cash
+// Position, so the forecast learns them from it. Schedule (Paulo): office on
+// the 5th and 20th, production every Saturday. The sheet also carries a weekly
+// "PROJECT BASED PAYROLL" (~PHP 230-290K a week in Oct-Nov 2026, bigger than
+// production), paid with production. Rows are found by their particulars as
+// Finance types them ("OFFICE PAYROLL NOVEMBER 5, 2026", "PRODUCTION PAYROLL
+// NOVEMBER 2026 WEEK 3", "PROJECT BASED PAYROLL ..."): a row worded otherwise
+// is not seen. Site payroll mixed with materials ("PAYROLL + OT + PARKING") is
+// project cost paid case by case and is not forecast.
+export const PAYROLL_STREAMS = [
+  { key:"office",       label:"Office payroll",        re:/office\s+payroll/i,             when:"semi" },
+  { key:"production",   label:"Production payroll",    re:/production\s+payroll/i,         when:"weekly" },
+  { key:"projectBased", label:"Project-based payroll", re:/project[\s-]*based\s+payroll/i, when:"weekly" },
+];
+const _ymd = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const _dt = iso => new Date(String(iso).slice(0,10)+"T00:00:00");
+// One pay event = the rows of one stream within a few days of each other
+// (a payroll is sometimes split over two days or two banks).
+export const payrollEvents = (cashPositions, stream) => {
+  const rows = [];
+  Object.values(cashPositions || {}).forEach(p => {
+    if (!p || !p.date) return;
+    (p.disbursements?.manual || []).forEach(r => {
+      if (!stream.re.test(String(r.particulars || ""))) return;
+      const amt = Number(String(r.amount == null ? 0 : r.amount).replace(/,/g, "")) || 0;
+      if (amt > 0) rows.push({ date: String(p.date).slice(0,10), amt });
+    });
+  });
+  rows.sort((a, b) => a.date.localeCompare(b.date));
+  const gap = stream.when === "weekly" ? 3 : 5, ev = [];
+  rows.forEach(r => {
+    const last = ev[ev.length - 1];
+    if (last && (_dt(r.date) - _dt(last.last)) / 86400000 <= gap) { last.amt += r.amt; last.last = r.date; }
+    else ev.push({ date: r.date, last: r.date, amt: r.amt });
+  });
+  return ev;
+};
+// Expected payroll payments after `todayIso` up to `untilIso`: the average of
+// the stream's last 4 pay events in the 90 days before today, on its schedule.
+// An occurrence already paid on the sheet (an event within the days before it)
+// is skipped, so a payroll paid on Friday isn't counted again on Saturday.
+export const payrollForecast = (cashPositions, todayIso, untilIso) => {
+  const out = [], today = _dt(todayIso), until = _dt(untilIso);
+  const from90 = _ymd(new Date(today.getTime() - 90 * 86400000));
+  PAYROLL_STREAMS.forEach(s => {
+    const ev = payrollEvents(cashPositions, s).filter(e => e.date >= from90 && e.date <= todayIso);
+    if (!ev.length) return;
+    const recent = ev.slice(-4), avg = Math.round(recent.reduce((t, e) => t + e.amt, 0) / recent.length);
+    const dates = [];
+    if (s.when === "weekly") {
+      const d = new Date(today); d.setDate(d.getDate() + ((6 - d.getDay() + 7) % 7 || 7) - (today.getDay() === 6 ? 7 : 0));
+      for (; d <= until; d.setDate(d.getDate() + 7)) dates.push(_ymd(d));
+    } else {
+      for (let m = new Date(today.getFullYear(), today.getMonth(), 1); m <= until; m.setMonth(m.getMonth() + 1))
+        [5, 20].forEach(day => { const d = new Date(m.getFullYear(), m.getMonth(), day); if (d >= today && d <= until) dates.push(_ymd(d)); });
+    }
+    const window = s.when === "weekly" ? 6 : 10;
+    dates.forEach(iso => {
+      const lo = _ymd(new Date(_dt(iso).getTime() - window * 86400000));
+      if (ev.some(e => e.last >= lo && e.last <= iso)) return; // already paid this round
+      out.push({ date: iso, amt: avg, key: s.key, label: s.label, basis: recent.length });
+    });
+  });
+  return out.sort((a, b) => a.date.localeCompare(b.date));
+};
