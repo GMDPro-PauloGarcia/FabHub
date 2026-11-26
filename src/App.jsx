@@ -10,6 +10,7 @@ import CashOutModal,{openCashOut,closeCashOut,cashOutHas,OrderPicker} from "./vi
 import BillHistoryModal,{openBillHistory} from "./views/BillHistory";
 import DailyActivityModal,{openDailyActivity} from "./views/DailyActivity";
 import MultiInvoicePay from "./views/MultiInvoicePay";
+import CollectionsLog from "./views/CollectionsLog";
 import {buildOrders,payIsOpen,payBalance} from "./data/ledger";
 import {fmt,addPrintClose,docLogo,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable,HIDDEN_NAV_IDS,AP_HIDDEN,WAREHOUSE_HIDDEN,isHiddenView,HIDDEN_FIN_TABS,HIDDEN_PIPE_TABS,pageOn,cashCanEdit,ProjectSelect,setProjectSearchIndex} from './shared';
 import {T} from './theme';
@@ -7220,6 +7221,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       upBillings(bs=>bs.map(b=>b.id===msId?{...b,withholding:true}:b));
       if(milestone.dealId) logActivity(milestone.dealId,"EWT withheld",`${milestone.invoiceNo||milestone.name||"Invoice"} set to with 2% EWT when logging a payment (client's BIR 2307 to follow)`,payment.recordedBy||session?.name);
     }
+    opts.payId=payId;  // the caller may need it (Collections: apply_unapplied_collection)
     if(isSupabaseReady()){
       const res=await sbUpsertDetailed("billing_payments",toSbPayment({...payment,id:payId,milestoneId:msId}),"id");
       if(!res.ok){
@@ -26209,6 +26211,26 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const[showNotBilled,setShowNotBilled]=useState(false);  // hide 0-milestone "Not billed" projects by default
   const[billRowMenu,setBillRowMenu]=useState(null);       // ⋯ row-actions menu {id,client,canDeleteSchedule,canRemoveProject,top,right}
   const[forecastRange,setForecastRange]=useState("week"); // today | week | month — collection forecast horizon
+  // Simpler list (Paulo, 2026-11-25: "my team is still scared to use it"):
+  // grouped by client (one line per client, its projects underneath), a sort
+  // instead of a second grouping, 4 main filters with the rest under "More",
+  // and the Forecast / Aging panels folded away. Per-viewer conveniences only.
+  const _lsB=(k,d)=>{try{const v=localStorage.getItem("gmdv5:billing:"+k);return v==null?d:JSON.parse(v);}catch{return d;}};
+  const _lsBSet=(k,v)=>{try{localStorage.setItem("gmdv5:billing:"+k,JSON.stringify(v));}catch{}};
+  const[billGroup,setBillGroupS]=useState(()=>_lsB("group","client"));  // client | project
+  const[billSort,setBillSortS]=useState(()=>_lsB("sort","client"));     // client | latest | balance
+  const setBillGroup=v=>{setBillGroupS(v);_lsBSet("group",v);};
+  const setBillSort=v=>{setBillSortS(v);_lsBSet("sort",v);};
+  const[openClients,setOpenClients]=useState(()=>new Set());
+  const[showMoreFilters,setShowMoreFilters]=useState(false);
+  // Billing › Collections (2026-11-25): the collection sheet Finance kept in
+  // Google Sheets, built from Billing payments (src/views/CollectionsLog.jsx).
+  const[billTab,setBillTabS]=useState(()=>_lsB("tab","projects"));    // projects | collections
+  const setBillTab=v=>{setBillTabS(v);_lsBSet("tab",v);};
+  const[colEntry,setColEntry]=useState(null);   // {dealId, apply} — "+ Collection" / "Apply →" form
+  const[colReload,setColReload]=useState(0);
+  const[showInsights,setShowInsightsS]=useState(()=>_lsB("insights",false));
+  const setShowInsights=f=>setShowInsightsS(v=>{const nv=typeof f==="function"?f(v):f;_lsBSet("insights",nv);return nv;});
 
   const n =v=>Number(String(v||0).replace(/,/g,""))||0;
   const fmt=v=>"₱"+Number(v).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -26464,9 +26486,12 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   // One cheque / transfer across several invoices (MultiInvoicePay). Each
   // invoice gets its own billing payment with the same reference, date and
   // bank; one Telegram for the cheque.
-  const saveMultiPay=async({common,lines,total})=>{
-    if(multiSaving||!lines.length) return;
-    const d=deal;
+  // ctx (Billing › Collections): {deal} to save on a project other than the one
+  // open, {applyId} to mark a "received before invoice" collection applied
+  // once its payments are saved. Returns true when everything was saved.
+  const saveMultiPay=async({common,lines,total,unapplied},ctx={})=>{
+    if(multiSaving||(!lines.length&&!unapplied)) return false;
+    const d=ctx.deal||deal;
     if(!canPayDeal(d)){toastEmit("You can't record payments on this project.","error",8000);return;}
     if(isMotherPO(d)&&canonRole(role)!=="Manager"){toastEmit(`${d.ceNo||"This project"} is a mother PO. Only a Manager can record payments on it — record it on the sub-project that was billed.`,"error",9000);return;}
     if(common.date&&common.date>today&&!(await uiConfirm("The Date Received is in the future. Save anyway?")))return;
@@ -26483,7 +26508,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       if(r.length<10) return;
       common={...common,note:`Not a duplicate: ${r}${String(common.note||"").trim()?` · ${common.note}`:""}`};
     }
-    const dup=nds.length?[]:findDuplicatePayments({dealId:d.id,payment:{amount:total,date:common.date,refNo:common.refNo},billings,deals});
+    const dup=nds.length||ctx.applyId?[]:findDuplicatePayments({dealId:d.id,payment:{amount:total,date:common.date,refNo:common.refNo},billings,deals});
     if(dup.length){
       const ls=dup.map(x=>`• ${x.deal?.ceNo||"No CE"} — ${x.milestone.invoiceNo||x.milestone.name}: ₱${Number(x.payment.amount||0).toLocaleString("en-PH",{minimumFractionDigits:2})} on ${x.payment.date||"—"}${x.payment.refNo?` (Ref ${x.payment.refNo})`:""}`).join("\n");
       if(!(await uiConfirm({title:"This cheque may already be recorded",tone:"warning",confirmLabel:"Record it anyway",cancelLabel:"Go back",
@@ -26492,16 +26517,29 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     const ewtLines=lines.filter(l=>l.withEwt);
     if(ewtLines.length&&!(await uiConfirm({title:"Set invoices to with EWT",tone:"warning",confirmLabel:"Yes, client withheld EWT",cancelLabel:"Go back",
       message:`${ewtLines.map(l=>l.ms.invoiceNo||l.ms.name).join(", ")} will be set to "with 2% EWT", which lowers what is collectible on them. Only confirm if the client withheld it; Finance needs their BIR 2307.`})))return;
+    if(unapplied&&!isSupabaseReady()){toastEmit("Offline: money received before invoice can only be saved with a server connection.","error",9000);return false;}
     setMultiSaving(true);
-    const saved=[];let queued=false;
+    const saved=[];let queued=false;const payIds=[];let unapOk=!unapplied;
     try{
       for(const l of lines){
         const o={quiet:true,skipDeal:true,...(l.withEwt?{withholding:true}:{})};
         const ok=await logBillingPayment(l.ms.id,{...common,amount:String(l.amount),recordedBy:session?.name||role},o);
         if(ok===false) break;
         if(o.queued) queued=true;
+        if(o.payId) payIds.push(o.payId);
         saved.push(l);
       }
+      if(unapplied&&saved.length===lines.length){
+        const{error}=await _rpcWithTimeout(supabase.rpc("record_unapplied_collection",{p_deal:d.id,p_date:common.date||today,p_amount:unapplied.amount,
+          p_method:common.method||"",p_bank:common.bank||"",p_ref:common.refNo||"",p_note:unapplied.note}));
+        if(error) toastEmit(`${saved.length?"The invoice payments were saved, but the ":"The "}₱${Number(unapplied.amount).toLocaleString("en-PH",{minimumFractionDigits:2})} received before invoice was NOT saved: ${error.message}`,"error",15000);
+        else unapOk=true;
+      }
+      if(ctx.applyId&&saved.length===lines.length&&!queued){
+        const{error}=await _rpcWithTimeout(supabase.rpc("apply_unapplied_collection",{p_id:ctx.applyId,p_payment_ids:payIds}));
+        if(error) toastEmit(`The payments were saved, but the collection wasn't marked applied: ${error.message}. Ask a Manager before recording it again.`,"error",15000);
+      }
+      ctx.onDone&&ctx.onDone();
     }finally{setMultiSaving(false);}
     const f2=v=>`₱${Number(v).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
     if(saved.length){
@@ -26521,8 +26559,12 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         sendTelegramNotification("management",msg);
       }
     }
-    if(saved.length===lines.length){toastEmit(`Recorded ${f2(total)} across ${saved.length} invoices.`,"success",6000);setMultiPay(false);}
+    if(saved.length===lines.length&&unapOk){
+      toastEmit(unapplied?`Recorded ${f2(total)}: ${saved.length?`${f2(total-unapplied.amount)} on ${saved.length} invoice(s), `:""}${f2(unapplied.amount)} received before invoice.`:`Recorded ${f2(total)} across ${saved.length} invoice${saved.length===1?"":"s"}.`,"success",6000);
+      setMultiPay(false);return true;
+    }
     else if(saved.length) toastEmit(`Only ${saved.length} of ${lines.length} invoices were recorded (${saved.map(l=>l.ms.invoiceNo||l.ms.name).join(", ")}). Check the rest before trying again: don't record those ones twice.`,"error",15000);
+    return false;
   };
   const submitPay=async()=>{
     if(paySaving||!payForm.amount||!showPay) return;
@@ -26770,7 +26812,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const projectSummaries=_allSummaries.filter(({d,total,collected,balance,hasOverdue,ageKeys,hasUnsent,fullyPaid,milestoneCount,gapOff})=>{
     const q=billingSearch.toLowerCase();
     const matchSearch=!q||(d.client||"").toLowerCase().includes(q)||(d.ceNo||"").toLowerCase().includes(q)||(d.contact||"").toLowerCase().includes(q);
-    const matchFilter=billingFilter==="all"||(billingFilter==="outstanding"&&balance>0&&!fullyPaid)||(billingFilter==="paid"&&fullyPaid)||(billingFilter==="overdue"&&hasOverdue)||(billingFilter.startsWith("age:")&&ageKeys.has(billingFilter.slice(4)))||(billingFilter==="unsent"&&hasUnsent)||(billingFilter==="collected"&&collected>0)||(billingFilter==="uncollected"&&total>0&&collected===0)||(billingFilter==="gap"&&gapOff);
+    const matchFilter=billingFilter==="all"||(billingFilter==="action"&&(hasOverdue||hasUnsent||gapOff))||(billingFilter==="outstanding"&&balance>0&&!fullyPaid)||(billingFilter==="paid"&&fullyPaid)||(billingFilter==="overdue"&&hasOverdue)||(billingFilter.startsWith("age:")&&ageKeys.has(billingFilter.slice(4)))||(billingFilter==="unsent"&&hasUnsent)||(billingFilter==="collected"&&collected>0)||(billingFilter==="uncollected"&&total>0&&collected===0)||(billingFilter==="gap"&&gapOff);
     // Hide "Not billed" (0-milestone) projects unless the toggle is on or the user is searching.
     const matchNotBilled=milestoneCount>0||showNotBilled||!!q;
     return matchSearch&&matchFilter&&matchNotBilled;
@@ -26790,19 +26832,63 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const _grp=x=>[x,...(_kidsOf.get(x.d.id)||[])];
   const _grpKey=x=>({days:Math.max(..._grp(x).map(k=>k.maxOverdue)),amount:_grp(x).reduce((t,k)=>t+k.odBalance,0)});
   const _parents=_allSummaries.filter(x=>!(x.d.parentDealId&&_baseIds.has(x.d.parentDealId)));
-  if(_overdueView) _parents.sort((a,b)=>arCallOrder(_grpKey(a),_grpKey(b)));
+  // One entry per main project that matches, with its addenda.
+  const _groups=[];
   _parents.forEach(parent=>{
     const kids=(_kidsOf.get(parent.d.id)||[]).filter(k=>k.milestoneCount>0||showNotBilled||_matchIds.has(k.d.id));
     if(!_matchIds.has(parent.d.id)&&!kids.some(k=>_matchIds.has(k.d.id))) return;
+    _groups.push({parent,kids});
+  });
+  // Sort: the client to call first in overdue views; otherwise the user's pick.
+  // "Latest billing" = the most recent invoice actually sent (Drafts don't count).
+  const _lastSent=x=>x.ms.filter(m=>m.status!=="Draft"&&m.status!=="Cancelled").reduce((t,m)=>{const v=m.invoiceDate||"";return v>t?v:t;},"");
+  const _gLatest=g=>[g.parent,...g.kids].reduce((t,x)=>{const v=_lastSent(x);return v>t?v:t;},"");
+  const _gBalance=g=>[g.parent,...g.kids].reduce((t,x)=>t+(Number(x.balance)||0),0);
+  const _byName=(a,b)=>String(a||"").localeCompare(String(b||""),"en",{sensitivity:"base"});
+  if(_overdueView) _groups.sort((a,b)=>arCallOrder(_grpKey(a.parent),_grpKey(b.parent)));
+  else if(billSort==="latest") _groups.sort((a,b)=>_gLatest(b).localeCompare(_gLatest(a))||_byName(a.parent.d.client,b.parent.d.client));
+  else if(billSort==="balance") _groups.sort((a,b)=>_gBalance(b)-_gBalance(a));
+  else _groups.sort((a,b)=>_byName(a.parent.d.client,b.parent.d.client)||_byName(a.parent.d.contact,b.parent.d.contact));
+  const _pushGroup=({parent,kids},out)=>{
     const groupOverdue=parent.hasOverdue||kids.some(k=>k.hasOverdue);
-    billingRows.push({...parent,groupOverdue,addendumCount:kids.length});
-    kids.forEach(k=>billingRows.push({...k,groupOverdue:k.hasOverdue,childOf:parent.d}));
+    out.push({...parent,groupOverdue,addendumCount:kids.length});
+    kids.forEach(k=>out.push({...k,groupOverdue:k.hasOverdue,childOf:parent.d}));
     if(kids.length){
       const all=[parent,...kids];
       const sum=f=>Math.round(all.reduce((t,x)=>t+(Number(x[f])||0),0)*100)/100;
-      billingRows.push({subtotalOf:parent.d,addendumCount:kids.length,grossBase:sum("grossBase"),vat:sum("vat"),total:sum("total"),collected:sum("collected"),balance:sum("balance"),contract:Math.round((Number(parent.d.value)||0)+kids.filter(k=>isApprovedAddendumDeal(k.d)).reduce((t,x)=>t+(Number(x.d.value)||0),0)*100)/100});
+      out.push({subtotalOf:parent.d,addendumCount:kids.length,grossBase:sum("grossBase"),vat:sum("vat"),total:sum("total"),collected:sum("collected"),balance:sum("balance"),contract:Math.round((Number(parent.d.value)||0)+kids.filter(k=>isApprovedAddendumDeal(k.d)).reduce((t,x)=>t+(Number(x.d.value)||0),0)*100)/100});
     }
-  });
+  };
+  // Client key: letters and digits only, lower case, so "Yobo International
+  // Food Corp." and "…Corporation" stay apart only when they really differ.
+  const billClientKey=c=>String(c||"").toLowerCase().replace(/[^a-z0-9]/g,"").replace(/(incorporated|inc|corporation|corp)$/,"")||"(no client)";
+  const _clientMode=billGroup==="client";
+  const _searching=!!billingSearch.trim();
+  let billClientCount=0;
+  if(!_clientMode){
+    _groups.forEach(g=>_pushGroup(g,billingRows));
+  }else{
+    const buckets=new Map();
+    _groups.forEach(g=>{const k=billClientKey(g.parent.d.client);if(!buckets.has(k))buckets.set(k,[]);buckets.get(k).push(g);});
+    billClientCount=buckets.size;
+    // Buckets keep the order of their first group, which already follows the sort.
+    buckets.forEach((gs,key)=>{
+      const all=gs.flatMap(g=>[g.parent,...g.kids]);
+      const sum=f=>Math.round(all.reduce((t,x)=>t+(Number(x[f])||0),0)*100)/100;
+      const names={};all.forEach(x=>{const nm=x.d.client||"(no client)";names[nm]=(names[nm]||0)+1;});
+      const name=Object.entries(names).sort((a,b)=>b[1]-a[1])[0][0];
+      const open=_searching||openClients.has(key);
+      billingRows.push({clientHead:true,key,name,soaClient:gs[0].parent.d.client,projects:gs.length,addenda:gs.reduce((t,g)=>t+g.kids.length,0),
+        grossBase:sum("grossBase"),vat:sum("vat"),total:sum("total"),collected:sum("collected"),balance:sum("balance"),
+        hasOverdue:all.some(x=>x.hasOverdue),maxOverdue:all.reduce((t,x)=>Math.max(t,x.maxOverdue||0),0),odCount:all.reduce((t,x)=>t+(x.odCount||0),0),
+        hasUnsent:all.some(x=>x.hasUnsent),gapOff:all.some(x=>x.gapOff),
+        fullyPaid:all.some(x=>x.total>0)&&all.every(x=>x.total===0||x.fullyPaid),latest:gs.reduce((t,g)=>{const v=_gLatest(g);return v>t?v:t;},""),open});
+      if(open) gs.forEach(g=>_pushGroup(g,billingRows));
+    });
+  }
+  const billAllOpen=_clientMode&&billingRows.filter(r=>r.clientHead).every(r=>r.open);
+  const toggleClient=k=>setOpenClients(s=>{const nx=new Set(s);if(nx.has(k))nx.delete(k);else nx.add(k);return nx;});
+  const setAllClients=open=>setOpenClients(open?new Set(billingRows.filter(r=>r.clientHead).map(r=>r.key)):new Set());
   // Shared grid template for the billing list header + rows:
   // Project | Gross | VAT | Total | Paid | Balance | Status | Actions
   const BILL_COLS="2fr 1fr 0.85fr 1.05fr 1fr 1fr 90px 170px";
@@ -26916,6 +27002,22 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         </div>
       )}
 
+      {/* Projects | Collections */}
+      <div role="tablist" style={{display:"flex",gap:4,borderBottom:"1.5px solid #e2e8f0",marginBottom:16}}>
+        {[["projects","📁 Projects & invoices"],["collections","💵 Collections"]].map(([v,l])=>(
+          <button key={v} role="tab" aria-selected={billTab===v} onClick={()=>setBillTab(v)}
+            style={{background:"none",border:"none",borderBottom:`3px solid ${billTab===v?"#f97316":"transparent"}`,marginBottom:-1.5,padding:"9px 14px",fontFamily:"inherit",fontSize:".84rem",fontWeight:billTab===v?800:600,color:billTab===v?"#0f172a":"#64748b",cursor:"pointer"}}>
+            {l}
+          </button>
+        ))}
+      </div>
+      {billTab==="collections"?(
+        <CollectionsLog billings={billings} deals={deals} today={today} session={session} toastEmit={toastEmit}
+          canRecord={canEdit} isManager={canonRole(role)==="Manager"} reloadKey={colReload}
+          onRecord={()=>setColEntry({dealId:"",apply:null})}
+          onApply={row=>setColEntry({dealId:row.deal_id,apply:row})}
+          onOpenProject={id=>setSelDeal(id)}/>
+      ):(<>
       {/* KPIs */}
       <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(5,1fr)",gap:10,marginBottom:16}}>
         {[
@@ -26943,8 +27045,19 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         })}
       </div>
 
-      {/* ── Collection Forecast — expected net collections by due date ──── */}
-      {(allOutstanding>0||collectionForecast.unscheduledCount>0)&&(()=>{
+      {/* Forecast + aging, folded away by default so the list is on the first screen. */}
+      {(allOutstanding>0||collectionForecast.unscheduledCount>0||overdue.length>0)&&(
+        <button onClick={()=>setShowInsights(v=>!v)} aria-expanded={showInsights}
+          style={{display:"flex",width:"100%",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap",background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"10px 16px",marginBottom:showInsights?10:16,fontFamily:"inherit",cursor:"pointer",textAlign:"left"}}>
+          <span style={{fontWeight:800,color:"#0f172a",fontSize:".85rem"}}>📥 Collection forecast &amp; overdue aging</span>
+          <span style={{fontSize:".74rem",color:"#64748b"}}>
+            Due this week <b style={{color:"#059669"}}>{fmt(collectionForecast.week.total)}</b>
+            {overdue.length>0&&<> · Overdue <b style={{color:"#dc2626"}}>{overdue.length}</b></>}
+            {" "}{showInsights?"▴ Hide":"▾ Show"}
+          </span>
+        </button>
+      )}
+      {showInsights&&(allOutstanding>0||collectionForecast.unscheduledCount>0)&&(()=>{
         const cur=collectionForecast[forecastRange];
         const tabs=[["today","Due Today"],["week","This Week"],["month","This Month"]];
         const rangeNote={today:"due on or before today",week:"due within the next 7 days",month:"due within the next 30 days"}[forecastRange];
@@ -26996,7 +27109,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       })()}
 
       {/* Overdue alert + Aging Summary */}
-      {overdue.length>0&&(()=>{
+      {showInsights&&overdue.length>0&&(()=>{
         const age=odDays;
         const d30 =overdue.filter(m=>ageKey(age(m))==="d30");
         const d60 =overdue.filter(m=>ageKey(age(m))==="d60");
@@ -27039,27 +27152,70 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
           <input value={billingSearch} onChange={e=>setBillingSearch(e.target.value)} placeholder="Search project, CE no, or contact…"
             style={{width:"100%",paddingLeft:32,paddingRight:10,paddingTop:8,paddingBottom:8,border:"1.5px solid #e2e8f0",borderRadius:8,fontFamily:"inherit",fontSize:".82rem",color:"#0f172a",outline:"none",boxSizing:"border-box"}}/>
         </div>
-        <div style={{display:"flex",gap:6}}>
-          {[["all","All"],["outstanding","Outstanding"],["overdue","Overdue"],["unsent","Not Yet Sent"],["collected","Has Collections"],["uncollected","Uncollected"],["paid","Fully Paid"],...(gapCount||billingFilter==="gap"?[["gap",`Billing ≠ Contract (${gapCount})`]]:[])].map(([v,l])=>(
-            <button key={v} onClick={()=>setBillingFilter(v)}
-              style={{padding:"7px 13px",borderRadius:20,border:`1.5px solid ${billingFilter===v?"#1e293b":"#e2e8f0"}`,background:billingFilter===v?"#1e293b":"#fff",color:billingFilter===v?"#fff":"#64748b",fontFamily:"inherit",fontSize:".75rem",fontWeight:billingFilter===v?700:400,cursor:"pointer",whiteSpace:"nowrap"}}>
-              {l}
-            </button>
+        {(()=>{
+          // 4 main filters; the rest sit under "More" (and still work from the
+          // KPI cards and the aging cards above).
+          const MAIN=[["all","All"],["action","Needs action"],["outstanding","Unpaid"],["paid","Paid"]];
+          const MORE=[["overdue","Overdue"],["unsent","Not yet sent"],["collected","Has collections"],["uncollected","Nothing collected yet"],["gap",`Billing ≠ Contract (${gapCount})`]];
+          const moreOn=MORE.find(([v])=>v===billingFilter);
+          const chip=(on,clr="#1e293b")=>({padding:"7px 13px",borderRadius:20,border:`1.5px solid ${on?clr:"#e2e8f0"}`,background:on?clr:"#fff",color:on?"#fff":"#64748b",fontFamily:"inherit",fontSize:".75rem",fontWeight:on?700:500,cursor:"pointer",whiteSpace:"nowrap"});
+          return(
+          <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",position:"relative"}}>
+            {MAIN.map(([v,l])=>(
+              <button key={v} onClick={()=>setBillingFilter(v)} style={chip(billingFilter===v)}
+                title={v==="action"?"Overdue invoices, Drafts past their bill-on date, or billing that doesn't add up to the contract":undefined}>{l}</button>
+            ))}
+            {moreOn&&<button onClick={()=>setBillingFilter("all")} title="Clear this filter" style={chip(true)}>{moreOn[1]} ✕</button>}
+            {billingFilter.startsWith("age:")&&(
+              <button onClick={()=>setBillingFilter("all")} title="Clear the aging filter" style={chip(true,"#dc2626")}>
+                Overdue {AGE_LABEL[billingFilter.slice(4)]} ✕
+              </button>
+            )}
+            <button onClick={()=>setShowMoreFilters(v=>!v)} aria-expanded={showMoreFilters} style={{...chip(false),borderStyle:"dashed"}}>More ▾</button>
+            {showMoreFilters&&(
+              <>
+                <div onClick={()=>setShowMoreFilters(false)} style={{position:"fixed",inset:0,zIndex:60}}/>
+                <div style={{position:"absolute",top:"110%",right:0,zIndex:61,background:"#fff",border:"1px solid #e2e8f0",borderRadius:10,boxShadow:"0 8px 24px rgba(0,0,0,.14)",minWidth:230,overflow:"hidden"}}>
+                  {MORE.map(([v,l])=>(
+                    <button key={v} onClick={()=>{setBillingFilter(v);setShowMoreFilters(false);}}
+                      style={{display:"block",width:"100%",textAlign:"left",background:billingFilter===v?"#f1f5f9":"#fff",border:"none",borderBottom:"1px solid #f1f5f9",padding:"10px 14px",fontFamily:"inherit",fontSize:".78rem",color:"#0f172a",cursor:"pointer",fontWeight:billingFilter===v?700:500}}>
+                      {billingFilter===v?"✓ ":""}{l}
+                    </button>
+                  ))}
+                  {notBilledCount>0&&(
+                    <button onClick={()=>{setShowNotBilled(v=>!v);setShowMoreFilters(false);}}
+                      style={{display:"block",width:"100%",textAlign:"left",background:"#fff",border:"none",padding:"10px 14px",fontFamily:"inherit",fontSize:".78rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>
+                      {showNotBilled?"Hide":"Show"} projects with no billing yet ({notBilledCount})
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+          );
+        })()}
+      </div>
+      {/* Group + sort */}
+      <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center",fontSize:".74rem",color:"#64748b"}}>
+        <span style={{fontWeight:700}}>Show</span>
+        <div style={{display:"inline-flex",border:"1.5px solid #e2e8f0",borderRadius:8,overflow:"hidden"}}>
+          {[["client","By client"],["project","By project"]].map(([v,l])=>(
+            <button key={v} onClick={()=>setBillGroup(v)} style={{padding:"6px 12px",border:"none",background:billGroup===v?"#1e293b":"#fff",color:billGroup===v?"#fff":"#64748b",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,cursor:"pointer"}}>{l}</button>
           ))}
-          {billingFilter.startsWith("age:")&&(
-            <button onClick={()=>setBillingFilter("all")} title="Clear the aging filter"
-              style={{padding:"7px 13px",borderRadius:20,border:"1.5px solid #dc2626",background:"#dc2626",color:"#fff",fontFamily:"inherit",fontSize:".75rem",fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>
-              Overdue {AGE_LABEL[billingFilter.slice(4)]} ✕
-            </button>
-          )}
         </div>
-        {notBilledCount>0&&(
-          <button onClick={()=>setShowNotBilled(v=>!v)}
-            title={showNotBilled?"Hide projects with no billing set up":"Show projects with no billing set up"}
-            style={{padding:"7px 13px",borderRadius:20,border:`1.5px dashed ${showNotBilled?"#1e293b":"#cbd5e1"}`,background:showNotBilled?"#1e293b":"#fff",color:showNotBilled?"#fff":"#94a3b8",fontFamily:"inherit",fontSize:".75rem",fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}}>
-            {showNotBilled?"Hide":"Show"} not billed ({notBilledCount})
+        <span style={{fontWeight:700,marginLeft:6}}>Sort</span>
+        <select value={billSort} onChange={e=>setBillSort(e.target.value)} disabled={_overdueView} title={_overdueView?"Overdue views list the client to call first":undefined}
+          style={{padding:"6px 8px",border:"1.5px solid #e2e8f0",borderRadius:8,fontFamily:"inherit",fontSize:".74rem",color:"#0f172a",background:"#fff"}}>
+          <option value="client">Client A–Z</option>
+          <option value="latest">Latest invoice sent</option>
+          <option value="balance">Biggest balance</option>
+        </select>
+        {_clientMode&&!_searching&&billClientCount>0&&(
+          <button onClick={()=>setAllClients(!billAllOpen)} style={{background:"none",border:"none",color:"#1d4ed8",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,cursor:"pointer",padding:"4px 6px"}}>
+            {billAllOpen?"Collapse all":"Expand all"}
           </button>
         )}
+        <span style={{marginLeft:"auto"}}>{_clientMode?`${billClientCount} client${billClientCount===1?"":"s"} · `:""}{_groups.length} project{_groups.length===1?"":"s"}</span>
       </div>
 
       {/* ── PROJECT LIST TABLE ──────────────────────────────────────────── */}
@@ -27074,6 +27230,58 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         )}
         {wonDeals.length===0&&<div style={{padding:"32px",textAlign:"center",color:"#94a3b8"}}>No awarded projects. Award a deal to start billing.</div>}
         {billingRows.map((row,i)=>{
+          if(row.clientHead){
+            const r=row;
+            const meta=`${r.projects} project${r.projects===1?"":"s"}${r.addenda?` · ${r.addenda} addend${r.addenda===1?"um":"a"}`:""}${r.latest?` · last invoice ${r.latest}`:""}`;
+            const badges=(
+              <span style={{display:"inline-flex",gap:4,flexWrap:"wrap"}}>
+                {r.hasOverdue&&<span title={`${r.odCount} overdue invoice${r.odCount===1?"":"s"}, oldest ${r.maxOverdue} days`} style={{fontSize:".66rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"2px 8px",fontWeight:700,whiteSpace:"nowrap"}}>📞 {r.maxOverdue}d overdue</span>}
+                {r.hasUnsent&&<span style={{fontSize:".66rem",background:"#fffbeb",color:"#b45309",border:"1px solid #fcd34d",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Not sent</span>}
+                {r.fullyPaid&&<span style={{fontSize:".66rem",background:"#f0fdf4",color:"#059669",border:"1px solid #6ee7b7",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Paid</span>}
+              </span>
+            );
+            const soaBtns=(
+              <>
+                <button onClick={e=>{e.stopPropagation();printSOA(r.soaClient);}} title={`Statement of account for ${r.name}`}
+                  style={{background:"#f97316",border:"none",borderRadius:7,padding:mob?"7px 12px":"5px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#fff",cursor:"pointer",fontWeight:700}}>📄 SOA</button>
+                <button onClick={e=>{e.stopPropagation();shareSoaPdf(r.soaClient);}} disabled={billingPdf.busy} title="SOA as a PDF to share (Viber, Mail, Files) or download"
+                  style={{background:"#ecfeff",border:"1.5px solid #67e8f9",borderRadius:7,padding:mob?"7px 12px":"5px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#155e75",cursor:billingPdf.busy?"wait":"pointer",fontWeight:700}}>{billingPdf.busy?"…":"📤 PDF"}</button>
+              </>
+            );
+            const arrow=<span aria-hidden="true" style={{display:"inline-block",width:14,color:"#64748b",transform:r.open?"rotate(90deg)":"none",transition:"transform .12s"}}>▸</span>;
+            const bg=r.open?"#f1f5f9":r.hasOverdue?"#fffafa":"#fff";
+            if(mob) return(
+              <div key={"cl-"+r.key} {...clickable(()=>toggleClient(r.key))} aria-expanded={r.open} aria-label={`${r.open?"Hide":"Show"} projects of ${r.name}`}
+                style={{padding:"12px 16px",borderBottom:"1px solid #e2e8f0",borderTop:i?"1.5px solid #e2e8f0":"none",background:bg,cursor:"pointer"}}>
+                <div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"flex-start"}}>
+                  <div style={{minWidth:0}}>
+                    <div style={{fontWeight:800,color:"#0f172a",fontSize:".9rem"}}>{arrow}{r.name}</div>
+                    <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:2,paddingLeft:14}}>{meta}</div>
+                  </div>
+                  {badges}
+                </div>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginTop:8,paddingLeft:14}}>
+                  <div style={{fontSize:".78rem"}}><span style={{color:"#059669",fontWeight:700}}>Paid {r.collected>0?fmt(r.collected):"—"}</span> · <span style={{color:r.balance>0?"#ef4444":"#059669",fontWeight:800}}>{r.balance>0?`Bal ${fmt(r.balance)}`:"✓ Clear"}</span></div>
+                  <div style={{display:"flex",gap:6}}>{soaBtns}</div>
+                </div>
+              </div>
+            );
+            return(
+              <div key={"cl-"+r.key} {...clickable(()=>toggleClient(r.key))} aria-expanded={r.open} aria-label={`${r.open?"Hide":"Show"} projects of ${r.name}`}
+                style={{display:"grid",gridTemplateColumns:BILL_COLS,minWidth:BILL_MINW,padding:"11px 18px",gap:12,borderBottom:"1px solid #e2e8f0",borderTop:i?"1.5px solid #e2e8f0":"none",background:bg,cursor:"pointer",alignItems:"center"}}>
+                <div style={{minWidth:0}}>
+                  <div style={{fontWeight:800,color:"#0f172a",fontSize:".9rem"}}>{arrow}{r.name}</div>
+                  <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:1,paddingLeft:14}}>{meta}</div>
+                </div>
+                {[[r.grossBase,"#3b82f6"],[r.vat,"#f59e0b"],[r.total,"#0f172a"],[r.collected,"#059669"]].map(([v,c],k)=>(
+                  <div key={k} style={{fontWeight:700,color:c,fontSize:".86rem",textAlign:"right",fontVariantNumeric:"tabular-nums"}}>{v>0?fmt(v):<span style={{color:"#e2e8f0"}}>—</span>}</div>
+                ))}
+                <div style={{fontWeight:800,color:r.balance>0?"#ef4444":"#059669",fontSize:".86rem",textAlign:"right",fontVariantNumeric:"tabular-nums"}}>{r.balance>0?fmt(r.balance):"✓ Clear"}</div>
+                <div>{badges}</div>
+                <div style={{display:"flex",gap:5,alignItems:"center"}}>{soaBtns}</div>
+              </div>
+            );
+          }
           if(row.subtotalOf){
             const {subtotalOf:pd,addendumCount:ac}=row;
             const label=`Total contract · main + ${ac} addend${ac===1?"um":"a"}`;
@@ -27119,6 +27327,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                 style={{background:"#1e293b",border:"none",borderRadius:7,padding:mob?"8px 14px":"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#fff",cursor:"pointer",fontWeight:600,flex:mob?1:undefined}}>
                 Open →
               </button>
+              {!_clientMode&&<>
               <button onClick={e=>{e.stopPropagation();printSOA(d.client);}}
                 style={{background:"#f97316",border:"none",borderRadius:7,padding:mob?"8px 14px":"5px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#fff",cursor:"pointer",fontWeight:700,flex:mob?1:undefined}}>
                 📄 SOA
@@ -27127,6 +27336,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                 style={{background:"#ecfeff",border:"1.5px solid #67e8f9",borderRadius:7,padding:mob?"8px 14px":"5px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#155e75",cursor:billingPdf.busy?"wait":"pointer",fontWeight:700,flex:mob?1:undefined}}>
                 {billingPdf.busy?"…":"📤 SOA PDF"}
               </button>
+              </>}
               {hasRowMenu&&(
                 <button onClick={e=>{e.stopPropagation();const r=e.currentTarget.getBoundingClientRect();setBillRowMenu(billRowMenu?.id===d.id?null:{id:d.id,client:d.client,canDeleteSchedule,canRemoveProject,top:r.bottom+4,right:Math.max(8,window.innerWidth-r.right)});}}
                   title="More actions"
@@ -27139,8 +27349,8 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
           // The 🔴 on a main project also lights when one of its addenda is
           // overdue, so the client's late invoice shows where people look first.
           const projectCell=(
-            <div style={childOf?{position:"relative",paddingLeft:24}:undefined}>
-              {childOf&&<span aria-hidden="true" style={{position:"absolute",left:6,top:-10,height:22,width:11,borderLeft:"2px solid #67e8f9",borderBottom:"2px solid #67e8f9",borderBottomLeftRadius:6}}/>}
+            <div style={childOf?{position:"relative",paddingLeft:_clientMode?38:24}:_clientMode?{paddingLeft:14}:undefined}>
+              {childOf&&<span aria-hidden="true" style={{position:"absolute",left:_clientMode?20:6,top:-10,height:22,width:11,borderLeft:"2px solid #67e8f9",borderBottom:"2px solid #67e8f9",borderBottomLeftRadius:6}}/>}
               <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                 {groupOverdue&&<span style={{color:"#ef4444",fontSize:".8rem"}} title={hasOverdue?"Overdue invoice":"An addendum of this project has an overdue invoice"}>🔴</span>}
                 {childOf?(
@@ -27150,8 +27360,14 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                   </>
                 ):(
                   <>
-                    <span style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{d.client}</span>
-                    {d.contact&&<span style={{fontSize:".72rem",color:"#94a3b8"}}>— {d.contact}</span>}
+                    {_clientMode&&d.contact?(
+                      <span style={{fontWeight:700,color:"#0f172a",fontSize:".86rem"}}>{d.contact}</span>
+                    ):(
+                      <>
+                        <span style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{d.client}</span>
+                        {d.contact&&<span style={{fontSize:".72rem",color:"#94a3b8"}}>— {d.contact}</span>}
+                      </>
+                    )}
                   </>
                 )}
               </div>
@@ -27218,6 +27434,42 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
           );
         })}
       </div>
+      </>)}
+
+      {/* ── "+ Collection" / "Apply →" (Billing › Collections) ─────────────── */}
+      {colEntry&&(()=>{
+        const cd=colEntry.dealId?deals.find(x=>x.id===colEntry.dealId):null;
+        const ap=colEntry.apply;
+        const close=()=>{if(!multiSaving)setColEntry(null);};
+        // Projects that can take a payment: awarded deals and approved addenda, not your own as Sales Owner.
+        const opts=[..._baseDeals,..._addendumDeals].filter(x=>canPayDeal(x)).sort((a,b)=>String(a.client||"").localeCompare(String(b.client||""))||String(a.contact||"").localeCompare(String(b.contact||"")));
+        return(
+          <Modal open title={ap?`Apply ${fmt(ap.amount)} received before invoice`:"+ Collection"} onClose={close} wide>
+            {!ap&&(
+              <div style={{marginBottom:12}}>
+                <div style={{fontSize:".72rem",fontWeight:700,color:"#475569",marginBottom:4}}>Project <span style={{color:"#dc2626"}}>*</span></div>
+                <ProjectSelect value={colEntry.dealId} onChange={e=>setColEntry(c=>({...c,dealId:e.target.value}))} autoFocus>
+                  <option value="">— Pick the project the client paid for —</option>
+                  {opts.map(x=><option key={x.id} value={x.id}>{x.client}{x.contact?` — ${x.contact}`:""}{x.ceNo?` (${x.ceNo})`:""}</option>)}
+                </ProjectSelect>
+                <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:4}}>Not a client payment (loan, refund, GMD transfer, reimbursement)? It goes on the Daily Cash Position only.</div>
+              </div>
+            )}
+            {ap&&<div style={{fontSize:".76rem",color:"#78350f",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"8px 12px",marginBottom:12}}>
+              {cd?.client} — {cd?.contact||cd?.ceNo} · received {ap.received_date} · {ap.note}
+            </div>}
+            {cd&&(
+              <MultiInvoicePay key={cd.id+(ap?.id||"")} deal={cd} today={today} saving={multiSaving}
+                milestones={billings.filter(b=>b.dealId===cd.id)}
+                title={ap?"Put it on the invoice(s) it paid":"💵 What reached the bank"}
+                allowUnapplied={!ap} lockTotal={!!ap}
+                preset={ap?{total:String(ap.amount),bank:ap.bank||"",method:ap.method||"Bank Transfer",date:ap.received_date,refNo:ap.ref_no||"",note:"Received before invoice"}:{method:"Bank Transfer"}}
+                onCancel={close}
+                onSave={async payload=>{const ok=await saveMultiPay(payload,{deal:cd,applyId:ap?.id,onDone:()=>setColReload(k=>k+1)});if(ok)setColEntry(null);}}/>
+            )}
+          </Modal>
+        );
+      })()}
 
       {/* ── Row-actions menu (⋯) — fixed-position so the overflow:auto list
              doesn't clip it. Anchored to the button that opened it. ─────────── */}
