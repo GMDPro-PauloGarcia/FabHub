@@ -2133,12 +2133,14 @@ export const WEATHER_OPTS=["☀️ Sunny","⛅ Cloudy","🌧️ Rainy","⛈️ S
 // production), paid with production. Rows are found by their particulars as
 // Finance types them ("OFFICE PAYROLL NOVEMBER 5, 2026", "PRODUCTION PAYROLL
 // NOVEMBER 2026 WEEK 3", "PROJECT BASED PAYROLL ..."): a row worded otherwise
-// is not seen. Site payroll mixed with materials ("PAYROLL + OT + PARKING") is
+// is not seen unless it carries the cash sheet's 🔗 tag ("No bill: Payroll –
+// office / production / project-based", NO_BILL_KINDS), which wins over the
+// wording. Site payroll mixed with materials ("PAYROLL + OT + PARKING") is
 // project cost paid case by case and is not forecast.
 export const PAYROLL_STREAMS = [
-  { key:"office",       label:"Office payroll",        re:/office\s+payroll/i,             when:"semi" },
-  { key:"production",   label:"Production payroll",    re:/production\s+payroll/i,         when:"weekly" },
-  { key:"projectBased", label:"Project-based payroll", re:/project[\s-]*based\s+payroll/i, when:"weekly" },
+  { key:"office", tag:"Payroll – office",       label:"Office payroll",        re:/office\s+payroll/i,             when:"semi" },
+  { key:"production", tag:"Payroll – production",   label:"Production payroll",    re:/production\s+payroll/i,         when:"weekly" },
+  { key:"projectBased", tag:"Payroll – project-based", label:"Project-based payroll", re:/project[\s-]*based\s+payroll/i, when:"weekly" },
 ];
 const _ymd = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 const _dt = iso => new Date(String(iso).slice(0,10)+"T00:00:00");
@@ -2149,7 +2151,9 @@ export const payrollEvents = (cashPositions, stream) => {
   Object.values(cashPositions || {}).forEach(p => {
     if (!p || !p.date) return;
     (p.disbursements?.manual || []).forEach(r => {
-      if (!stream.re.test(String(r.particulars || ""))) return;
+      // The 🔗 tag decides when a row has a stream tag; otherwise the wording.
+      const nb = String(r.noBill || "");
+      if (PAYROLL_STREAMS.some(x => x.tag === nb) ? nb !== stream.tag : !stream.re.test(String(r.particulars || ""))) return;
       const amt = Number(String(r.amount == null ? 0 : r.amount).replace(/,/g, "")) || 0;
       if (amt > 0) rows.push({ date: String(p.date).slice(0,10), amt });
     });
