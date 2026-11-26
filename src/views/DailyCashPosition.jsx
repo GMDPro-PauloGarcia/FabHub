@@ -1,9 +1,8 @@
 import React,{useState,useMemo,useEffect,useLayoutEffect,useRef} from "react";
-import {today,uid,BANKS,emptyBankRow,emptyDayPosition,uiConfirm,uiPrompt,addDaysLocalISO,CASH_PREFILL_DAYS,payeeOf,particularsOf,payeeRaw,particularsRaw,cashCanEdit,cashDayLocked,Modal} from "../shared";
+import {today,uid,BANKS,emptyBankRow,emptyDayPosition,uiConfirm,uiPrompt,addDaysLocalISO,CASH_PREFILL_DAYS,payeeOf,particularsOf,payeeRaw,particularsRaw,cashCanEdit,cashDayLocked} from "../shared";
 import {arSummary} from "../core";
 import {LinkModal} from "./ExpenseMonitoring";
 import CollectionLinkModal from "./CollectionLink";
-import ARDrill from "./ARDrill";
 import {bankLoanStatus,creditLineStatus} from "./LoansView";
 
 // ── Currency input: shows grouped digits, edits raw ────────────────────────────
@@ -65,12 +64,11 @@ const WrapCell=({value,onType,placeholder})=>{
 function DailyCashPosition({
   cashPositions={},saveDayPos=()=>{},billings=[],wonDeals=[],deals=null,payables=[],loans=[],suppliers=[],subcons=[],userName="",
   role="",username="",cashStale=false,payPays=[],canPay=false,onPayMany=null,
-  // Running-balance cards drill down (2026-11-26). Each action opens the screen
-  // that already does the work, so every money rule still runs there.
-  canReceive=false,onReceivePayment=null,onPayBill=null,onOpenBills=null,onOpenLoans=null
+  // Running-balance cards (2026-11-26): each opens its page already showing what
+  // it sums (App's goCollect / goBills / Loans); Checks scrolls to the table here.
+  onGoCollect=null,onGoBills=null,onOpenLoans=null
 }){
-  const[drill,setDrill]=useState(null);   // "ar" | "ap" | "loan" | "float"
-  const[drillQ,setDrillQ]=useState("");
+  const floatRef=useRef(null);
   const[selDate,setSelDate]=useState(today);
   // ── Edit rights & day lock (see cashCanEdit / cashDayLocked in shared.jsx) ──
   // Only Managers and the assigned preparer may save; a day locks for
@@ -867,15 +865,26 @@ function DailyCashPosition({
               {l:"Running Loan Balance",v:outstandingLoan,c:C.blue,sub:"Excl. from cash total"},
               {l:"Total Checks to be Cleared",v:floatingTotal,c:"#b45309",sub:"Uncleared floating checks"},
             ].map(({l,v,c,sub},i)=>{
-              const k=["ar","ap","loan","float"][i];
-              const go=()=>{setDrillQ("");setDrill(k);};
+              const go=[
+                onGoCollect&&(()=>onGoCollect("sent")),
+                onGoBills&&(()=>onGoBills()),
+                onOpenLoans,
+                ()=>{try{floatRef.current&&floatRef.current.scrollIntoView({behavior:"smooth",block:"start"});}catch{}},
+              ][i];
+              if(!go) return(
+                <div key={l} style={{background:"#f8fafc",border:`1px solid ${C.grid}`,borderRadius:8,padding:"9px 12px"}}>
+                  <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:".6px",color:"#94a3b8",fontWeight:700}}>{l}</div>
+                  <div style={{fontWeight:800,fontSize:"1rem",color:c,marginTop:2,fontVariantNumeric:"tabular-nums"}}>{peso(v)}</div>
+                  <div style={{fontSize:".6rem",color:"#cbd5e1",marginTop:1}}>{sub}</div>
+                </div>);
+              const where=["Open list in Billing","Open Bills","Open Loans","Go to checks"][i];
               return(
-              <div key={l} role="button" tabIndex={0} title="Tap to see the list" onClick={go}
+              <div key={l} role="button" tabIndex={0} title={where} onClick={go}
                 onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();go();}}}
                 style={{background:"#f8fafc",border:`1px solid ${C.grid}`,borderRadius:8,padding:"9px 12px",cursor:"pointer",position:"relative"}}>
                 <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:".6px",color:"#94a3b8",fontWeight:700,paddingRight:14}}>{l}</div>
                 <div style={{fontWeight:800,fontSize:"1rem",color:c,marginTop:2,fontVariantNumeric:"tabular-nums"}}>{peso(v)}</div>
-                <div style={{fontSize:".6rem",color:"#94a3b8",marginTop:1}}>{sub} · <span style={{color:c,fontWeight:700}}>View list ›</span></div>
+                <div style={{fontSize:".6rem",color:"#94a3b8",marginTop:1}}>{sub} · <span style={{color:c,fontWeight:700}}>{where} ›</span></div>
               </div>);
             })}
           </div>
@@ -1239,6 +1248,7 @@ function DailyCashPosition({
           const clearedRows=indexed.filter(x=>x.row.cleared);
           return(
           <>
+            <div ref={floatRef} style={{scrollMarginTop:70}}/>
             {sectionHdr("Floating Checks (uncleared)","#b45309",
               <span style={{fontWeight:800,fontSize:".72rem",color:"#fff"}}>{peso(floatingTotal)}</span>
             )}
@@ -1337,121 +1347,6 @@ function DailyCashPosition({
       </div>
       </fieldset>
       {pos.savedAt&&<div style={{textAlign:"right",fontSize:".7rem",color:"#94a3b8",marginTop:6}}>Last saved: {new Date(pos.savedAt).toLocaleString("en-PH")}</div>}
-      {drill==="ar"&&<ARDrill bucket="sent" billings={billings} dealOf={id=>(wonDeals||[]).find(d=>d.id===id)}
-        canPay={canReceive&&!!onReceivePayment}
-        onReceive={(dealId,msId)=>{setDrill(null);onReceivePayment(dealId,msId);}}
-        onClose={()=>setDrill(null)}/>}
-      {drill==="ap"&&(()=>{
-        const qq=drillQ.trim().toLowerCase();
-        const dealName=id=>{const d=id&&(deals||wonDeals||[]).find(x=>x.id===id);return d?(d.client||d.name||"")+(d.ceNo?` · ${d.ceNo}`:""):"";};
-        const approvedBill=p=>((p.approvalStatus)||"Approved")==="Approved";
-        const bills=openPayables.filter(p=>payBal(p)>0.005)
-          .filter(p=>!qq||[p.vendor,p.apNumber,p.poId,p.invoiceNumber,p.invoiceRef,dealName(p.projectId)].some(v=>String(v||"").toLowerCase().includes(qq)));
-        const bySup={};
-        bills.forEach(p=>{const k=String(p.vendor||"(no supplier)").trim();(bySup[k]=bySup[k]||{vendor:k,bal:0,bills:[]}).bills.push(p);bySup[k].bal+=payBal(p);});
-        const sups=Object.values(bySup).sort((a,b)=>b.bal-a.bal);
-        const total=bills.reduce((s,p)=>s+payBal(p),0);
-        const pending=bills.filter(p=>!approvedBill(p));
-        return(
-          <Modal open onClose={()=>setDrill(null)} title="Running Payables · unpaid bills" wide>
-            <div style={{background:"#1e293b",borderRadius:10,padding:"10px 14px",marginBottom:10,color:"#fff",display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
-              <div>
-                <div style={{fontSize:".7rem",color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".6px"}}>{sups.length} supplier{sups.length===1?"":"s"} · {bills.length} bill{bills.length===1?"":"s"}</div>
-                <div style={{fontWeight:800,fontSize:"1.15rem",color:"#f87171"}}>{peso(total)}</div>
-                {pending.length>0&&<div style={{fontSize:".72rem",color:"#fde68a"}}>{pending.length} not approved yet ({peso(pending.reduce((s,p)=>s+payBal(p),0))}): approve before paying</div>}
-              </div>
-              {onOpenBills&&<button onClick={()=>{setDrill(null);onOpenBills();}} style={{alignSelf:"center",background:"#f59e0b",border:"none",borderRadius:8,padding:"8px 14px",fontFamily:"inherit",fontWeight:800,fontSize:".78rem",color:"#0f172a",cursor:"pointer"}}>Open Bills ›</button>}
-            </div>
-            <input value={drillQ} onChange={e=>setDrillQ(e.target.value)} placeholder="Search supplier, AP / PO / invoice no., project…" style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 11px",fontFamily:"inherit",fontSize:".84rem",marginBottom:10}}/>
-            {sups.length===0&&<div style={{textAlign:"center",padding:24,color:"#94a3b8",fontSize:".84rem"}}>No unpaid bills.</div>}
-            {sups.map(g=>(
-              <details key={g.vendor} style={{border:"1.5px solid #e2e8f0",borderRadius:10,marginBottom:8,overflow:"hidden"}}>
-                <summary style={{display:"flex",justifyContent:"space-between",gap:10,padding:"10px 12px",cursor:"pointer",listStyle:"none",background:"#fff"}}>
-                  <span style={{minWidth:0}}><b style={{color:"#0f172a",fontSize:".86rem"}}>{g.vendor}</b><span style={{display:"block",fontSize:".7rem",color:"#94a3b8"}}>{g.bills.length} bill{g.bills.length===1?"":"s"} ▾</span></span>
-                  <b style={{color:"#dc2626",whiteSpace:"nowrap",fontVariantNumeric:"tabular-nums"}}>{peso(g.bal)}</b>
-                </summary>
-                {g.bills.sort((a,b)=>String(a.dueDate||"9999").localeCompare(String(b.dueDate||"9999"))).map(p=>{
-                  const ok=approvedBill(p);
-                  const overdue=p.dueDate&&p.dueDate<today;
-                  return(
-                    <div key={p.id} style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center",justifyContent:"space-between",padding:"9px 12px",borderTop:"1px solid #f1f5f9",background:"#fcfcfd"}}>
-                      <div style={{flex:"1 1 200px",minWidth:0}}>
-                        <div style={{fontWeight:600,color:"#0f172a",fontSize:".8rem"}}>{p.apNumber||"No AP no."}{p.poId?` · ${p.poId}`:""}{p.invoiceNumber?` · Inv ${p.invoiceNumber}`:""}</div>
-                        <div style={{fontSize:".68rem",color:"#94a3b8"}}>{dealName(p.projectId)||"No project"} · Due <span style={{color:overdue?"#dc2626":"#94a3b8",fontWeight:overdue?700:400}}>{p.dueDate?fmtDate(p.dueDate):"—"}</span> · {p.status||"—"}
-                          {!ok&&<span style={{marginLeft:6,fontSize:".64rem",fontWeight:700,color:"#b45309",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:20,padding:"0 7px"}}>Needs approval</span>}</div>
-                      </div>
-                      <div style={{display:"flex",alignItems:"center",gap:10}}>
-                        <b style={{fontSize:".85rem",fontVariantNumeric:"tabular-nums"}}>{peso(payBal(p))}</b>
-                        {onPayBill&&ok&&<button onClick={()=>{setDrill(null);onPayBill(p);}} title="Opens the usual Record Payment form on Bills" style={{background:"#dc2626",color:"#fff",border:"none",borderRadius:7,padding:"7px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".76rem",cursor:"pointer",whiteSpace:"nowrap"}}>💸 Pay</button>}
-                      </div>
-                    </div>);
-                })}
-              </details>
-            ))}
-            <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:6}}>Pay opens the bill's usual Record Payment form on Bills (approval, check no. and duplicate checks all apply). Mark a bill paid only once the money has gone out.</div>
-          </Modal>
-        );
-      })()}
-      {drill==="loan"&&(
-        <Modal open onClose={()=>setDrill(null)} title="Running Loan Balance" wide>
-          <div style={{background:"#1e293b",borderRadius:10,padding:"10px 14px",marginBottom:10,color:"#fff",display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
-            <div>
-              <div style={{fontSize:".7rem",color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".6px"}}>{loanMetrics.loanRows.filter(l=>l.remainingBalance>0.005).length} open · memo only, not in the cash total</div>
-              <div style={{fontWeight:800,fontSize:"1.15rem",color:"#93c5fd"}}>{peso(outstandingLoan)}</div>
-            </div>
-            {onOpenLoans&&<button onClick={()=>{setDrill(null);onOpenLoans();}} style={{alignSelf:"center",background:"#f59e0b",border:"none",borderRadius:8,padding:"8px 14px",fontFamily:"inherit",fontWeight:800,fontSize:".78rem",color:"#0f172a",cursor:"pointer"}}>Open Loans ›</button>}
-          </div>
-          {loanMetrics.loanRows.length===0&&<div style={{textAlign:"center",padding:24,color:"#94a3b8",fontSize:".84rem"}}>No active loans.</div>}
-          {loanMetrics.loanRows.slice().sort((a,b)=>b.remainingBalance-a.remainingBalance).map(l=>{
-            const late=l.dueIn!=null&&l.dueIn<0;
-            return(
-              <div key={l.id} style={{display:"flex",justifyContent:"space-between",gap:10,flexWrap:"wrap",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 12px",marginBottom:8}}>
-                <div style={{minWidth:0}}>
-                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".86rem"}}>{l.lender||"—"} · {l.name||(l.line?"Credit line":"Loan")}</div>
-                  <div style={{fontSize:".7rem",color:"#94a3b8"}}>
-                    {l.line?`Credit line${l.limit?` · limit ${peso(l.limit)}`:""}`
-                      :l.nextDue?<>Next due <span style={{color:late?"#dc2626":"#94a3b8",fontWeight:late?700:400}}>{fmtDate(l.nextDue)}{late?` · ${-l.dueIn}d late`:""}</span>{l.monthly?` · ${peso(l.monthly)}/mo`:""}</>
-                      :l.remainingBalance>0.005?"No payment schedule on file":"Paid"}
-                  </div>
-                </div>
-                <b style={{color:"#1d4ed8",fontVariantNumeric:"tabular-nums",whiteSpace:"nowrap"}}>{peso(l.remainingBalance)}</b>
-              </div>);
-          })}
-          <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:6}}>Balance = principal − principal repaid (credit line: drawn − repaid), the same figure as Executive › Loans. Record payments there, linked to their cash-sheet row.</div>
-        </Modal>
-      )}
-      {drill==="float"&&(()=>{
-        const rows=floatChecks.map((row,ri)=>({row,ri})).filter(x=>!x.row.cleared);
-        const canClear=!readOnly;
-        return(
-          <Modal open onClose={()=>setDrill(null)} title={`Checks to be cleared · ${fmtDate(selDate)}`} wide>
-            <div style={{background:"#1e293b",borderRadius:10,padding:"10px 14px",marginBottom:10,color:"#fff"}}>
-              <div style={{fontSize:".7rem",color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".6px"}}>{rows.length} floating check{rows.length===1?"":"s"}</div>
-              <div style={{fontWeight:800,fontSize:"1.15rem",color:"#fbbf24"}}>{peso(floatingTotal)}</div>
-            </div>
-            {rows.length===0&&<div style={{textAlign:"center",padding:24,color:"#94a3b8",fontSize:".84rem"}}>No floating checks.</div>}
-            {rows.map(({row,ri})=>{
-              const bank=BANKS.find(b=>b.id===row.bank);
-              return(
-                <div key={row.id||ri} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 12px",marginBottom:8}}>
-                  <div style={{flex:"1 1 200px",minWidth:0}}>
-                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem"}}>{payeeOf(row)||"No payee"}{row.checkNo?<span style={{fontWeight:500,color:"#64748b"}}> · Check #{row.checkNo}</span>:null}</div>
-                    <div style={{fontSize:".7rem",color:"#94a3b8"}}>{bank?bank.name:<span style={{color:"#dc2626"}}>⚠ no bank</span>}{particularsOf(row)?` · ${particularsOf(row)}`:""}{row.carried?" · carried":""}</div>
-                  </div>
-                  <div style={{display:"flex",alignItems:"center",gap:10}}>
-                    <b style={{color:"#b45309",fontVariantNumeric:"tabular-nums"}}>{peso(row.amount)}</b>
-                    {canClear&&<button onClick={()=>{const fc=[...floatChecks];fc[ri]={...fc[ri],cleared:true,clearedDate:selDate,reopened:null};f("floatingChecks",fc);}}
-                      style={{background:"#ecfdf5",border:"1px solid #a7f3d0",borderRadius:7,padding:"7px 12px",color:"#047857",cursor:"pointer",fontSize:".76rem",fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap"}}>✓ Mark cleared</button>}
-                  </div>
-                </div>);
-            })}
-            <div style={{fontSize:".72rem",color:canClear?"#b45309":"#94a3b8",marginTop:6}}>
-              {canClear?<>Marking a check cleared changes this day's sheet: press <b>Save Position</b> afterwards to keep it. Undo is in the Floating Checks table.</>
-                :readOnly&&canWrite?"This day is locked. Only a Manager can change it.":"View only. Mark (cash preparer) or a Manager clears checks."}
-            </div>
-          </Modal>
-        );
-      })()}
       {collLink&&(()=>{
         const idx=collLink.rowId?manualColl.findIndex(x=>x.id===collLink.rowId):collLink.ri;
         const row=manualColl[idx];

@@ -1,5 +1,5 @@
-import React,{useState,useMemo,useEffect,useCallback} from "react";
-import {uiConfirm} from "../shared";
+import React,{useState,useMemo,useEffect,useCallback,useRef} from "react";
+import {uiConfirm,takeLanding} from "../shared";
 import {canApprovePOLine,poLinesTotal,poSplitTotal,dealDpClear,prfRuleOn,canonRole} from "../core";
 import {supabase,isSupabaseReady} from "../supabaseClient";
 
@@ -19,10 +19,19 @@ const num=v=>Number(String(v??"").replace(/,/g,""))||0;
 const pesoAmt=v=>"₱"+num(v).toLocaleString("en-PH",{maximumFractionDigits:0});
 const PAGE=50;
 
-export default function POApprovals({prs=[],deals=[],role,session,approvePOs,defaultOpen=false}){
+// "Approve" on a home screen sends you here with the list open (2026-11-26):
+// setLanding("poApprovals") in App, picked up by the list on the page you land on.
+
+export default function POApprovals({prs=[],deals=[],role,session,approvePOs}){
   const mob=typeof window!=="undefined"&&window.innerWidth<860;
   const me=session?.name||"";
-  const[open,setOpen]=useState(defaultOpen);
+  const[open,setOpen]=useState(false);
+  const boxRef=useRef(null);
+  useEffect(()=>{
+    if(!takeLanding("poApprovals")) return;
+    setOpen(true);
+    setTimeout(()=>{try{boxRef.current&&boxRef.current.scrollIntoView({behavior:"smooth",block:"start"});}catch{}},80);
+  },[]);
   const[q,setQ]=useState("");
   const[who,setWho]=useState("All");
   const[sel,setSel]=useState(()=>new Set());
@@ -98,7 +107,7 @@ export default function POApprovals({prs=[],deals=[],role,session,approvePOs,def
   const td={padding:"8px 10px",fontSize:".78rem",verticalAlign:"top"};
 
   return(
-    <div style={{background:"#fffbeb",border:"1.5px solid #fcd34d",borderRadius:12,marginBottom:18}}>
+    <div ref={boxRef} style={{background:"#fffbeb",border:"1.5px solid #fcd34d",borderRadius:12,marginBottom:18,scrollMarginTop:70}}>
       <button onClick={()=>setOpen(o=>!o)} style={{display:"flex",width:"100%",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap",padding:"12px 16px",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
         <div>
           <div style={{fontWeight:800,color:"#92400e",fontSize:".9rem"}}>⏳ {pos.length} PO{pos.length>1?"s":""} waiting for your approval</div>
