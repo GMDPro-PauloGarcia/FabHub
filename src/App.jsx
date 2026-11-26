@@ -5152,12 +5152,20 @@ export default function App(){
         const byTable={};
         // A rule refusal is grouped by its own message, so two different
         // reasons are both shown instead of one hiding the other.
-        batch.forEach(({table,msg,kind})=>{ const k=kind==="rule"?`rule:${msg}`:table; (byTable[k]=byTable[k]||{table,count:0,msg,kind}).count++; });
+        batch.forEach(({table,msg,kind})=>{ const k=kind==="rule"?`rule:${msg}`:kind==="gone"?`gone:${table}`:table; (byTable[k]=byTable[k]||{table,count:0,msg,kind}).count++; });
         Object.values(byTable).forEach(({table,count,msg,kind})=>{
           // A FabHub rule refused the change (a database guard). Show its reason
           // as the server wrote it; "redo it" would just hit the same rule.
           if(kind==="rule"){
             toastEmit(`🚫 Not saved: ${msg||"the server refused this change."} ${count>1?`(${count} changes)`:""}`.trim(),"error",15000);
+            return;
+          }
+          // The record the edit was for is no longer on the server (deleted, or
+          // this login can't see it). Retrying or "Push All Data to Cloud" can't
+          // help, and Push All would put a deliberately deleted record back
+          // (INV-1726, deleted 2026-09-26, still retried on a phone 2026-11-25).
+          if(kind==="gone"){
+            toastEmit(`🗑 ${count} change${count===1?"":"s"} to ${table} discarded: the record ${count===1?"it was":"they were"} for is no longer on the server (deleted, or your login can't see it). Nothing to push. If you still need ${count===1?"it":"them"}, open the record and redo ${count===1?"it":"them"}; a record deleted by mistake can be restored by a Manager from Audit Trail.`,"warning",15000);
             return;
           }
           const low=LOW_STAKES_DROP_TABLES.has(table);
@@ -27242,11 +27250,14 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
           {/* Project billing summary */}
           {(()=>{
             const ms=billings.filter(b=>b.dealId===selDeal);
-            const rt=deal?.receiptType||"OR", wh=deal?.withholding||false;
-            // Net receivable per milestone — use milestone's own tax settings, fall back to deal
-            const billedNet=ms.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+calcTax(m.amount,m.receiptType??rt,m.withholding??wh).netReceivable,0);
-            const collected=ms.reduce((s,m)=>s+(m.payments||[]).filter(p=>!p.bounced).reduce((ps,p)=>ps+n(p.amount),0),0);
-            const tx=calcTax(deal?.value||0,rt,wh);
+            // Same basis as AR (arSummary): a Draft with no payment hasn't gone to
+            // the client, so it isn't invoiced or owed yet. Before 2026-11-25 this
+            // box counted Drafts and labelled the VAT-inclusive amount due "net"
+            // (MUJI CE-2026-1449: two unsent Drafts showed PHP 111,580 outstanding).
+            const arS=arSummary(ms,()=>deal);
+            const billedNet=arS.receivable, collected=arS.collected;
+            const unsent=ms.filter(m=>m.status==="Draft"&&milestonePaid(m)<=0);
+            const unsentAmt=unsent.reduce((s,m)=>s+milestoneReceivable(m,deal),0);
             // ── Guardrail: milestone bases must reconcile to the contract value ──
             // Milestone amounts are entered VAT-exclusive (base), same basis as the
             // contract value, so their sum should equal the contract. A sum over the
@@ -27267,9 +27278,9 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
               <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:overBilled||underBilled?10:16}}>
                 {[
                   {l:"Contract Value",v:fmt(deal?.value||0),    c:"#0f172a"},
-                  {l:"Total Billed (net)",v:fmt(billedNet),     c:"#3b82f6"},
+                  {l:"Invoiced (amount due)",v:fmt(billedNet),  c:"#3b82f6"},
                   {l:"Collected",     v:fmt(collected),          c:"#059669"},
-                  {l:"Outstanding",   v:fmt(Math.max(0,billedNet-collected)), c:billedNet>collected?"#ef4444":"#059669"},
+                  {l:"Outstanding",   v:fmt(arS.outstanding),    c:arS.outstanding>0.005?"#ef4444":"#059669"},
                 ].map(({l,v,c})=>(
                   <div key={l} style={{textAlign:"center",padding:"10px",background:"#f8fafc",borderRadius:8}}>
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:c}}>{v}</div>
@@ -27277,6 +27288,11 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                   </div>
                 ))}
               </div>
+              {unsent.length>0&&(
+                <div style={{fontSize:".74rem",color:"#92400e",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"7px 12px",marginBottom:12}}>
+                  📝 Not sent yet: {fmt(unsentAmt)} in {unsent.length} Draft{unsent.length===1?"":"s"}. Not owed until sent to the client, so not counted above.
+                </div>
+              )}
               {coIssues.map(({milestone:m,child,reason})=>(
                 <div key={m.id} style={{background:"#fef2f2",border:"1.5px solid #fca5a5",borderRadius:10,padding:"10px 14px",marginBottom:10,display:"flex",alignItems:"center",gap:10}}>
                   <span style={{fontSize:"1rem"}}>🚫</span>
