@@ -3422,9 +3422,10 @@ function DueDateBackfillModal({open,onClose,billings,payables,deals,updateMilest
   const peso=v=>"₱"+Math.round(Number(v)||0).toLocaleString("en-PH");
   const missBill=useMemo(()=>(billings||[]).filter(b=>{
     if(b.status==="Cancelled"||b.status==="Fully Paid") return false;
+    if(b.status==="Draft" && milestonePaid(b)<=0) return false; // not sent, not owed yet
     return milestoneBalance(b,(deals||[]).find(d=>d.id===b.dealId))>0.5 && !b.dueDate;
   }),[billings,deals]);
-  const missPay=useMemo(()=>(payables||[]).filter(p=>p.status!=="Paid"&&p.status!=="Cancelled"&&Number(p.amount)>0&&!p.dueDate),[payables]);
+  const missPay=useMemo(()=>(payables||[]).filter(p=>payIsOpen(p)&&!p.dueDate),[payables]);
   const[edits,setEdits]=useState({});
   useEffect(()=>{ if(open) setEdits({}); },[open]);
   const dealName=id=>{const d=(deals||[]).find(x=>x.id===id);return d?(d.client||d.contact||""):"";};
@@ -3470,7 +3471,7 @@ function DueDateBackfillModal({open,onClose,billings,payables,deals,updateMilest
             <div style={{fontWeight:700,fontSize:".84rem",color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.vendor||"Payable"}</div>
             <div style={{fontSize:".7rem",color:"#94a3b8"}}>{p.apNumber||p.poNumber||p.invoiceNumber||p.category||""}</div>
           </div>
-          <div style={{fontWeight:800,fontSize:".84rem",color:"#b45309",fontVariantNumeric:"tabular-nums"}}>{peso(p.amount)}</div>
+          <div style={{fontWeight:800,fontSize:".84rem",color:"#b45309",fontVariantNumeric:"tabular-nums"}}>{peso(payBalance(p))}</div>
           <Inp type="date" value={edits["p:"+p.id]||""} onChange={e=>setE("p:"+p.id,e.target.value)}/>
         </div>
       ))}
@@ -3493,21 +3494,34 @@ function CashFlowView({billings,payables,vouchers,loans,cashPositions,setPage,Wr
   const today=start.getTime();
   const parse=d=>{ if(!d) return null; const t=new Date(d); return isNaN(t.getTime())?null:(t.setHours(0,0,0,0),t.getTime()); };
 
-  // Opening working cash = latest reconciled position across operating banks
-  const opening=(()=>{
-    const days=Object.values(cashPositions||{}).filter(p=>p&&p.banks&&(p.date||"")<=today).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
-    if(!days[0]) return 0;
-    return BANKS.filter(b=>b.type==="Operating").reduce((s,b)=>{const r=days[0].banks?.[b.id]||{};return s+(Number(r.book)||Number(r.end)||Number(r.beg)||0);},0);
-  })();
+  // Opening working cash = latest cash sheet on or before today (Manila), book
+  // balance (ending less uncleared floating checks) of the operating banks.
+  // Before 2026-11-26 this compared the sheet's date string with a timestamp,
+  // which is always false, so it showed PHP 0 however complete the sheet was.
+  const todayIso=new Date().toLocaleDateString("en-CA",{timeZone:"Asia/Manila"});
+  const cashNow=bankCashSummary(cashPositions,todayIso);
+  const opening=cashNow.perBank.filter(b=>b.type==="Operating").reduce((s,b)=>s+b.book,0);
 
+  // `due` = expected date. Collections that are overdue, or a sent invoice with
+  // no date to work one out from, go to the chase list: they are NOT counted as
+  // cash coming in (assuming every overdue invoice is paid this week hid every
+  // crunch). Payments with no due date ARE counted as due now (we owe them).
   const flows=[];
-  billings.filter(m=>m.status!=="Cancelled").forEach(m=>{
-    // Expected CASH in: the milestone's receivable (VAT in, EWT out) less good payments.
-    const out=Math.round(milestoneBalance(m,deals.find(d=>d.id===m.dealId))*100)/100;
-    if(out>0.5) flows.push({date:parse(m.dueDate),amt:out,dir:"in",label:m.name||"Billing",ref:m.invoiceNo||""});
+  billings.forEach(m=>{
+    if(m.status==="Cancelled") return;
+    // A Draft hasn't gone to the client, so it isn't owed (same rule as arSummary).
+    if(m.status==="Draft" && milestonePaid(m)<=0) return;
+    const deal=deals.find(d=>d.id===m.dealId);
+    const out=Math.round(milestoneBalance(m,deal)*100)/100;
+    if(!(out>0.5)) return;
+    // No due date: the statement's own rule (project's net days from the invoice date).
+    let date=parse(m.dueDate), est=false;
+    if(date==null && m.invoiceDate){ date=parse(billingDueTerms({ms:{invoiceDate:m.invoiceDate},deal}).dueDate); est=date!=null; }
+    flows.push({date,amt:out,dir:"in",label:(deal&&(deal.client||deal.contact))||m.name||"Billing",ref:[m.invoiceNo,m.name].filter(Boolean).join(" · "),est});
   });
-  (payables||[]).filter(p=>p.status!=="Paid"&&Number(p.amount)>0).forEach(p=>{
-    flows.push({date:parse(p.dueDate),amt:Number(p.amount),dir:"out",label:p.vendor||"Payable",ref:p.poNumber||p.invoiceRef||""});
+  (payables||[]).filter(payIsOpen).forEach(p=>{
+    // What is still owed on the bill, not its full amount (part-payments netted off).
+    flows.push({date:parse(p.dueDate),amt:payBalance(p),dir:"out",label:p.vendor||"Payable",ref:p.apNumber||p.poNumber||p.invoiceRef||""});
   });
   (vouchers||[]).filter(v=>v.status==="Released"&&!v.isCleared&&Number(v.amount)>0).forEach(v=>{
     const exp=parse(v.clearedDate)||(parse(v.releasedDate)?parse(v.releasedDate)+3*DAY:today+3*DAY);
@@ -3529,24 +3543,34 @@ function CashFlowView({billings,payables,vouchers,loans,cashPositions,setPage,Wr
     }
   });
 
-  // Flows with no due date can't be placed in a week — they fall into bucket 0
-  // ("now/overdue") and skew the projection. Surface them so Finance can fix.
-  const noDateIn =flows.filter(f=>f.dir==="in" &&f.date==null).reduce((s,f)=>s+f.amt,0);
+  const isChase=f=>f.dir==="in"&&(f.date==null||f.date<today);
+  const chase=flows.filter(isChase);
+  const chaseAmt=chase.reduce((s,f)=>s+f.amt,0);
+  const chaseUndated=chase.filter(f=>f.date==null);
+  const counted=flows.filter(f=>!isChase(f));
+  // Items with no due date: sent invoices with no invoice date either (on the
+  // chase list) and bills (counted as due now). Surface them so Finance can fix.
+  const noDateIn =chaseUndated.reduce((s,f)=>s+f.amt,0);
   const noDateOut=flows.filter(f=>f.dir==="out"&&f.date==null).reduce((s,f)=>s+f.amt,0);
   const noDateCount=flows.filter(f=>f.date==null&&f.amt>0.5).length;
 
   const bucketOf=ms=>{ if(ms==null||ms<today) return 0; const w=Math.floor((ms-today)/(7*DAY))+1; return w>WEEKS?WEEKS+1:w; };
   const buckets=Array.from({length:WEEKS+2},(_,i)=>({i,in:0,out:0}));
-  flows.forEach(f=>{ const b=buckets[bucketOf(f.date)]; if(f.dir==="in") b.in+=f.amt; else b.out+=f.amt; });
+  counted.forEach(f=>{ const b=buckets[bucketOf(f.date)]; if(f.dir==="in") b.in+=f.amt; else b.out+=f.amt; });
   let run=opening; let lowest=opening, crunchWk=null;
-  buckets.forEach(b=>{ b.net=b.in-b.out; run+=b.net; b.close=run; if(run<lowest) lowest=run; if(b.close<0&&crunchWk==null&&b.i>0) crunchWk=b.i; });
-  const bLabel=i=>{ if(i===0) return "Overdue / now"; if(i===WEEKS+1) return `Beyond ${WEEKS} wks`; const s=new Date(today+(i-1)*7*DAY),e=new Date(today+(i*7*DAY-DAY)); const f=dt=>dt.toLocaleDateString("en-PH",{month:"short",day:"numeric"}); return `Wk ${i} · ${f(s)}–${f(e)}`; };
+  buckets.forEach(b=>{ b.net=b.in-b.out; run+=b.net; b.close=run; if(run<lowest) lowest=run; if(b.close<0&&crunchWk==null) crunchWk=b.i; });
+  const bLabel=i=>{ if(i===0) return "Overdue bills / now"; if(i===WEEKS+1) return `Beyond ${WEEKS} wks`; const s=new Date(today+(i-1)*7*DAY),e=new Date(today+(i*7*DAY-DAY)); const f=dt=>dt.toLocaleDateString("en-PH",{month:"short",day:"numeric"}); return `Wk ${i} · ${f(s)}–${f(e)}`; };
 
+  // 30 days, the same rule both ways: everything counted that falls due by then
+  // (bills with no due date are due now; overdue / undated collections are not counted).
   const horizon30=today+30*DAY;
-  const in30=flows.filter(f=>f.dir==="in"&&(f.date==null||f.date<=horizon30)).reduce((s,f)=>s+f.amt,0);
-  const out30=flows.filter(f=>f.dir==="out"&&f.date!=null&&f.date<=horizon30).reduce((s,f)=>s+f.amt,0);
+  const in30 =counted.filter(f=>f.dir==="in" &&f.date<=horizon30).reduce((s,f)=>s+f.amt,0);
+  const out30=counted.filter(f=>f.dir==="out"&&(f.date==null||f.date<=horizon30)).reduce((s,f)=>s+f.amt,0);
   const bal30=opening+in30-out30;
-  const upcoming=[...flows].filter(f=>f.amt>0).sort((a,b)=>((a.date??today)-(b.date??today))).slice(0,14);
+  const upcoming=counted.filter(f=>f.amt>0).sort((a,b)=>((a.date??today)-(b.date??today))).slice(0,14);
+  const chaseList=[...chase].sort((a,b)=>((a.date??0)-(b.date??0))||(b.amt-a.amt));
+  const[showChase,setShowChase]=useState(false);
+  const cashSub=!cashNow.latest?"No cash sheet yet":`Cash sheet ${fdateIso(cashNow.latest.date)}${cashNow.stale?` · ${cashNow.daysOld} day${cashNow.daysOld===1?"":"s"} old`:""} · operating banks`;
 
   const kpi=(l,v,c,sub)=>(
     <div style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0"}}>
@@ -3558,6 +3582,7 @@ function CashFlowView({billings,payables,vouchers,loans,cashPositions,setPage,Wr
   const cell={padding:"9px 12px",fontSize:isMobile?".74rem":".82rem",textAlign:"right",whiteSpace:"nowrap",fontVariantNumeric:"tabular-nums"};
   const head={...cell,fontSize:".64rem",fontWeight:700,color:"rgba(255,255,255,.65)",textTransform:"uppercase",letterSpacing:".5px"};
   const fdate=ms=>ms==null?"—":new Date(ms).toLocaleDateString("en-PH",{month:"short",day:"numeric"});
+  function fdateIso(iso){ return iso?new Date(String(iso).slice(0,10)+"T00:00:00").toLocaleDateString("en-PH",{month:"short",day:"numeric"}):"—"; }
 
   return(
     <Wrap>
@@ -3571,7 +3596,7 @@ function CashFlowView({billings,payables,vouchers,loans,cashPositions,setPage,Wr
 
       {crunchWk!=null&&(
         <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:12,padding:"12px 16px",marginBottom:16,fontSize:".86rem",color:"#b91c1c",fontWeight:600}}>
-          ⚠️ Projected cash goes negative around <strong>{bLabel(crunchWk)}</strong> (low point {money(lowest)}). Pull collections forward or defer payments.
+          ⚠️ Projected cash goes negative {crunchWk===0?<>now: overdue bills are more than the cash in the banks</>:<>around <strong>{bLabel(crunchWk)}</strong></>} (low point {money(lowest)}). Collect the chase list below or defer payments.
         </div>
       )}
 
@@ -3579,18 +3604,18 @@ function CashFlowView({billings,payables,vouchers,loans,cashPositions,setPage,Wr
         <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:12,padding:"12px 16px",marginBottom:16,display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
           <div style={{flex:1,minWidth:220,fontSize:".84rem",color:"#92400e",lineHeight:1.5}}>
             ⚠️ <strong>{noDateCount} item{noDateCount===1?"":"s"}</strong> ha{noDateCount===1?"s":"ve"} no due date
-            {noDateIn>0.5&&<> — {money(noDateIn)} in collections</>}
-            {noDateIn>0.5&&noDateOut>0.5?" and":""}
-            {noDateOut>0.5&&<> {money(noDateOut)} in payments</>}
-            {" "}counted as due now. Set due dates to sharpen the projection.
+            {noDateOut>0.5&&<> — {money(noDateOut)} in bills counted as due now</>}
+            {noDateIn>0.5&&noDateOut>0.5?";":""}
+            {noDateIn>0.5&&<> {money(noDateIn)} in sent invoices left out of the forecast (no invoice or due date)</>}.
+            {" "}Set due dates to sharpen the projection.
           </div>
           {onFixDueDates&&<button onClick={onFixDueDates} style={{background:"#b45309",border:"none",borderRadius:9,padding:"9px 16px",color:"#fff",fontFamily:"inherit",fontWeight:800,fontSize:".8rem",cursor:"pointer",whiteSpace:"nowrap"}}>📅 Set due dates</button>}
         </div>
       )}
 
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:18}}>
-        {kpi("Working cash now",money(opening),"#0f172a",opening===0?"Set cash position for accuracy":null)}
-        {kpi("Collections (30d)",money(in30),"#059669")}
+        {kpi("Working cash now",money(opening),"#0f172a",cashSub)}
+        {kpi("Collections due (30d)",money(in30),"#059669","Sent invoices not yet overdue")}
         {kpi("Payments due (30d)",money(out30),"#b45309")}
         {kpi("Projected balance (30d)",money(bal30),bal30<0?"#ef4444":"#059669")}
       </div>
@@ -3615,6 +3640,32 @@ function CashFlowView({billings,payables,vouchers,loans,cashPositions,setPage,Wr
         </table>
       </div>
 
+      {chaseList.length>0&&(
+        <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #fecaca",overflowX:"auto",marginBottom:18}}>
+          <button onClick={()=>setShowChase(v=>!v)} style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,padding:"11px 16px",background:"#fff5f5",border:"none",cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
+            <span style={{fontWeight:700,color:"#b91c1c",fontSize:".85rem"}}>📞 Chase list: {chaseList.length} overdue invoice{chaseList.length===1?"":"s"} · {money(chaseAmt)}</span>
+            <span style={{fontSize:".72rem",color:"#b91c1c",whiteSpace:"nowrap"}}>{showChase?"Hide ▲":"Show ▼"}</span>
+          </button>
+          <div style={{padding:"6px 16px 10px",fontSize:".72rem",color:"#64748b"}}>Not counted in the projected balance until collected: overdue money isn't cash you can plan on this week.</div>
+          {showChase&&(
+            <table style={{width:"100%",borderCollapse:"collapse",minWidth:520}}>
+              <tbody>
+                {chaseList.map((f,idx)=>(
+                  <tr key={idx} style={{borderTop:"1px solid #f8fafc"}}>
+                    <td style={{padding:"8px 14px",width:96,color:"#b91c1c",fontSize:".76rem",whiteSpace:"nowrap"}}>{f.date==null?"No date":`${Math.round((today-f.date)/DAY)}d late`}</td>
+                    <td style={{padding:"8px 10px",fontSize:isMobile?".76rem":".84rem"}}>
+                      <div style={{fontWeight:600,color:"#0f172a"}}>{f.label}</div>
+                      {f.ref&&<div style={{fontSize:".7rem",color:"#94a3b8"}}>{f.ref}{f.est?" · due date from terms":""}</div>}
+                    </td>
+                    <td style={{padding:"8px 14px",textAlign:"right",fontWeight:700,fontVariantNumeric:"tabular-nums",color:"#b91c1c",whiteSpace:"nowrap"}}>{money(f.amt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
       <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflowX:"auto"}}>
         <div style={{padding:"11px 16px",borderBottom:"1px solid #f1f5f9",fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>Next movements</div>
         <table style={{width:"100%",borderCollapse:"collapse",minWidth:520}}>
@@ -3627,7 +3678,7 @@ function CashFlowView({billings,payables,vouchers,loans,cashPositions,setPage,Wr
                 <td style={{padding:"8px 6px",width:30}}>{f.dir==="in"?"🟢":"🟠"}</td>
                 <td style={{padding:"8px 10px",fontSize:isMobile?".76rem":".84rem"}}>
                   <div style={{fontWeight:600,color:"#0f172a"}}>{f.label}</div>
-                  {f.ref&&<div style={{fontSize:".7rem",color:"#94a3b8"}}>{f.ref}</div>}
+                  {(f.ref||f.est)&&<div style={{fontSize:".7rem",color:"#94a3b8"}}>{f.ref}{f.est?" · due date from terms":""}</div>}
                 </td>
                 <td style={{padding:"8px 14px",textAlign:"right",fontWeight:700,fontVariantNumeric:"tabular-nums",color:f.dir==="in"?"#059669":"#b45309",whiteSpace:"nowrap"}}>{f.dir==="in"?"+":"−"}{money(f.amt)}</td>
               </tr>
@@ -3636,7 +3687,7 @@ function CashFlowView({billings,payables,vouchers,loans,cashPositions,setPage,Wr
         </table>
       </div>
       <div style={{marginTop:12,fontSize:".74rem",color:"#64748b",lineHeight:1.6,background:"#f8fafc",borderRadius:10,padding:"11px 14px"}}>
-        <strong>Sources:</strong> collections = outstanding billings (by due date); payments = unpaid payables, released-but-uncleared checks (≈3 days to clear), and loan amortizations. Items with no due date show under “Overdue / now.” Opening cash uses your latest cash position (operating banks only).
+        <strong>Sources:</strong> collections = the unpaid balance of sent invoices, by due date (an invoice with no due date gets one from the project's payment terms; unsent Drafts are left out). Overdue invoices are on the chase list, not in the balance. Payments = the unpaid balance of open supplier bills (bills with no due date count as due now), released-but-uncleared checks (≈3 days to clear) and loan amortizations. Not included yet: payroll, rent and other OPEX with no bill, and issued POs / Work Orders not yet billed. Opening cash = the book balance (ending less floating checks) of the operating banks on the latest Daily Cash Position.
       </div>
     </Wrap>
   );
