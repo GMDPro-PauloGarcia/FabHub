@@ -27,6 +27,10 @@ const monthOf=d=>String(d||"").slice(0,7);
 const monthLabel=m=>{const[y,mo]=m.split("-");return mo?`${MONTHS[Number(mo)-1]} ${y}`:"NO DATE";};
 const bankLabel=b=>b==="cash"?"Cash":(BANKS.find(x=>x.id===b||x.short===b||x.name===b)?.short)||b||"—";
 const clientKey=c=>String(c||"").toLowerCase().replace(/[^a-z0-9]/g,"");
+// Manager checks started with the 2026-11-26 release (unapplied_collections_alert
+// counts from the same moment). Older payments aren't "waiting for a check".
+const CHECK_START="2026-11-24T16:00:00Z"; // 2026-11-25 00:00 Manila
+const isFreshPay=p=>{const c=p.created_at||p.createdAt;return !c||String(c)>=CHECK_START;};
 const sameName=(a,b)=>String(a||"").trim().toLowerCase()===String(b||"").trim().toLowerCase();
 
 export default function CollectionsLog({billings=[],deals=[],today,session,toastEmit,canRecord,isManager,onRecord,onApply,onOpenProject,reloadKey=0}){
@@ -59,12 +63,13 @@ export default function CollectionsLog({billings=[],deals=[],today,session,toast
         const ref=String(p.refNo||"").trim().toLowerCase();
         const key=ref?`${p.date}|${p.bank||""}|${ref}|${clientKey(d?.client)}|${p.bounced?"b":""}`:`id:${p.id}`;
         if(!map.has(key)) map.set(key,{key,kind:"pay",date:p.date||"",bank:p.bank||"",method:p.method||"",ref:p.refNo||"",client:d?.client||"—",
-          deals:new Map(),invoices:[],amount:0,ids:[],recordedBy:new Set(),checked:[],bounced:!!p.bounced,note:p.note||""});
+          deals:new Map(),invoices:[],amount:0,ids:[],recordedBy:new Set(),checked:[],bounced:!!p.bounced,note:p.note||"",fresh:false});
         const g=map.get(key);
         if(d) g.deals.set(d.id,d);
         g.invoices.push(ms.invoiceNo||ms.name||"—");
         g.amount=r2(g.amount+Number(p.amount||0));
         g.ids.push(p.id);
+        if(isFreshPay(p)) g.fresh=true;
         if(p.recordedBy) g.recordedBy.add(p.recordedBy);
         const st=checkedNow.get(p.id);
         g.checked.push(st?st.by:(p.checkedBy||p.checked_by||""));
@@ -83,19 +88,20 @@ export default function CollectionsLog({billings=[],deals=[],today,session,toast
     const st=checkedNow.get(u.id);
     return{key:"u:"+u.id,kind:"before",row:u,date:u.received_date||"",bank:u.bank||"",method:u.method||"",ref:u.ref_no||"",client:d?.client||"—",
       projects:d?(d.contact||d.ceNo||"—"):"—",ceNos:d?.ceNo||"",dealId:u.deal_id,invoices:[],amount:r2(u.amount),ids:[u.id],
-      recordedBy:u.entered_by||"",checkedBy:st?st.by:(u.checked_by||""),status:u.status,note:u.note||"",returnReason:u.return_reason||""};
+      recordedBy:u.entered_by||"",checkedBy:st?st.by:(u.checked_by||""),fresh:true,status:u.status,note:u.note||"",returnReason:u.return_reason||""};
   }),[unap,dealById,checkedNow]);
 
   const all=useMemo(()=>[...deposits,...beforeRows].sort((a,b)=>String(b.date).localeCompare(String(a.date))||String(a.client).localeCompare(String(b.client))),[deposits,beforeRows]);
   const months=useMemo(()=>[...new Set(all.map(r=>monthOf(r.date)).filter(Boolean))].sort().reverse(),[all]);
 
   const openBefore=beforeRows.filter(r=>r.status==="Open");
-  const unchecked=all.filter(r=>!r.checkedBy&&!r.bounced&&r.status!=="Returned");
+  const needsCheck=r=>r.fresh&&!r.checkedBy&&!r.bounced&&r.status!=="Returned";
+  const unchecked=all.filter(needsCheck);
   const ql=q.trim().toLowerCase();
   const shown=all.filter(r=>{
     if(month!=="all"&&monthOf(r.date)!==month) return false;
     if(view==="before"&&!(r.kind==="before"&&r.status==="Open")) return false;
-    if(view==="unchecked"&&(r.checkedBy||r.bounced||r.status==="Returned")) return false;
+    if(view==="unchecked"&&!needsCheck(r)) return false;
     if(ql&&![r.client,r.projects,r.ceNos,r.ref,r.invoices.join(" "),r.recordedBy,bankLabel(r.bank),String(r.amount)].join(" ").toLowerCase().includes(ql)) return false;
     return true;
   });
@@ -104,7 +110,7 @@ export default function CollectionsLog({billings=[],deals=[],today,session,toast
 
   // Manager check: never a line you recorded yourself.
   const ownLine=r=>r.recordedBy.split(",").some(n=>sameName(n,me));
-  const canTick=r=>isManager&&!r.checkedBy&&!r.bounced&&r.status!=="Returned"&&!ownLine(r);
+  const canTick=r=>isManager&&needsCheck(r)&&!ownLine(r);
   const tickedRows=shown.filter(r=>ticked.has(r.key)&&canTick(r));
   const markChecked=async()=>{
     if(!tickedRows.length||checking) return;
@@ -153,13 +159,13 @@ export default function CollectionsLog({billings=[],deals=[],today,session,toast
   return(
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:12}}>
-        <div style={{fontSize:".74rem",color:"#64748b",maxWidth:620}}>
+        {!mob&&<div style={{fontSize:".74rem",color:"#64748b",maxWidth:620}}>
           Every client payment, one line per deposit. Record new money with <b>+ Collection</b>: pick the project, enter what reached the bank, and put it on the invoice(s).
           {" "}Money with no invoice yet is kept as <b>received before invoice</b> until you apply it.
-        </div>
-        <div style={{display:"flex",gap:8}}>
+        </div>}
+        <div style={{display:"flex",gap:8,width:mob?"100%":undefined}}>
           <button onClick={exportCsv} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"8px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>⬇ Export</button>
-          {canRecord&&<button onClick={()=>onRecord&&onRecord()} style={{background:"#059669",border:"none",borderRadius:8,padding:"8px 16px",fontFamily:"inherit",fontSize:".82rem",fontWeight:800,color:"#fff",cursor:"pointer"}}>+ Collection</button>}
+          {canRecord&&<button onClick={()=>onRecord&&onRecord()} style={{flex:mob?1:undefined,background:"#059669",border:"none",borderRadius:8,padding:mob?"11px 16px":"8px 16px",fontFamily:"inherit",fontSize:".82rem",fontWeight:800,color:"#fff",cursor:"pointer"}}>+ Collection</button>}
         </div>
       </div>
 
@@ -184,20 +190,88 @@ export default function CollectionsLog({billings=[],deals=[],today,session,toast
 
       {isManager&&(
         <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",marginBottom:10,fontSize:".74rem",color:"#64748b"}}>
-          <span>Manager check: tick lines you've matched to the bank, then</span>
+          {!mob&&<span>Manager check: tick lines you've matched to the bank, then</span>}
           <button onClick={markChecked} disabled={!tickedRows.length||checking}
             style={{background:tickedRows.length?"#7c3aed":"#e2e8f0",border:"none",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontSize:".76rem",fontWeight:700,color:tickedRows.length?"#fff":"#94a3b8",cursor:tickedRows.length?"pointer":"not-allowed"}}>
             {checking?"Saving…":`✓ Mark ${tickedRows.length||""} checked`}
           </button>
           <button onClick={()=>setTicked(new Set(shown.filter(canTick).map(r=>r.key)))} style={{background:"none",border:"none",color:"#1d4ed8",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,cursor:"pointer"}}>Tick all shown</button>
-          <span style={{color:"#94a3b8"}}>Lines you recorded yourself are checked by another Manager.</span>
+          {!mob&&<span style={{color:"#94a3b8"}}>Lines you recorded yourself are checked by another Manager.</span>}
         </div>
       )}
 
-      <div style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,overflow:"auto",maxHeight:mob?undefined:"70vh"}}>
+      {mob&&isManager&&tickedRows.length>0&&(
+        <div style={{position:"fixed",left:0,right:0,bottom:"calc(76px + env(safe-area-inset-bottom, 0px))",zIndex:40,padding:"0 14px"}}>
+          <button onClick={markChecked} disabled={checking} style={{width:"100%",background:"#7c3aed",border:"none",borderRadius:12,padding:"13px",fontFamily:"inherit",fontSize:".9rem",fontWeight:800,color:"#fff",boxShadow:"0 6px 20px rgba(124,58,237,.35)"}}>
+            {checking?"Saving…":`✓ Mark ${tickedRows.length} checked`}
+          </button>
+        </div>
+      )}
+      <div style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,overflow:mob?"hidden":"auto",maxHeight:mob?undefined:"70vh"}}>
         {!loaded&&<div style={{padding:20,color:"#94a3b8",fontSize:".8rem"}}>Loading…</div>}
         {loaded&&shown.length===0&&<div style={{padding:24,textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No collections {month!=="all"?`in ${monthLabel(month).toLowerCase()}`:""}{view!=="all"?" in this view":""}.</div>}
-        {shown.length>0&&(
+        {shown.length>0&&mob&&(
+          <div>
+            {groups.map(g=>{
+              const tot=r2(g.rows.filter(counted).reduce((t,r)=>t+r.amount,0));
+              return(
+                <React.Fragment key={g.m}>
+                  <div style={{padding:"9px 14px",background:"#fde047",fontSize:".72rem",fontWeight:800,color:"#0f172a",letterSpacing:".04em",display:"flex",justifyContent:"space-between",gap:8}}>
+                    <span>{monthLabel(g.m)}</span><span style={{fontVariantNumeric:"tabular-nums"}}>{g.rows.length} · {f2(tot)}</span>
+                  </div>
+                  {g.rows.map(r=>{
+                    const before=r.kind==="before";
+                    const dim=r.bounced||r.status==="Returned";
+                    const tick=canTick(r);
+                    return(
+                      <div key={r.key} style={{display:"flex",gap:10,padding:"12px 14px",borderBottom:"1px solid #f1f5f9",background:before&&r.status==="Open"?"#fffbeb":ticked.has(r.key)?"#f5f3ff":"#fff",opacity:dim?.55:1}}>
+                        {isManager&&<div style={{width:22,flexShrink:0,paddingTop:2}}>
+                          {tick&&<input type="checkbox" style={{width:20,height:20}} checked={ticked.has(r.key)} onChange={e=>setTicked(s=>{const n=new Set(s);e.target.checked?n.add(r.key):n.delete(r.key);return n;})} aria-label={`Tick ${r.client} ${f2(r.amount)} to mark checked`}/>}
+                        </div>}
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"baseline"}}>
+                            <div style={{fontWeight:800,fontSize:".86rem",color:"#0f172a",minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.client}</div>
+                            <div style={{fontWeight:900,fontSize:".9rem",color:"#059669",whiteSpace:"nowrap",fontVariantNumeric:"tabular-nums",textDecoration:dim?"line-through":"none"}}>{f2(r.amount)}</div>
+                          </div>
+                          <div style={{fontSize:".76rem",marginTop:2}}>
+                            {r.dealId&&onOpenProject?<button onClick={()=>onOpenProject(r.dealId)} style={{background:"none",border:"none",padding:0,fontFamily:"inherit",fontSize:".76rem",color:"#1d4ed8",cursor:"pointer",textAlign:"left"}}>{r.projects}</button>:r.projects}
+                            {r.ceNos&&<span style={{color:"#94a3b8"}}> · {r.ceNos}</span>}
+                          </div>
+                          <div style={{fontSize:".7rem",color:"#64748b",marginTop:4,display:"flex",flexWrap:"wrap",gap:"2px 8px"}}>
+                            <span>{r.date||"—"}</span><span>{r.method||"—"}</span><span>{bankLabel(r.bank)}</span>
+                            <span style={{fontFamily:"ui-monospace,monospace"}}>{r.ref?`Ref ${r.ref}`:<span style={{color:"#dc2626"}}>no ref</span>}</span>
+                          </div>
+                          <div style={{fontSize:".7rem",marginTop:4,display:"flex",flexWrap:"wrap",gap:6,alignItems:"center"}}>
+                            {before?(
+                              <span style={{fontSize:".66rem",fontWeight:800,borderRadius:20,padding:"2px 8px",...(r.status==="Open"?{background:"#fef3c7",color:"#92400e",border:"1px solid #fcd34d"}:{background:"#f1f5f9",color:"#64748b",border:"1px solid #e2e8f0"})}}>
+                                {r.status==="Open"?"Before invoice":"Returned"}
+                              </span>
+                            ):<span style={{color:"#475569"}}>{r.invoices.join(", ")}</span>}
+                            {r.bounced&&<span style={{fontSize:".66rem",fontWeight:800,color:"#dc2626"}}>BOUNCED</span>}
+                          </div>
+                          {before&&(r.note||r.returnReason)&&<div style={{fontSize:".68rem",color:"#92400e",marginTop:3}}>{r.returnReason||r.note}</div>}
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginTop:6}}>
+                            <span style={{fontSize:".68rem",color:"#64748b"}}>{r.recordedBy||"—"} · <b style={{color:r.checkedBy?"#059669":r.fresh?"#a78bfa":"#cbd5e1"}}>{r.checkedBy?`✓ ${r.checkedBy}`:r.fresh?"not checked":"before checks"}</b></span>
+                            {before&&r.status==="Open"&&(
+                              <span style={{display:"flex",gap:6}}>
+                                {isManager&&<button onClick={()=>returnBefore(r)} style={{background:"#fff",border:"1px solid #e2e8f0",borderRadius:7,padding:"7px 10px",fontFamily:"inherit",fontSize:".72rem",fontWeight:700,color:"#64748b"}}>Close…</button>}
+                                {canRecord&&<button onClick={()=>onApply&&onApply(r.row)} style={{background:"#1d4ed8",border:"none",borderRadius:7,padding:"7px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#fff"}}>Apply →</button>}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </React.Fragment>
+              );
+            })}
+            <div style={{display:"flex",justifyContent:"space-between",padding:"11px 14px",borderTop:"2px solid #e2e8f0",fontWeight:800,fontSize:".8rem"}}>
+              <span>Total shown</span><span style={{color:"#059669",fontVariantNumeric:"tabular-nums"}}>{f2(shownTotal)}</span>
+            </div>
+          </div>
+        )}
+        {shown.length>0&&!mob&&(
           <table style={{borderCollapse:"collapse",width:"100%",minWidth:980}}>
             <thead><tr>
               {isManager&&<th style={{...th,width:28}}></th>}
@@ -240,7 +314,7 @@ export default function CollectionsLog({billings=[],deals=[],today,session,toast
                           </td>
                           <td style={{...td,fontSize:".7rem",color:"#64748b"}}>
                             {r.recordedBy||"—"}
-                            <div style={{color:r.checkedBy?"#059669":"#a78bfa",fontWeight:700}}>{r.checkedBy?`✓ ${r.checkedBy}`:"not checked"}</div>
+                            <div style={{color:r.checkedBy?"#059669":r.fresh?"#a78bfa":"#cbd5e1",fontWeight:700}}>{r.checkedBy?`✓ ${r.checkedBy}`:r.fresh?"not checked":"before checks"}</div>
                           </td>
                           <td style={{...td,whiteSpace:"nowrap"}}>
                             {before&&r.status==="Open"&&canRecord&&<button onClick={()=>onApply&&onApply(r.row)} style={{background:"#1d4ed8",border:"none",borderRadius:6,padding:"4px 10px",fontFamily:"inherit",fontSize:".7rem",fontWeight:700,color:"#fff",cursor:"pointer"}}>Apply →</button>}
