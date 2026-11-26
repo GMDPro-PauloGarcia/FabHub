@@ -244,7 +244,7 @@ const _classifyError = (msg, code) => {
 // them just wedges the queue (blocking every write queued behind them) and
 // re-fires the "offline" toast forever even though the connection is fine.
 const _isDuplicate = (error) => (error && (error.code === '23505' || /duplicate key/i.test(error.message || '')))
-const _isRetryable = (kind) => kind !== 'auth' && kind !== 'data' && kind !== 'rule'
+const _isRetryable = (kind) => kind !== 'auth' && kind !== 'data' && kind !== 'rule' && kind !== 'gone'
 const _writeFailed = (op, table, msg, code) => {
   const kind = _classifyError(msg, code)
   if (kind === 'expired') _notifyExpired()
@@ -337,7 +337,7 @@ const _runOp = async (op) => {
     // success. Without this the op gets shifted out of the queue as "done"
     // while nothing actually happened, and no one is ever told.
     const res = await _withTimeout(supabase.from(op.table).update({ ...op.data, updated_at: new Date().toISOString() }).eq('id', op.id).select('id'))
-    if (!res.error && (!res.data || res.data.length === 0)) return { error: { message: `No row matched id=${op.id} — it may not exist on the server yet.` } }
+    if (!res.error && (!res.data || res.data.length === 0)) return { error: { code: 'FH_NO_ROW', message: `No row matched id=${op.id} — it may not exist on the server yet.` } }
     return res
   } else if (op.kind === 'delete') {
     return await _withTimeout(supabase.from(op.table).delete().eq('id', op.id))
@@ -375,6 +375,20 @@ const _replay = async (op) => {
         continue
       }
       console.warn(`sync replay ${op.kind} ${op.table}:`, error.message)
+      // An update that matched no row. The queue replays in order, so a create
+      // of this row queued before it has already landed or been dropped. Give
+      // it one retry for a create still in flight (this tab, another tab or
+      // another device); after that, retrying can never succeed: the row was
+      // deleted on the server or this login can't see it. Until 2026-11-25 this
+      // stayed 'server', and an edit to billing milestone INV-1726 (deleted
+      // 2026-09-26) still showed "Still can't sync" on a phone two months later,
+      // with a toast telling the user to "Push All Data to Cloud", which would
+      // have put the deleted invoice back.
+      if (error.code === 'FH_NO_ROW') {
+        const createQueued = _queue.some(o => o !== op && o.table === op.table && (o.kind === 'insert' || o.kind === 'upsert' || o.kind === 'insertIfMissing') && o.data && o.data.id === op.id)
+        const gone = !createQueued && (op.attempts || 0) >= 1
+        return { ok: false, kind: gone ? 'gone' : 'server', message: gone ? `This record is no longer on the server (deleted, or not visible to your login), so the change to it was discarded. id=${op.id}` : error.message }
+      }
       return { ok: false, kind: _classifyError(error.message, error.code), message: error.message }
     }
     return { ok: false, kind: 'data', message: 'Write dropped: too many unknown columns for the current schema.' }
