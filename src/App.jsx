@@ -10240,6 +10240,20 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ── PURCHASING (Orders › Purchasing, src/views/PurchasingHub.jsx) ──
   // Read-only overview; its buttons open the screens that already do the work.
   const billsTab=AP_HIDDEN?"bills":"payables";
+  // Actions for "Needs your attention" (AttentionPanel): each opens the existing
+  // form or runs the existing function, so its rules and database checks apply.
+  const attnAct={
+    receive:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"].includes(role)?(dealId,msId)=>{setBillingJumpPay(msId);setBillingJumpDeal(dealId);setPage("billing");}:null,
+    openDeal:dealId=>{setBillingJumpDeal(dealId);setPage("billing");},
+    payBill:roleCanInsert("payable_payments")?p=>{setPage("finance");setFinTab(billsTab);openPayModal(p);}:null,
+    canApproveBill:p=>canApprovePayables&&!enteredByMe(p),
+    enteredByMe,
+    approveBill:p=>approvePayable(p.id),
+    rejectBill:p=>rejectPayable(p.id),
+    editBill:roleCanInsert("payables")?p=>openBillForm({...p},p.id):null,
+    setDueDates:()=>setDueDateFixOpen(true),
+    poApprovals:()=><POApprovals prs={prs} deals={deals} role={role} session={session} approvePOs={approvePOs} defaultOpen/>,
+  };
   // ── ORDER BOARD (Orders › Order Board, src/views/OrderBoard.jsx) ──
   // "Create PO" hands the ticked PRF lines to the PO form (poDraft); once the PO
   // is saved, linkPrfLines links each PRF line to it (link_prf_po), retrying
@@ -11572,7 +11586,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {/* What needs a person today, each with a button to fix it */}
       <AttentionPanel billings={billings} deals={deals} prs={prs} payables={payables} today={today}
         pages={role==="FinanceAssistant"?["billing","bills"]:["billing","procurement","bills"]}
-        go={to=>{if(to==="bills"){setFinTab(AP_HIDDEN?"bills":"payables");setPage("finance");}else setPage(to);}}/>
+        act={attnAct} go={to=>{if(to==="bills"){setFinTab(AP_HIDDEN?"bills":"payables");setPage("finance");}else setPage(to);}}/>
 
       {/* KPI row */}
       {(()=>{
@@ -12618,7 +12632,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     <Wrap>
       <AttentionPanel billings={billings} deals={deals} prs={prs} payables={payables} today={today}
         pages={role==="FinanceAssistant"?["billing","bills"]:["billing","procurement","bills"]}
-        go={to=>{if(to==="bills"){setFinTab(AP_HIDDEN?"bills":"payables");setPage("finance");}else setPage(to);}}/>
+        act={attnAct} go={to=>{if(to==="bills"){setFinTab(AP_HIDDEN?"bills":"payables");setPage("finance");}else setPage(to);}}/>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
         <div>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, {session?.name?.split(" ")[0]||"there"} 👋</div>
@@ -13039,7 +13053,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     <Wrap>
       <AttentionPanel billings={billings} deals={deals} prs={prs} payables={payables} today={today}
         pages={role==="FinanceAssistant"?["billing","bills"]:["billing","procurement","bills"]}
-        go={to=>{if(to==="bills"){setFinTab(AP_HIDDEN?"bills":"payables");setPage("finance");}else setPage(to);}}/>
+        act={attnAct} go={to=>{if(to==="bills"){setFinTab(AP_HIDDEN?"bills":"payables");setPage("finance");}else setPage(to);}}/>
       {/* ── COMMAND BAR ─────────────────────────────────────────────── */}
       <div style={{background:"#0f172a",borderRadius:14,padding:ceoMob?"11px 16px":"16px 20px",marginBottom:ceoMob?10:14,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
         <div>

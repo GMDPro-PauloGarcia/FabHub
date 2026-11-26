@@ -19,10 +19,10 @@ const num=v=>Number(String(v??"").replace(/,/g,""))||0;
 const pesoAmt=v=>"₱"+num(v).toLocaleString("en-PH",{maximumFractionDigits:0});
 const PAGE=50;
 
-export default function POApprovals({prs=[],deals=[],role,session,approvePOs}){
+export default function POApprovals({prs=[],deals=[],role,session,approvePOs,defaultOpen=false}){
   const mob=typeof window!=="undefined"&&window.innerWidth<860;
   const me=session?.name||"";
-  const[open,setOpen]=useState(false);
+  const[open,setOpen]=useState(defaultOpen);
   const[q,setQ]=useState("");
   const[who,setWho]=useState("All");
   const[sel,setSel]=useState(()=>new Set());
