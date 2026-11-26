@@ -1,6 +1,6 @@
 import React,{useState,useMemo} from "react";
 import {Modal} from "../shared";
-import {milestoneBalanceParts, arAgeBucket, arDaysPastDue, arCallOrder} from "../core";
+import {milestoneBalanceParts, milestonePaid, arAgeBucket, arDaysPastDue, arCallOrder} from "../core";
 
 // ─── AR AGING DRILL-DOWN (Billing page) ────────────────────────────────────
 // Clicking an AR Aging card lists the projects with money still to collect in
@@ -9,7 +9,7 @@ import {milestoneBalanceParts, arAgeBucket, arDaysPastDue, arCallOrder} from "..
 // opens the project's normal Billing window on that invoice with the usual
 // Log Payment form (same checks: balance, duplicates, offsets, mother POs).
 
-const BUCKETS={all:"All outstanding",unbilled:"Not yet sent to the client",current:"Current (not yet due)",d30:"1–30 days overdue",d60:"31–60 days overdue",d90:"61–90 days overdue",over90:"90+ days overdue"};
+const BUCKETS={all:"All outstanding",sent:"Running A/R (sent invoices)",unbilled:"Not yet sent to the client",current:"Current (not yet due)",d30:"1–30 days overdue",d60:"31–60 days overdue",d90:"61–90 days overdue",over90:"90+ days overdue"};
 const arPeso=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
 
 export default function ARDrill({bucket,billings=[],dealOf,canPay=false,onReceive,onClose}){
@@ -26,8 +26,11 @@ export default function ARDrill({bucket,billings=[],dealOf,canPay=false,onReceiv
       if(p.bal<=0.005) return;
       // A Draft hasn't been sent, so it is never "overdue" here (arAgeBucket).
       const unsent=b.status==="Draft";
+      // "sent" = the Daily Cash Position's Running A/R (arSummary): an unsent
+      // Draft with no payment isn't owed yet, so it is left out.
+      if(bucket==="sent"){ if(unsent&&milestonePaid(b)<=0) return; }
+      else if(bucket!=="all"&&arAgeBucket(b,now)!==bucket) return;
       const days=unsent?0:arDaysPastDue(b,now);
-      if(bucket!=="all"&&arAgeBucket(b,now)!==bucket) return;
       const g=by[b.dealId]||(by[b.dealId]={dealId:b.dealId,deal:d,base:0,vat:0,ewt:0,bal:0,maxDays:0,inv:[]});
       g.base+=p.base;g.vat+=p.vat;g.ewt+=p.ewt;g.bal+=p.bal;g.maxDays=Math.max(g.maxDays,days);
       g.inv.push({ms:b,days,unsent,...p});

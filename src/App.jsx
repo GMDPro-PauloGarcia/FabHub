@@ -16298,7 +16298,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               );
             })()}
             {cashSub==="daily"&&(
-              <DailyCashPosition deals={deals} payPays={payPays} canPay={roleCanInsert("payable_payments")} onPayMany={recordPayments} cashPositions={cashPositions} saveDayPos={saveDayPos} wonDeals={wonDeals} billings={billings} suppliers={suppliers} subcons={subcons} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps} updateMilestone={updateMilestone} upExps={upExps} toSbExpense={toSbExpense} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} vouchers={vouchers} payables={payables} loans={loans} inventory={inventory} userName={session?.name||""} role={role} username={session?.username||""} cashStale={cashStale}/>
+              <DailyCashPosition deals={deals} payPays={payPays} canPay={roleCanInsert("payable_payments")} onPayMany={recordPayments} canReceive={["Manager","Finance","FinanceAssistant","SalesOpsAdmin"].includes(role)} onReceivePayment={(dealId,msId)=>{setBillingJumpPay(msId);setBillingJumpDeal(dealId);setPage("billing");}} onPayBill={roleCanInsert("payable_payments")?b=>{setPage("finance");setFinTab(billsTab);openPayModal(b);}:null} onOpenBills={()=>{setPage("finance");setFinTab(billsTab);}} onOpenLoans={role!=="Accounting"?()=>navGo("execloans"):null} cashPositions={cashPositions} saveDayPos={saveDayPos} wonDeals={wonDeals} billings={billings} suppliers={suppliers} subcons={subcons} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps} updateMilestone={updateMilestone} upExps={upExps} toSbExpense={toSbExpense} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} vouchers={vouchers} payables={payables} loans={loans} inventory={inventory} userName={session?.name||""} role={role} username={session?.username||""} cashStale={cashStale}/>
             )}
             {cashSub==="weekly"&&(
               <WeeklyCashFlow mode="weekly" cashPositions={cashPositions} billings={billings} loans={loans} exps={exps} chartOfAccounts={chartOfAccounts} setPage={setPage}/>
@@ -17226,6 +17226,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         <DailyCashPosition
           deals={deals}
           payPays={payPays} canPay={roleCanInsert("payable_payments")} onPayMany={recordPayments}
+          canReceive={["Manager","Finance","FinanceAssistant","SalesOpsAdmin"].includes(role)} onReceivePayment={(dealId,msId)=>{setBillingJumpPay(msId);setBillingJumpDeal(dealId);setPage("billing");}} onPayBill={roleCanInsert("payable_payments")?b=>{setPage("finance");setFinTab(billsTab);openPayModal(b);}:null} onOpenBills={()=>{setPage("finance");setFinTab(billsTab);}} onOpenLoans={role!=="Accounting"?()=>navGo("execloans"):null}
           cashPositions={cashPositions}
           saveDayPos={saveDayPos}
           wonDeals={wonDeals}
