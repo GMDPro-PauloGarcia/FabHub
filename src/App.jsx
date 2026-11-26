@@ -5475,7 +5475,7 @@ export default function App(){
     const tx=calcTax(Number(r.amount)||0,r.receiptType??od?.receiptType??"OR",r.withholding??od?.withholding??false);
     const base={
       id:r.id, deal_id:r.dealId, name:r.name||"", description:r.description||"",
-      amount:Number(r.amount)||0, invoice_no:r.invoiceNo||"",
+      amount:Math.round((Number(r.amount)||0)*100)/100, invoice_no:r.invoiceNo||"",
       invoice_date:r.invoiceDate||null, due_date:r.dueDate||null,
       sent_date:r.sentDate||null,
       status:r.status||"Draft", created_by:r.createdBy||"",
@@ -5492,7 +5492,7 @@ export default function App(){
     return base;
   };
   const toSbPayment = r=>({
-    id:r.id, milestone_id:r.milestoneId, amount:Number(r.amount)||0,
+    id:r.id, milestone_id:r.milestoneId, amount:Math.round((Number(r.amount)||0)*100)/100,
     date:r.date||null, ref_no:r.refNo||"", note:r.note||"",
     recorded_by:r.recordedBy||"", bank:r.bank||"",
     value_date:r.valueDate||null,
@@ -7238,6 +7238,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // Telegram / activity per invoice (the caller sends one message for the
   // cheque). opts.skipDeal: the caller updates the deal totals on screen once.
   const logBillingPayment=async(msId,payment,opts={})=>{
+    // Money has 2 decimals: a prefilled balance (e.g. 739,200.0224) must not reach
+    // the screen or the database with more (2026-11-26, Dot Coffee INV-1974).
+    payment={...payment,amount:Math.round((Number(payment.amount)||0)*100)/100};
     const payId=uid();
     const msRaw=billings.find(b=>b.id===msId);
     const setWh=opts.withholding===true&&msRaw&&msRaw.withholding!==true;
@@ -28243,7 +28246,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                       <button onClick={()=>printInvoice(ms)} style={{background:"#1e293b",border:"none",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#fff",cursor:"pointer"}}>🖨 Billing Statement</button>
                       <button onClick={()=>shareInvoicePdf(ms)} disabled={billingPdf.busy} title="Billing statement as a PDF to share (Viber, Mail, Files) or download" style={{background:"#ecfeff",border:"1.5px solid #67e8f9",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#155e75",cursor:billingPdf.busy?"wait":"pointer"}}>{billingPdf.busy?"Making PDF…":"📤 Billing PDF"}</button>
                       {canPayDeal(deal)&&ms.status!=="Fully Paid"&&ms.status!=="Cancelled"&&(
-                        <button onClick={()=>{const opening=showPay!==ms.id;setShowPay(showPay===ms.id?null:ms.id);if(opening){const totalPaid=(ms.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);const bal=tx.netReceivable-totalPaid;setPayForm(p=>({...p,amount:bal>0?bal:tx.netReceivable}));}}} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#059669",cursor:"pointer"}}>+ Payment</button>
+                        <button onClick={()=>{const opening=showPay!==ms.id;setShowPay(showPay===ms.id?null:ms.id);if(opening){const totalPaid=(ms.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);const bal=Math.round((tx.netReceivable-totalPaid)*100)/100;setPayForm(p=>({...p,amount:bal>0?bal:tx.netReceivable}));}}} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#059669",cursor:"pointer"}}>+ Payment</button>
                       )}
                       {canEdit&&!canPayDeal(deal)&&ms.status!=="Fully Paid"&&ms.status!=="Cancelled"&&(
                         <div title="Your commission rides on this deal's collections, so Finance or a Manager records them." style={{fontSize:".65rem",color:"#94a3b8",maxWidth:120,lineHeight:1.3}}>Your deal: Finance logs its payments</div>
