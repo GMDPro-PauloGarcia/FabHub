@@ -26980,15 +26980,31 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     // contract (over ₱1). Same rule as billing_contract_gaps() on the daily check.
     const contractGap=active.length&&!isMotherPO(d)?billingContractGap(d,billings).gap:0;
     const gapOff=Math.abs(contractGap)>1;
-    return{d,ms,grossBase,vat,total,collected,collectible,balance,hasOverdue,maxOverdue,odBalance,odCount:odMs.length,ageKeys,hasUnsent,fullyPaid,toBill,milestoneCount:ms.length,contractGap,gapOff};
+    // The list's money, all in what the client pays (VAT-inclusive):
+    // Contract → Invoiced (sent, or a Draft already paid) → Received → Due now
+    // (balance on sent invoices, EWT off) → Not yet invoiced (contract − invoiced).
+    // An unsent Draft isn't owed (same rule as arSummary). Mother POs earn ₱0;
+    // a Pending addendum isn't contract yet.
+    const r2=x=>Math.round((Number(x)||0)*100)/100;
+    const txOf=m=>calcTax(n(m.amount),m.receiptType??m.receipt_type??d.receiptType??"OR",m.withholding??d.withholding??false);
+    const contractEx=isMotherPO(d)||(d.parentDealId&&!isApprovedAddendumDeal(d))?0:n(d.value);
+    const contract=r2(calcTax(contractEx,d.receiptType||"OR").gross);
+    const sentMs=active.filter(m=>m.status!=="Draft"||milestonePaid(m)>0);
+    const invoiced=r2(sentMs.reduce((s,m)=>s+txOf(m).gross,0));
+    const dueNow=r2(sentMs.reduce((s,m)=>s+milestoneBalance(m,d),0));
+    const ewtPaid=r2(sentMs.filter(m=>milestonePaid(m)>0).reduce((s,m)=>s+txOf(m).ewt,0));
+    const _ni=r2(contract-invoiced), notInvoiced=_ni>1?_ni:0;
+    const _nm=r2(contract-total), noMilestone=_nm>1?_nm:0;
+    const draftsReady=active.filter(m=>m.status==="Draft"&&milestonePaid(m)<=0).length;
+    return{d,contract,invoiced,dueNow,ewtPaid,notInvoiced,noMilestone,draftsReady,ms,grossBase,vat,total,collected,collectible,balance,hasOverdue,maxOverdue,odBalance,odCount:odMs.length,ageKeys,hasUnsent,fullyPaid,toBill,milestoneCount:ms.length,contractGap,gapOff};
   });
   // Count of awarded projects with no billing set up yet — hidden by default.
   const notBilledCount=_allSummaries.filter(s=>s.milestoneCount===0).length;
   const gapCount=_allSummaries.filter(s=>s.gapOff).length;
-  const projectSummaries=_allSummaries.filter(({d,total,collected,balance,hasOverdue,ageKeys,hasUnsent,fullyPaid,milestoneCount,gapOff})=>{
+  const projectSummaries=_allSummaries.filter(({d,total,collected,balance,dueNow,hasOverdue,ageKeys,hasUnsent,fullyPaid,milestoneCount,gapOff})=>{
     const q=billingSearch.toLowerCase();
     const matchSearch=!q||(d.client||"").toLowerCase().includes(q)||(d.ceNo||"").toLowerCase().includes(q)||(d.contact||"").toLowerCase().includes(q);
-    const matchFilter=billingFilter==="all"||(billingFilter==="action"&&(hasOverdue||hasUnsent||gapOff))||(billingFilter==="outstanding"&&balance>0&&!fullyPaid)||(billingFilter==="paid"&&fullyPaid)||(billingFilter==="overdue"&&hasOverdue)||(billingFilter.startsWith("age:")&&ageKeys.has(billingFilter.slice(4)))||(billingFilter==="unsent"&&hasUnsent)||(billingFilter==="collected"&&collected>0)||(billingFilter==="uncollected"&&total>0&&collected===0)||(billingFilter==="gap"&&gapOff)||(billingFilter==="notbilled"&&milestoneCount===0);
+    const matchFilter=billingFilter==="all"||(billingFilter==="action"&&(hasOverdue||hasUnsent||gapOff))||(billingFilter==="outstanding"&&dueNow>0)||(billingFilter==="paid"&&fullyPaid)||(billingFilter==="overdue"&&hasOverdue)||(billingFilter.startsWith("age:")&&ageKeys.has(billingFilter.slice(4)))||(billingFilter==="unsent"&&hasUnsent)||(billingFilter==="collected"&&collected>0)||(billingFilter==="uncollected"&&total>0&&collected===0)||(billingFilter==="gap"&&gapOff)||(billingFilter==="notbilled"&&milestoneCount===0);
     // Hide "Not billed" (0-milestone) projects unless the toggle is on or the user is searching.
     const matchNotBilled=milestoneCount>0||showNotBilled||!!q||billingFilter==="notbilled";
     return matchSearch&&matchFilter&&matchNotBilled;
@@ -27019,7 +27035,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   // "Latest billing" = the most recent invoice actually sent (Drafts don't count).
   const _lastSent=x=>x.ms.filter(m=>m.status!=="Draft"&&m.status!=="Cancelled").reduce((t,m)=>{const v=m.invoiceDate||"";return v>t?v:t;},"");
   const _gLatest=g=>[g.parent,...g.kids].reduce((t,x)=>{const v=_lastSent(x);return v>t?v:t;},"");
-  const _gBalance=g=>[g.parent,...g.kids].reduce((t,x)=>t+(Number(x.balance)||0),0);
+  const _gBalance=g=>[g.parent,...g.kids].reduce((t,x)=>t+(Number(x.dueNow)||0),0);
   const _byName=(a,b)=>String(a||"").localeCompare(String(b||""),"en",{sensitivity:"base"});
   if(_overdueView) _groups.sort((a,b)=>arCallOrder(_grpKey(a.parent),_grpKey(b.parent)));
   else if(billSort==="latest") _groups.sort((a,b)=>_gLatest(b).localeCompare(_gLatest(a))||_byName(a.parent.d.client,b.parent.d.client));
@@ -27032,7 +27048,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     if(kids.length){
       const all=[parent,...kids];
       const sum=f=>Math.round(all.reduce((t,x)=>t+(Number(x[f])||0),0)*100)/100;
-      out.push({subtotalOf:parent.d,addendumCount:kids.length,grossBase:sum("grossBase"),vat:sum("vat"),total:sum("total"),collected:sum("collected"),balance:sum("balance"),contract:Math.round((Number(parent.d.value)||0)+kids.filter(k=>isApprovedAddendumDeal(k.d)).reduce((t,x)=>t+(Number(x.d.value)||0),0)*100)/100});
+      out.push({subtotalOf:parent.d,addendumCount:kids.length,grossBase:sum("grossBase"),vat:sum("vat"),total:sum("total"),collected:sum("collected"),balance:sum("balance"),invoiced:sum("invoiced"),dueNow:sum("dueNow"),ewtPaid:sum("ewtPaid"),notInvoiced:sum("notInvoiced"),noMilestone:sum("noMilestone"),draftsReady:sum("draftsReady"),contract:sum("contract")});
     }
   };
   // Client key: letters and digits only, lower case, so "Yobo International
@@ -27054,7 +27070,13 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       const names={};all.forEach(x=>{const nm=x.d.client||"(no client)";names[nm]=(names[nm]||0)+1;});
       const name=Object.entries(names).sort((a,b)=>b[1]-a[1])[0][0];
       const open=_searching||openClients.has(key);
-      billingRows.push({clientHead:true,key,name,soaClient:gs[0].parent.d.client,projects:gs.length,addenda:gs.reduce((t,g)=>t+g.kids.length,0),
+      // Projects with no billing schedule are hidden by default, but they are
+      // the biggest "still to schedule" items, so the client line counts them.
+      const shown=new Set(all.map(x=>x.d.id));
+      const noSched=_allSummaries.filter(x=>x.milestoneCount===0&&!shown.has(x.d.id)&&billClientKey((x.d.parentDealId&&deals.find(p=>p.id===x.d.parentDealId)?.client)||x.d.client)===key);
+      const withHidden=[...all,...noSched];
+      const sumAll=f=>Math.round(withHidden.reduce((t,x)=>t+(Number(x[f])||0),0)*100)/100;
+      billingRows.push({clientHead:true,contract:sumAll("contract"),invoiced:sum("invoiced"),dueNow:sum("dueNow"),ewtPaid:sum("ewtPaid"),notInvoiced:sumAll("notInvoiced"),noMilestone:sumAll("noMilestone"),draftsReady:sum("draftsReady"),noSchedCount:withHidden.filter(x=>x.milestoneCount===0&&x.contract>0).length,key,name,soaClient:gs[0].parent.d.client,projects:gs.length,addenda:gs.reduce((t,g)=>t+g.kids.length,0),
         grossBase:sum("grossBase"),vat:sum("vat"),total:sum("total"),collected:sum("collected"),balance:sum("balance"),
         hasOverdue:all.some(x=>x.hasOverdue),maxOverdue:all.reduce((t,x)=>Math.max(t,x.maxOverdue||0),0),odCount:all.reduce((t,x)=>t+(x.odCount||0),0),
         hasUnsent:all.some(x=>x.hasUnsent),gapOff:all.some(x=>x.gapOff),
@@ -27067,8 +27089,29 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const setAllClients=open=>setOpenClients(open?new Set(billingRows.filter(r=>r.clientHead).map(r=>r.key)):new Set());
   // Shared grid template for the billing list header + rows:
   // Project | Gross | VAT | Total | Paid | Balance | Status | Actions
-  const BILL_COLS="2fr 1fr 0.85fr 1.05fr 1fr 1fr 90px 170px";
-  const BILL_MINW=940;
+  const BILL_COLS="2fr 1.05fr 1.05fr 1.05fr 1.05fr 1.15fr 100px 170px";
+  const BILL_MINW=1080;
+  // The five money cells (all VAT-inclusive, what the client pays), shared by
+  // client, project and subtotal rows. x has contract / invoiced / collected /
+  // dueNow / notInvoiced / noMilestone / draftsReady / ewtPaid.
+  const NUM={textAlign:"right",fontVariantNumeric:"tabular-nums"};
+  const _dash=<span style={{color:"#e2e8f0"}}>—</span>;
+  const _ok=t=><span style={{color:"#059669"}}>✓ {t}</span>;
+  const _sub=(t,c="#94a3b8",w=600)=><div style={{fontSize:".66rem",fontWeight:w,color:c,marginTop:1}}>{t}</div>;
+  const moneyCells=(x,size=".86rem",w=700)=>{
+    const st={...NUM,fontWeight:w,fontSize:size};
+    const ni=x.notInvoiced>0;
+    return [
+      <div key="c" style={{...st,color:"#475569"}} title="Contract price as the client pays it (VAT-inclusive on VAT receipts)">{x.contract>0?fmt(x.contract):_dash}</div>,
+      <div key="i" style={{...st,color:"#3b82f6"}} title="Invoices sent to the client (VAT-inclusive). Unsent Drafts aren't counted.">{x.invoiced>0?fmt(x.invoiced):_dash}</div>,
+      <div key="r" style={{...st,color:"#059669"}}>{x.collected>0?fmt(x.collected):_dash}{x.ewtPaid>1&&_sub(`+ ${fmt(x.ewtPaid)} EWT`)}</div>,
+      <div key="d" style={{...st,color:x.dueNow>0?"#dc2626":"#059669"}} title="What the client owes now on invoices already sent (EWT taken off)">{x.dueNow>0?fmt(x.dueNow):x.invoiced>0?_ok("Clear"):_dash}</div>,
+      <div key="n" style={{...st,color:ni?"#7c3aed":"#059669"}} title="Contract − Invoiced: still to bill. Pink = part with no billing milestone yet.">
+        {ni?fmt(x.notInvoiced):x.contract>0?_ok("All billed"):_dash}
+        {x.noMilestone>0?_sub(`${fmt(x.noMilestone)} no milestone`,"#be185d",800):ni&&x.draftsReady>0?_sub(`${x.draftsReady} Draft${x.draftsReady===1?"":"s"} ready to send`):null}
+      </div>,
+    ];
+  };
 
   // CSV Export function
   const exportBillingCSV=()=>{
@@ -27399,8 +27442,8 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         {/* Table header — desktop only; mobile uses self-labeling cards */}
         {!mob&&(
         <div style={{display:"grid",gridTemplateColumns:BILL_COLS,background:"#1e293b",padding:"10px 18px",gap:12,minWidth:BILL_MINW}}>
-          {[["Project","left"],["VATEx","right"],["VAT","right"],["Total","right"],["Paid","right"],["Balance","right"],["Status","left"],["Actions","left"]].map(([h,al])=>(
-            <div key={h} style={{fontSize:".68rem",fontWeight:700,color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".8px",textAlign:al}}>{h}</div>
+          {[["Project","left"],["Contract","right","VAT-inc"],["Invoiced","right","sent to client"],["Received","right"],["Due now","right","owed on sent invoices"],["Not yet invoiced","right","still to bill"],["Status","left"],["Actions","left"]].map(([h,al,sub])=>(
+            <div key={h} style={{fontSize:".68rem",fontWeight:700,color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".8px",textAlign:al}}>{h}{sub&&<div style={{fontSize:".58rem",color:"rgba(255,255,255,.4)",textTransform:"none",letterSpacing:".2px",fontWeight:600,marginTop:1}}>{sub}</div>}</div>
           ))}
         </div>
         )}
@@ -27408,7 +27451,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         {billingRows.map((row,i)=>{
           if(row.clientHead){
             const r=row;
-            const meta=`${r.projects} project${r.projects===1?"":"s"}${r.addenda?` · ${r.addenda} addend${r.addenda===1?"um":"a"}`:""}${r.latest?` · last invoice ${r.latest}`:""}`;
+            const meta=`${r.projects} project${r.projects===1?"":"s"}${r.addenda?` · ${r.addenda} addend${r.addenda===1?"um":"a"}`:""}${r.latest?` · last invoice ${r.latest}`:""}${r.noSchedCount?` · ${r.noSchedCount} with no billing yet`:""}`;
             const badges=(
               <span style={{display:"inline-flex",gap:4,flexWrap:"wrap"}}>
                 {r.hasOverdue&&<span title={`${r.odCount} overdue invoice${r.odCount===1?"":"s"}, oldest ${r.maxOverdue} days`} style={{fontSize:".66rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"2px 8px",fontWeight:700,whiteSpace:"nowrap"}}>📞 {r.maxOverdue}d overdue</span>}
@@ -27437,7 +27480,10 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                   {badges}
                 </div>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginTop:8,paddingLeft:14}}>
-                  <div style={{fontSize:".78rem"}}><span style={{color:"#059669",fontWeight:700}}>Paid {r.collected>0?fmt(r.collected):"—"}</span> · <span style={{color:r.balance>0?"#ef4444":"#059669",fontWeight:800}}>{r.balance>0?`Bal ${fmt(r.balance)}`:"✓ Clear"}</span></div>
+                  <div style={{fontSize:".78rem"}}>
+                    <div><span style={{color:r.dueNow>0?"#dc2626":"#059669",fontWeight:800}}>{r.dueNow>0?`Due now ${fmt(r.dueNow)}`:"✓ Nothing due"}</span></div>
+                    {r.notInvoiced>0&&<div style={{color:"#7c3aed",fontWeight:700,fontSize:".72rem",marginTop:2}}>{fmt(r.notInvoiced)} not yet invoiced{r.noMilestone>0?<span style={{color:"#be185d"}}> · {fmt(r.noMilestone)} no milestone</span>:null}</div>}
+                  </div>
                   <div style={{display:"flex",gap:6}}>{soaBtns}</div>
                 </div>
               </div>
@@ -27449,10 +27495,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                   <div style={{fontWeight:800,color:"#0f172a",fontSize:".9rem"}}>{arrow}{r.name}</div>
                   <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:1,paddingLeft:14}}>{meta}</div>
                 </div>
-                {[[r.grossBase,"#3b82f6"],[r.vat,"#f59e0b"],[r.total,"#0f172a"],[r.collected,"#059669"]].map(([v,c],k)=>(
-                  <div key={k} style={{fontWeight:700,color:c,fontSize:".86rem",textAlign:"right",fontVariantNumeric:"tabular-nums"}}>{v>0?fmt(v):<span style={{color:"#e2e8f0"}}>—</span>}</div>
-                ))}
-                <div style={{fontWeight:800,color:r.balance>0?"#ef4444":"#059669",fontSize:".86rem",textAlign:"right",fontVariantNumeric:"tabular-nums"}}>{r.balance>0?fmt(r.balance):"✓ Clear"}</div>
+                {moneyCells(r)}
                 <div>{badges}</div>
                 <div style={{display:"flex",gap:5,alignItems:"center"}}>{soaBtns}</div>
               </div>
@@ -27461,10 +27504,10 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
           if(row.subtotalOf){
             const {subtotalOf:pd,addendumCount:ac}=row;
             const label=`Total contract · main + ${ac} addend${ac===1?"um":"a"}`;
-            const cells=[["VATEx",fmt(row.grossBase),"#3b82f6"],["VAT",fmt(row.vat),"#f59e0b"],["Total",fmt(row.total),"#0f172a"],["Paid",row.collected>0?fmt(row.collected):"—","#059669"],["Balance",row.balance>0?fmt(row.balance):"✓ Clear",row.balance>0?"#ef4444":"#059669"]];
+            const cells=[["Contract",fmt(row.contract),"#475569"],["Invoiced",fmt(row.invoiced),"#3b82f6"],["Received",row.collected>0?fmt(row.collected):"—","#059669"],["Due now",row.dueNow>0?fmt(row.dueNow):"✓ Clear",row.dueNow>0?"#dc2626":"#059669"],["Not yet invoiced",row.notInvoiced>0?fmt(row.notInvoiced):"✓ All billed",row.notInvoiced>0?"#7c3aed":"#059669"]];
             if(mob) return(
               <div key={"sub-"+pd.id} style={{padding:"10px 16px",borderBottom:"1px solid #e2e8f0",background:"#f8fafc",borderTop:"1.5px solid #e2e8f0"}}>
-                <div style={{fontSize:".66rem",fontWeight:800,color:"#475569",textTransform:"uppercase",letterSpacing:".06em",marginBottom:6}}>{label} · contract {fmt(row.contract)}</div>
+                <div style={{fontSize:".66rem",fontWeight:800,color:"#475569",textTransform:"uppercase",letterSpacing:".06em",marginBottom:6}}>{label}</div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
                   {cells.map(([l,v,c])=><div key={l}><div style={{fontSize:".58rem",color:"#94a3b8",textTransform:"uppercase",fontWeight:700}}>{l}</div><div style={{fontWeight:800,color:c,fontSize:".8rem"}}>{v}</div></div>)}
                 </div>
@@ -27472,8 +27515,8 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
             );
             return(
               <div key={"sub-"+pd.id} style={{display:"grid",gridTemplateColumns:BILL_COLS,minWidth:BILL_MINW,padding:"9px 18px",gap:12,borderBottom:"1px solid #e2e8f0",borderTop:"1.5px solid #e2e8f0",background:"#f8fafc",alignItems:"center"}}>
-                <div style={{fontSize:".7rem",fontWeight:800,color:"#475569",textTransform:"uppercase",letterSpacing:".06em"}}>{label}<div style={{fontSize:".66rem",fontWeight:600,color:"#94a3b8",textTransform:"none",letterSpacing:0}}>Contract {fmt(row.contract)}</div></div>
-                {cells.map(([l,v,c])=><div key={l} style={{fontWeight:800,color:c,fontSize:".86rem",textAlign:"right",fontVariantNumeric:"tabular-nums"}}>{v}</div>)}
+                <div style={{fontSize:".7rem",fontWeight:800,color:"#475569",textTransform:"uppercase",letterSpacing:".06em"}}>{label}</div>
+                {moneyCells(row,".86rem",800)}
                 <div/><div/>
               </div>
             );
@@ -27560,15 +27603,6 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
             </div>
           );
           const dash=<span style={{color:"#e2e8f0",fontSize:".78rem"}}>—</span>;
-          // Gross = VAT-exclusive base; VAT = 12% output VAT; Total = VAT-inclusive
-          // amount billed to the client; Paid = cash collected; Balance = amount
-          // still owed (net of any EWT withheld).
-          const grossCell=grossBase>0?fmt(grossBase):<span style={{color:"#e2e8f0",fontSize:".78rem"}}>Not billed</span>;
-          const vatCell=vat>0?fmt(vat):dash;
-          const totalCell=total>0?fmt(total):dash;
-          const paidCell=collected>0?fmt(collected):dash;
-          const balanceCell=balance>0?fmt(balance):"✓ Clear";
-          const money=(node,color,al="right")=>(<div style={{fontWeight:600,color,fontSize:".86rem",textAlign:al,fontVariantNumeric:"tabular-nums"}}>{node}</div>);
 
           if(mob){
             // Stacked card — no horizontal scroll, everything visible incl. SOA button
@@ -27580,10 +27614,10 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                   <div style={{flexShrink:0}}>{statusBadge}</div>
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,margin:"12px 0",padding:"10px 0",borderTop:"1px solid #f1f5f9",borderBottom:"1px solid #f1f5f9"}}>
-                  {[["VATEx",grossCell,"#3b82f6"],["VAT",vatCell,"#f59e0b"],["Total",totalCell,"#0f172a"],["Paid",paidCell,"#059669"],["Balance",balanceCell,balance>0?"#ef4444":"#059669"]].map(([lbl,val,clr])=>(
+                  {[["Contract",row.contract>0?fmt(row.contract):dash,"#475569"],["Invoiced",row.invoiced>0?fmt(row.invoiced):dash,"#3b82f6"],["Received",collected>0?fmt(collected):dash,"#059669"],["Due now",row.dueNow>0?fmt(row.dueNow):row.invoiced>0?"✓ Clear":dash,row.dueNow>0?"#dc2626":"#059669"],["Not yet invoiced",row.notInvoiced>0?fmt(row.notInvoiced):row.contract>0?"✓ All billed":dash,row.notInvoiced>0?"#7c3aed":"#059669"],["No milestone",row.noMilestone>0?fmt(row.noMilestone):dash,"#be185d"]].map(([lbl,val,clr])=>(
                     <div key={lbl}>
                       <div style={{fontSize:".6rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".6px",fontWeight:700}}>{lbl}</div>
-                      <div style={{fontWeight:lbl==="Total"||lbl==="Balance"?700:600,color:clr,fontSize:".82rem",marginTop:2}}>{val}</div>
+                      <div style={{fontWeight:lbl==="Due now"?700:600,color:clr,fontSize:".82rem",marginTop:2}}>{val}</div>
                     </div>
                   ))}
                 </div>
@@ -27599,11 +27633,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
               onMouseEnter={e=>e.currentTarget.style.background="#eff6ff"}
               onMouseLeave={e=>e.currentTarget.style.background=hasOverdue?"#fffafa":i%2?"#fafafa":"#fff"}>
               {projectCell}
-              {money(grossCell,"#3b82f6")}
-              {money(vatCell,"#f59e0b")}
-              {money(totalCell,"#0f172a")}
-              {money(paidCell,"#059669")}
-              {money(balanceCell,balance>0?"#ef4444":"#059669")}
+              {moneyCells(row,".86rem",600)}
               <div>{statusBadge}</div>
               <div style={{display:"flex",gap:5,alignItems:"center"}}>{actionButtons}</div>
             </div>
