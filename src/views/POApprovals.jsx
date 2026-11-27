@@ -1,6 +1,6 @@
 import React,{useState,useMemo,useEffect,useCallback,useRef} from "react";
 import {uiConfirm,takeLanding} from "../shared";
-import {canApprovePOLine,poLinesTotal,poSplitTotal,dealDpClear,prfRuleOn,canonRole} from "../core";
+import {canApprovePOLine,poLinesTotal,poSplitTotal,dealDpClear,dealDpAwarded,prfRuleOn,canonRole} from "../core";
 import {supabase,isSupabaseReady} from "../supabaseClient";
 
 // ─── PO APPROVALS (Purchase Orders page) ───────────────────────────────────
@@ -67,9 +67,14 @@ export default function POApprovals({prs=[],deals=[],role,session,approvePOs,dpG
         const gross=ls.reduce((s,i)=>s+(num(i.actUnitCost)||num(i.estUnitCost))*num(i.qty),0);
         // "NO DP = NO production": can't be issued while any line's deal has no
         // payment and no Manager waiver (dealDpClear; the database refuses it too).
-        const held=ls.map(l=>deals.find(x=>x.id===(l.projectId||l.dealId))).find(d=>d&&!dealDpClear(d,deals));
+        // Since 20261128010000 an awarded project only asks the approver for a
+        // reason (approvePOs); a project that isn't awarded stays held.
+        const unpaid=ls.map(l=>deals.find(x=>x.id===(l.projectId||l.dealId))).filter(d=>d&&!dealDpClear(d,deals));
+        const held=unpaid.find(d=>!dealDpAwarded(d,deals));
+        const ask=!held&&unpaid[0];
         return{no,lines:ls.length,supplier:f.supplier||"",project:f.projectName||dealName(f.projectId||f.dealId)||"GMD Stock",
-          dpHold:held?(held.ceNo||held.client||"this project"):"",dpHoldId:held?held.id:null,items:ls,
+          dpHold:held?(held.ceNo||held.client||"this project"):"",dpHoldId:held?held.id:null,
+          dpAsk:ask?(ask.ceNo||ask.client||"this project"):"",dpAskId:ask?ask.id:null,items:ls,
           withVat:!!f.withVat,terms:f.termsText||f.paymentTerms||"",
           requestedBy:f.requestedBy||"",date:f.poDate||f.createdDate||String(f.createdAt||"").slice(0,10),gross:Math.round(gross*(f.withVat?1.12:1))};
       })
@@ -147,7 +152,8 @@ export default function POApprovals({prs=[],deals=[],role,session,approvePOs,dpG
   );
   // Why a PO can't be approved yet, and what a Manager can do about it.
   const holdBlock=(p)=>(<>
-    {p.dpHold&&<div style={{fontSize:".72rem",color:"#b91c1c",fontWeight:700,marginTop:4}}>No down payment yet on {p.dpHold}
+    {p.dpAsk&&<div style={{fontSize:".72rem",color:"#b45309",fontWeight:700,marginTop:4}}>{`Client hasn’t paid on ${p.dpAsk}: approving asks you for a reason, and management is told.`}</div>}
+    {p.dpHold&&<div style={{fontSize:".72rem",color:"#b91c1c",fontWeight:700,marginTop:4}}>Project not awarded yet ({p.dpHold}): no PO before award
       {dpGate&&p.dpHoldId&&dpFor!==p.no&&<button type="button" onClick={()=>setDpFor(p.no)} style={{display:"inline-block",marginLeft:6,background:"#fff",border:"1.5px solid #b91c1c",borderRadius:7,padding:"4px 10px",color:"#b91c1c",fontWeight:700,cursor:"pointer",fontFamily:"inherit",fontSize:".72rem"}}>{isMgr?"Waive down payment":"How to clear"}</button>}
     </div>}
     {dpGate&&p.dpHoldId&&dpFor===p.no&&<div style={{marginTop:6}}>

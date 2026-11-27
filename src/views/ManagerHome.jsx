@@ -1,5 +1,5 @@
 import React,{useMemo} from "react";
-import {poLinesTotal,PO_COST_CONTROL_LIMIT,PO_MANAGER_LIMIT,PO_TIERS_ON,isTopApprover,dealDpClear,isBillingOverdue,milestoneBalance,isCashPayment,WON_STAGES} from "../core";
+import {poLinesTotal,PO_COST_CONTROL_LIMIT,PO_MANAGER_LIMIT,PO_TIERS_ON,isTopApprover,dealDpClear,dealDpAwarded,isBillingOverdue,milestoneBalance,isCashPayment,WON_STAGES} from "../core";
 import {payBalance,payIsOpen} from "../data/ledger";
 
 // ─── MANAGER HOME (2026-11-07) ──────────────────────────────────────────────
@@ -36,7 +36,7 @@ export default function ManagerHome({session,today,deals=[],billings=[],payables
     const pos=Object.entries(byPo).map(([no,ls])=>{
       const tot=poLinesTotal(prs.filter(p=>p.poNumber===no));
       const d=ls.map(l=>deals.find(x=>x.id===(l.projectId||l.dealId))).find(Boolean);
-      return{no,tot,held:!!d&&!dealDpClear(d,deals)};
+      return{no,tot,held:!!d&&!dealDpClear(d,deals)&&!dealDpAwarded(d,deals)}; // awarded + unpaid = approver gives a reason (20261128010000)
     });
     // Tiers: Cost Control ≤ ₱150K · Paolo Gomez < ₱250K · Paulo / Mar / Arrius ≥ ₱250K.
     const top=!PO_TIERS_ON||isTopApprover(session?.name);
@@ -50,7 +50,7 @@ export default function ManagerHome({session,today,deals=[],billings=[],payables
     const awards=deals.filter(d=>d.notes&&d.notes.includes("[AWARD REQUEST"));
     if(awards.length) out.push({k:"award",n:awards.length,l:`Award request${awards.length>1?"s":""} to sign off`,sub:awards.slice(0,3).map(d=>d.client||d.ceNo).filter(Boolean).join(", "),tone:"amber",open:()=>go("pipeline"),cta:"Open"});
     const held=pos.filter(p=>p.held);
-    if(held.length) out.push({k:"dp",n:held.length,l:`PO${held.length>1?"s":""} held: client hasn't paid the down payment`,sub:"Chase the client, or waive the down payment with a reason",amt:held.reduce((s,p)=>s+p.tot,0),tone:"amber",open:toPOs,cta:"Open"});
+    if(held.length) out.push({k:"dp",n:held.length,l:`PO${held.length>1?"s":""} held: project not awarded`,sub:"No PO before award: move the deal to Kickoff once won, or waive the down payment with a reason",amt:held.reduce((s,p)=>s+p.tot,0),tone:"amber",open:toPOs,cta:"Open"});
     const qs=pos.filter(p=>!p.held&&p.tot<=PO_COST_CONTROL_LIMIT);
     if(qs.length) out.push({k:"qs",n:qs.length,l:`PO${qs.length>1?"s":""} with Cost Control`,sub:"Up to ₱150K: Ardrin / Rodney approve. FYI only",amt:qs.reduce((s,p)=>s+p.tot,0),tone:"info",open:toPOs,cta:"View"});
     return out;

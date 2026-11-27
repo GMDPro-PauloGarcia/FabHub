@@ -1,6 +1,6 @@
 import React,{useState,useMemo} from "react";
 import {today as TODAY,useIsMobile} from "../shared";
-import {projDisplayName,isSubconPayable,subconDpAllowPct,dealDpClear,canonRole,PO_TIERS_ON} from "../core";
+import {projDisplayName,isSubconPayable,subconDpAllowPct,dealDpClear,dealDpAwarded,canonRole,PO_TIERS_ON} from "../core";
 import {num,r2,php2,buildOrders,payBalance} from "../data/ledger";
 import {LedgerHost,linkBtn} from "./Ledgers";
 
@@ -72,7 +72,7 @@ export function purchasingRows({prs=[],swos=[],payables=[],deals=[]}){
     // Next step and who owns it (first that applies).
     let next="",owner="",status="";
     if(!o.issued){
-      if(isWO&&deal&&!dealDpClear(deal,deals)){next="Client hasn't paid its down payment: waive it or wait";owner="approve";status="Blocked";}
+      if(isWO&&deal&&!dealDpClear(deal,deals)&&!dealDpAwarded(deal,deals)){next="Project not awarded: no WO before award";owner="approve";status="Blocked";}
       else if(isWO&&PO_TIERS_ON){next=wo?.ccApprovedBy?`Finance (Paolo Gomez) signs & issues · Cost Control ✓ ${wo.ccApprovedBy}`:"Cost Control (Rodney / Marian) signs, then Finance (Paolo Gomez)";owner="approve";status="Not issued";}
       else{next=`Approve & issue the ${isWO?"WO":"PO"}`;owner="approve";status="Not issued";}
     }else if(done){next="Done";status="Paid";}

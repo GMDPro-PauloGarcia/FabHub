@@ -19,7 +19,7 @@ import {checkSupplier,supplierSavePrompt,checkBill} from './dataGuard';
 import SupplierHint from './SupplierHint';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {projProgressPct, CONTRACT_LOCK_MSG, dealBillingStarted, contractLocked, billingContractGap, rescaleDraftMilestones, isConstructionDeal, projStageFlow, projStepIndex, projStepLabel, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestonePaid, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, dealBaseValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, canApproveAddendum, ADDENDUM_APPROVER_MSG, PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, woStatusOptions, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, canRecordDeduction, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel, pendingCostByProject, poSplitTotal, canRaiseOrder, canCreateCostCenter, woSignStep, WO_SIGN_MSG, arAgeBucket, arCallOrder, dealHasBoq, MOTHER_PO_BOQ_MSG, ledgerCosts, poVatSet, isBilledRevenue, paymentBaseFactor, invoiceContractProgress, billingScheduleRows, billingPosition, statementLine, orderForLabel, PO_ISSUED_STATUSES, WO_COMMITTED_STATUSES, billingDueTerms, billingDefaultNetDays, billingTermsLabel, projectProgressPct, prfRuleOn, poLineNeedsPrf, PRF_RULE_MSG, poSplitTotalFor, paymentNeedsRef, paymentRefOk, PAYMENT_REF_MSG, nearDuplicatePayment, nearDuplicateMsg, payrollForecast, OPEX_STREAMS, orderCommitments, ORDER_COMMIT_MAX_DAYS} from './core';
+import {projProgressPct, CONTRACT_LOCK_MSG, dealBillingStarted, contractLocked, billingContractGap, rescaleDraftMilestones, isConstructionDeal, projStageFlow, projStepIndex, projStepLabel, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestonePaid, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, dealBaseValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, dealDpAwarded, askDpOverride, DP_NOT_AWARDED_MSG, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, canApproveAddendum, ADDENDUM_APPROVER_MSG, PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, woStatusOptions, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, canRecordDeduction, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel, pendingCostByProject, poSplitTotal, canRaiseOrder, canCreateCostCenter, woSignStep, WO_SIGN_MSG, arAgeBucket, arCallOrder, dealHasBoq, MOTHER_PO_BOQ_MSG, ledgerCosts, poVatSet, isBilledRevenue, paymentBaseFactor, invoiceContractProgress, billingScheduleRows, billingPosition, statementLine, orderForLabel, PO_ISSUED_STATUSES, WO_COMMITTED_STATUSES, billingDueTerms, billingDefaultNetDays, billingTermsLabel, projectProgressPct, prfRuleOn, poLineNeedsPrf, PRF_RULE_MSG, poSplitTotalFor, paymentNeedsRef, paymentRefOk, PAYMENT_REF_MSG, nearDuplicatePayment, nearDuplicateMsg, payrollForecast, OPEX_STREAMS, orderCommitments, ORDER_COMMIT_MAX_DAYS} from './core';
 import ProgressReportModal from './views/ProgressReportModal';
 
 // Returns a component whose function IDENTITY is stable across renders while its
@@ -5567,6 +5567,8 @@ export default function App(){
     from_mr_id:r.fromMrId||null,
     prf_line_id:r.prfLineId||null,
     mb_line_key:r.mbLineKey||null,
+    // Down payment prompt (20261128010000): only sent when the issuer gave a reason.
+    ...(r.dpOverrideReason?{dp_override_reason:r.dpOverrideReason}:{}),
     urgency:r.urgency||"Normal",
     approved_at:r.approvedAt||null,
     delivery_history:r.deliveryHistory?JSON.stringify(r.deliveryHistory):null,
@@ -7667,13 +7669,25 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // Down payment gate: a PO with any line on a deal that has no payment (and
     // no Manager waiver) is skipped whole. The database rejects those writes,
     // and one bad row would fail its entire 200-row batch below.
-    const dpBlockedNos=new Map();
-    pending.forEach(p=>{const d=deals.find(x=>x.id===(p.projectId||p.dealId));if(d&&!dealDpClear(d,deals))dpBlockedNos.set(p.poNumber,d.ceNo||d.client||"?");});
-    if(dpBlockedNos.size) toastEmit(`Not approved — no down payment yet: ${[...dpBlockedNos].map(([no,ce])=>`${no} (${ce})`).join(", ")}. A Manager must waive it on the deal first.`,"error",10000);
+    // Down payment prompt (Paulo, 2026-11-27; migration 20261128010000): on an
+    // awarded project the approver confirms and gives one reason for the unpaid
+    // POs in this batch (approve_po(po, reason): audit_log + Telegram to
+    // management); a project not yet awarded is still refused.
+    const dpBlockedNos=new Map(), dpAskNos=new Map();
+    pending.forEach(p=>{const d=deals.find(x=>x.id===(p.projectId||p.dealId));if(d&&!dealDpClear(d,deals))(dealDpAwarded(d,deals)?dpAskNos:dpBlockedNos).set(p.poNumber,d);});
+    if(dpBlockedNos.size) toastEmit(`Not approved — project not awarded: ${[...dpBlockedNos].map(([no,d])=>`${no} (${d.ceNo||d.client||"?"})`).join(", ")}. No PO is issued before award.`,"error",10000);
+    const dpReasons=new Map();
+    if(dpAskNos.size){
+      const ds=[...new Set(dpAskNos.values())];
+      const amt=pending.filter(p=>dpAskNos.has(p.poNumber)).reduce((a,p)=>a+(Number(p.estimatedCost)||0),0);
+      const r=await askDpOverride(uiPrompt,{what:`${dpAskNos.size===1?"PO "+[...dpAskNos.keys()][0]:dpAskNos.size+" POs ("+[...dpAskNos.keys()].join(", ")+")"}`,deal:ds.length===1?ds[0]:{ceNo:ds.map(d=>d.ceNo||d.client).join(", ")},amount:amt,toast:toastEmit});
+      if(r) [...dpAskNos.keys()].forEach(no=>dpReasons.set(no,r));
+      else [...dpAskNos].forEach(([no,d])=>dpBlockedNos.set(no,d));
+    }
     const lines=pending.filter(p=>!dpBlockedNos.has(p.poNumber));
     if(!lines.length){if(!dpBlockedNos.size)toastEmit("Nothing to approve — those POs are no longer pending or need another approver.","error");return false;}
     const ids=new Set(lines.map(p=>p.id));
-    const next=prs.map(p=>ids.has(p.id)?{...p,status:"PO Issued",approvedBy:me,approvedAt:today}:p);
+    const next=prs.map(p=>ids.has(p.id)?{...p,status:"PO Issued",approvedBy:me,approvedAt:today,...(dpReasons.has(p.poNumber)?{dpOverrideReason:dpReasons.get(p.poNumber)}:{})}:p);
     upPrs(()=>next);
     let ok=true;
     if(isSupabaseReady()){
@@ -7682,7 +7696,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       // payment, and stamps who approved. Cost Control has no direct write on PO lines.
       let errMsg="";
       for(const no of new Set(lines.map(p=>p.poNumber))){
-        const{error}=await supabase.rpc("approve_po",{p_po:no});
+        const{error}=await supabase.rpc("approve_po",dpReasons.has(no)?{p_po:no,p_dp_reason:dpReasons.get(no)}:{p_po:no});
         if(error){ok=false;errMsg=error.message||String(error);break;}
       }
       // A refused approval must not leave the POs shown as issued, raise
@@ -23143,14 +23157,15 @@ function SubconWOView({jos=[],embedded=false,onEmbeddedDone,woDraft=null,clearWo
   // on creation any more; before it, a Manager / the Procurement Manager issued directly.
   const woDirect=!PO_TIERS_ON&&canApprovePO(role,session?.name||"",session?.name||"");
   const woIssueBlocked=w=>PO_TIERS_ON&&w&&(w.status==="Pending Approval"||w.status==="Draft");
-  const signWo=async w=>{
+  const signWo=async(w,dpReason=null)=>{
     if(!isSupabaseReady()){toastEmit&&toastEmit("No server connection: work orders are signed online only.","error",8000);return;}
-    const{data,error}=await supabase.rpc("sign_wo",{p_id:w.id});
+    // dpReason: the client has not paid and the signer confirmed issuing anyway (sign_wo(id, reason), 20261128010000).
+    const{data,error}=await supabase.rpc("sign_wo",dpReason?{p_id:w.id,p_dp_reason:dpReason}:{p_id:w.id});
     if(error){toastEmit&&toastEmit(`Not signed: ${error.message||WO_SIGN_MSG}`,"error",9000);return;}
     const me=session?.name||"";
     if(data==="issued"){
       updateSWO(w.id,{status:"Issued",approvedBy:me,acctStatus:w.acctStatus||"For Accounting"});
-      const aMsg=`✅ <b>Work Order Issued — ${w.woNumber}</b>\nSubcontractor: ${w.subcontractor||"—"}\nAmount: ${fmt(w.contractAmount)}\nRequested by: ${w.requestedBy||"—"}\nCost Control: ${w.ccApprovedBy||"—"} · Finance: ${me} · ${today}\n→ Sent to Accounting for documentation`;
+      const aMsg=`✅ <b>Work Order Issued — ${w.woNumber}</b>\nSubcontractor: ${w.subcontractor||"—"}\nAmount: ${fmt(w.contractAmount)}\nRequested by: ${w.requestedBy||"—"}\nCost Control: ${w.ccApprovedBy||"—"} · Finance: ${me} · ${today}${dpReason?"\n⚠️ Client hasn’t paid yet: "+dpReason:""}\n→ Sent to Accounting for documentation`;
       sendTelegramNotification("procurement",aMsg);
       sendTelegramNotification("financialcontrol",aMsg);
       toastEmit&&toastEmit(`${w.woNumber} issued — sent to Accounting`,"success");
@@ -23182,7 +23197,7 @@ function SubconWOView({jos=[],embedded=false,onEmbeddedDone,woDraft=null,clearWo
   const WO_ISSUED=["Issued","In Progress","Completed"];
   const allD=deals||wonDeals||[];
   const dpBlockedDeal=pid=>{const d=allD.find(x=>x.id===pid);return d&&!dealDpClear(d,allD)?d:null;};
-  const dpMsg=d=>`No down payment received on ${d.ceNo||d.client||"this project"}. A Manager must waive it before a work order can be issued.`;
+  const dpMsg=d=>dealDpAwarded(d,allD)?`The client has not paid on ${d.ceNo||d.client||"this project"}: issue the work order with "Sign & Issue (Finance)", which asks for a reason.`:DP_NOT_AWARDED_MSG(d);
   // Where a WO sits in the engage → complete → pay chain (Policy v2.0). Derived
   // from the WO's own workflow + accounting fields: a subcontractor is only
   // payable once the work is issued, and paid via the Accounting board
@@ -23970,9 +23985,15 @@ function SubconWOView({jos=[],embedded=false,onEmbeddedDone,woDraft=null,clearWo
                               <span style={{fontSize:".66rem",color:"#475569",alignSelf:"center",whiteSpace:"nowrap"}}>
                                 Cost Control: {w.ccApprovedBy?<b style={{color:"#059669"}}>✓ {w.ccApprovedBy}</b>:<b style={{color:"#b45309"}}>waiting</b>} · Finance: <b style={{color:"#b45309"}}>waiting</b>
                               </span>
-                              {step&&<button onClick={()=>{
-                                if(step==="finance"){const dpBlk=dpBlockedDeal(w.projectId);if(dpBlk){toastEmit&&toastEmit(dpMsg(dpBlk),"error",9000);return;}}
-                                signWo(w);
+                              {step&&<button onClick={async()=>{
+                                let dpReason=null;
+                                if(step==="finance"){const dpBlk=dpBlockedDeal(w.projectId);if(dpBlk){
+                                  // Down payment prompt (20261128010000): awarded = confirm + reason; not awarded = refused.
+                                  if(!dealDpAwarded(dpBlk,allD)){toastEmit&&toastEmit(DP_NOT_AWARDED_MSG(dpBlk),"error",9000);return;}
+                                  dpReason=await askDpOverride(uiPrompt,{what:`${w.woNumber||"this work order"} to ${w.subcontractor||"the subcontractor"}`,deal:dpBlk,amount:w.contractAmount,toast:toastEmit});
+                                  if(!dpReason) return;
+                                }}
+                                signWo(w,dpReason);
                               }} style={{background:step==="finance"?"#059669":"#2563eb",border:"none",borderRadius:7,padding:"4px 12px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>{step==="finance"?"✓ Sign & Issue (Finance)":"✍ Sign (Cost Control)"}</button>}
                             </>;
                           })()}
@@ -24281,7 +24302,9 @@ function DpGate({deal,deals,role,onWaiveDp,onCreditTerms,what="POs"}){
   if(dealDpClear(deal,deals)) return null;
   return(
     <div role="alert" style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:10,padding:"10px 12px",marginBottom:10,fontSize:".76rem",color:"#991b1b",lineHeight:1.5}}>
-      <b>No down payment received on {label}.</b> {what} can't be issued until the client pays, or a Manager waives the down payment for this deal (for example, a client on credit terms).
+      {dealDpAwarded(deal,deals)
+        ?<><b>{`The client hasn’t paid on ${label}.`}</b> {`${what} can still be issued: whoever issues confirms it with a reason (e.g. the client’s PO number), and management is told on Telegram. A Manager can also waive the down payment or put a client that pays on PO on credit terms.`}</>
+        :<><b>{`${label} isn’t awarded yet.`}</b> {`${what} can’t be issued before award, unless a Manager waives the down payment for this deal.`}</>}
       {mgr&&onWaiveDp
         ?<div style={{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}}>
             <input value={reason} onChange={e=>setReason(e.target.value)} placeholder="Reason, e.g. SM credit terms, pays 30 days after delivery" aria-label="Reason for waiving the down payment"
@@ -24290,7 +24313,7 @@ function DpGate({deal,deals,role,onWaiveDp,onCreditTerms,what="POs"}){
             {onCreditTerms&&deal.client&&<button type="button" disabled={busy||reason.trim().length<5} onClick={putOnTerms} title={`Every project of ${deal.client} skips the down payment rule`}
               style={{background:"#fff",border:"1.5px solid #b91c1c",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontSize:".76rem",fontWeight:700,color:"#b91c1c",cursor:busy||reason.trim().length<5?"not-allowed":"pointer"}}>Put {deal.client} on credit terms</button>}
           </div>
-        :<div style={{marginTop:4,color:"#7f1d1d"}}>Ask a Manager to waive it, or wait for Finance to record the client's payment.</div>}
+        :!dealDpAwarded(deal,deals)&&<div style={{marginTop:4,color:"#7f1d1d"}}>{"Ask a Manager to waive it, or move the deal to Kickoff once it’s won."}</div>}
     </div>);
 }
 
@@ -24332,21 +24355,34 @@ function ProcurementView2({jos=[],embedded=false,onEmbeddedDone,poDraft=null,cle
   // down payment (or a Manager's waiver) before anything can be issued on it.
   const ISSUED_ST=["PO Issued","Partially Delivered","Delivered"];
   const dpBlockedDeal=projectId=>{const d=(allDeals||wonDeals||[]).find(x=>x.id===projectId);return d&&!dealDpClear(d,allDeals||wonDeals||[])?d:null;};
-  const dpMsg=d=>`No down payment received on ${d.ceNo||d.client||"this project"}. A Manager must waive it before a PO can be issued.`;
+  const dpMsg=d=>dealDpAwarded(d,allDeals||wonDeals||[])?`The client has not paid on ${d.ceNo||d.client||"this project"}: the PO approver is asked to confirm with a reason when issuing.`:DP_NOT_AWARDED_MSG(d);
+  // Down payment prompt (20261128010000): the reason for issuing on an awarded,
+  // unpaid project; null = refused / cancelled (the toast already said why).
+  const askPoDp=async(d,what,amount)=>{
+    if(!dealDpAwarded(d,allDeals||wonDeals||[])){toastEmit&&toastEmit(DP_NOT_AWARDED_MSG(d),"error",9000);return null;}
+    return askDpOverride(uiPrompt,{what,deal:d,amount,toast:toastEmit});
+  };
   // Apply a status change to one PR, enforcing the issue gate. onDone(patch)
   // runs after the update with the patch that was actually written.
-  const changePoStatus=(pr,st,onDone)=>{
+  const changePoStatus=async(pr,st,onDone)=>{
     let patch={status:st};
     const blocked=ISSUED_ST.includes(st)&&!ISSUED_ST.includes(pr.status)&&dpBlockedDeal(pr.projectId||pr.dealId);
-    if(blocked){toastEmit&&toastEmit(dpMsg(blocked),"error",9000);return;}
+    const canIssue=!(st==="PO Issued"&&pr.status!=="PO Issued")||canApproveFor(pr.requestedBy,poApprovalTotal(pr.poNumber),pr.poNumber);
+    let dpReason=null;
+    if(blocked){
+      if(!canIssue){toastEmit&&toastEmit(dpMsg(blocked),"error",9000);return;}
+      dpReason=await askPoDp(blocked,`PO ${pr.poNumber||""}`.trim(),poApprovalTotal(pr.poNumber)||pr.estimatedCost);
+      if(!dpReason) return;
+    }
     if(st==="PO Issued"&&pr.status!=="PO Issued"){
-      if(!canApproveFor(pr.requestedBy,poApprovalTotal(pr.poNumber),pr.poNumber)){
+      if(!canIssue){
         toastEmit&&toastEmit(`${PO_APPROVER_MSG}: held at Pending Approval.`,"error");
         patch={status:"Pending Approval"};
       }else{
         patch={status:st,approvedBy:session?.name||"",approvedAt:today};
       }
     }
+    if(dpReason) patch={...patch,dpOverrideReason:dpReason};
     updatePR(pr.id,patch);
     onDone&&onDone(patch);
   };
@@ -24522,7 +24558,14 @@ function ProcurementView2({jos=[],embedded=false,onEmbeddedDone,poDraft=null,cle
     // issued on save by Procurement (canAutoIssuePO, migration 20261123010000).
     const poTot=poLinesTotal(poItems.map(i=>({qty:i.qty,estUnitCost:i.estUnitCost})));
     const canIssueNow=canApprovePOLine(role,session?.name||"",session?.name||"",poTot,poSplitTotalFor(prs,poSupplier,poDate,poNo,poTot));
-    const dpBlocked=ISSUED_ST.includes(poStatus)&&poItems.map(i=>dpBlockedDeal(i.projectId)).find(Boolean);
+    let dpBlocked=ISSUED_ST.includes(poStatus)&&poItems.map(i=>dpBlockedDeal(i.projectId)).find(Boolean);
+    // Down payment prompt (20261128010000): someone who may issue this PO confirms
+    // and gives a reason on an awarded, unpaid project; cancel = saved as Pending.
+    let poDpReason=null;
+    if(dpBlocked&&(poStatus!=="PO Issued"||canIssueNow)){
+      poDpReason=await askPoDp(dpBlocked,`PO ${poNo}`,poTot);
+      if(poDpReason) dpBlocked=null;
+    }
     // "No approved PRF = no project PO" from 1 Dec (migration 20261122020000):
     // hold at Pending Approval instead of letting the database refuse the save.
     // An existing PO may already be covered by a Manager override or a PRF linked
@@ -24560,7 +24603,8 @@ function ProcurementView2({jos=[],embedded=false,onEmbeddedDone,poDraft=null,cle
         prfLineId:item._prfLineId||null,
         mbLineKey:item._mbLineKey||item.mbLineKey||null,
         supplier:poSupplier,poNumber:poNo,poDate:poDate,
-        status:effStatus,deliveryDate:poExpectedDelivery||""};
+        status:effStatus,deliveryDate:poExpectedDelivery||"",
+        ...(poDpReason?{dpOverrideReason:poDpReason}:{})};
     };
     if(editingPrIds){
       const updatedIds=poItems.filter(i=>i._existingId).map(i=>i._existingId);
@@ -24748,11 +24792,16 @@ function ProcurementView2({jos=[],embedded=false,onEmbeddedDone,poDraft=null,cle
             <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp value={editForm.notes} onChange={e=>ef("notes",e.target.value)}/></Fld></div>
           </div>
           <div style={{display:"flex",gap:10,marginTop:16}}>
-            <button onClick={()=>{
+            <button onClick={async()=>{
               const orig=prs.find(p=>p.id===editingId);
               let patch={...editForm};
-              const dpBlk=orig&&ISSUED_ST.includes(editForm.status)&&!ISSUED_ST.includes(orig.status)&&dpBlockedDeal(editForm.projectId||orig.projectId||orig.dealId);
-              if(dpBlk){toastEmit&&toastEmit(dpMsg(dpBlk),"error",9000);patch={...patch,status:orig.status,approvedBy:orig.approvedBy||"",approvedAt:orig.approvedAt||""};}
+              let dpBlk=orig&&ISSUED_ST.includes(editForm.status)&&!ISSUED_ST.includes(orig.status)&&dpBlockedDeal(editForm.projectId||orig.projectId||orig.dealId);
+              // Down payment prompt (20261128010000): an approver confirms with a reason.
+              if(dpBlk&&(editForm.status!=="PO Issued"||canApproveFor(editForm.requestedBy||orig.requestedBy,poApprovalTotal(orig.poNumber),orig.poNumber))){
+                const r=await askPoDp(dpBlk,`PO ${orig.poNumber||""}`.trim(),poApprovalTotal(orig.poNumber)||orig.estimatedCost);
+                if(r){patch={...patch,dpOverrideReason:r};dpBlk=null;}
+              }else if(dpBlk) toastEmit&&toastEmit(dpMsg(dpBlk),"error",9000);
+              if(dpBlk){patch={...patch,status:orig.status,approvedBy:orig.approvedBy||"",approvedAt:orig.approvedAt||""};}
               // Enforce the PO issue gate on edits too — a non-approver cannot
               // flip an existing PO to "PO Issued" via the edit form.
               else if(editForm.status==="PO Issued"&&orig&&orig.status!=="PO Issued"){
