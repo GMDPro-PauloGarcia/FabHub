@@ -19,7 +19,11 @@ const lnPeso=v=>"₱"+Math.round(lnNum(v)).toLocaleString("en-PH");
 const lnShort=v=>{const n=lnNum(v);return n>=1e6?"₱"+(n/1e6).toFixed(2).replace(/\.?0+$/,"")+"M":n>=1e3?"₱"+Math.round(n/1e3)+"K":"₱"+Math.round(n);};
 const LN={ink:"#0f172a",muted:"#475569",faint:"#64748b",line:"#e2e8f0",navy:"#0B2545",red:"#b91c1c",amber:"#b45309",green:"#047857",blue:"#2563eb"};
 const LOAN_TEXT=/(proceed.*loan|loan.*proceed|credit\s*line|interest\s*bpi|bank\s*loan|amorti[sz]ation|loan\s*bpi|bpi\s*loan)/i;
-const addMonths=(iso,n)=>{const d=new Date(iso+"T00:00:00");d.setMonth(d.getMonth()+n);return d.toISOString().slice(0,10);};
+// Calendar math on the date string itself: the old version went through local
+// midnight → toISOString, which in Manila (UTC+8) gave the day before. A 31st
+// due date lands on the month's last day (Jan 31 + 1 → Feb 28), not March.
+const addMonths=(iso,n)=>{const[y,m,d]=String(iso).slice(0,10).split("-").map(Number);const t=new Date(Date.UTC(y,m-1+n,1));
+  const last=new Date(Date.UTC(t.getUTCFullYear(),t.getUTCMonth()+1,0)).getUTCDate();t.setUTCDate(Math.min(d,last));return t.toISOString().slice(0,10);};
 const daysBetween=(a,b)=>Math.round((new Date(b+"T00:00:00")-new Date(a+"T00:00:00"))/86400000);
 
 // A bank loan's position today: principal paid, balance, months paid, next due.
@@ -41,6 +45,34 @@ export const bankLoanStatus=(l,today)=>{
   const dueIn=nextDue?daysBetween(today,nextDue):null;
   const state=balance<=0?"paid":dueIn==null?"no-schedule":dueIn<0?"missed":dueIn<=3?"due":"ok";
   return{principalPaid,interestPaid,balance,paidCount,term,nextDue,dueIn,state};
+};
+// A bank loan's payment schedule (Paolo Gomez, 2026-11-27): one row per
+// installment, due monthly from firstDue, for termMonths. Installments are
+// covered in order by what has been paid (by amount, like bankLoanStatus), so a
+// "paid before FabHub" lump entry ticks off many rows. The date shown is the
+// payment entry that completed the installment. Equal installments: a bank's
+// own amortization table can differ month to month; the amount here is the
+// loan's monthly payment.
+export const bankLoanSchedule=(l,today)=>{
+  const st=bankLoanStatus(l,today);
+  const monthly=lnNum(l.monthlyPayment);
+  if(!l.firstDue||!(st.term>0)) return{rows:[],st};
+  const pays=(l.payments||[]).filter(p=>!p.void).map(p=>({...p,amt:lnNum(p.principal)+lnNum(p.interest)}))
+    .sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+  let cum=0,pi=0;const rows=[];
+  for(let i=1;i<=st.term;i++){
+    const due=addMonths(l.firstDue,i-1);
+    let paid=null;
+    if(i<=st.paidCount){
+      // Walk the payments until they add up to i installments.
+      while(pi<pays.length&&cum+0.01<i*monthly){cum+=pays[pi].amt;pi++;}
+      paid=pays[Math.max(0,pi-1)]||null;
+    }
+    const dueIn=daysBetween(today,due);
+    const state=i<=st.paidCount||st.balance<=0?"paid":i===st.paidCount+1?(dueIn<0?"late":dueIn<=3?"due":"next"):dueIn<0?"late":"upcoming";
+    rows.push({no:i,due,amount:monthly,state,dueIn,paidOn:paid?paid.date:null,onSheet:paid?!!paid.cashKey:null});
+  }
+  return{rows,st};
 };
 // A credit line's position today: drawn = draws − principal repaid.
 export const creditLineStatus=l=>{
@@ -73,6 +105,7 @@ const lnErr=e=>String(e?.message||e||"").replace(/^.*?ERROR:\s*/,"");
 export default function LoansView({loans=[],cashPositions={},today,canEdit=false,canDelete=false,isMobile=false,sample=false,onLoans,
   role="",username="",userName="",saveDayPos=null,cashDayIsCurrent=null}){
   const[open,setOpen]=useState(null);
+  const[schedAll,setSchedAll]=useState({}); // loan id → schedule expanded
   // "Mark paid" / "Add to cash sheet" (Paulo, 2026-11-27): records the payment
   // AND writes its disbursement row on that day's Daily Cash Position, linked.
   // Same rules as any sheet edit: Managers and the cash preparer only
@@ -114,16 +147,56 @@ export default function LoansView({loans=[],cashPositions={},today,canEdit=false
   const Pill=({state,dueIn})=>{const m={paid:["Paid off","#ecfdf5",LN.green],missed:[`Missed · ${-dueIn}d late`,"#fef2f2",LN.red],due:[dueIn===0?"Due today":`Due in ${dueIn}d`,"#fff7ed",LN.amber],ok:["On schedule","#f1f5f9",LN.muted],"no-schedule":["No schedule","#f1f5f9",LN.faint]}[state];
     return <span style={{background:m[1],color:m[2],borderRadius:20,padding:"2px 9px",fontSize:".68rem",fontWeight:800,whiteSpace:"nowrap"}}>{m[0]}</span>;};
   const CashChip=({x})=>x.cashKey?<span title="Linked to the Daily Cash Position" style={{fontSize:".66rem",color:LN.green,fontWeight:700,whiteSpace:"nowrap"}}>✓ Cash sheet {x.date} · {String(x.bank||"").toUpperCase()}</span>:<span style={{fontSize:".66rem",color:LN.red,fontWeight:700}}>Not on cash sheet</span>;
+  // Payment schedule, shown when a bank loan is opened. Mark paid sits on the
+  // next unpaid installment only: installments are covered in order by amount,
+  // so paying #7 before #5 isn't a thing the balance can show.
+  const Schedule=({l})=>{
+    const{rows,st}=bankLoanSchedule(l,today);
+    const all=!!schedAll[l.id];const setAll=v=>setSchedAll(x=>({...x,[l.id]:v}));
+    if(!rows.length) return(<div style={{fontSize:".75rem",color:LN.amber,background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"7px 10px",marginBottom:8}}>
+      No payment schedule: this loan needs a <b>first payment due</b> date, a <b>term (months)</b> and a <b>monthly payment</b>.{canEdit&&!sample&&<> <button onClick={()=>setLoanForm({...l})} style={{...lnBtn,padding:"2px 8px",fontSize:".68rem",marginLeft:6}}>Edit loan</button></>}
+    </div>);
+    const nextNo=st.paidCount+1;
+    // Collapsed: the last 2 paid, everything overdue, the next one and 3 after.
+    const shown=all?rows:rows.filter(r=>r.state==="late"||(r.no>=nextNo-2&&r.no<=nextNo+3));
+    const lateN=rows.filter(r=>r.state==="late").length;
+    const clr={paid:[LN.green,"Paid"],late:[LN.red,"Overdue"],due:[LN.amber,"Due"],next:[LN.navy,"Next"],upcoming:[LN.faint,"Upcoming"]};
+    return(<div style={{background:"#fff",border:`1px solid ${LN.line}`,borderRadius:8,marginBottom:8,overflowX:"auto"}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,padding:"7px 10px",borderBottom:`1px solid ${LN.line}`,flexWrap:"wrap"}}>
+        <span style={{fontWeight:800,color:LN.navy,fontSize:".8rem"}}>Payment schedule</span>
+        <span style={{fontSize:".72rem",color:LN.muted}}>{Math.min(st.paidCount,rows.length)} of {rows.length} paid{lateN>0&&<b style={{color:LN.red}}> · {lateN} overdue ({lnPeso(lateN*lnNum(l.monthlyPayment))})</b>}</span>
+        {rows.length>shown.length||all?<button onClick={()=>setAll(!all)} style={{...lnBtn,padding:"2px 8px",fontSize:".68rem",marginLeft:"auto"}}>{all?"Show fewer":`Show all ${rows.length}`}</button>:null}
+      </div>
+      <table style={{width:"100%",borderCollapse:"collapse",minWidth:520}}>
+        <thead><tr>{["#","Due","Amount","Status",""].map(h=><th key={h} style={{...th,padding:"6px 10px"}}>{h}</th>)}</tr></thead>
+        <tbody>{shown.map(r=>{const[c,t]=clr[r.state];return(<tr key={r.no} style={{background:r.state==="late"?"#fef2f2":r.no===nextNo?"#f8fafc":"#fff"}}>
+          <td style={{...td,padding:"6px 10px",color:LN.faint}}>{r.no}</td>
+          <td style={{...td,padding:"6px 10px",whiteSpace:"nowrap"}}>{r.due}</td>
+          <td style={{...td,padding:"6px 10px"}}>{lnPeso(r.amount)}</td>
+          <td style={{...td,padding:"6px 10px",whiteSpace:"nowrap"}}><span style={{color:c,fontWeight:800,fontSize:".72rem"}}>{r.state==="paid"?"✓ ":""}{t}</span>
+            {r.state==="paid"&&r.paidOn&&<span style={{fontSize:".68rem",color:LN.faint}}> · {r.paidOn}{r.onSheet===false?" · not on cash sheet":""}</span>}
+            {r.state==="late"&&<span style={{fontSize:".68rem",color:LN.red}}> · {-r.dueIn}d late</span>}
+            {r.state==="due"&&<span style={{fontSize:".68rem",color:LN.amber}}> · {r.dueIn===0?"today":`in ${r.dueIn}d`}</span>}</td>
+          <td style={{...td,padding:"6px 10px",textAlign:"right"}}>
+            {r.no===nextNo&&r.state!=="paid"&&canSheet&&<button onClick={()=>setPayForm({loan:l,due:r.due})} style={{...lnBtn,padding:"3px 10px",fontSize:".7rem",background:LN.green,color:"#fff",borderColor:LN.green,whiteSpace:"nowrap"}}>✓ Mark paid</button>}
+            {r.no===nextNo&&r.state!=="paid"&&!canSheet&&canEdit&&!sample&&<span style={{fontSize:".66rem",color:LN.faint}}>Marked paid by the cash preparer or a Manager</span>}
+          </td>
+        </tr>);})}</tbody>
+      </table>
+    </div>);
+  };
   const Activity=({l})=>{
     const actions=canEdit&&!sample&&(<div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
       {l.kind==="credit_line"&&<button onClick={()=>setEntryForm({loanId:l.id,type:"draw",date:today})} style={lnBtn}>+ Draw</button>}
-      {canSheet&&<button onClick={()=>setPayForm({loan:l})} style={{...lnBtn,background:LN.green,color:"#fff",borderColor:LN.green}}>✓ Mark paid</button>}
+      {canSheet&&(l.kind==="credit_line"||!bankLoanSchedule(l,today).rows.length)&&<button onClick={()=>setPayForm({loan:l})} style={{...lnBtn,background:LN.green,color:"#fff",borderColor:LN.green}}>✓ Mark paid</button>}
       <button onClick={()=>setEntryForm({loanId:l.id,type:"payment",date:today})} style={lnBtn}>{canSheet?"Link a sheet row…":"+ Payment"}</button>
       <button onClick={()=>setLoanForm({...l})} style={lnBtn}>Edit loan</button>
     </div>);
     const rows=[...(l.draws||[]).map(d=>({...d,t:"Draw",amt:lnNum(d.amount),inn:true})),...(l.payments||[]).map(p=>({...p,t:"Payment",amt:lnNum(p.principal)+lnNum(p.interest)}))].sort((a,b)=>String(b.date).localeCompare(String(a.date)));
     return(<div style={{background:"#f8fafc",borderTop:`1px solid ${LN.line}`,padding:"8px 14px"}}>
       {actions}
+      {l.kind!=="credit_line"&&<Schedule l={l}/>}
+      {l.kind!=="credit_line"&&<div style={{fontSize:".66rem",fontWeight:800,color:LN.faint,textTransform:"uppercase",letterSpacing:".4px",margin:"10px 0 4px"}}>Payments recorded</div>}
       {rows.length===0&&<div style={{fontSize:".75rem",color:LN.faint}}>No activity yet.</div>}
       {rows.map((r,i)=>(<div key={i} style={{display:"flex",gap:12,alignItems:"center",flexWrap:"wrap",padding:"5px 0",borderBottom:i<rows.length-1?"1px solid #eef2f7":"none",fontSize:".76rem"}}>
         <span style={{width:84,color:LN.faint}}>{r.date}</span>
@@ -217,7 +290,7 @@ export default function LoansView({loans=[],cashPositions={},today,canEdit=false
                 <td style={{...td,whiteSpace:"nowrap"}}>{s.nextDue||"—"}</td>
                 <td style={{...td,whiteSpace:"nowrap"}}>{s.term?`${s.paidCount} of ${s.term}`:s.paidCount}</td>
                 <td style={td}><Pill state={s.state} dueIn={s.dueIn}/>
-                  {canSheet&&s.balance>0&&<div><button onClick={e=>{e.stopPropagation();setPayForm({loan:l});}} style={{...lnBtn,marginTop:6,background:LN.green,color:"#fff",borderColor:LN.green,whiteSpace:"nowrap"}}>✓ Mark paid</button></div>}</td>
+                  {canSheet&&s.balance>0&&<div><button onClick={e=>{e.stopPropagation();setPayForm({loan:l,due:s.nextDue});}} style={{...lnBtn,marginTop:6,background:LN.green,color:"#fff",borderColor:LN.green,whiteSpace:"nowrap"}}>✓ Mark paid</button></div>}</td>
               </tr>
               {open===l.id&&<tr><td colSpan={8} style={{padding:0}}><Activity l={l}/></td></tr>}
             </React.Fragment>))}
@@ -380,7 +453,10 @@ function PayForm({init,cashPositions,today,isMgr,userName,saveDayPos,cashDayIsCu
     const sp=ent?{principal:lnNum(ent.principal),interest:lnNum(ent.interest)}
       :Number(loan.interestRate)>0?lnSplit(loan,amt,"",today)
       :lastReg?{principal:lnNum(lastReg.principal),interest:lnNum(lastReg.interest)}:{principal:amt,interest:0};
-    const date=ent?(cashPositions[ent.date]?ent.date:""):(cashPositions[today]?today:"");
+    // From the schedule: the due date when that day has a sheet (auto-debits
+    // leave on the due date), otherwise today's sheet.
+    const due=init.due&&init.due<=today&&cashPositions[init.due]?init.due:null;
+    const date=ent?(cashPositions[ent.date]?ent.date:""):due||(cashPositions[today]?today:"");
     return{date,bank:ent&&ent.bank?ent.bank:lnBankGuess(loan),ref:"",...sp};
   });
   const[busy,setBusy]=useState(false);
