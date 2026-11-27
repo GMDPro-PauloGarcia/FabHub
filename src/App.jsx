@@ -26931,7 +26931,11 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     // contract (over ₱1). Same rule as billing_contract_gaps() on the daily check.
     const contractGap=active.length&&!isMotherPO(d)?billingContractGap(d,billings).gap:0;
     const gapOff=Math.abs(contractGap)>1;
-    return{d,ms,grossBase,vat,total,collected,collectible,balance,hasOverdue,maxOverdue,odBalance,odCount:odMs.length,ageKeys,hasUnsent,fullyPaid,toBill,milestoneCount:ms.length,contractGap,gapOff};
+    // Contract (VAT-ex, same basis as the VATEx column) and what isn't on a
+    // milestone yet. Mother POs earn ₱0; a Pending addendum isn't contract yet.
+    const contract=isMotherPO(d)||(d.parentDealId&&!isApprovedAddendumDeal(d))?0:Math.round((Number(d.value)||0)*100)/100;
+    const unsched=Math.max(0,Math.round((contract-grossBase)*100)/100);
+    return{d,contract,unsched:unsched>1?unsched:0,ms,grossBase,vat,total,collected,collectible,balance,hasOverdue,maxOverdue,odBalance,odCount:odMs.length,ageKeys,hasUnsent,fullyPaid,toBill,milestoneCount:ms.length,contractGap,gapOff};
   });
   // Count of awarded projects with no billing set up yet — hidden by default.
   const notBilledCount=_allSummaries.filter(s=>s.milestoneCount===0).length;
@@ -26983,7 +26987,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     if(kids.length){
       const all=[parent,...kids];
       const sum=f=>Math.round(all.reduce((t,x)=>t+(Number(x[f])||0),0)*100)/100;
-      out.push({subtotalOf:parent.d,addendumCount:kids.length,grossBase:sum("grossBase"),vat:sum("vat"),total:sum("total"),collected:sum("collected"),balance:sum("balance"),contract:Math.round((Number(parent.d.value)||0)+kids.filter(k=>isApprovedAddendumDeal(k.d)).reduce((t,x)=>t+(Number(x.d.value)||0),0)*100)/100});
+      out.push({subtotalOf:parent.d,addendumCount:kids.length,grossBase:sum("grossBase"),vat:sum("vat"),total:sum("total"),collected:sum("collected"),balance:sum("balance"),unsched:sum("unsched"),contract:Math.round((Number(parent.d.value)||0)+kids.filter(k=>isApprovedAddendumDeal(k.d)).reduce((t,x)=>t+(Number(x.d.value)||0),0)*100)/100});
     }
   };
   // Client key: letters and digits only, lower case, so "Yobo International
@@ -27005,7 +27009,13 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       const names={};all.forEach(x=>{const nm=x.d.client||"(no client)";names[nm]=(names[nm]||0)+1;});
       const name=Object.entries(names).sort((a,b)=>b[1]-a[1])[0][0];
       const open=_searching||openClients.has(key);
-      billingRows.push({clientHead:true,key,name,soaClient:gs[0].parent.d.client,projects:gs.length,addenda:gs.reduce((t,g)=>t+g.kids.length,0),
+      // Projects with no billing schedule are hidden by default, but they are
+      // the biggest "still to schedule" items, so the client line counts them.
+      const shown=new Set(all.map(x=>x.d.id));
+      const noSched=_allSummaries.filter(x=>x.milestoneCount===0&&!shown.has(x.d.id)&&billClientKey((x.d.parentDealId&&deals.find(p=>p.id===x.d.parentDealId)?.client)||x.d.client)===key);
+      const withHidden=[...all,...noSched];
+      const sumAll=f=>Math.round(withHidden.reduce((t,x)=>t+(Number(x[f])||0),0)*100)/100;
+      billingRows.push({clientHead:true,contract:sumAll("contract"),unsched:sumAll("unsched"),noSchedCount:withHidden.filter(x=>x.milestoneCount===0&&x.contract>0).length,key,name,soaClient:gs[0].parent.d.client,projects:gs.length,addenda:gs.reduce((t,g)=>t+g.kids.length,0),
         grossBase:sum("grossBase"),vat:sum("vat"),total:sum("total"),collected:sum("collected"),balance:sum("balance"),
         hasOverdue:all.some(x=>x.hasOverdue),maxOverdue:all.reduce((t,x)=>Math.max(t,x.maxOverdue||0),0),odCount:all.reduce((t,x)=>t+(x.odCount||0),0),
         hasUnsent:all.some(x=>x.hasUnsent),gapOff:all.some(x=>x.gapOff),
@@ -27018,8 +27028,17 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const setAllClients=open=>setOpenClients(open?new Set(billingRows.filter(r=>r.clientHead).map(r=>r.key)):new Set());
   // Shared grid template for the billing list header + rows:
   // Project | Gross | VAT | Total | Paid | Balance | Status | Actions
-  const BILL_COLS="2fr 1fr 0.85fr 1.05fr 1fr 1fr 90px 170px";
-  const BILL_MINW=940;
+  const BILL_COLS="2fr 1.1fr 1fr 0.85fr 1.05fr 1fr 1fr 90px 170px";
+  const BILL_MINW=1060;
+  // Contract cell: VAT-ex contract, and below it what's not on a milestone yet
+  // (per project, so one over-scheduled project can't hide another's shortfall).
+  const contractCell=(contract,unsched,title)=>(
+    <div style={{textAlign:"right",fontVariantNumeric:"tabular-nums"}} title={title}>
+      <div style={{fontWeight:700,color:"#475569",fontSize:".86rem"}}>{contract>0?fmt(contract):<span style={{color:"#e2e8f0"}}>—</span>}</div>
+      {unsched>0&&<div style={{fontSize:".66rem",fontWeight:800,color:"#be185d",marginTop:1}}>{fmt(unsched)} to schedule</div>}
+    </div>
+  );
+  const unschedTitle="Contract price, VAT-exclusive (same basis as VATEx). \"To schedule\" = contract not yet on any billing milestone, added up project by project.";
 
   // CSV Export function
   const exportBillingCSV=()=>{
@@ -27350,7 +27369,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         {/* Table header — desktop only; mobile uses self-labeling cards */}
         {!mob&&(
         <div style={{display:"grid",gridTemplateColumns:BILL_COLS,background:"#1e293b",padding:"10px 18px",gap:12,minWidth:BILL_MINW}}>
-          {[["Project","left"],["VATEx","right"],["VAT","right"],["Total","right"],["Paid","right"],["Balance","right"],["Status","left"],["Actions","left"]].map(([h,al])=>(
+          {[["Project","left"],["Contract","right"],["VATEx","right"],["VAT","right"],["Total","right"],["Paid","right"],["Balance","right"],["Status","left"],["Actions","left"]].map(([h,al])=>(
             <div key={h} style={{fontSize:".68rem",fontWeight:700,color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".8px",textAlign:al}}>{h}</div>
           ))}
         </div>
@@ -27359,7 +27378,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         {billingRows.map((row,i)=>{
           if(row.clientHead){
             const r=row;
-            const meta=`${r.projects} project${r.projects===1?"":"s"}${r.addenda?` · ${r.addenda} addend${r.addenda===1?"um":"a"}`:""}${r.latest?` · last invoice ${r.latest}`:""}`;
+            const meta=`${r.projects} project${r.projects===1?"":"s"}${r.addenda?` · ${r.addenda} addend${r.addenda===1?"um":"a"}`:""}${r.latest?` · last invoice ${r.latest}`:""}${r.noSchedCount?` · ${r.noSchedCount} with no billing yet`:""}`;
             const badges=(
               <span style={{display:"inline-flex",gap:4,flexWrap:"wrap"}}>
                 {r.hasOverdue&&<span title={`${r.odCount} overdue invoice${r.odCount===1?"":"s"}, oldest ${r.maxOverdue} days`} style={{fontSize:".66rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"2px 8px",fontWeight:700,whiteSpace:"nowrap"}}>📞 {r.maxOverdue}d overdue</span>}
@@ -27388,7 +27407,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                   {badges}
                 </div>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginTop:8,paddingLeft:14}}>
-                  <div style={{fontSize:".78rem"}}><span style={{color:"#059669",fontWeight:700}}>Paid {r.collected>0?fmt(r.collected):"—"}</span> · <span style={{color:r.balance>0?"#ef4444":"#059669",fontWeight:800}}>{r.balance>0?`Bal ${fmt(r.balance)}`:"✓ Clear"}</span></div>
+                  <div style={{fontSize:".78rem"}}>{r.unsched>0&&<div style={{color:"#be185d",fontWeight:800,fontSize:".72rem",marginBottom:2}}>{fmt(r.unsched)} of {fmt(r.contract)} contract to schedule</div>}<span style={{color:"#059669",fontWeight:700}}>Paid {r.collected>0?fmt(r.collected):"—"}</span> · <span style={{color:r.balance>0?"#ef4444":"#059669",fontWeight:800}}>{r.balance>0?`Bal ${fmt(r.balance)}`:"✓ Clear"}</span></div>
                   <div style={{display:"flex",gap:6}}>{soaBtns}</div>
                 </div>
               </div>
@@ -27400,6 +27419,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                   <div style={{fontWeight:800,color:"#0f172a",fontSize:".9rem"}}>{arrow}{r.name}</div>
                   <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:1,paddingLeft:14}}>{meta}</div>
                 </div>
+                {contractCell(r.contract,r.unsched,unschedTitle)}
                 {[[r.grossBase,"#3b82f6"],[r.vat,"#f59e0b"],[r.total,"#0f172a"],[r.collected,"#059669"]].map(([v,c],k)=>(
                   <div key={k} style={{fontWeight:700,color:c,fontSize:".86rem",textAlign:"right",fontVariantNumeric:"tabular-nums"}}>{v>0?fmt(v):<span style={{color:"#e2e8f0"}}>—</span>}</div>
                 ))}
@@ -27423,13 +27443,14 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
             );
             return(
               <div key={"sub-"+pd.id} style={{display:"grid",gridTemplateColumns:BILL_COLS,minWidth:BILL_MINW,padding:"9px 18px",gap:12,borderBottom:"1px solid #e2e8f0",borderTop:"1.5px solid #e2e8f0",background:"#f8fafc",alignItems:"center"}}>
-                <div style={{fontSize:".7rem",fontWeight:800,color:"#475569",textTransform:"uppercase",letterSpacing:".06em"}}>{label}<div style={{fontSize:".66rem",fontWeight:600,color:"#94a3b8",textTransform:"none",letterSpacing:0}}>Contract {fmt(row.contract)}</div></div>
+                <div style={{fontSize:".7rem",fontWeight:800,color:"#475569",textTransform:"uppercase",letterSpacing:".06em"}}>{label}</div>
+                {contractCell(row.contract,row.unsched,unschedTitle)}
                 {cells.map(([l,v,c])=><div key={l} style={{fontWeight:800,color:c,fontSize:".86rem",textAlign:"right",fontVariantNumeric:"tabular-nums"}}>{v}</div>)}
                 <div/><div/>
               </div>
             );
           }
-          const {d,ms,grossBase,vat,total,collected,collectible,balance,hasOverdue,maxOverdue,odCount,hasUnsent,fullyPaid,toBill,milestoneCount,groupOverdue,childOf,addendumCount,contractGap,gapOff}=row;
+          const {d,contract,unsched,ms,grossBase,vat,total,collected,collectible,balance,hasOverdue,maxOverdue,odCount,hasUnsent,fullyPaid,toBill,milestoneCount,groupOverdue,childOf,addendumCount,contractGap,gapOff}=row;
           const statusBadge=(
             <>
               {hasOverdue&&<span style={{fontSize:".68rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Overdue</span>}
@@ -27531,7 +27552,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                   <div style={{flexShrink:0}}>{statusBadge}</div>
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,margin:"12px 0",padding:"10px 0",borderTop:"1px solid #f1f5f9",borderBottom:"1px solid #f1f5f9"}}>
-                  {[["VATEx",grossCell,"#3b82f6"],["VAT",vatCell,"#f59e0b"],["Total",totalCell,"#0f172a"],["Paid",paidCell,"#059669"],["Balance",balanceCell,balance>0?"#ef4444":"#059669"]].map(([lbl,val,clr])=>(
+                  {[["Contract",contract>0?fmt(contract):dash,"#475569"],["To schedule",unsched>0?fmt(unsched):dash,"#be185d"],["VATEx",grossCell,"#3b82f6"],["VAT",vatCell,"#f59e0b"],["Total",totalCell,"#0f172a"],["Paid",paidCell,"#059669"],["Balance",balanceCell,balance>0?"#ef4444":"#059669"]].map(([lbl,val,clr])=>(
                     <div key={lbl}>
                       <div style={{fontSize:".6rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".6px",fontWeight:700}}>{lbl}</div>
                       <div style={{fontWeight:lbl==="Total"||lbl==="Balance"?700:600,color:clr,fontSize:".82rem",marginTop:2}}>{val}</div>
@@ -27550,6 +27571,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
               onMouseEnter={e=>e.currentTarget.style.background="#eff6ff"}
               onMouseLeave={e=>e.currentTarget.style.background=hasOverdue?"#fffafa":i%2?"#fafafa":"#fff"}>
               {projectCell}
+              {contractCell(contract,unsched,unschedTitle)}
               {money(grossCell,"#3b82f6")}
               {money(vatCell,"#f59e0b")}
               {money(totalCell,"#0f172a")}
