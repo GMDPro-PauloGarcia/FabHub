@@ -19,7 +19,7 @@ import {checkSupplier,supplierSavePrompt,checkBill} from './dataGuard';
 import SupplierHint from './SupplierHint';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {projProgressPct, CONTRACT_LOCK_MSG, dealBillingStarted, contractLocked, billingContractGap, rescaleDraftMilestones, isConstructionDeal, projStageFlow, projStepIndex, projStepLabel, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestonePaid, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, dealBaseValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, dealDpAwarded, askDpOverride, DP_NOT_AWARDED_MSG, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, canApproveAddendum, ADDENDUM_APPROVER_MSG, PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, woStatusOptions, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, canRecordDeduction, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel, pendingCostByProject, poSplitTotal, canRaiseOrder, canCreateCostCenter, woSignStep, WO_SIGN_MSG, arAgeBucket, arCallOrder, dealHasBoq, MOTHER_PO_BOQ_MSG, ledgerCosts, poVatSet, isBilledRevenue, paymentBaseFactor, invoiceContractProgress, billingScheduleRows, billingPosition, statementLine, orderForLabel, PO_ISSUED_STATUSES, WO_COMMITTED_STATUSES, billingDueTerms, billingDefaultNetDays, billingTermsLabel, projectProgressPct, prfRuleOn, poLineNeedsPrf, PRF_RULE_MSG, poSplitTotalFor, paymentNeedsRef, paymentRefOk, PAYMENT_REF_MSG, nearDuplicatePayment, nearDuplicateMsg, payrollForecast, OPEX_STREAMS, orderCommitments, ORDER_COMMIT_MAX_DAYS} from './core';
+import {projProgressPct, CONTRACT_LOCK_MSG, dealBillingStarted, contractLocked, billingContractGap, rescaleDraftMilestones, isConstructionDeal, projStageFlow, projStepIndex, projStepLabel, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, clientNearMatches, CLIENT_ADD_ROLES, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestonePaid, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, dealBaseValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, dealDpAwarded, askDpOverride, DP_NOT_AWARDED_MSG, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, canApproveAddendum, ADDENDUM_APPROVER_MSG, PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, woStatusOptions, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, canRecordDeduction, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel, pendingCostByProject, poSplitTotal, canRaiseOrder, canCreateCostCenter, woSignStep, WO_SIGN_MSG, arAgeBucket, arCallOrder, dealHasBoq, MOTHER_PO_BOQ_MSG, ledgerCosts, poVatSet, isBilledRevenue, paymentBaseFactor, invoiceContractProgress, billingScheduleRows, billingPosition, statementLine, orderForLabel, PO_ISSUED_STATUSES, WO_COMMITTED_STATUSES, billingDueTerms, billingDefaultNetDays, billingTermsLabel, projectProgressPct, prfRuleOn, poLineNeedsPrf, PRF_RULE_MSG, poSplitTotalFor, paymentNeedsRef, paymentRefOk, PAYMENT_REF_MSG, nearDuplicatePayment, nearDuplicateMsg, payrollForecast, OPEX_STREAMS, orderCommitments, ORDER_COMMIT_MAX_DAYS} from './core';
 import ProgressReportModal from './views/ProgressReportModal';
 
 // Returns a component whose function IDENTITY is stable across renders while its
@@ -1603,79 +1603,117 @@ function CollectionsPanel({wonDeals,infs,onUpdatePayment,onLogPayment,readonly=f
 }
 
 // ─── DEAL FORM MODAL ──────────────────────────────────────────────────────────
-function ClientAutocomplete({value:initVal, onChange, existingNames=[]}){
-  const[localVal,setLocalVal]= useState(initVal||"");
-  const[show,    setShow]    = useState(false);
-  // Sync if parent resets (e.g. new deal)
-  useEffect(()=>{ setLocalVal(initVal||""); },[initVal]);
-
-  // Known client universe = seed directory + names already used on deals, so
-  // the box suggests (and dedupe-checks against) clients that really exist —
-  // not just the hardcoded GMD list. De-duplicated by normalized key.
-  const known = useMemo(()=>{
+// Client field: a search box over the client list, pick-only (Paulo, 2026-11-27).
+// The list is the clients master table plus every client name already on a deal.
+// Typing only searches: the deal keeps its client until one is picked from the list
+// or added with "+ Add new client". Adding goes through add_client (migration
+// 20261128020000): Manager / Sales / SalesOpsAdmin, refuses a duplicate spelling,
+// and a close name ("Primer Group" next to "PRIMER GROUP OF COMPANIES") needs an
+// explicit "different company" confirmation. Credit terms and reports match on the
+// exact name, so a stray spelling silently loses them.
+let _clientMasterCache=null;
+function ClientAutocomplete({value, onChange, existingNames=[], role}){
+  const[localVal,setLocalVal]=useState(value||"");
+  const[show,setShow]=useState(false);
+  const[master,setMaster]=useState(_clientMasterCache||[]);
+  const[confirmAdd,setConfirmAdd]=useState(null); // {name, near:[...]}
+  const[busy,setBusy]=useState(false);
+  const[msg,setMsg]=useState("");
+  useEffect(()=>{setLocalVal(value||"");},[value]);
+  useEffect(()=>{
+    if(_clientMasterCache||!isSupabaseReady()) return;
+    let alive=true;
+    supabase.from("clients").select("name,is_active").then(({data,error})=>{
+      if(error||!alive) return;
+      _clientMasterCache=(data||[]).filter(c=>c.is_active!==false).map(c=>String(c.name||"").trim()).filter(Boolean);
+      setMaster(_clientMasterCache);
+    });
+    return()=>{alive=false;};
+  },[]);
+  const canAdd=CLIENT_ADD_ROLES.includes(canonRole(role));
+  // One entry per spelling (case and spaces ignored); seed directory keeps its city / phone.
+  const known=useMemo(()=>{
     const map=new Map();
-    GMD_CLIENTS.forEach(c=>{const k=clientKey(c.name);if(!map.has(k))map.set(k,{name:c.name,city:c.city,phone:c.phone,balance:c.balance});});
-    (existingNames||[]).forEach(n=>{const k=clientKey(n);if(k&&!map.has(k))map.set(k,{name:n});});
+    const put=(name,extra)=>{const nm=String(name||"").trim();const k=nm.toLowerCase();if(nm&&!map.has(k))map.set(k,{name:nm,...extra});};
+    master.forEach(n=>put(n));
+    (existingNames||[]).forEach(n=>put(n));
+    GMD_CLIENTS.forEach(c=>put(c.name,{city:c.city,phone:c.phone,balance:c.balance}));
     return [...map.values()];
-  },[existingNames]);
-
-  const suggestions = useMemo(()=>{
-    if(!localVal||localVal.length<2) return [];
-    const q = localVal.toLowerCase();
-    return known.filter(c=>c.name.toLowerCase().includes(q)).slice(0,8);
-  },[localVal,known]);
-
-  // Duplicate guard: typed name normalizes to an existing client but isn't an
-  // exact match (e.g. "collecticons inc" vs stored "Collecticons Inc.").
-  const dup = useMemo(()=>{
-    if(!localVal||localVal.trim().length<2) return null;
-    const k=clientKey(localVal);
-    const hit=known.find(c=>clientKey(c.name)===k);
-    return hit&&hit.name!==localVal ? hit : null;
-  },[localVal,known]);
-
-  const exactKnown = known.some(c=>c.name.toLowerCase()===localVal.toLowerCase());
-  const pick = (name) => { setLocalVal(name); onChange(name); setShow(false); };
-
+  },[master,existingNames]);
+  const q=localVal.trim();
+  const suggestions=useMemo(()=>{
+    if(q.length<1) return [];
+    const ql=q.toLowerCase(), qk=clientMatchKey(q);
+    const near=new Set(clientNearMatches(q,known.map(c=>c.name)).map(n=>n.toLowerCase()));
+    return known.filter(c=>c.name.toLowerCase().includes(ql)||(qk&&clientMatchKey(c.name).includes(qk))||near.has(c.name.toLowerCase())).slice(0,10);
+  },[q,known]);
+  const exactKnown=known.some(c=>c.name.toLowerCase()===q.toLowerCase());
+  const pick=(name)=>{setLocalVal(name);onChange(name);setShow(false);setConfirmAdd(null);setMsg("");};
+  const doAdd=async(name,confirmed)=>{
+    if(busy) return;
+    if(!isSupabaseReady()){setMsg("No server connection: a new client can only be added online.");return;}
+    setBusy(true);setMsg("");
+    const{data,error}=await supabase.rpc("add_client",{p_name:name,p_confirmed:!!confirmed});
+    setBusy(false);
+    if(error){
+      if(error.hint==="confirm_different"){setConfirmAdd({name,near:clientNearMatches(name,known.map(c=>c.name))});return;}
+      setMsg(error.message||"Client not added.");return;
+    }
+    const added=String(data||name).trim();
+    _clientMasterCache=[...(_clientMasterCache||master),added];
+    setMaster(_clientMasterCache);
+    pick(added);
+    toastEmit&&toastEmit("Client added: "+added,"success");
+  };
+  const startAdd=()=>{
+    const name=q.replace(/\s+/g," ");
+    if(name.length<2) return;
+    const near=clientNearMatches(name,known.map(c=>c.name));
+    if(near.length) setConfirmAdd({name,near}); else doAdd(name,false);
+  };
+  // Leaving the box without picking puts the deal's client back (typing alone never saves).
+  const typedRef=useRef(localVal);typedRef.current=localVal;
+  const confirmRef=useRef(confirmAdd);confirmRef.current=confirmAdd;
+  const onBlur=()=>setTimeout(()=>{
+    setShow(false);
+    const cur=typedRef.current;
+    if(confirmRef.current||cur===(value||"")) return;
+    if(cur.trim()) setMsg("Pick a client from the list, or add it as a new client.");
+    setLocalVal(value||"");
+  },180);
+  const inp={width:"100%",border:"1.5px solid "+(msg?"#f59e0b":"#e2e8f0"),borderRadius:8,padding:"9px 12px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box",outline:"none"};
+  const row={padding:"10px 14px",cursor:"pointer",borderBottom:"1px solid #f1f5f9"};
   return(
     <div style={{position:"relative"}}>
-      <input
-        value={localVal}
-        onChange={e=>{setLocalVal(e.target.value);onChange(e.target.value);setShow(true);}}
-        onFocus={()=>setShow(true)}
-        onBlur={()=>setTimeout(()=>setShow(false),150)}
-        placeholder="Start typing client name…"
-        style={{width:"100%",border:`1.5px solid ${dup?"#f59e0b":"#e2e8f0"}`,borderRadius:8,padding:"9px 12px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box",outline:"none"}}
-      />
-      {/* Possible-duplicate nudge — visible even when the dropdown is closed */}
-      {dup&&(
-        <div style={{marginTop:5,background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:8,padding:"7px 10px",fontSize:".76rem",color:"#92400e",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-          <span>⚠ Looks like an existing client:</span>
-          <button type="button" onMouseDown={()=>pick(dup.name)} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"3px 9px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".74rem",cursor:"pointer"}}>Use “{dup.name}”</button>
-          <span style={{color:"#b45309"}}>— avoids a duplicate client.</span>
+      <input value={localVal} onChange={e=>{setLocalVal(e.target.value);setShow(true);setMsg("");setConfirmAdd(null);}}
+        onFocus={()=>setShow(true)} onBlur={onBlur} placeholder="Search clients…" aria-label="Client" autoComplete="off" style={inp}/>
+      {value&&localVal!==value&&<div style={{fontSize:".7rem",color:"#64748b",marginTop:3}}>{"Current client: "}<b>{value}</b>{" (kept until you pick another)"}</div>}
+      {msg&&<div role="alert" style={{marginTop:5,fontSize:".75rem",color:"#b45309"}}>{msg}</div>}
+      {confirmAdd&&(
+        <div style={{marginTop:6,background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:8,padding:"8px 10px",fontSize:".76rem",color:"#92400e"}}>
+          <div style={{fontWeight:700,marginBottom:6}}>{"Is “"+confirmAdd.name+"” one of these existing clients?"}</div>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            {confirmAdd.near.map(n=><button key={n} type="button" onMouseDown={e=>{e.preventDefault();pick(n);}} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"4px 10px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".74rem",cursor:"pointer"}}>{"Use “"+n+"”"}</button>)}
+            <button type="button" disabled={busy} onMouseDown={e=>{e.preventDefault();doAdd(confirmAdd.name,true);}} style={{background:"#fff",border:"1.5px solid #b45309",borderRadius:6,padding:"4px 10px",color:"#b45309",fontFamily:"inherit",fontWeight:700,fontSize:".74rem",cursor:busy?"wait":"pointer"}}>{busy?"Adding…":"No, it’s a different company: add it"}</button>
+            <button type="button" onMouseDown={e=>{e.preventDefault();setConfirmAdd(null);setLocalVal(value||"");}} style={{background:"none",border:"none",color:"#64748b",fontFamily:"inherit",fontSize:".74rem",cursor:"pointer"}}>Cancel</button>
+          </div>
         </div>
       )}
-      {show && (localVal.length>=1) && (suggestions.length>0 || (localVal.length>=2 && !exactKnown)) && (
-        <div style={{position:"absolute",top:"100%",left:0,right:0,background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,boxShadow:"0 8px 24px rgba(0,0,0,.12)",zIndex:200,maxHeight:280,overflowY:"auto",marginTop:4}}>
-          {suggestions.map((c,i)=>(
-            <div key={i} onMouseDown={()=>pick(c.name)}
-              style={{padding:"10px 14px",cursor:"pointer",borderBottom:"1px solid #f1f5f9",transition:"background .1s"}}
-              onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
-              onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
+      {show&&!confirmAdd&&q.length>=1&&(suggestions.length>0||(q.length>=2&&!exactKnown))&&(
+        <div style={{position:"absolute",top:"100%",left:0,right:0,background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,boxShadow:"0 8px 24px rgba(0,0,0,.12)",zIndex:200,maxHeight:300,overflowY:"auto",marginTop:4}}>
+          {suggestions.map(c=>(
+            <div key={c.name} onMouseDown={e=>{e.preventDefault();pick(c.name);}} style={row}
+              onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
               <div style={{fontWeight:600,color:"#0f172a",fontSize:".86rem"}}>{c.name}</div>
-              <div style={{display:"flex",gap:12,marginTop:2,flexWrap:"wrap"}}>
-                {c.city&&<span style={{fontSize:".7rem",color:"#94a3b8"}}>📍 {c.city}</span>}
-                {c.phone&&<span style={{fontSize:".7rem",color:"#94a3b8"}}>📞 {c.phone}</span>}
-                {c.balance>0&&<span style={{fontSize:".7rem",color:"#ef4444",fontWeight:700}}>⚠ ₱{c.balance.toLocaleString()} open balance</span>}
-              </div>
+              {(c.city||c.phone)&&<div style={{display:"flex",gap:12,marginTop:2,flexWrap:"wrap"}}>
+                {c.city&&<span style={{fontSize:".7rem",color:"#94a3b8"}}>{"📍 "+c.city}</span>}
+                {c.phone&&<span style={{fontSize:".7rem",color:"#94a3b8"}}>{"📞 "+c.phone}</span>}
+              </div>}
             </div>
           ))}
-          {localVal&&!exactKnown&&(
-            <div onMouseDown={()=>pick(localVal)}
-              style={{padding:"10px 14px",cursor:"pointer",background:"#fafafa",borderTop:"1px solid #e2e8f0",fontSize:".82rem",color:dup?"#b45309":"#3b82f6",fontWeight:600}}>
-              {dup?`+ Add "${localVal}" anyway as a new client`:`+ Add "${localVal}" as new client`}
-            </div>
-          )}
+          {q.length>=2&&!exactKnown&&(canAdd
+            ?<div onMouseDown={e=>{e.preventDefault();startAdd();}} style={{...row,background:"#fafafa",borderTop:"1px solid #e2e8f0",fontSize:".82rem",color:"#2563eb",fontWeight:700}}>{busy?"Adding…":"+ Add “"+q+"” as a new client"}</div>
+            :<div style={{...row,background:"#fafafa",cursor:"default",fontSize:".76rem",color:"#64748b"}}>{"Not on the list. Only Sales, SalesOpsAdmin or a Manager can add a new client."}</div>)}
         </div>
       )}
     </div>
@@ -1745,8 +1783,8 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
       {/* ── SECTION 1: DEAL ESSENTIALS ─────────────────────────────────── */}
       <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:14}}>
         <div style={{gridColumn:"1/-1"}}>
-          <Fld label="Client Name" required hint="Start typing to search from your GMD clients">
-            <ClientAutocomplete value={form.client} onChange={v=>f("client",v)} existingNames={[...new Set((deals||[]).map(d=>d.client).filter(Boolean))]}/>
+          <Fld label="Client Name" required hint="Search and pick the client. Not on the list? Add it as a new client.">
+            <ClientAutocomplete value={form.client} onChange={v=>f("client",v)} role={role} existingNames={[...new Set((deals||[]).map(d=>d.client).filter(Boolean))]}/>
           </Fld>
         </div>
         <Fld label="Project Name" hint="e.g. SM Megamall Fit-Out Phase 1"><Inp value={form.contact} onChange={e=>f("contact",e.target.value)} placeholder="e.g. SM Megamall Fit-Out Phase 1"/></Fld>

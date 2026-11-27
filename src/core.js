@@ -71,6 +71,26 @@ export const clientKey=(s)=>String(s||"").toLowerCase().replace(/[.,]+/g," ").re
 // reports), so an occasional over-match just asks the user, it doesn't lose data.
 const CORP_SUFFIX=/\b(incorporated|corporation|corp|inc|company|co|ltd|limited|enterprises?|ventures?|trading|holdings?|group|philippines|phils?|ph)\b/g;
 export const clientMatchKey=(s)=>clientKey(s).replace(/[-&/]+/g," ").replace(CORP_SUFFIX," ").replace(/\s+/g," ").trim();
+// Existing client names close to a typed one (Paulo, 2026-11-27: the client field
+// is a pick list; Add client must not create "Primer Group" next to "PRIMER GROUP OF
+// COMPANIES"). Same match key, one key starting with the other, or the same first
+// word of 4+ letters. Mirrors add_client() (migration 20261128020000), which refuses
+// these unless the user confirmed a different company. Keep them in sync.
+export const clientNearMatches=(typed,names=[])=>{
+  const k=clientMatchKey(typed);
+  if(!k) return [];
+  const first=k.split(" ")[0];
+  const seen=new Set(), out=[];
+  (names||[]).forEach(n=>{
+    const nk=clientMatchKey(n), nm=String(n||"").trim();
+    if(!nk||!nm||seen.has(nm.toLowerCase())) return;
+    const near=nk===k||(k.length>=4&&nk.startsWith(k+" "))||(nk.length>=4&&k.startsWith(nk+" "))||(first.length>=4&&nk.split(" ")[0]===first);
+    if(near){seen.add(nm.toLowerCase());out.push(nm);}
+  });
+  return out;
+};
+// Roles that may add a client to the master list (clients_ins policy / add_client).
+export const CLIENT_ADD_ROLES=["Manager","Sales","SalesOpsAdmin"];
 
 // Loose title similarity for the same duplicate prompt. True when one title
 // contains the other, or the two share ≥50% of their meaningful word tokens —
