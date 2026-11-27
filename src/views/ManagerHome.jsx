@@ -17,7 +17,13 @@ const MH={ink:"#0f172a",muted:"#475569",faint:"#64748b",line:"#e2e8f0",navy:"#0B
 const STEPS=[30,60,90,100];
 const STEP_CLR={30:"#f59e0b",60:"#3b82f6",90:"#8b5cf6",100:"#059669"};
 
-export default function ManagerHome({session,today,deals=[],billings=[],payables=[],prs=[],pcards={},cash,arTot,dealById,enteredByMe,go,goFin,openProject,isMobile,openDay}){
+// Every button lands on its page already showing what it counted (2026-11-26):
+// goPOApprovals opens the PO approvals list, goBills(kind) filters Bills,
+// goCollect(bucket) opens Billing's to-collect list. Same map as AttentionPanel.
+export default function ManagerHome({session,today,deals=[],billings=[],payables=[],prs=[],pcards={},cash,arTot,dealById,enteredByMe,go,goFin,goBills,goCollect,goCollections,goPOApprovals,openProject,isMobile,openDay}){
+  const toPOs=()=>goPOApprovals?goPOApprovals():go("procurement");
+  const toBills=k=>goBills?goBills(k):goFin("payables");
+  const toCollect=b=>goCollect?goCollect(b):go("billing");
   const first=(session?.name||"").split(" ")[0]||"there";
   const hr=new Date().getHours();
   const greet=hr<12?"Good morning":hr<17?"Good afternoon":"Good evening";
@@ -36,17 +42,17 @@ export default function ManagerHome({session,today,deals=[],billings=[],payables
     const top=!PO_TIERS_ON||isTopApprover(session?.name);
     const mid=PO_TIERS_ON?pos.filter(p=>!p.held&&p.tot>PO_COST_CONTROL_LIMIT&&p.tot<PO_MANAGER_LIMIT):[];
     const big=pos.filter(p=>!p.held&&p.tot>=(PO_TIERS_ON?PO_MANAGER_LIMIT:PO_COST_CONTROL_LIMIT+0.01));
-    if(top&&big.length) out.push({k:"po",n:big.length,l:PO_TIERS_ON?`PO${big.length>1?"s":""} of ₱250K or more to approve`:`PO${big.length>1?"s":""} over ₱150K to approve`,sub:PO_TIERS_ON?"Only Paulo, Mar or Arrius approve these":"Cost Control approves up to ₱150K; these need a Manager",amt:big.reduce((s,p)=>s+p.tot,0),tone:"red",open:()=>go("procurement"),cta:"Approve"});
-    if(!top&&mid.length) out.push({k:"po",n:mid.length,l:`PO${mid.length>1?"s":""} of ₱150K–₱250K to approve`,sub:"Cost Control approves up to ₱150K; ₱250K and up goes to Paulo, Mar or Arrius",amt:mid.reduce((s,p)=>s+p.tot,0),tone:"red",open:()=>go("procurement"),cta:"Approve"});
-    if(top&&mid.length) out.push({k:"pomid",n:mid.length,l:`PO${mid.length>1?"s":""} of ₱150K–₱250K with Paolo Gomez`,sub:"Paolo Gomez approves these. FYI, you can approve too",amt:mid.reduce((s,p)=>s+p.tot,0),tone:"info",open:()=>go("procurement"),cta:"View"});
+    if(top&&big.length) out.push({k:"po",n:big.length,l:PO_TIERS_ON?`PO${big.length>1?"s":""} of ₱250K or more to approve`:`PO${big.length>1?"s":""} over ₱150K to approve`,sub:PO_TIERS_ON?"Only Paulo, Mar or Arrius approve these":"Cost Control approves up to ₱150K; these need a Manager",amt:big.reduce((s,p)=>s+p.tot,0),tone:"red",open:toPOs,cta:"Approve"});
+    if(!top&&mid.length) out.push({k:"po",n:mid.length,l:`PO${mid.length>1?"s":""} of ₱150K–₱250K to approve`,sub:"Cost Control approves up to ₱150K; ₱250K and up goes to Paulo, Mar or Arrius",amt:mid.reduce((s,p)=>s+p.tot,0),tone:"red",open:toPOs,cta:"Approve"});
+    if(top&&mid.length) out.push({k:"pomid",n:mid.length,l:`PO${mid.length>1?"s":""} of ₱150K–₱250K with Paolo Gomez`,sub:"Paolo Gomez approves these. FYI, you can approve too",amt:mid.reduce((s,p)=>s+p.tot,0),tone:"info",open:toPOs,cta:"View"});
     const bills=payables.filter(p=>payIsOpen(p)&&(p.approvalStatus||"Approved")==="Pending"&&!(enteredByMe&&enteredByMe(p)));
-    if(bills.length) out.push({k:"bills",n:bills.length,l:`Supplier bill${bills.length>1?"s":""} to approve`,sub:"Before they can go into a payment run",amt:bills.reduce((s,p)=>s+payBalance(p),0),tone:"red",open:()=>goFin("payables"),cta:"Review"});
+    if(bills.length) out.push({k:"bills",n:bills.length,l:`Supplier bill${bills.length>1?"s":""} to approve`,sub:"Before they can go into a payment run",amt:bills.reduce((s,p)=>s+payBalance(p),0),tone:"red",open:()=>toBills("approve"),cta:"Review"});
     const awards=deals.filter(d=>d.notes&&d.notes.includes("[AWARD REQUEST"));
     if(awards.length) out.push({k:"award",n:awards.length,l:`Award request${awards.length>1?"s":""} to sign off`,sub:awards.slice(0,3).map(d=>d.client||d.ceNo).filter(Boolean).join(", "),tone:"amber",open:()=>go("pipeline"),cta:"Open"});
     const held=pos.filter(p=>p.held);
-    if(held.length) out.push({k:"dp",n:held.length,l:`PO${held.length>1?"s":""} held: client hasn't paid the down payment`,sub:"Chase the client, or waive the down payment with a reason",amt:held.reduce((s,p)=>s+p.tot,0),tone:"amber",open:()=>go("procurement"),cta:"Open"});
+    if(held.length) out.push({k:"dp",n:held.length,l:`PO${held.length>1?"s":""} held: client hasn't paid the down payment`,sub:"Chase the client, or waive the down payment with a reason",amt:held.reduce((s,p)=>s+p.tot,0),tone:"amber",open:toPOs,cta:"Open"});
     const qs=pos.filter(p=>!p.held&&p.tot<=PO_COST_CONTROL_LIMIT);
-    if(qs.length) out.push({k:"qs",n:qs.length,l:`PO${qs.length>1?"s":""} with Cost Control`,sub:"Up to ₱150K: Ardrin / Rodney approve. FYI only",amt:qs.reduce((s,p)=>s+p.tot,0),tone:"info",open:()=>go("procurement"),cta:"View"});
+    if(qs.length) out.push({k:"qs",n:qs.length,l:`PO${qs.length>1?"s":""} with Cost Control`,sub:"Up to ₱150K: Ardrin / Rodney approve. FYI only",amt:qs.reduce((s,p)=>s+p.tot,0),tone:"info",open:toPOs,cta:"View"});
     return out;
   },[prs,deals,payables,enteredByMe,go,goFin,session]);
 
@@ -86,9 +92,9 @@ export default function ManagerHome({session,today,deals=[],billings=[],payables
   const cashSub=!cash?.latest?"No cash sheet yet":cash.stale?`As of ${cash.latest.date} (${cash.daysOld} day${cash.daysOld===1?"":"s"} old)`:"Today's cash sheet";
   const tiles=[
     {l:"Cash in the bank",v:mhPeso(cash?.total||0),sub:cashSub,warn:!cash?.latest||cash.stale,open:()=>goFin("cashposition")},
-    {l:"To collect",v:mhPeso(arTot?.outstanding||0),sub:money.overdue?`${mhPeso(money.overdueAmt)} overdue · ${money.overdue} invoice${money.overdue>1?"s":""}`:"Nothing overdue",warn:money.overdue>0,open:()=>go("billing")},
-    {l:"To pay suppliers",v:mhPeso(money.toPay),sub:money.lateBills?`${mhPeso(money.lateAmt)} past due · ${money.lateBills} bill${money.lateBills>1?"s":""}`:"Nothing past due",warn:money.lateBills>0,open:()=>goFin("payables")},
-    {l:"Collected this month",v:mhPeso(money.coll),sub:"Cash received, offsets excluded",open:()=>go("billing")},
+    {l:"To collect",v:mhPeso(arTot?.outstanding||0),sub:money.overdue?`${mhPeso(money.overdueAmt)} overdue · ${money.overdue} invoice${money.overdue>1?"s":""}`:"Nothing overdue",warn:money.overdue>0,open:()=>toCollect(money.overdue?"overdue":"sent")},
+    {l:"To pay suppliers",v:mhPeso(money.toPay),sub:money.lateBills?`${mhPeso(money.lateAmt)} past due · ${money.lateBills} bill${money.lateBills>1?"s":""}`:"Nothing past due",warn:money.lateBills>0,open:()=>toBills(money.lateBills?"overdue":null)},
+    {l:"Collected this month",v:mhPeso(money.coll),sub:"Cash received, offsets excluded",open:()=>goCollections?goCollections():go("billing")},
   ];
 
   return(
@@ -103,13 +109,13 @@ export default function ManagerHome({session,today,deals=[],billings=[],payables
       <div style={box}>
         {decisions.length===0&&<div style={{padding:"14px 16px",color:MH.green,fontWeight:700,fontSize:".84rem"}}>Nothing to approve.</div>}
         {decisions.map((x,i)=>(
-          <div key={x.k} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 14px",borderTop:i?`1px solid #f1f5f9`:"none",borderLeft:`4px solid ${TONE[x.tone].bar}`,borderRadius:i===0?"12px 0 0 0":i===decisions.length-1?"0 0 0 12px":0}}>
+          <div key={x.k} role="button" tabIndex={0} onClick={x.open} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();x.open();}}} style={{cursor:"pointer",display:"flex",alignItems:"center",gap:12,padding:"11px 14px",borderTop:i?`1px solid #f1f5f9`:"none",borderLeft:`4px solid ${TONE[x.tone].bar}`,borderRadius:i===0?"12px 0 0 0":i===decisions.length-1?"0 0 0 12px":0}}>
             <div style={{fontWeight:800,fontSize:"1.25rem",color:TONE[x.tone].n,minWidth:34,textAlign:"right"}}>{x.n}</div>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontWeight:700,color:MH.ink,fontSize:".86rem"}}>{x.l}{x.amt?<span style={{color:MH.muted,fontWeight:600}}> · {mhPeso(x.amt)}</span>:null}</div>
               {x.sub&&<div style={{fontSize:".72rem",color:MH.faint,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:isMobile?"normal":"nowrap"}}>{x.sub}</div>}
             </div>
-            <button onClick={x.open} style={{border:"none",borderRadius:8,padding:"7px 14px",background:x.tone==="info"?"#f1f5f9":MH.navy,color:x.tone==="info"?MH.muted:"#fff",fontWeight:700,fontSize:".78rem",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>{x.cta} →</button>
+            <button onClick={e=>{e.stopPropagation();x.open();}} style={{border:"none",borderRadius:8,padding:"7px 14px",background:x.tone==="info"?"#f1f5f9":MH.navy,color:x.tone==="info"?MH.muted:"#fff",fontWeight:700,fontSize:".78rem",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>{x.cta} →</button>
           </div>
         ))}
       </div>

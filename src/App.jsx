@@ -12,14 +12,14 @@ import DailyActivityModal,{openDailyActivity} from "./views/DailyActivity";
 import MultiInvoicePay from "./views/MultiInvoicePay";
 import CollectionsLog from "./views/CollectionsLog";
 import {buildOrders,payIsOpen,payBalance} from "./data/ledger";
-import {fmt,addPrintClose,docLogo,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable,HIDDEN_NAV_IDS,AP_HIDDEN,WAREHOUSE_HIDDEN,isHiddenView,HIDDEN_FIN_TABS,HIDDEN_PIPE_TABS,pageOn,cashCanEdit,ProjectSelect,setProjectSearchIndex} from './shared';
+import {fmt,addPrintClose,docLogo,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable,HIDDEN_NAV_IDS,AP_HIDDEN,WAREHOUSE_HIDDEN,isHiddenView,HIDDEN_FIN_TABS,HIDDEN_PIPE_TABS,pageOn,cashCanEdit,ProjectSelect,setProjectSearchIndex,setLanding,takeLanding} from './shared';
 import {T} from './theme';
 import {Icon,NavIcon} from './icons';
 import {checkSupplier,supplierSavePrompt,checkBill} from './dataGuard';
 import SupplierHint from './SupplierHint';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {projProgressPct, CONTRACT_LOCK_MSG, dealBillingStarted, contractLocked, billingContractGap, rescaleDraftMilestones, isConstructionDeal, projStageFlow, projStepIndex, projStepLabel, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestonePaid, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, dealBaseValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, canApproveAddendum, ADDENDUM_APPROVER_MSG, PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, woStatusOptions, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, canRecordDeduction, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel, pendingCostByProject, poSplitTotal, canRaiseOrder, canCreateCostCenter, woSignStep, WO_SIGN_MSG, arAgeBucket, arCallOrder, dealHasBoq, MOTHER_PO_BOQ_MSG, ledgerCosts, poVatSet, isBilledRevenue, paymentBaseFactor, invoiceContractProgress, billingScheduleRows, billingPosition, statementLine, orderForLabel, PO_ISSUED_STATUSES, WO_COMMITTED_STATUSES, billingDueTerms, billingDefaultNetDays, billingTermsLabel, projectProgressPct, prfRuleOn, poLineNeedsPrf, PRF_RULE_MSG, poSplitTotalFor, paymentNeedsRef, paymentRefOk, PAYMENT_REF_MSG, nearDuplicatePayment, nearDuplicateMsg, payrollForecast} from './core';
+import {projProgressPct, CONTRACT_LOCK_MSG, dealBillingStarted, contractLocked, billingContractGap, rescaleDraftMilestones, isConstructionDeal, projStageFlow, projStepIndex, projStepLabel, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestonePaid, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, dealBaseValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, canApproveAddendum, ADDENDUM_APPROVER_MSG, PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, woStatusOptions, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, canRecordDeduction, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel, pendingCostByProject, poSplitTotal, canRaiseOrder, canCreateCostCenter, woSignStep, WO_SIGN_MSG, arAgeBucket, arCallOrder, dealHasBoq, MOTHER_PO_BOQ_MSG, ledgerCosts, poVatSet, isBilledRevenue, paymentBaseFactor, invoiceContractProgress, billingScheduleRows, billingPosition, statementLine, orderForLabel, PO_ISSUED_STATUSES, WO_COMMITTED_STATUSES, billingDueTerms, billingDefaultNetDays, billingTermsLabel, projectProgressPct, prfRuleOn, poLineNeedsPrf, PRF_RULE_MSG, poSplitTotalFor, paymentNeedsRef, paymentRefOk, PAYMENT_REF_MSG, nearDuplicatePayment, nearDuplicateMsg, payrollForecast, orderCommitments, ORDER_COMMIT_MAX_DAYS} from './core';
 import ProgressReportModal from './views/ProgressReportModal';
 
 // Returns a component whose function IDENTITY is stable across renders while its
@@ -3487,7 +3487,7 @@ function DueDateBackfillModal({open,onClose,billings,payables,deals,updateMilest
 // Forward view of working cash: projects expected collections (outstanding
 // billings) against expected payments (payables, uncleared checks, loan
 // amortizations) week by week, flagging when the projected balance runs short.
-function CashFlowView({billings,payables,vouchers,loans,cashPositions,setPage,Wrap,isMobile,onFixDueDates,deals=[]}){
+function CashFlowView({billings,payables,vouchers,loans,cashPositions,setPage,Wrap,isMobile,onFixDueDates,deals=[],prs=[],swos=[]}){
   const money=v=>(v<0?"−₱":"₱")+Math.round(Math.abs(Number(v)||0)).toLocaleString("en-PH");
   const DAY=86400000, WEEKS=8;
   const start=new Date(); start.setHours(0,0,0,0);
@@ -3531,6 +3531,10 @@ function CashFlowView({billings,payables,vouchers,loans,cashPositions,setPage,Wr
   const payroll=payrollForecast(cashPositions,todayIso,new Date(today+(WEEKS*7-1)*DAY).toLocaleDateString("en-CA"));
   payroll.forEach(x=>flows.push({date:parse(x.date),amt:x.amt,dir:"out",label:x.label,ref:`Estimate: average of the last ${x.basis} on the cash sheet`}));
   const payroll30=payroll.filter(x=>parse(x.date)<=today+30*DAY).reduce((s,x)=>s+x.amt,0);
+  // Issued POs / WOs with no bill yet: money already committed (orderCommitments).
+  const commit=orderCommitments(buildOrders({prs,swos,payables}),todayIso);
+  commit.flows.forEach(x=>flows.push({date:parse(x.date),amt:x.amt,dir:"out",label:x.label,ref:x.ref}));
+  const commit30=commit.flows.filter(x=>parse(x.date)<=today+30*DAY).reduce((s,x)=>s+x.amt,0);
   const horizonEnd=today+(WEEKS+4)*7*DAY;
   (loans||[]).forEach(l=>{
     const mp=Number(l.monthlyPayment)||0; if(mp<=0) return;
@@ -3617,10 +3621,16 @@ function CashFlowView({billings,payables,vouchers,loans,cashPositions,setPage,Wr
         </div>
       )}
 
+      {commit.stale.n>0&&(
+        <div style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"10px 16px",marginBottom:16,fontSize:".8rem",color:"#475569",lineHeight:1.5}}>
+          📦 <strong>{commit.stale.n} issued PO{commit.stale.n===1?"":"s"}</strong> over {ORDER_COMMIT_MAX_DAYS} days old with no bill ({money(commit.stale.amt)}) are <b>not</b> counted: most were paid outside AP before the cutover or are old backlog. Procurement should bill, close or cancel them in Orders › Purchasing.
+        </div>
+      )}
+
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:18}}>
         {kpi("Working cash now",money(opening),"#0f172a",cashSub)}
         {kpi("Collections due (30d)",money(in30),"#059669","Sent invoices not yet overdue")}
-        {kpi("Payments due (30d)",money(out30),"#b45309",payroll30>0?`incl. payroll ≈ ${money(payroll30)}`:"Payroll not found on the cash sheet")}
+        {kpi("Payments due (30d)",money(out30),"#b45309",[payroll30>0?`payroll ≈ ${money(payroll30)}`:"payroll not found on the cash sheet",commit30>0?`unbilled orders ${money(commit30)}`:null].filter(Boolean).join(" · "))}
         {kpi("Projected balance (30d)",money(bal30),bal30<0?"#ef4444":"#059669")}
       </div>
 
@@ -3691,7 +3701,7 @@ function CashFlowView({billings,payables,vouchers,loans,cashPositions,setPage,Wr
         </table>
       </div>
       <div style={{marginTop:12,fontSize:".74rem",color:"#64748b",lineHeight:1.6,background:"#f8fafc",borderRadius:10,padding:"11px 14px"}}>
-        <strong>Sources:</strong> collections = the unpaid balance of sent invoices, by due date (an invoice with no due date gets one from the project's payment terms; unsent Drafts are left out). Overdue invoices are on the chase list, not in the balance. Payments = the unpaid balance of open supplier bills (bills with no due date count as due now), released-but-uncleared checks (≈3 days to clear), loan amortizations, and payroll estimated from the cash sheet: office on the 5th and 20th, production and project-based every Saturday, each the average of its last 4 payrolls (rows worded “Office payroll”, “Production payroll”, “Project based payroll”). Not included yet: rent and other OPEX with no bill, and issued POs / Work Orders not yet billed. Opening cash = the book balance (ending less floating checks) of the operating banks on the latest Daily Cash Position.
+        <strong>Sources:</strong> collections = the unpaid balance of sent invoices, by due date (an invoice with no due date gets one from the project's payment terms; unsent Drafts are left out). Overdue invoices are on the chase list, not in the balance. Payments = the unpaid balance of open supplier bills (bills with no due date count as due now), released-but-uncleared checks (≈3 days to clear), loan amortizations, and payroll estimated from the cash sheet: office on the 5th and 20th, production and project-based every Saturday, each the average of its last 4 payrolls (rows worded “Office payroll”, “Production payroll”, “Project based payroll”). Issued POs with no bill yet (from the last {ORDER_COMMIT_MAX_DAYS} days) are due on their payment terms from the PO date (blank terms = 30 days); a Work Order's unbilled contract is spread over the next 4 weeks. Not included yet: rent and other OPEX with no bill. Opening cash = the book balance (ending less floating checks) of the operating banks on the latest Daily Cash Position.
       </div>
     </Wrap>
   );
@@ -10248,6 +10258,28 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ── PURCHASING (Orders › Purchasing, src/views/PurchasingHub.jsx) ──
   // Read-only overview; its buttons open the screens that already do the work.
   const billsTab=AP_HIDDEN?"bills":"payables";
+  // ── Where each home alert lands (Paulo, 2026-11-26: "clicking goes to the
+  // assigned page"). Every alert opens its page already showing the records it
+  // counted: Billing's to-collect list, Bills filtered, the PO approvals list
+  // opened, the due-date fixer. setLanding / takeLanding (shared.jsx) carry the
+  // filter to the page's list. Used by AttentionPanel, ManagerHome and the Daily
+  // Cash Position cards, so the same alert always lands in the same place.
+  const goBills=(kind)=>{if(kind) setLanding("bills",kind);setPage("finance");setFinTab(billsTab);};
+  const goCollect=(bucket)=>{setArDrill(bucket||"sent");setPage("billing");};
+  const goCollections=()=>{setLanding("billingTab","collections");setPage("billing");};
+  const goPOApprovals=()=>{setLanding("poApprovals");setPage("procurement");};
+  const attnGo=(to,k)=>{
+    if(k==="ar-overdue") return goCollect("overdue");
+    if(k==="ar-unsent") return goCollect("unsentLate");
+    if(k==="ar-nodue"||k==="ap-nodue") return setDueDateFixOpen(true);
+    if(k==="ar-unbilled"){setLanding("billingFilter","notbilled");return setPage("billing");}
+    if(k==="po-pending") return goPOApprovals();
+    if(k==="ap-due") return goBills("due7");
+    if(k==="ap-pending") return goBills("approve");
+    if(to==="bills") return goBills();
+    setPage(to);
+  };
+
   // ── ORDER BOARD (Orders › Order Board, src/views/OrderBoard.jsx) ──
   // "Create PO" hands the ticked PRF lines to the PO form (poDraft); once the PO
   // is saved, linkPrfLines links each PRF line to it (link_prf_po), retrying
@@ -11580,7 +11612,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {/* What needs a person today, each with a button to fix it */}
       <AttentionPanel billings={billings} deals={deals} prs={prs} payables={payables} today={today}
         pages={role==="FinanceAssistant"?["billing","bills"]:["billing","procurement","bills"]}
-        go={to=>{if(to==="bills"){setFinTab(AP_HIDDEN?"bills":"payables");setPage("finance");}else setPage(to);}}/>
+        go={attnGo}/>
 
       {/* KPI row */}
       {(()=>{
@@ -11706,7 +11738,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         {pageOn("costanalysis")&&<button onClick={()=>setPage("costanalysis")} style={{background:"#8b5cf6",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📈 Cost Analysis</button>}
       </div>
       {/* PO approvals: Cost Control approves POs up to ₱150,000 (2026-11-07). */}
-      <POApprovals prs={prs} deals={deals} role={role} session={session} approvePOs={approvePOs}/>
+      <POApprovals prs={prs} deals={deals} role={role} session={session} approvePOs={approvePOs} dpGate={id=><DpGate deal={deals.find(x=>x.id===id)} deals={deals} role={role} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms}/>}/>
 
       {(()=>{
         const noBudget=wonDeals.filter(d=>!budgets[d.id]||(!budgets[d.id].Materials&&!budgets[d.id].Labor&&!budgets[d.id].Overhead&&!budgets[d.id].Subcon));
@@ -12617,7 +12649,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     <Wrap>
       <ManagerHome session={session} today={today} deals={deals} billings={billings} payables={payables} prs={prs} pcards={pcards}
         cash={bankCashSummary(cashPositions,today)} arTot={arTot} dealById={dealById} enteredByMe={enteredByMe} isMobile={isMobile}
-        go={setPage} goFin={navGo} openProject={id=>{setJumpDeal(id);setPage("projects");}} openDay={()=>openDailyActivity()}/>
+        go={setPage} goFin={navGo} goBills={goBills} goCollect={goCollect} goCollections={goCollections} goPOApprovals={goPOApprovals} openProject={id=>{setJumpDeal(id);setPage("projects");}} openDay={()=>openDailyActivity()}/>
     </Wrap>
   );
 
@@ -12626,7 +12658,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     <Wrap>
       <AttentionPanel billings={billings} deals={deals} prs={prs} payables={payables} today={today}
         pages={role==="FinanceAssistant"?["billing","bills"]:["billing","procurement","bills"]}
-        go={to=>{if(to==="bills"){setFinTab(AP_HIDDEN?"bills":"payables");setPage("finance");}else setPage(to);}}/>
+        go={attnGo}/>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
         <div>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, {session?.name?.split(" ")[0]||"there"} 👋</div>
@@ -13047,7 +13079,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     <Wrap>
       <AttentionPanel billings={billings} deals={deals} prs={prs} payables={payables} today={today}
         pages={role==="FinanceAssistant"?["billing","bills"]:["billing","procurement","bills"]}
-        go={to=>{if(to==="bills"){setFinTab(AP_HIDDEN?"bills":"payables");setPage("finance");}else setPage(to);}}/>
+        go={attnGo}/>
       {/* ── COMMAND BAR ─────────────────────────────────────────────── */}
       <div style={{background:"#0f172a",borderRadius:14,padding:ceoMob?"11px 16px":"16px 20px",marginBottom:ceoMob?10:14,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
         <div>
@@ -16306,7 +16338,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               );
             })()}
             {cashSub==="daily"&&(
-              <DailyCashPosition deals={deals} payPays={payPays} canPay={roleCanInsert("payable_payments")} onPayMany={recordPayments} cashPositions={cashPositions} saveDayPos={saveDayPos} wonDeals={wonDeals} billings={billings} suppliers={suppliers} subcons={subcons} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps} updateMilestone={updateMilestone} upExps={upExps} toSbExpense={toSbExpense} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} vouchers={vouchers} payables={payables} loans={loans} inventory={inventory} userName={session?.name||""} role={role} username={session?.username||""} cashStale={cashStale}/>
+              <DailyCashPosition deals={deals} payPays={payPays} canPay={roleCanInsert("payable_payments")} onPayMany={recordPayments} onGoCollect={goCollect} onGoBills={goBills} onOpenLoans={role!=="Accounting"?()=>navGo("execloans"):null} cashPositions={cashPositions} saveDayPos={saveDayPos} wonDeals={wonDeals} billings={billings} suppliers={suppliers} subcons={subcons} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps} updateMilestone={updateMilestone} upExps={upExps} toSbExpense={toSbExpense} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} vouchers={vouchers} payables={payables} loans={loans} inventory={inventory} userName={session?.name||""} role={role} username={session?.username||""} cashStale={cashStale}/>
             )}
             {cashSub==="weekly"&&(
               <WeeklyCashFlow mode="weekly" cashPositions={cashPositions} billings={billings} loans={loans} exps={exps} chartOfAccounts={chartOfAccounts} setPage={setPage}/>
@@ -17234,6 +17266,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         <DailyCashPosition
           deals={deals}
           payPays={payPays} canPay={roleCanInsert("payable_payments")} onPayMany={recordPayments}
+          onGoCollect={goCollect} onGoBills={goBills} onOpenLoans={role!=="Accounting"?()=>navGo("execloans"):null}
           cashPositions={cashPositions}
           saveDayPos={saveDayPos}
           wonDeals={wonDeals}
@@ -18548,6 +18581,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {arDrill&&<ARDrill bucket={arDrill} billings={billings} dealOf={id=>dealById.get(id)}
         canPay={["Manager","Finance","FinanceAssistant","SalesOpsAdmin"].includes(role)}
         onReceive={(dealId,msId)=>{setArDrill(null);setBillingJumpPay(msId);setBillingJumpDeal(dealId);}}
+        onOpen={dealId=>{setArDrill(null);setBillingJumpDeal(dealId);}}
         onClose={()=>setArDrill(null)}/>}
       <BillingView
         billings={billings} wonDeals={wonDeals} completedDeals={completedDeals} deals={deals} addenda={addenda}
@@ -18965,7 +18999,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     <WIPView wonDeals={wonDeals} projs={projs} billings={billings} exps={exps} prs={prs} overallProg={overallProg} setPage={setPage} Wrap={Wrap} isMobile={isMobile}/>
   );
   if(page==="cashflow"&&(role==="Finance"||role==="Manager"||role==="Accounting"||role==="FinanceAssistant")) return(
-    <CashFlowView deals={deals} billings={billings} payables={payables} vouchers={vouchers} loans={loans} cashPositions={cashPositions} setPage={setPage} Wrap={Wrap} isMobile={isMobile} onFixDueDates={()=>setDueDateFixOpen(true)}/>
+    <CashFlowView deals={deals} prs={prs} swos={swos} billings={billings} payables={payables} vouchers={vouchers} loans={loans} cashPositions={cashPositions} setPage={setPage} Wrap={Wrap} isMobile={isMobile} onFixDueDates={()=>setDueDateFixOpen(true)}/>
   );
   if(page==="weeklycashflow"&&(role==="Finance"||role==="Manager"||role==="Accounting")) return(
     <Wrap><WeeklyCashFlow cashPositions={cashPositions} billings={billings} loans={loans} exps={exps} chartOfAccounts={chartOfAccounts} setPage={setPage}/></Wrap>
@@ -24998,7 +25032,7 @@ function ProcurementView2({jos=[],embedded=false,onEmbeddedDone,poDraft=null,cle
         <ErpStat tone="ok" label="Total Value" value={"Php "+totalValue.toLocaleString("en-PH",{minimumFractionDigits:0,maximumFractionDigits:0})} foot="materials value"/>
       </div>
       {/* Pending POs the viewer may approve, approved in bulk (hidden when none). */}
-      {approvePOs&&<POApprovals prs={prs} deals={allDeals||wonDeals} role={role} session={session} approvePOs={approvePOs}/>}
+      {approvePOs&&<POApprovals prs={prs} deals={allDeals||wonDeals} role={role} session={session} approvePOs={approvePOs} dpGate={id=>{const ds=allDeals||wonDeals;return <DpGate deal={ds.find(x=>x.id===id)} deals={ds} role={role} onWaiveDp={onWaiveDp} onCreditTerms={onCreditTerms}/>;}}/>}
 
       <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
         <select value={filterProj} onChange={e=>setFilterProj(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
@@ -26262,7 +26296,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const[paySaving,setPaySaving]=useState(false);
   const[editPayForm,setEditPayForm]=useState({});
   const[billingSearch,setBillingSearch]=useState("");
-  const[billingFilter,setBillingFilter]=useState("all"); // all | outstanding | overdue | collected | uncollected | paid
+  const[billingFilter,setBillingFilter]=useState(()=>takeLanding("billingFilter")||"all"); // all | outstanding | overdue | collected | uncollected | paid
   // Billing Check: double-billing / integrity scan over every project (see
   // billingIntegrityIssues in core.js). Recomputed whenever billing data changes.
   const[showCheck,setShowCheck]=useState(false);
@@ -26288,7 +26322,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const[showMoreFilters,setShowMoreFilters]=useState(false);
   // Billing › Collections (2026-11-25): the collection sheet Finance kept in
   // Google Sheets, built from Billing payments (src/views/CollectionsLog.jsx).
-  const[billTab,setBillTabS]=useState(()=>_lsB("tab","projects"));    // projects | collections
+  const[billTab,setBillTabS]=useState(()=>takeLanding("billingTab")||_lsB("tab","projects"));    // projects | collections
   const setBillTab=v=>{setBillTabS(v);_lsBSet("tab",v);};
   const[colEntry,setColEntry]=useState(null);   // {dealId, apply} — "+ Collection" / "Apply →" form
   const[colReload,setColReload]=useState(0);
@@ -26875,9 +26909,9 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const projectSummaries=_allSummaries.filter(({d,total,collected,balance,hasOverdue,ageKeys,hasUnsent,fullyPaid,milestoneCount,gapOff})=>{
     const q=billingSearch.toLowerCase();
     const matchSearch=!q||(d.client||"").toLowerCase().includes(q)||(d.ceNo||"").toLowerCase().includes(q)||(d.contact||"").toLowerCase().includes(q);
-    const matchFilter=billingFilter==="all"||(billingFilter==="action"&&(hasOverdue||hasUnsent||gapOff))||(billingFilter==="outstanding"&&balance>0&&!fullyPaid)||(billingFilter==="paid"&&fullyPaid)||(billingFilter==="overdue"&&hasOverdue)||(billingFilter.startsWith("age:")&&ageKeys.has(billingFilter.slice(4)))||(billingFilter==="unsent"&&hasUnsent)||(billingFilter==="collected"&&collected>0)||(billingFilter==="uncollected"&&total>0&&collected===0)||(billingFilter==="gap"&&gapOff);
+    const matchFilter=billingFilter==="all"||(billingFilter==="action"&&(hasOverdue||hasUnsent||gapOff))||(billingFilter==="outstanding"&&balance>0&&!fullyPaid)||(billingFilter==="paid"&&fullyPaid)||(billingFilter==="overdue"&&hasOverdue)||(billingFilter.startsWith("age:")&&ageKeys.has(billingFilter.slice(4)))||(billingFilter==="unsent"&&hasUnsent)||(billingFilter==="collected"&&collected>0)||(billingFilter==="uncollected"&&total>0&&collected===0)||(billingFilter==="gap"&&gapOff)||(billingFilter==="notbilled"&&milestoneCount===0);
     // Hide "Not billed" (0-milestone) projects unless the toggle is on or the user is searching.
-    const matchNotBilled=milestoneCount>0||showNotBilled||!!q;
+    const matchNotBilled=milestoneCount>0||showNotBilled||!!q||billingFilter==="notbilled";
     return matchSearch&&matchFilter&&matchNotBilled;
   });
   // Group each approved addendum directly under its main project, followed by a
@@ -27219,7 +27253,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
           // 4 main filters; the rest sit under "More" (and still work from the
           // KPI cards and the aging cards above).
           const MAIN=[["all","All"],["action","Needs action"],["outstanding","Unpaid"],["paid","Paid"]];
-          const MORE=[["overdue","Overdue"],["unsent","Not yet sent"],["collected","Has collections"],["uncollected","Nothing collected yet"],["gap",`Billing ≠ Contract (${gapCount})`]];
+          const MORE=[["overdue","Overdue"],["unsent","Not yet sent"],["collected","Has collections"],["uncollected","Nothing collected yet"],["gap",`Billing ≠ Contract (${gapCount})`],["notbilled",`No billing schedule (${notBilledCount})`]];
           const moreOn=MORE.find(([v])=>v===billingFilter);
           const chip=(on,clr="#1e293b")=>({padding:"7px 13px",borderRadius:20,border:`1.5px solid ${on?clr:"#e2e8f0"}`,background:on?clr:"#fff",color:on?"#fff":"#64748b",fontFamily:"inherit",fontSize:".75rem",fontWeight:on?700:500,cursor:"pointer",whiteSpace:"nowrap"});
           return(

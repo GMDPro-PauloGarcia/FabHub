@@ -2204,3 +2204,42 @@ export const payrollForecast = (cashPositions, todayIso, untilIso) => {
   });
   return out.sort((a, b) => a.date.localeCompare(b.date));
 };
+
+// ── Issued orders not yet billed, in the Cash-Flow Forecast (2026-11-27) ───
+// An issued PO / Work Order is money GMD has committed before any bill exists.
+// Counted: a PO with no bill at all, issued in the last ORDER_COMMIT_MAX_DAYS
+// days, its total due on its payment terms from the PO date (COD = PO date,
+// "N Days" = +N, blank = +30), never earlier than today; and an issued WO's
+// contract not yet billed, spread over the next 4 weeks (subcon progress
+// billings). Older POs with no bill are NOT counted: on 2026-11-27, 204 POs
+// (PHP 3.5M) over 60 days old were Delivered with no bill and blank terms
+// (paid outside AP before the cutover) and 75 (PHP 3.2M) were old backlog set
+// to issued by the 2026-11-07 bulk approval. They are returned as `stale` for
+// Procurement to bill, close or cancel. POs closed at the AP cutover are skipped.
+export const ORDER_COMMIT_MAX_DAYS = 60;
+const _termsDays = t => { const s = String(t || "").toLowerCase(); if (/cod|cash|upon/.test(s)) return 0; const m = s.match(/(\d+)/); return m ? +m[1] : 30; };
+export const orderCommitments = (orders = [], todayIso) => {
+  const today = _dt(todayIso), since = _ymd(new Date(today.getTime() - ORDER_COMMIT_MAX_DAYS * 86400000));
+  const flows = [], stale = { n: 0, amt: 0 };
+  (orders || []).forEach(o => {
+    if (!o.issued) return;
+    if (o.kind === "PO") {
+      if ((o.bills || []).length) return;
+      if ((o.items || []).some(i => String(i.deliveryNote || "").startsWith("Closed at AP cutover"))) return;
+      const amt = Number(o.amount) || 0; if (!(amt > 1)) return;
+      const d = String(o.date || "").slice(0, 10);
+      if (!d || d < since) { stale.n++; stale.amt += amt; return; }
+      const terms = (o.items || []).map(i => i.paymentTerms).find(Boolean) || "";
+      let due = _ymd(new Date(_dt(d).getTime() + _termsDays(terms) * 86400000));
+      if (due < todayIso) due = todayIso;
+      flows.push({ date: due, amt, label: o.vendor || "Supplier", ref: `${o.no} · issued PO, no bill yet${terms ? "" : " (terms blank: 30 days)"}` });
+    } else if (o.kind === "WO") {
+      const left = (Number(o.amount) || 0) - (Number(o.billed) || 0);
+      if (!(left > 1) || o.status === "Completed") return;
+      for (let k = 1; k <= 4; k++) flows.push({ date: _ymd(new Date(today.getTime() + k * 7 * 86400000)), amt: Math.round(left / 4 * 100) / 100,
+        label: o.vendor || "Subcontractor", ref: `${o.no} · WO not yet billed, ${k}/4 of ₱${Math.round(left).toLocaleString("en-PH")}` });
+    }
+  });
+  stale.amt = Math.round(stale.amt);
+  return { flows, stale };
+};

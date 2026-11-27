@@ -157,6 +157,16 @@ export const HIDDEN_NAV_IDS = new Set(["ceqs"]);
 export const HIDDEN_PAGES = new Set(["ceqs"]);
 export const HIDDEN_FIN_TABS = new Set([]);
 export const AP_HIDDEN = HIDDEN_FIN_TABS.has("payables");
+// ── Landing requests (2026-11-26) ───────────────────────────────────────────
+// A home-screen alert sends you to a page already showing what it counted. The
+// alert leaves a request here (setLanding) just before changing page; the page's
+// list picks it up once when it mounts (takeLanding). Kept outside React state so
+// a list already on screen elsewhere doesn't grab it, and stale after 15 s.
+// Keys: "bills" (Bills "needs" filter), "poApprovals" (open the PO approvals
+// list), "billingFilter" (Billing list filter).
+const _landing={};
+export const setLanding=(key,val=true)=>{_landing[key]={val,at:Date.now()};};
+export const takeLanding=(key)=>{const x=_landing[key];delete _landing[key];return x&&Date.now()-x.at<15000?x.val:undefined;};
 // Inventory is hidden on its own (below) while Warehouse keeps working, so the
 // whole-warehouse switch is separate from it now.
 export const WAREHOUSE_HIDDEN = false;
