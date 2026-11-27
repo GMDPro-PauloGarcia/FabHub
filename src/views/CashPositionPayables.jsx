@@ -1,5 +1,5 @@
 import React,{useState,useMemo} from "react";
-import {today as TODAY,BANKS,Modal,Fld,Inp,Sel,uiConfirm,uiAlert} from "../shared";
+import {today as TODAY,BANKS,Modal,Fld,Inp,Sel,uiConfirm,uiAlert,takeLanding} from "../shared";
 import {vendorKey,buildOrders} from "../data/ledger";
 import {LedgerHost,linkBtn} from "./Ledgers";
 import {openBillHistory} from "./BillHistory";
@@ -29,11 +29,27 @@ const pesoAmt=v=>"₱"+num(v).toLocaleString("en-PH",{minimumFractionDigits:2,ma
 const METHODS=["Check","Bank transfer","Online","Cash"];
 const PAGE=60;
 
+// "Needs" filter (2026-11-26): home-screen alerts land here showing only the
+// bills they counted (setLanding("bills", kind) in App).
+const NEEDS=[["","All open"],["approve","Needs approval"],["overdue","Overdue"],["due7","Due in 7 days"],["nodue","No due date"]];
+
 export default function CashPositionPayables({payables=[],payPays=[],prs=[],swos=[],exps=[],deals=[],today=TODAY,canApprove=false,enteredByMe=()=>false,canPay=false,onApprove,onPay,onPayMany,onCancelPay,onEdit,onDelete,onReleaseRetention,canReleaseRetention=()=>false,onPayFull}){
   const mob=typeof window!=="undefined"&&window.innerWidth<860;
   const[open,setOpen]=useState(true);
   const[q,setQ]=useState("");
   const[src,setSrc]=useState("All");
+  const[need,setNeed]=useState("");
+  React.useEffect(()=>{
+    const kind=takeLanding("bills");
+    if(!kind) return;
+    setNeed(NEEDS.some(x=>x[0]===kind)?kind:"");setView("bills");setOpen(true);setLimit(PAGE);
+  },[]);
+  const week=useMemo(()=>{const d=new Date(today+"T00:00:00");d.setDate(d.getDate()+7);return d.toISOString().slice(0,10);},[today]);
+  const needOk=p=>!need||showPaid?true
+    :need==="approve"?!approved(p)&&p.approvalStatus!=="Rejected"
+    :need==="overdue"?!!p.dueDate&&p.dueDate<today
+    :need==="due7"?!!p.dueDate&&p.dueDate<=week
+    :need==="nodue"?!p.dueDate:true;
   const[showPaid,setShowPaid]=useState(false);
   const[limit,setLimit]=useState(PAGE);
   const[payFor,setPayFor]=useState(null);
@@ -65,9 +81,10 @@ export default function CashPositionPayables({payables=[],payPays=[],prs=[],swos
     return payables
       .filter(p=>showPaid?(p.status==="Paid"&&(p.paidDate||"")>=paidCutoff):isOpen(p))
       .filter(p=>src==="All"||sourceOf(p)===src)
+      .filter(needOk)
       .filter(p=>!qq||[p.vendor,p.poId,p.poNumber,p.apNumber,p.invoiceRef,p.invoiceNumber,dealName(p.projectId)].some(v=>String(v||"").toLowerCase().includes(qq)))
       .sort((a,b)=>showPaid?String(b.paidDate||"").localeCompare(String(a.paidDate||"")):(a.dueDate||"9999").localeCompare(b.dueDate||"9999")||String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
-  },[payables,prs,deals,q,src,showPaid,paidCutoff]);
+  },[payables,prs,deals,q,src,need,week,showPaid,paidCutoff]);
 
   // Issued POs / WOs with no bill on file: owed soon, but not in Running Payables.
   const noBillBySup=useMemo(()=>{
@@ -96,7 +113,7 @@ export default function CashPositionPayables({payables=[],payPays=[],prs=[],swos
     // A supplier whose only open item is an issued PO / WO with no bill yet still
     // gets a line, so nothing ordered is missing from this list.
     const qq=q.trim().toLowerCase();
-    if(!showPaid&&src!=="Other") noBillBySup.forEach((orders,k)=>{
+    if(!showPaid&&src!=="Other"&&!need) noBillBySup.forEach((orders,k)=>{
       if(m.has(k)) return;
       const os=orders.filter(o=>src==="All"||o.kind===src);
       if(!os.length) return;
@@ -105,7 +122,7 @@ export default function CashPositionPayables({payables=[],payPays=[],prs=[],swos
     });
     return [...m.values()].map(g=>({...g,name:Object.entries(g.names).sort((a,b)=>b[1]-a[1])[0][0],noBill:showPaid?[]:(noBillBySup.get(g.key)||[]).filter(o=>src==="All"||o.kind===src)}))
       .sort((a,b)=>b.overdue-a.overdue||b.bal-a.bal);
-  },[rows,showPaid,today,noBillBySup,q,src,deals]);
+  },[rows,showPaid,today,noBillBySup,q,src,need,deals]);
   const toggleSup=k=>setOpenSup(prev=>{const n=new Set(prev);n.has(k)?n.delete(k):n.add(k);return n;});
   const openAll=payables.filter(isOpen);
   const openTotal=openAll.reduce((s,p)=>s+balanceOf(p),0);
@@ -222,10 +239,18 @@ export default function CashPositionPayables({payables=[],payPays=[],prs=[],swos
           <div style={{display:"flex",border:"1px solid #e2e8f0",borderRadius:20,overflow:"hidden"}}>
             {[["supplier","By supplier"],["bills","All bills"]].map(([k,l])=><button key={k} onClick={()=>{setView(k);setLimit(PAGE);}} style={{padding:"5px 12px",border:"none",background:view===k?"#0B2545":"#fff",color:view===k?"#fff":"#64748b",cursor:"pointer",fontSize:".74rem",fontWeight:700,fontFamily:"inherit"}}>{l}</button>)}
           </div>
+          <select value={need} onChange={e=>{setNeed(e.target.value);setLimit(PAGE);}} disabled={showPaid} title="Show only bills that need something"
+            style={{border:`1.5px solid ${need?"#d97706":"#e2e8f0"}`,background:need?"#fffbeb":"#fff",color:need?"#92400e":"#475569",borderRadius:20,padding:"5px 10px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,cursor:"pointer"}}>
+            {NEEDS.map(([k,l])=><option key={k} value={k}>{l}{k?` (${payables.filter(p=>isOpen(p)&&(k==="approve"?!approved(p)&&p.approvalStatus!=="Rejected":k==="overdue"?!!p.dueDate&&p.dueDate<today:k==="due7"?!!p.dueDate&&p.dueDate<=week:!p.dueDate)).length})`:""}</option>)}
+          </select>
           <label style={{display:"flex",alignItems:"center",gap:5,fontSize:".76rem",color:"#475569",cursor:"pointer"}}>
             <input type="checkbox" checked={showPaid} onChange={e=>{setShowPaid(e.target.checked);setLimit(PAGE);setSel(new Set());}}/> Paid in the last 30 days
           </label>
         </div>
+        {need&&!showPaid&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:9,padding:"7px 12px",marginBottom:10,fontSize:".78rem",color:"#92400e"}}>
+          <span>Showing <b>{(NEEDS.find(x=>x[0]===need)||[])[1]}</b> only · {rows.length} bill{rows.length===1?"":"s"} · {pesoAmt(rows.reduce((t,p)=>t+balanceOf(p),0))}</span>
+          <button onClick={()=>{setNeed("");setLimit(PAGE);}} style={{background:"none",border:"none",color:"#2563eb",fontWeight:700,fontSize:".76rem",cursor:"pointer",fontFamily:"inherit",padding:0}}>Show all open bills</button>
+        </div>}
         {picked.length>0&&<div style={{position:"sticky",top:0,zIndex:2,display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",background:"#ecfdf5",border:"1px solid #a7f3d0",borderRadius:9,padding:"8px 12px",marginBottom:10}}>
           <span style={{flex:"1 1 auto",fontSize:".8rem",color:"#065f46",fontWeight:700}}>{picked.length} selected · {pesoAmt(pickedTotal)}</span>
           {btn("Mark paid together",startBulk,"#059669")}

@@ -7,6 +7,9 @@ import {milestoneBalance,isBillingOverdue,isBillingUnsentLate,dealDpClear,WON_ST
 // here. Every item is computed from data FabHub already holds, using the same
 // helpers as the pages it links to, so the numbers match what you see there.
 // An item with nothing to do shows as a green tick, so "all clear" is visible.
+// Tapping an item goes to its page already showing those records (Paulo,
+// 2026-11-26): go(page, itemKey) — App's attnGo maps each key to the filtered
+// list (Billing's AR list, Bills filtered, PO approvals opened, due-date fixer).
 
 const attnPeso=v=>"₱"+Math.round(Number(v)||0).toLocaleString("en-PH");
 const attnDays=(a,b)=>Math.floor((new Date(b+"T00:00:00")-new Date(a+"T00:00:00"))/864e5);
@@ -67,13 +70,15 @@ export default function AttentionPanel({billings=[],deals=[],prs=[],payables=[],
         <span style={{fontSize:".72rem",color:"rgba(255,255,255,.6)"}}>{todo.length?`${todo.length} of ${mine.length} need action`:"All clear"}</span>
       </div>
       {todo.map(i=>(
-        <div key={i.k} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 16px",borderTop:"1px solid #f1f5f9",flexWrap:"wrap"}}>
+        <div key={i.k} role="button" tabIndex={0} title={`${i.btn}: opens the list`} onClick={()=>go(i.to,i.k)}
+          onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();go(i.to,i.k);}}}
+          style={{display:"flex",alignItems:"center",gap:10,padding:"10px 16px",borderTop:"1px solid #f1f5f9",flexWrap:"wrap",cursor:"pointer"}}>
           <span style={{minWidth:34,textAlign:"center",fontWeight:800,fontSize:".95rem",color:C[i.tone]||"#d97706",background:(C[i.tone]||"#d97706")+"14",borderRadius:8,padding:"3px 6px"}}>{i.n}</span>
           <div style={{flex:"1 1 200px",minWidth:0}}>
             <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem"}}>{i.label}{i.amt>0.5&&<span style={{fontWeight:600,color:"#475569"}}> · {attnPeso(i.amt)}{i.amtLabel?` ${i.amtLabel}`:""}</span>}</div>
             {i.hint&&<div style={{fontSize:".72rem",color:"#94a3b8"}}>{i.hint}</div>}
           </div>
-          <button onClick={()=>go(i.to)} style={{background:"#1e293b",color:"#fff",border:"none",borderRadius:8,padding:"6px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".76rem",cursor:"pointer",whiteSpace:"nowrap"}}>{i.btn} →</button>
+          <button onClick={e=>{e.stopPropagation();go(i.to,i.k);}} style={{background:"#1e293b",color:"#fff",border:"none",borderRadius:8,padding:"6px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".76rem",cursor:"pointer",whiteSpace:"nowrap"}}>{i.btn} →</button>
         </div>
       ))}
       {clear.length>0&&(
