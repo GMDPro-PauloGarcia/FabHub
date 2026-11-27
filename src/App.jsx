@@ -26378,7 +26378,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const[paySaving,setPaySaving]=useState(false);
   const[editPayForm,setEditPayForm]=useState({});
   const[billingSearch,setBillingSearch]=useState("");
-  const[billingFilter,setBillingFilter]=useState(()=>takeLanding("billingFilter")||"all"); // all | outstanding | overdue | collected | uncollected | paid
+  const[billingFilter,setBillingFilter]=useState(()=>takeLanding("billingFilter")||"open"); // open (default: not done) | done | all | outstanding | overdue | collected | uncollected | paid
   // Billing Check: double-billing / integrity scan over every project (see
   // billingIntegrityIssues in core.js). Recomputed whenever billing data changes.
   const[showCheck,setShowCheck]=useState(false);
@@ -26970,7 +26970,8 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     },{gross:0,vat:0,total:0,collectible:0});
     const grossBase=tot.gross, vat=tot.vat, total=tot.total, collectible=tot.collectible;
     const collected=ms.reduce((s,m)=>s+(m.payments||[]).filter(p=>!p.bounced).reduce((ps,p)=>ps+n(p.amount),0),0);
-    const balance  =Math.max(0,collectible-collected);
+    // Under ₱1 left is rounding (centavos), not money owed.
+    const _bal=Math.max(0,collectible-collected), balance=_bal<1?0:_bal;
     const odMs=ms.filter(m=>isBillingOverdue(m,today));
     const hasOverdue=odMs.length>0;
     const maxOverdue=odMs.reduce((x,m)=>Math.max(x,odDays(m)),0);
@@ -26992,7 +26993,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     const contract=r2(calcTax(contractEx,d.receiptType||"OR").gross);
     const sentMs=active.filter(m=>m.status!=="Draft"||milestonePaid(m)>0);
     const invoiced=r2(sentMs.reduce((s,m)=>s+txOf(m).gross,0));
-    const dueNow=r2(sentMs.reduce((s,m)=>s+milestoneBalance(m,d),0));
+    const _due=r2(sentMs.reduce((s,m)=>s+milestoneBalance(m,d),0)), dueNow=_due<1?0:_due;
     const ewtPaid=r2(sentMs.filter(m=>milestonePaid(m)>0).reduce((s,m)=>s+txOf(m).ewt,0));
     const _ni=r2(contract-invoiced), notInvoiced=_ni>1?_ni:0;
     const _nm=r2(contract-total), noMilestone=_nm>1?_nm:0;
@@ -27004,15 +27005,20 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     // non-VAT) makes what the client is billed differ from the contract.
     const vatMismatch=active.length>0&&contract>0&&Math.abs(contract-total)>1&&Math.abs(contractGap)<=1;
     const gapOff=Math.abs(contractGap)>1||vatMismatch;
-    return{d,vatMismatch,contract,invoiced,dueNow,ewtPaid,notInvoiced,noMilestone,draftsReady,ms,grossBase,vat,total,collected,collectible,balance,hasOverdue,maxOverdue,odBalance,odCount:odMs.length,ageKeys,hasUnsent,fullyPaid,toBill,milestoneCount:ms.length,contractGap,gapOff};
+    // Done: the whole contract is invoiced and collected and nothing needs fixing.
+    // The default "Open" view hides these; the "Done" filter lists them.
+    const done=fullyPaid&&!gapOff&&!hasOverdue&&!hasUnsent;
+    return{d,done,vatMismatch,contract,invoiced,dueNow,ewtPaid,notInvoiced,noMilestone,draftsReady,ms,grossBase,vat,total,collected,collectible,balance,hasOverdue,maxOverdue,odBalance,odCount:odMs.length,ageKeys,hasUnsent,fullyPaid,toBill,milestoneCount:ms.length,contractGap,gapOff};
   });
   // Count of awarded projects with no billing set up yet — hidden by default.
   const notBilledCount=_allSummaries.filter(s=>s.milestoneCount===0).length;
   const gapCount=_allSummaries.filter(s=>s.gapOff).length;
-  const projectSummaries=_allSummaries.filter(({d,total,collected,balance,dueNow,notInvoiced,hasOverdue,ageKeys,hasUnsent,fullyPaid,milestoneCount,gapOff})=>{
+  const doneCount=_allSummaries.filter(s=>s.done&&s.milestoneCount>0).length;
+  const openCount=_allSummaries.filter(s=>!s.done&&s.milestoneCount>0).length;
+  const projectSummaries=_allSummaries.filter(({d,done,total,collected,balance,dueNow,notInvoiced,hasOverdue,ageKeys,hasUnsent,fullyPaid,milestoneCount,gapOff})=>{
     const q=billingSearch.toLowerCase();
     const matchSearch=!q||(d.client||"").toLowerCase().includes(q)||(d.ceNo||"").toLowerCase().includes(q)||(d.contact||"").toLowerCase().includes(q);
-    const matchFilter=billingFilter==="all"||(billingFilter==="action"&&(hasOverdue||hasUnsent||gapOff))||(billingFilter==="outstanding"&&dueNow>0)||(billingFilter==="paid"&&fullyPaid)||(billingFilter==="overdue"&&hasOverdue)||(billingFilter.startsWith("age:")&&ageKeys.has(billingFilter.slice(4)))||(billingFilter==="unsent"&&hasUnsent)||(billingFilter==="collected"&&collected>0)||(billingFilter==="uncollected"&&total>0&&collected===0)||(billingFilter==="gap"&&gapOff)||(billingFilter==="toinvoice"&&notInvoiced>0)||(billingFilter==="notbilled"&&milestoneCount===0);
+    const matchFilter=billingFilter==="all"||(billingFilter==="open"&&!done)||(billingFilter==="done"&&done)||(billingFilter==="action"&&(hasOverdue||hasUnsent||gapOff))||(billingFilter==="outstanding"&&dueNow>0)||(billingFilter==="paid"&&done)||(billingFilter==="overdue"&&hasOverdue)||(billingFilter.startsWith("age:")&&ageKeys.has(billingFilter.slice(4)))||(billingFilter==="unsent"&&hasUnsent)||(billingFilter==="collected"&&collected>0)||(billingFilter==="uncollected"&&total>0&&collected===0)||(billingFilter==="gap"&&gapOff)||(billingFilter==="toinvoice"&&notInvoiced>0)||(billingFilter==="notbilled"&&milestoneCount===0);
     // Hide "Not billed" (0-milestone) projects unless the toggle is on or the user is searching.
     const matchNotBilled=milestoneCount>0||showNotBilled||!!q||billingFilter==="notbilled"||billingFilter==="toinvoice";
     return matchSearch&&matchFilter&&matchNotBilled;
@@ -27353,7 +27359,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                 const lbl=AGE_LABEL[key], f="age:"+key, on=billingFilter===f, can=grp.length>0;
                 return(
                 <div key={key}
-                  {...(can?clickable(()=>{setBillingFilter(on?"all":f);if(!on){const el=document.getElementById("billing-list-top");if(el)el.scrollIntoView({behavior:"smooth",block:"start"});}}):{})}
+                  {...(can?clickable(()=>{setBillingFilter(on?"open":f);if(!on){const el=document.getElementById("billing-list-top");if(el)el.scrollIntoView({behavior:"smooth",block:"start"});}}):{})}
                   aria-label={can?(on?`Clear the ${lbl} filter`:`Show projects with invoices ${lbl} overdue`):undefined}
                   title={can?(on?"Tap again to show all projects":`Show projects with invoices ${lbl} overdue`):undefined}
                   style={{background:bg,borderRadius:8,padding:"10px 12px",textAlign:"center",border:on?`2px solid ${clr}`:`1px solid ${clr}33`,boxShadow:on?`0 0 0 3px ${clr}22`:"none",cursor:can?"pointer":"default"}}>
@@ -27385,8 +27391,8 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         {(()=>{
           // 4 main filters; the rest sit under "More" (and still work from the
           // KPI cards and the aging cards above).
-          const MAIN=[["all","All"],["action","Needs action"],["outstanding","Unpaid"],["paid","Paid"]];
-          const MORE=[["toinvoice","Not yet invoiced"],["overdue","Overdue"],["unsent","Not yet sent"],["collected","Has collections"],["uncollected","Nothing collected yet"],["gap",`Billing ≠ Contract (${gapCount})`],["notbilled",`No billing schedule (${notBilledCount})`]];
+          const MAIN=[["open",`Open (${openCount})`],["action","Needs action"],["outstanding","Due now"],["done",`Done (${doneCount})`]];
+          const MORE=[["all","All projects"],["toinvoice","Not yet invoiced"],["overdue","Overdue"],["unsent","Not yet sent"],["collected","Has collections"],["uncollected","Nothing collected yet"],["gap",`Billing ≠ Contract (${gapCount})`],["notbilled",`No billing schedule (${notBilledCount})`]];
           const moreOn=MORE.find(([v])=>v===billingFilter);
           const chip=(on,clr="#1e293b")=>({padding:"7px 13px",borderRadius:20,border:`1.5px solid ${on?clr:"#e2e8f0"}`,background:on?clr:"#fff",color:on?"#fff":"#64748b",fontFamily:"inherit",fontSize:".75rem",fontWeight:on?700:500,cursor:"pointer",whiteSpace:"nowrap"});
           return(
@@ -27395,9 +27401,9 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
               <button key={v} onClick={()=>setBillingFilter(v)} style={chip(billingFilter===v)}
                 title={v==="action"?"Overdue invoices, Drafts past their bill-on date, or billing that doesn't add up to the contract":undefined}>{l}</button>
             ))}
-            {moreOn&&<button onClick={()=>setBillingFilter("all")} title="Clear this filter" style={chip(true)}>{moreOn[1]} ✕</button>}
+            {moreOn&&<button onClick={()=>setBillingFilter("open")} title="Clear this filter" style={chip(true)}>{moreOn[1]} ✕</button>}
             {billingFilter.startsWith("age:")&&(
-              <button onClick={()=>setBillingFilter("all")} title="Clear the aging filter" style={chip(true,"#dc2626")}>
+              <button onClick={()=>setBillingFilter("open")} title="Clear the aging filter" style={chip(true,"#dc2626")}>
                 Overdue {AGE_LABEL[billingFilter.slice(4)]} ✕
               </button>
             )}
