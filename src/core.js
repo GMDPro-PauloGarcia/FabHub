@@ -2151,6 +2151,22 @@ export const PAYROLL_STREAMS = [
   { key:"production", tag:"Payroll – production",   label:"Production payroll",    re:/production\s+payroll/i,         when:"weekly" },
   { key:"projectBased", tag:"Payroll – project-based", label:"Project-based payroll", re:/project[\s-]*based\s+payroll/i, when:"weekly" },
 ];
+// Monthly OPEX paid from the cash sheet, learned the same way (Paulo, 2026-11-27:
+// "add rent and OPEX"). On 2026-11-27 the sheet's last 3 months held no office
+// rent, electricity or internet row and FabHub held no bill for them, so rent and
+// utilities are tag-only (the words "rent" / "water" / "electrical" there were
+// truck rental, a water refilling station and site electricians). Government
+// remittances are worded consistently ("SSS CONTRIBUTION OCTOBER 2026", "SSS
+// LOAN …", "PHILHEALTH CONTRIBUTION …", "PAGIBIG CONTRIBUTION / LOAN …"), about
+// PHP 370K a month; "SSS SICKNESS" (a benefit) is not a remittance.
+export const OPEX_STREAMS = [
+  { key:"sss",        tag:"Gov't – SSS",        label:"SSS remittance",        re:/\bsss\s+(contribution|loan)/i,       when:"monthly" },
+  { key:"philhealth", tag:"Gov't – PhilHealth", label:"PhilHealth remittance", re:/phil\s*health\s+contribution/i,      when:"monthly" },
+  { key:"pagibig",    tag:"Gov't – Pag-IBIG",   label:"Pag-IBIG remittance",   re:/pag-?\s*ibig\s+(contribution|loan)/i, when:"monthly" },
+  { key:"rent",       tag:"Rent",               label:"Rent",                  re:null,                                  when:"monthly" },
+  { key:"utilities",  tag:"Utilities",          label:"Utilities",             re:null,                                  when:"monthly" },
+];
+const _allStreams = () => [...PAYROLL_STREAMS, ...OPEX_STREAMS];
 const _ymd = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 const _dt = iso => new Date(String(iso).slice(0,10)+"T00:00:00");
 // One pay event = the rows of one stream within a few days of each other
@@ -2162,7 +2178,7 @@ export const payrollEvents = (cashPositions, stream) => {
     (p.disbursements?.manual || []).forEach(r => {
       // The 🔗 tag decides when a row has a stream tag; otherwise the wording.
       const nb = String(r.noBill || "");
-      if (PAYROLL_STREAMS.some(x => x.tag === nb) ? nb !== stream.tag : !stream.re.test(String(r.particulars || ""))) return;
+      if (_allStreams().some(x => x.tag === nb) ? nb !== stream.tag : !(stream.re && stream.re.test(String(r.particulars || "")))) return;
       const amt = Number(String(r.amount == null ? 0 : r.amount).replace(/,/g, "")) || 0;
       if (amt > 0) rows.push({ date: String(p.date).slice(0,10), amt });
     });
@@ -2180,10 +2196,10 @@ export const payrollEvents = (cashPositions, stream) => {
 // the stream's last 4 pay events in the 90 days before today, on its schedule.
 // An occurrence already paid on the sheet (an event within the days before it)
 // is skipped, so a payroll paid on Friday isn't counted again on Saturday.
-export const payrollForecast = (cashPositions, todayIso, untilIso) => {
+export const payrollForecast = (cashPositions, todayIso, untilIso, streams = PAYROLL_STREAMS) => {
   const out = [], today = _dt(todayIso), until = _dt(untilIso);
   const from90 = _ymd(new Date(today.getTime() - 90 * 86400000));
-  PAYROLL_STREAMS.forEach(s => {
+  streams.forEach(s => {
     const ev = payrollEvents(cashPositions, s).filter(e => e.date >= from90 && e.date <= todayIso);
     if (!ev.length) return;
     const recent = ev.slice(-4), avg = Math.round(recent.reduce((t, e) => t + e.amt, 0) / recent.length);
@@ -2191,11 +2207,18 @@ export const payrollForecast = (cashPositions, todayIso, untilIso) => {
     if (s.when === "weekly") {
       const d = new Date(today); d.setDate(d.getDate() + ((6 - d.getDay() + 7) % 7 || 7) - (today.getDay() === 6 ? 7 : 0));
       for (; d <= until; d.setDate(d.getDate() + 7)) dates.push(_ymd(d));
+    } else if (s.when === "monthly") {
+      // Same day of the month as the last payment (month length capped).
+      const day = _dt(ev[ev.length - 1].last).getDate();
+      for (let m = new Date(today.getFullYear(), today.getMonth(), 1); m <= until; m.setMonth(m.getMonth() + 1)) {
+        const d = new Date(m.getFullYear(), m.getMonth(), Math.min(day, new Date(m.getFullYear(), m.getMonth() + 1, 0).getDate()));
+        if (d >= today && d <= until) dates.push(_ymd(d));
+      }
     } else {
       for (let m = new Date(today.getFullYear(), today.getMonth(), 1); m <= until; m.setMonth(m.getMonth() + 1))
         [5, 20].forEach(day => { const d = new Date(m.getFullYear(), m.getMonth(), day); if (d >= today && d <= until) dates.push(_ymd(d)); });
     }
-    const window = s.when === "weekly" ? 6 : 10;
+    const window = s.when === "weekly" ? 6 : s.when === "monthly" ? 20 : 10;
     dates.forEach(iso => {
       const lo = _ymd(new Date(_dt(iso).getTime() - window * 86400000));
       if (ev.some(e => e.last >= lo && e.last <= iso)) return; // already paid this round
