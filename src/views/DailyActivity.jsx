@@ -100,7 +100,7 @@ export default function DailyActivityModal({ deals = [], billings = [] }) {
       const seen = new Set(au.filter(r => lc(r.action) === "insert").map(r => `${r.table_name}:${r.record_id}`));
       au.forEach(r => {
         const a = lc(r.action), sn = r.snapshot || r.old_snapshot || {};
-        const dealId = sn.deal_id || sn.project_id || (r.table_name === "deals" ? r.record_id : null) || msDeal[sn.milestone_id];
+        const dealId = sn.deal_id || sn.project_id || (r.table_name === "deals" || r.table_name === "project_cards" ? r.record_id : null) || msDeal[sn.milestone_id];
         const fields = (r.changed_fields || []).filter(f => !HIDE_FIELDS.has(f));
         const amtOld = Number(r.old_snapshot?.amount), amtNew = Number(r.snapshot?.amount);
         out.push({
@@ -111,7 +111,7 @@ export default function DailyActivityModal({ deals = [], billings = [] }) {
           amount: a === "update" && Number.isFinite(amtOld) && Number.isFinite(amtNew) && amtOld !== amtNew ? [amtOld, amtNew] : (Number.isFinite(amtNew) ? amtNew : (Number.isFinite(amtOld) ? amtOld : null)),
           note: fields.length ? "Changed: " + fields.join(", ") + (r.reason && r.reason !== "field edit" ? " · " + r.reason : "") : (r.reason || ""),
           fields, old: r.old_snapshot, now: r.snapshot,
-          flag: FLAG_ACTIONS.test(a) || /override|locked/i.test(r.reason || ""),
+          flag: FLAG_ACTIONS.test(a) || /override|locked/i.test(r.reason || "") || (a === "award_date_change" && !!r.old_snapshot?.award_date),
         });
       });
       cash.forEach(r => {
