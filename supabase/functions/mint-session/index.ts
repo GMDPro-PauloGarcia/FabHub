@@ -11,8 +11,7 @@
 // Two modes, same response shape:
 //   { username, password }  → normal login (rate-limited, bcrypt via verify_login)
 //   { refresh_token }       → silent renewal of a token THIS function signed.
-// Renewal exists because the 12h token used to simply die mid-shift or
-// overnight: every read/save after that failed with PGRST303 (seen daily on
+// Renewal exists because the token used to simply die mid-shift: every read/save after that failed with PGRST303 (seen daily on
 // 4+ devices, 2026-10-01). Renewal re-reads the user's row each time, so a
 // deactivated account or a changed role takes effect at the next renewal, and
 // MAX_SESSION_S forces a real password login at least once a week.
@@ -26,10 +25,13 @@ const JWT_SECRET = Deno.env.get("APP_JWT_SECRET") || "";
 // breaks before the real origin is configured.
 const ALLOWED_ORIGIN = Deno.env.get("ALLOWED_ORIGIN") || "*";
 
-const TOKEN_TTL_S = 60 * 60 * 12;          // each token: 12h (unchanged)
-// How long after expiry a token may still be exchanged. Covers a laptop that
-// slept overnight (closed 6pm, opened 8am = 14h, token died at ~8pm).
-const REFRESH_GRACE_S = 60 * 60 * 24;
+// Idle rule (Paulo, 2026-11-15): someone active in the last 4 hours stays logged
+// in; 4 hours idle means log in again. Each token lasts 4h and the app renews it
+// in its last hour only while the user is active (src/supabaseClient.js,
+// IDLE_LIMIT_MS). An expired token is never renewed, so a token left unused
+// (an abandoned or stolen session) dies within 4h of its last renewal.
+const TOKEN_TTL_S = 60 * 60 * 4;
+const REFRESH_GRACE_S = 0;
 // Hard cap from the original password login, whatever happens with renewals.
 const MAX_SESSION_S = 60 * 60 * 24 * 7;
 
