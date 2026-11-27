@@ -152,7 +152,7 @@ export default function POApprovals({prs=[],deals=[],role,session,approvePOs,dpG
   );
   // Why a PO can't be approved yet, and what a Manager can do about it.
   const holdBlock=(p)=>(<>
-    {p.dpAsk&&<div style={{fontSize:".72rem",color:"#b45309",fontWeight:700,marginTop:4}}>Client hasn't paid on {p.dpAsk}: approving asks you for a reason, and management is told.</div>}
+    {p.dpAsk&&<div style={{fontSize:".72rem",color:"#b45309",fontWeight:700,marginTop:4}}>{`Client hasn’t paid on ${p.dpAsk}: approving asks you for a reason, and management is told.`}</div>}
     {p.dpHold&&<div style={{fontSize:".72rem",color:"#b91c1c",fontWeight:700,marginTop:4}}>Project not awarded yet ({p.dpHold}): no PO before award
       {dpGate&&p.dpHoldId&&dpFor!==p.no&&<button type="button" onClick={()=>setDpFor(p.no)} style={{display:"inline-block",marginLeft:6,background:"#fff",border:"1.5px solid #b91c1c",borderRadius:7,padding:"4px 10px",color:"#b91c1c",fontWeight:700,cursor:"pointer",fontFamily:"inherit",fontSize:".72rem"}}>{isMgr?"Waive down payment":"How to clear"}</button>}
     </div>}

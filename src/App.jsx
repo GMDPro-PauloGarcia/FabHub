@@ -7672,7 +7672,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // Down payment prompt (Paulo, 2026-11-27; migration 20261128010000): on an
     // awarded project the approver confirms and gives one reason for the unpaid
     // POs in this batch (approve_po(po, reason): audit_log + Telegram to
-    // management); a project that isn't awarded is still refused.
+    // management); a project not yet awarded is still refused.
     const dpBlockedNos=new Map(), dpAskNos=new Map();
     pending.forEach(p=>{const d=deals.find(x=>x.id===(p.projectId||p.dealId));if(d&&!dealDpClear(d,deals))(dealDpAwarded(d,deals)?dpAskNos:dpBlockedNos).set(p.poNumber,d);});
     if(dpBlockedNos.size) toastEmit(`Not approved — project not awarded: ${[...dpBlockedNos].map(([no,d])=>`${no} (${d.ceNo||d.client||"?"})`).join(", ")}. No PO is issued before award.`,"error",10000);
@@ -23159,13 +23159,13 @@ function SubconWOView({jos=[],embedded=false,onEmbeddedDone,woDraft=null,clearWo
   const woIssueBlocked=w=>PO_TIERS_ON&&w&&(w.status==="Pending Approval"||w.status==="Draft");
   const signWo=async(w,dpReason=null)=>{
     if(!isSupabaseReady()){toastEmit&&toastEmit("No server connection: work orders are signed online only.","error",8000);return;}
-    // dpReason: the client hasn't paid and the signer confirmed issuing anyway (sign_wo(id, reason), 20261128010000).
+    // dpReason: the client has not paid and the signer confirmed issuing anyway (sign_wo(id, reason), 20261128010000).
     const{data,error}=await supabase.rpc("sign_wo",dpReason?{p_id:w.id,p_dp_reason:dpReason}:{p_id:w.id});
     if(error){toastEmit&&toastEmit(`Not signed: ${error.message||WO_SIGN_MSG}`,"error",9000);return;}
     const me=session?.name||"";
     if(data==="issued"){
       updateSWO(w.id,{status:"Issued",approvedBy:me,acctStatus:w.acctStatus||"For Accounting"});
-      const aMsg=`✅ <b>Work Order Issued — ${w.woNumber}</b>\nSubcontractor: ${w.subcontractor||"—"}\nAmount: ${fmt(w.contractAmount)}\nRequested by: ${w.requestedBy||"—"}\nCost Control: ${w.ccApprovedBy||"—"} · Finance: ${me} · ${today}${dpReason?`\n⚠️ Client hasn't paid yet: ${dpReason}`:""}\n→ Sent to Accounting for documentation`;
+      const aMsg=`✅ <b>Work Order Issued — ${w.woNumber}</b>\nSubcontractor: ${w.subcontractor||"—"}\nAmount: ${fmt(w.contractAmount)}\nRequested by: ${w.requestedBy||"—"}\nCost Control: ${w.ccApprovedBy||"—"} · Finance: ${me} · ${today}${dpReason?"\n⚠️ Client hasn’t paid yet: "+dpReason:""}\n→ Sent to Accounting for documentation`;
       sendTelegramNotification("procurement",aMsg);
       sendTelegramNotification("financialcontrol",aMsg);
       toastEmit&&toastEmit(`${w.woNumber} issued — sent to Accounting`,"success");
@@ -23197,7 +23197,7 @@ function SubconWOView({jos=[],embedded=false,onEmbeddedDone,woDraft=null,clearWo
   const WO_ISSUED=["Issued","In Progress","Completed"];
   const allD=deals||wonDeals||[];
   const dpBlockedDeal=pid=>{const d=allD.find(x=>x.id===pid);return d&&!dealDpClear(d,allD)?d:null;};
-  const dpMsg=d=>dealDpAwarded(d,allD)?`The client hasn't paid on ${d.ceNo||d.client||"this project"}: issue the work order with "Sign & Issue (Finance)", which asks for a reason.`:DP_NOT_AWARDED_MSG(d);
+  const dpMsg=d=>dealDpAwarded(d,allD)?`The client has not paid on ${d.ceNo||d.client||"this project"}: issue the work order with "Sign & Issue (Finance)", which asks for a reason.`:DP_NOT_AWARDED_MSG(d);
   // Where a WO sits in the engage → complete → pay chain (Policy v2.0). Derived
   // from the WO's own workflow + accounting fields: a subcontractor is only
   // payable once the work is issued, and paid via the Accounting board
@@ -24303,8 +24303,8 @@ function DpGate({deal,deals,role,onWaiveDp,onCreditTerms,what="POs"}){
   return(
     <div role="alert" style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:10,padding:"10px 12px",marginBottom:10,fontSize:".76rem",color:"#991b1b",lineHeight:1.5}}>
       {dealDpAwarded(deal,deals)
-        ?<><b>The client hasn't paid on {label}.</b> {what} can still be issued: whoever issues confirms it with a reason (e.g. the client's PO number), and management is told on Telegram. A Manager can also waive the down payment or put a client that pays on PO on credit terms.</>
-        :<><b>{label} isn't awarded yet.</b> {what} can't be issued before award, unless a Manager waives the down payment for this deal.</>}
+        ?<><b>{`The client hasn’t paid on ${label}.`}</b> {`${what} can still be issued: whoever issues confirms it with a reason (e.g. the client’s PO number), and management is told on Telegram. A Manager can also waive the down payment or put a client that pays on PO on credit terms.`}</>
+        :<><b>{`${label} isn’t awarded yet.`}</b> {`${what} can’t be issued before award, unless a Manager waives the down payment for this deal.`}</>}
       {mgr&&onWaiveDp
         ?<div style={{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}}>
             <input value={reason} onChange={e=>setReason(e.target.value)} placeholder="Reason, e.g. SM credit terms, pays 30 days after delivery" aria-label="Reason for waiving the down payment"
@@ -24313,7 +24313,7 @@ function DpGate({deal,deals,role,onWaiveDp,onCreditTerms,what="POs"}){
             {onCreditTerms&&deal.client&&<button type="button" disabled={busy||reason.trim().length<5} onClick={putOnTerms} title={`Every project of ${deal.client} skips the down payment rule`}
               style={{background:"#fff",border:"1.5px solid #b91c1c",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontSize:".76rem",fontWeight:700,color:"#b91c1c",cursor:busy||reason.trim().length<5?"not-allowed":"pointer"}}>Put {deal.client} on credit terms</button>}
           </div>
-        :!dealDpAwarded(deal,deals)&&<div style={{marginTop:4,color:"#7f1d1d"}}>Ask a Manager to waive it, or move the deal to Kickoff once it's won.</div>}
+        :!dealDpAwarded(deal,deals)&&<div style={{marginTop:4,color:"#7f1d1d"}}>{"Ask a Manager to waive it, or move the deal to Kickoff once it’s won."}</div>}
     </div>);
 }
 
@@ -24355,7 +24355,7 @@ function ProcurementView2({jos=[],embedded=false,onEmbeddedDone,poDraft=null,cle
   // down payment (or a Manager's waiver) before anything can be issued on it.
   const ISSUED_ST=["PO Issued","Partially Delivered","Delivered"];
   const dpBlockedDeal=projectId=>{const d=(allDeals||wonDeals||[]).find(x=>x.id===projectId);return d&&!dealDpClear(d,allDeals||wonDeals||[])?d:null;};
-  const dpMsg=d=>dealDpAwarded(d,allDeals||wonDeals||[])?`The client hasn't paid on ${d.ceNo||d.client||"this project"}: the PO approver is asked to confirm with a reason when issuing.`:DP_NOT_AWARDED_MSG(d);
+  const dpMsg=d=>dealDpAwarded(d,allDeals||wonDeals||[])?`The client has not paid on ${d.ceNo||d.client||"this project"}: the PO approver is asked to confirm with a reason when issuing.`:DP_NOT_AWARDED_MSG(d);
   // Down payment prompt (20261128010000): the reason for issuing on an awarded,
   // unpaid project; null = refused / cancelled (the toast already said why).
   const askPoDp=async(d,what,amount)=>{
