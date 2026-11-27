@@ -18559,8 +18559,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             <button onClick={()=>setDueDateFixOpen(true)} style={{background:"#b45309",border:"none",borderRadius:8,padding:"8px 14px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",cursor:"pointer",whiteSpace:"nowrap"}}>📅 Set due dates</button>
           </div>
         ):null;})()}
-      {/* Aging Summary */}
-      {(()=>{
+      {/* Aging Summary: hidden on Billing since 2026-11-27. Its VAT-ex total counted
+          unsent Drafts and contradicted the list's cards (VAT-inc, Due now); the
+          overdue aging lives in Billing's "Collection forecast & overdue aging".
+          The drill list below still opens from the dashboard (goCollect). */}
+      {false&&(()=>{
         const now=new Date();
         // Each bucket holds the open balance split into VAT-exclusive base, VAT and
         // EWT (milestoneBalanceParts): base + VAT − EWT = what the client still owes.
@@ -26974,12 +26977,10 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     const odBalance=odMs.reduce((x,m)=>x+milestoneBalance(m,d),0);
     const ageKeys=new Set(odMs.map(m=>ageKey(odDays(m))));
     const hasUnsent=ms.some(m=>isBillingUnsentLate(m,today));
-    const fullyPaid=total>0&&balance===0;
     const toBill=ms.filter(m=>m.status==="Draft"&&m.plannedDate&&m.plannedDate<today).length;
     // Billing ≠ Contract: the non-cancelled milestones don't add up to the
     // contract (over ₱1). Same rule as billing_contract_gaps() on the daily check.
     const contractGap=active.length&&!isMotherPO(d)?billingContractGap(d,billings).gap:0;
-    const gapOff=Math.abs(contractGap)>1;
     // The list's money, all in what the client pays (VAT-inclusive):
     // Contract → Invoiced (sent, or a Draft already paid) → Received → Due now
     // (balance on sent invoices, EWT off) → Not yet invoiced (contract − invoiced).
@@ -26996,17 +26997,24 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     const _ni=r2(contract-invoiced), notInvoiced=_ni>1?_ni:0;
     const _nm=r2(contract-total), noMilestone=_nm>1?_nm:0;
     const draftsReady=active.filter(m=>m.status==="Draft"&&milestonePaid(m)<=0).length;
-    return{d,contract,invoiced,dueNow,ewtPaid,notInvoiced,noMilestone,draftsReady,ms,grossBase,vat,total,collected,collectible,balance,hasOverdue,maxOverdue,odBalance,odCount:odMs.length,ageKeys,hasUnsent,fullyPaid,toBill,milestoneCount:ms.length,contractGap,gapOff};
+    // "Paid" only when the whole contract is invoiced and nothing is due.
+    const fullyPaid=total>0&&balance===0&&notInvoiced===0;
+    // Billing ≠ Contract: the VAT-ex schedule differs from the contract (as
+    // billing_contract_gaps() checks), or the milestones' receipt type (VAT /
+    // non-VAT) makes what the client is billed differ from the contract.
+    const vatMismatch=active.length>0&&contract>0&&Math.abs(contract-total)>1&&Math.abs(contractGap)<=1;
+    const gapOff=Math.abs(contractGap)>1||vatMismatch;
+    return{d,vatMismatch,contract,invoiced,dueNow,ewtPaid,notInvoiced,noMilestone,draftsReady,ms,grossBase,vat,total,collected,collectible,balance,hasOverdue,maxOverdue,odBalance,odCount:odMs.length,ageKeys,hasUnsent,fullyPaid,toBill,milestoneCount:ms.length,contractGap,gapOff};
   });
   // Count of awarded projects with no billing set up yet — hidden by default.
   const notBilledCount=_allSummaries.filter(s=>s.milestoneCount===0).length;
   const gapCount=_allSummaries.filter(s=>s.gapOff).length;
-  const projectSummaries=_allSummaries.filter(({d,total,collected,balance,dueNow,hasOverdue,ageKeys,hasUnsent,fullyPaid,milestoneCount,gapOff})=>{
+  const projectSummaries=_allSummaries.filter(({d,total,collected,balance,dueNow,notInvoiced,hasOverdue,ageKeys,hasUnsent,fullyPaid,milestoneCount,gapOff})=>{
     const q=billingSearch.toLowerCase();
     const matchSearch=!q||(d.client||"").toLowerCase().includes(q)||(d.ceNo||"").toLowerCase().includes(q)||(d.contact||"").toLowerCase().includes(q);
-    const matchFilter=billingFilter==="all"||(billingFilter==="action"&&(hasOverdue||hasUnsent||gapOff))||(billingFilter==="outstanding"&&dueNow>0)||(billingFilter==="paid"&&fullyPaid)||(billingFilter==="overdue"&&hasOverdue)||(billingFilter.startsWith("age:")&&ageKeys.has(billingFilter.slice(4)))||(billingFilter==="unsent"&&hasUnsent)||(billingFilter==="collected"&&collected>0)||(billingFilter==="uncollected"&&total>0&&collected===0)||(billingFilter==="gap"&&gapOff)||(billingFilter==="notbilled"&&milestoneCount===0);
+    const matchFilter=billingFilter==="all"||(billingFilter==="action"&&(hasOverdue||hasUnsent||gapOff))||(billingFilter==="outstanding"&&dueNow>0)||(billingFilter==="paid"&&fullyPaid)||(billingFilter==="overdue"&&hasOverdue)||(billingFilter.startsWith("age:")&&ageKeys.has(billingFilter.slice(4)))||(billingFilter==="unsent"&&hasUnsent)||(billingFilter==="collected"&&collected>0)||(billingFilter==="uncollected"&&total>0&&collected===0)||(billingFilter==="gap"&&gapOff)||(billingFilter==="toinvoice"&&notInvoiced>0)||(billingFilter==="notbilled"&&milestoneCount===0);
     // Hide "Not billed" (0-milestone) projects unless the toggle is on or the user is searching.
-    const matchNotBilled=milestoneCount>0||showNotBilled||!!q||billingFilter==="notbilled";
+    const matchNotBilled=milestoneCount>0||showNotBilled||!!q||billingFilter==="notbilled"||billingFilter==="toinvoice";
     return matchSearch&&matchFilter&&matchNotBilled;
   });
   // Group each approved addendum directly under its main project, followed by a
@@ -27237,14 +27245,16 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
           onApply={row=>setColEntry({dealId:row.deal_id,apply:row})}
           onOpenProject={id=>setSelDeal(id)}/>
       ):(<>
-      {/* KPIs */}
+      {/* KPIs: same figures and basis as the list below (VAT-inclusive, what
+          the client pays), totalled over every awarded project. */}
+      {(()=>{const kpi=["contract","invoiced","dueNow","notInvoiced"].reduce((o,f)=>({...o,[f]:Math.round(_allSummaries.reduce((t,x)=>t+(Number(x[f])||0),0)*100)/100}),{});return(
       <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(5,1fr)",gap:10,marginBottom:16}}>
         {[
-          {l:"Total Billed (VAT-ex)",v:fmt(allBilled),             c:"#3b82f6"},
-          {l:"Total Collected",   v:fmt(allCollected),             c:"#059669", note:allOffset>0?`incl. ${fmt(allOffset)} by offset (no cash)`:""},
-          {l:"Outstanding",       v:fmt(allOutstanding), c:allOutstanding>0?"#ef4444":"#059669", filter:"outstanding", hint:"View all clients with a balance →"},
-          {l:"Overdue Invoices",  v:overdue.length,                c:overdue.length>0?"#ef4444":"#94a3b8", filter:"overdue", hint:"View overdue invoices →"},
-          {l:"Not Yet Sent",      v:unsentLate.length,             c:unsentLate.length>0?"#d97706":"#94a3b8", filter:"unsent", hint:unsentLate.length>0?"Drafts past due — send or re-date →":"No late drafts"},
+          {l:"Contract",          v:fmt(kpi.contract),             c:"#475569", note:"VAT-inclusive"},
+          {l:"Invoiced",          v:fmt(kpi.invoiced),             c:"#3b82f6", note:"Sent to clients"},
+          {l:"Received",          v:fmt(allCollected),             c:"#059669", note:allOffset>0?`incl. ${fmt(allOffset)} by offset (no cash)`:""},
+          {l:"Due now",           v:fmt(kpi.dueNow), c:kpi.dueNow>0?"#dc2626":"#059669", filter:"outstanding", hint:overdue.length>0?`${overdue.length} overdue invoice${overdue.length===1?"":"s"} · view clients →`:"View clients who owe →"},
+          {l:"Not yet invoiced",  v:fmt(kpi.notInvoiced), c:kpi.notInvoiced>0?"#7c3aed":"#059669", filter:"toinvoice", hint:unsentLate.length>0?`${unsentLate.length} Draft${unsentLate.length===1?"":"s"} past bill date · view →`:"View projects still to bill →"},
         ].map(({l,v,c,filter,hint,note})=>{
           const isLink=!!filter;
           return(
@@ -27258,11 +27268,12 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:c}}>{v}</div>
             <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:5}}>{l}</div>
             {isLink&&<div style={{fontSize:".6rem",color:c,marginTop:4,fontWeight:600,opacity:.85}}>{hint}</div>}
-            {note&&<div style={{fontSize:".6rem",color:"#7c3aed",marginTop:4,fontWeight:600}}>{note}</div>}
+            {note&&<div style={{fontSize:".6rem",color:"#94a3b8",marginTop:4,fontWeight:600}}>{note}</div>}
           </div>
           );
         })}
       </div>
+      );})()}
 
       {/* Forecast + aging, folded away by default so the list is on the first screen. */}
       {(allOutstanding>0||collectionForecast.unscheduledCount>0||overdue.length>0)&&(
@@ -27375,7 +27386,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
           // 4 main filters; the rest sit under "More" (and still work from the
           // KPI cards and the aging cards above).
           const MAIN=[["all","All"],["action","Needs action"],["outstanding","Unpaid"],["paid","Paid"]];
-          const MORE=[["overdue","Overdue"],["unsent","Not yet sent"],["collected","Has collections"],["uncollected","Nothing collected yet"],["gap",`Billing ≠ Contract (${gapCount})`],["notbilled",`No billing schedule (${notBilledCount})`]];
+          const MORE=[["toinvoice","Not yet invoiced"],["overdue","Overdue"],["unsent","Not yet sent"],["collected","Has collections"],["uncollected","Nothing collected yet"],["gap",`Billing ≠ Contract (${gapCount})`],["notbilled",`No billing schedule (${notBilledCount})`]];
           const moreOn=MORE.find(([v])=>v===billingFilter);
           const chip=(on,clr="#1e293b")=>({padding:"7px 13px",borderRadius:20,border:`1.5px solid ${on?clr:"#e2e8f0"}`,background:on?clr:"#fff",color:on?"#fff":"#64748b",fontFamily:"inherit",fontSize:".75rem",fontWeight:on?700:500,cursor:"pointer",whiteSpace:"nowrap"});
           return(
@@ -27456,6 +27467,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
               <span style={{display:"inline-flex",gap:4,flexWrap:"wrap"}}>
                 {r.hasOverdue&&<span title={`${r.odCount} overdue invoice${r.odCount===1?"":"s"}, oldest ${r.maxOverdue} days`} style={{fontSize:".66rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"2px 8px",fontWeight:700,whiteSpace:"nowrap"}}>📞 {r.maxOverdue}d overdue</span>}
                 {r.hasUnsent&&<span style={{fontSize:".66rem",background:"#fffbeb",color:"#b45309",border:"1px solid #fcd34d",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Not sent</span>}
+                {r.gapOff&&<span title="A project's billing milestones don't add up to its contract. Open the client to see which." style={{fontSize:".66rem",background:"#fdf2f8",color:"#be185d",border:"1px solid #f9a8d4",borderRadius:20,padding:"2px 8px",fontWeight:700,whiteSpace:"nowrap"}}>Billing ≠ Contract</span>}
                 {r.fullyPaid&&<span style={{fontSize:".66rem",background:"#f0fdf4",color:"#059669",border:"1px solid #6ee7b7",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Paid</span>}
               </span>
             );
@@ -27525,7 +27537,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
           const statusBadge=(
             <>
               {hasOverdue&&<span style={{fontSize:".68rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Overdue</span>}
-              {gapOff&&<span title={`Billing milestones ${contractGap<0?"are short of":"exceed"} the contract by ${fmt(Math.abs(contractGap))}. Open the project to fix.`} style={{fontSize:".68rem",background:"#fdf2f8",color:"#be185d",border:"1px solid #f9a8d4",borderRadius:20,padding:"2px 8px",fontWeight:700,whiteSpace:"nowrap"}}>Billing ≠ Contract</span>}
+              {gapOff&&<span title={row.vatMismatch?`The milestones' receipt type (VAT / non-VAT) doesn't match the project's: the client is billed ${fmt(total)} against a ${fmt(row.contract)} contract. Open the project to fix.`:`Billing milestones ${contractGap<0?"are short of":"exceed"} the contract by ${fmt(Math.abs(contractGap))}. Open the project to fix.`} style={{fontSize:".68rem",background:"#fdf2f8",color:"#be185d",border:"1px solid #f9a8d4",borderRadius:20,padding:"2px 8px",fontWeight:700,whiteSpace:"nowrap"}}>Billing ≠ Contract</span>}
               {hasUnsent&&<span title="A Draft milestone is past its due date and hasn't been sent" style={{fontSize:".68rem",background:"#fffbeb",color:"#b45309",border:"1px solid #fcd34d",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Not sent</span>}
               {fullyPaid&&<span style={{fontSize:".68rem",background:"#f0fdf4",color:"#059669",border:"1px solid #6ee7b7",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Paid</span>}
               {!hasOverdue&&!hasUnsent&&!fullyPaid&&milestoneCount>0&&<span style={{fontSize:".68rem",background:"#eff6ff",color:"#3b82f6",border:"1px solid #93c5fd",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Active</span>}
