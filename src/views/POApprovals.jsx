@@ -31,7 +31,8 @@ export default function POApprovals({prs=[],deals=[],role,session,approvePOs,dpG
   const narrow=vw<1024;
   const[dpFor,setDpFor]=useState(null);   // PO no. whose waiver box is open
   // "View lines" before Approve (Paulo, 2026-11-27): a PO can be ticked or
-  // approved only after its lines were opened on this screen. App-only review
+  // approved only after its lines were opened on this screen, one PO at a time
+  // (no "open all": Paulo removed it the same day so each PO is looked at). App-only review
   // step; the approver rules themselves stay in approve_po / po_require_approver.
   const[viewed,setViewed]=useState(()=>new Set());
   const[linesOpen,setLinesOpen]=useState(()=>new Set());
@@ -104,7 +105,6 @@ export default function POApprovals({prs=[],deals=[],role,session,approvePOs,dpG
   const pickedTotal=picked.reduce((s,p)=>s+p.gross,0);
   const canPick=p=>!held(p)&&viewed.has(p.no);
   const openLines=no=>{setViewed(v=>v.has(no)?v:new Set(v).add(no));setLinesOpen(o=>{const n=new Set(o);n.has(no)?n.delete(no):n.add(no);return n;});};
-  const openAllLines=()=>{const nos=shown.map(p=>p.no);setViewed(v=>{const n=new Set(v);nos.forEach(x=>n.add(x));return n;});setLinesOpen(o=>{const n=new Set(o);nos.forEach(x=>n.add(x));return n;});};
   const allShown=shown.some(canPick)&&shown.filter(canPick).every(p=>sel.has(p.no));
   const toggle=no=>setSel(prev=>{const n=new Set(prev);n.has(no)?n.delete(no):n.add(no);return n;});
   const toggleShown=()=>setSel(prev=>{const n=new Set(prev);shown.filter(canPick).forEach(p=>allShown?n.delete(p.no):n.add(p.no));return n;});
@@ -194,7 +194,6 @@ export default function POApprovals({prs=[],deals=[],role,session,approvePOs,dpG
             <label style={{display:"flex",alignItems:"center",gap:8,fontSize:".8rem",color:"#92400e",fontWeight:700,cursor:shown.some(canPick)?"pointer":"default",opacity:shown.some(canPick)?1:.5}}>
               <input type="checkbox" checked={allShown} disabled={!shown.some(canPick)} onChange={toggleShown} style={{width:20,height:20}}/> Select all reviewed
             </label>
-            <button type="button" onClick={openAllLines} style={{background:"none",border:"none",color:"#2563eb",fontWeight:700,fontSize:".76rem",cursor:"pointer",fontFamily:"inherit",padding:0}}>Open all lines</button>
           </div>}
           {shown.map(p=>{
             const h=held(p);
@@ -225,7 +224,7 @@ export default function POApprovals({prs=[],deals=[],role,session,approvePOs,dpG
           <table style={{width:"100%",borderCollapse:"collapse"}}>
             <thead><tr style={{background:"#f8fafc"}}>
               <th style={{...th,width:22}}><input type="checkbox" aria-label="Select all reviewed POs" title="Selects the POs whose lines you opened" checked={allShown} disabled={!shown.some(canPick)} onChange={toggleShown}/></th>
-              <th style={th}>PO <button type="button" onClick={openAllLines} style={{marginLeft:6,background:"none",border:"none",color:"#2563eb",fontWeight:700,fontSize:".64rem",cursor:"pointer",fontFamily:"inherit",padding:0,textTransform:"none",letterSpacing:0}}>Open all lines</button></th><th style={th}>Supplier / project</th><th style={th}>Requested by</th><th style={{...th,textAlign:"right"}}>Approx. total</th>
+              <th style={th}>PO</th><th style={th}>Supplier / project</th><th style={th}>Requested by</th><th style={{...th,textAlign:"right"}}>Approx. total</th>
             </tr></thead>
             <tbody>
               {shown.map(p=>([
