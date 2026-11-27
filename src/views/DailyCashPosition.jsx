@@ -3,6 +3,7 @@ import {today,uid,BANKS,emptyBankRow,emptyDayPosition,uiConfirm,uiPrompt,addDays
 import {arSummary} from "../core";
 import {LinkModal} from "./ExpenseMonitoring";
 import CollectionLinkModal from "./CollectionLink";
+import {bankLoanStatus,creditLineStatus} from "./LoansView";
 
 // ── Currency input: shows grouped digits, edits raw ────────────────────────────
 const CurrInp=({value,onChange,placeholder="—",style:sx={}})=>{
@@ -62,8 +63,12 @@ const WrapCell=({value,onType,placeholder})=>{
 // carry from day to day until they are marked cleared.
 function DailyCashPosition({
   cashPositions={},saveDayPos=()=>{},billings=[],wonDeals=[],deals=null,payables=[],loans=[],suppliers=[],subcons=[],userName="",
-  role="",username="",cashStale=false,payPays=[],canPay=false,onPayMany=null
+  role="",username="",cashStale=false,payPays=[],canPay=false,onPayMany=null,
+  // Running-balance cards (2026-11-26): each opens its page already showing what
+  // it sums (App's goCollect / goBills / Loans); Checks scrolls to the table here.
+  onGoCollect=null,onGoBills=null,onOpenLoans=null
 }){
+  const floatRef=useRef(null);
   const[selDate,setSelDate]=useState(today);
   // ── Edit rights & day lock (see cashCanEdit / cashDayLocked in shared.jsx) ──
   // Only Managers and the assigned preparer may save; a day locks for
@@ -369,17 +374,20 @@ function DailyCashPosition({
   const totalCashAll=opEnd+reserveBal;
 
   // ── Loan metrics (memo only) ──
+  // Same basis as Executive › Loans (LoansView): a bank loan owes principal −
+  // principal repaid, a credit line owes draws − principal repaid. Until
+  // 2026-11-26 this re-amortised each loan at its interest rate and counted a
+  // credit line's (blank) principal, so it ignored the BPI line's ₱2M drawn and
+  // showed ₱18.26M against the Loans page's ₱20.99M.
   const loanMetrics=useMemo(()=>{
-    const monthlyRate=l=>Number(l.interestRate||0)/100/12;
     let totalBalance=0,monthlyPaymentTotal=0;const loanRows=[];
     (loans||[]).filter(l=>l.status!=="Paid Off"&&l.status!=="Cancelled").forEach(l=>{
-      let balance=Number(l.principal||0);const mr=monthlyRate(l);
-      (l.payments||[]).slice().sort((a,b)=>a.date>b.date?1:-1).forEach(p=>{
-        const interest=balance*mr;balance=Math.max(0,balance-Math.max(0,Number(p.amount||0)-interest));
-      });
+      const line=l.kind==="credit_line";
+      const st=line?creditLineStatus(l):bankLoanStatus(l,today);
+      const balance=line?st.drawn:st.balance;
       const monthly=Number(l.monthlyPayment||0);
       totalBalance+=balance;monthlyPaymentTotal+=monthly;
-      loanRows.push({...l,remainingBalance:balance,monthly});
+      loanRows.push({...l,remainingBalance:balance,monthly,line,nextDue:line?null:st.nextDue,dueIn:line?null:st.dueIn,limit:line?st.limit:0});
     });
     return{totalBalance,monthlyPaymentTotal,loanRows};
   },[loans]);
@@ -856,13 +864,29 @@ function DailyCashPosition({
               {l:"Running Payables",v:payablesUnpaid,c:"#dc2626",sub:"Unpaid payables"},
               {l:"Running Loan Balance",v:outstandingLoan,c:C.blue,sub:"Excl. from cash total"},
               {l:"Total Checks to be Cleared",v:floatingTotal,c:"#b45309",sub:"Uncleared floating checks"},
-            ].map(({l,v,c,sub})=>(
-              <div key={l} style={{background:"#f8fafc",border:`1px solid ${C.grid}`,borderRadius:8,padding:"9px 12px"}}>
-                <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:".6px",color:"#94a3b8",fontWeight:700}}>{l}</div>
+            ].map(({l,v,c,sub},i)=>{
+              const go=[
+                onGoCollect&&(()=>onGoCollect("sent")),
+                onGoBills&&(()=>onGoBills()),
+                onOpenLoans,
+                ()=>{try{floatRef.current&&floatRef.current.scrollIntoView({behavior:"smooth",block:"start"});}catch{}},
+              ][i];
+              if(!go) return(
+                <div key={l} style={{background:"#f8fafc",border:`1px solid ${C.grid}`,borderRadius:8,padding:"9px 12px"}}>
+                  <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:".6px",color:"#94a3b8",fontWeight:700}}>{l}</div>
+                  <div style={{fontWeight:800,fontSize:"1rem",color:c,marginTop:2,fontVariantNumeric:"tabular-nums"}}>{peso(v)}</div>
+                  <div style={{fontSize:".6rem",color:"#cbd5e1",marginTop:1}}>{sub}</div>
+                </div>);
+              const where=["Open list in Billing","Open Bills","Open Loans","Go to checks"][i];
+              return(
+              <div key={l} role="button" tabIndex={0} title={where} onClick={go}
+                onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();go();}}}
+                style={{background:"#f8fafc",border:`1px solid ${C.grid}`,borderRadius:8,padding:"9px 12px",cursor:"pointer",position:"relative"}}>
+                <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:".6px",color:"#94a3b8",fontWeight:700,paddingRight:14}}>{l}</div>
                 <div style={{fontWeight:800,fontSize:"1rem",color:c,marginTop:2,fontVariantNumeric:"tabular-nums"}}>{peso(v)}</div>
-                <div style={{fontSize:".6rem",color:"#cbd5e1",marginTop:1}}>{sub}</div>
-              </div>
-            ))}
+                <div style={{fontSize:".6rem",color:"#94a3b8",marginTop:1}}>{sub} · <span style={{color:c,fontWeight:700}}>{where} ›</span></div>
+              </div>);
+            })}
           </div>
 
           {/* PAYABLES AGING & CASH COVERAGE — answers "can we actually pay this?" */}
@@ -1224,6 +1248,7 @@ function DailyCashPosition({
           const clearedRows=indexed.filter(x=>x.row.cleared);
           return(
           <>
+            <div ref={floatRef} style={{scrollMarginTop:70}}/>
             {sectionHdr("Floating Checks (uncleared)","#b45309",
               <span style={{fontWeight:800,fontSize:".72rem",color:"#fff"}}>{peso(floatingTotal)}</span>
             )}

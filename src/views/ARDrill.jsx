@@ -1,6 +1,6 @@
 import React,{useState,useMemo} from "react";
 import {Modal} from "../shared";
-import {milestoneBalanceParts, arAgeBucket, arDaysPastDue, arCallOrder} from "../core";
+import {milestoneBalanceParts, milestonePaid, arAgeBucket, arCallOrder} from "../core";
 
 // ─── AR AGING DRILL-DOWN (Billing page) ────────────────────────────────────
 // Clicking an AR Aging card lists the projects with money still to collect in
@@ -9,14 +9,15 @@ import {milestoneBalanceParts, arAgeBucket, arDaysPastDue, arCallOrder} from "..
 // opens the project's normal Billing window on that invoice with the usual
 // Log Payment form (same checks: balance, duplicates, offsets, mother POs).
 
-const BUCKETS={all:"All outstanding",unbilled:"Not yet sent to the client",current:"Current (not yet due)",d30:"1–30 days overdue",d60:"31–60 days overdue",d90:"61–90 days overdue",over90:"90+ days overdue"};
+const BUCKETS={all:"All outstanding",sent:"Running A/R (sent invoices)",overdue:"Overdue invoices",unsentLate:"Past due but never sent",unbilled:"Not yet sent to the client",current:"Current (not yet due)",d30:"1–30 days overdue",d60:"31–60 days overdue",d90:"61–90 days overdue",over90:"90+ days overdue"};
 const arPeso=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
 
-export default function ARDrill({bucket,billings=[],dealOf,canPay=false,onReceive,onClose}){
+export default function ARDrill({bucket,billings=[],dealOf,canPay=false,onReceive,onOpen=null,onClose}){
   const mob=typeof window!=="undefined"&&window.innerWidth<768;
   const[q,setQ]=useState("");
   const[open,setOpen]=useState(()=>new Set());
   const now=new Date();
+  const todayIso=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
 
   const projects=useMemo(()=>{
     const by={};
@@ -26,8 +27,19 @@ export default function ARDrill({bucket,billings=[],dealOf,canPay=false,onReceiv
       if(p.bal<=0.005) return;
       // A Draft hasn't been sent, so it is never "overdue" here (arAgeBucket).
       const unsent=b.status==="Draft";
-      const days=unsent?0:arDaysPastDue(b,now);
-      if(bucket!=="all"&&arAgeBucket(b,now)!==bucket) return;
+      // "sent" = the Daily Cash Position's Running A/R (arSummary): an unsent
+      // Draft with no payment isn't owed yet, so it is left out.
+      if(bucket==="sent"){ if(unsent&&milestonePaid(b)<=0) return; }
+      // Same rules as the "Needs your attention" counts (isBillingOverdue /
+      // isBillingUnsentLate): sent and past due; Draft and past due.
+      else if(bucket==="overdue"){ if(unsent||b.status==="Fully Paid"||!(b.dueDate&&b.dueDate<todayIso)) return; }
+      else if(bucket==="unsentLate"){ if(!unsent||!(b.dueDate&&b.dueDate<todayIso)) return; }
+      else if(bucket!=="all"&&arAgeBucket(b,now)!==bucket) return;
+      // Days late by calendar date (Manila), so an invoice due yesterday reads
+      // "1d overdue" at 7 AM too (arDaysPastDue counts from UTC midnight).
+      // A Draft is never "overdue" (it wasn't sent), except in the "past due but
+      // never sent" list, where how late it is the point.
+      const days=(unsent&&bucket!=="unsentLate")||!b.dueDate?0:Math.max(0,Math.round((Date.parse(todayIso)-Date.parse(b.dueDate))/864e5));
       const g=by[b.dealId]||(by[b.dealId]={dealId:b.dealId,deal:d,base:0,vat:0,ewt:0,bal:0,maxDays:0,inv:[]});
       g.base+=p.base;g.vat+=p.vat;g.ewt+=p.ewt;g.bal+=p.bal;g.maxDays=Math.max(g.maxDays,days);
       g.inv.push({ms:b,days,unsent,...p});
@@ -39,8 +51,15 @@ export default function ARDrill({bucket,billings=[],dealOf,canPay=false,onReceiv
   const qq=q.trim().toLowerCase();
   const rows=projects.filter(g=>!qq||[g.deal?.client,g.deal?.contact,g.deal?.ceNo,...g.inv.map(i=>i.ms.invoiceNo)].some(v=>String(v||"").toLowerCase().includes(qq)));
   const tot=rows.reduce((a,g)=>({base:a.base+g.base,vat:a.vat+g.vat,ewt:a.ewt+g.ewt,bal:a.bal+g.bal}),{base:0,vat:0,ewt:0,bal:0});
+  // A short, focused list opens expanded so each invoice's buttons are visible
+  // at once (2026-11-26); "All outstanding" stays collapsed.
+  const autoOpen=bucket!=="all"&&projects.length<=10;
+  React.useEffect(()=>{if(autoOpen) setOpen(new Set(projects.map(g=>g.dealId)));
+  // eslint-disable-next-line
+  },[bucket]);
   const toggle=id=>setOpen(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;});
-  const late=d=>d>0?<span style={{fontSize:".66rem",fontWeight:700,color:d>60?"#dc2626":d>30?"#ea580c":"#d97706",background:"#fff7ed",borderRadius:20,padding:"1px 8px",whiteSpace:"nowrap"}}>{d}d overdue</span>
+  const late=(d,draft)=>draft&&d>0?<span style={{fontSize:".66rem",fontWeight:700,color:"#b45309",background:"#fffbeb",borderRadius:20,padding:"1px 8px",whiteSpace:"nowrap"}}>not sent · {d}d late</span>
+    :d>0?<span style={{fontSize:".66rem",fontWeight:700,color:d>60?"#dc2626":d>30?"#ea580c":"#d97706",background:"#fff7ed",borderRadius:20,padding:"1px 8px",whiteSpace:"nowrap"}}>{d}d overdue</span>
     :<span style={{fontSize:".66rem",fontWeight:700,color:"#059669",background:"#f0fdf4",borderRadius:20,padding:"1px 8px"}}>not yet due</span>;
   const split=(x,small)=>(
     <div style={{display:"flex",flexWrap:"wrap",gap:"2px 12px",fontSize:small?".7rem":".74rem",color:"#475569"}}>
@@ -76,14 +95,14 @@ export default function ARDrill({bucket,billings=[],dealOf,canPay=false,onReceiv
               <div style={{textAlign:"right"}}>
                 <div style={{fontWeight:800,color:"#dc2626",fontSize:".95rem",whiteSpace:"nowrap"}}>{arPeso(g.bal)}</div>
                 <div style={{fontSize:".66rem",color:"#94a3b8",marginBottom:3}}>to collect</div>
-                {late(g.maxDays)}
+                {late(g.maxDays,g.inv.every(i=>i.unsent))}
               </div>
             </button>
             {isOpen&&g.inv.map(i=>(
               <div key={i.ms.id} style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center",justifyContent:"space-between",padding:"9px 12px",borderTop:"1px solid #f1f5f9",background:"#fcfcfd"}}>
                 <div style={{flex:"1 1 200px",minWidth:0}}>
                   <div style={{fontWeight:600,color:"#0f172a",fontSize:".8rem"}}>{i.ms.invoiceNo||"No invoice no."} · {i.ms.name||"Billing"}</div>
-                  <div style={{fontSize:".68rem",color:"#94a3b8",marginBottom:2}}>Due {i.ms.dueDate||"—"} · {i.ms.status||"—"} {i.unsent?<span style={{fontSize:".66rem",fontWeight:700,color:"#475569",background:"#f1f5f9",borderRadius:20,padding:"1px 8px",whiteSpace:"nowrap"}}>not sent yet</span>:late(i.days)}</div>
+                  <div style={{fontSize:".68rem",color:"#94a3b8",marginBottom:2}}>Due {i.ms.dueDate||"—"} · {i.ms.status||"—"} {i.unsent?(i.days>0?late(i.days,true):<span style={{fontSize:".66rem",fontWeight:700,color:"#475569",background:"#f1f5f9",borderRadius:20,padding:"1px 8px",whiteSpace:"nowrap"}}>not sent yet</span>):late(i.days)}</div>
                   {split(i,true)}
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:10,marginLeft:mob?0:"auto"}}>
@@ -91,6 +110,7 @@ export default function ARDrill({bucket,billings=[],dealOf,canPay=false,onReceiv
                     <div style={{fontWeight:800,color:"#0f172a",fontSize:".85rem",whiteSpace:"nowrap"}}>{arPeso(i.bal)}</div>
                     <div style={{fontSize:".62rem",color:"#94a3b8"}}>to collect</div>
                   </div>
+                  {onOpen&&<button onClick={()=>onOpen(g.dealId)} title="Open this project's billing window (send the invoice, edit, statement)" style={{background:"#fff",color:"#334155",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"6px 11px",fontFamily:"inherit",fontWeight:700,fontSize:".76rem",cursor:"pointer",whiteSpace:"nowrap"}}>{i.unsent?"Open to send":"Open project"}</button>}
                   {canPay&&i.ms.status!=="Cancelled"&&<button onClick={()=>onReceive(g.dealId,i.ms.id)} style={{background:"#059669",color:"#fff",border:"none",borderRadius:7,padding:"7px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".76rem",cursor:"pointer",whiteSpace:"nowrap"}}>💵 Receive payment</button>}
                 </div>
               </div>
