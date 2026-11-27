@@ -80,6 +80,7 @@ export default function CollectionLinkModal({m,billings=[],deals=[],linkedElsewh
       {picked.length>0&&(
         <div style={{fontSize:".78rem",marginTop:8,color:Math.abs(gap)<0.01?"#059669":"#b45309",fontWeight:700}}>
           {Math.abs(gap)<0.01?`✓ ${picked.length} payment(s) total ${f2(sum)}, same as the bank.`
+            :Math.abs(gap)<1?`⚠ Billing records ${f2(sum)}, ${f2(Math.abs(gap))} ${gap>0?"more":"less"} than reached the bank: a centavo rounding difference. Correct the payment amount in Billing to what reached the bank (${f2(m.amount)}).`
             :gap>0?`⚠ Billing records ${f2(sum)}, ${f2(gap)} more than reached the bank. Usually EWT the client withheld recorded as cash: fix the payments in Billing (record what reached the bank; set the invoice "with EWT").`
             :`⚠ Billing records ${f2(sum)}, ${f2(-gap)} less than reached the bank. A payment is missing in Billing, or it's on another row.`}
         </div>
