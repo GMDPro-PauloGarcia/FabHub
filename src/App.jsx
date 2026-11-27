@@ -7792,8 +7792,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       };
       // Surface a rejected write — the sheet already shows "✓ Saved" from the local
       // copy, so a silent console.error here meant the day never reached the server.
-      sbUpsert("cash_positions",payload,"date").catch(e=>{console.error("cash sync:",e.message);toastEmit(`Cash position ${date} did NOT save to the server: ${e?.message||"unknown error"} — it's only on this device. Tap 🔄 sync and save again.`,"error",12000);});
+      // Returns whether the server took it (callers that write something linked
+      // to the sheet, e.g. Loans "Mark paid", wait for this; the sheet ignores it).
+      return sbUpsert("cash_positions",payload,"date").then(ok=>ok!==false).catch(e=>{console.error("cash sync:",e.message);toastEmit(`Cash position ${date} did NOT save to the server: ${e?.message||"unknown error"} — it's only on this device. Tap 🔄 sync and save again.`,"error",12000);return false;});
     }
+    return Promise.resolve(true);
   };
   const upDeals    =useCallback(fn=>setDeals(p=>{const n=fn(p);persist(KEYS.deals,n);return n;}),[persist]);
   // A Manager waives (reason given) or restores the down payment on a deal, so
@@ -16779,6 +16782,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         })()}
         {finTab==="loans"&&role!=="Accounting"&&LOANS_V2&&(
           <LoansView loans={loans} cashPositions={cashPositions} today={today} isMobile={isMobile}
+            role={role} username={session?.username||""} userName={session?.name||""} saveDayPos={saveDayPos} cashDayIsCurrent={cashDayIsCurrent}
             canEdit={["Manager","Finance","FinanceAssistant"].includes(role)} canDelete={role==="Manager"}
             sample={loans.some(l=>l.sample)} onLoans={ls=>upLoans(()=>ls)}/>
         )}
