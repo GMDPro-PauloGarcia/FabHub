@@ -6146,11 +6146,11 @@ export default function App(){
   // full-row upsert pushed this device's whole copy: a phone that hadn't seen
   // Finance issue WO-0093 saved it back to Pending Approval and wiped the signature.
   // The database also refuses to move an issued WO back (trg_swo_aa_issued_no_revert).
-  const updateSWO=(id,changes)=>{
+  const updateSWO=(id,changes,{localOnly=false}={})=>{
     upSwos(ws=>ws.map(w=>{
       if(w.id!==id) return w;
       const nw={...w,...changes};
-      if(isSupabaseReady()){
+      if(!localOnly&&isSupabaseReady()){
         const before=swoToSb(w), after=swoToSb(nw), patch={};
         Object.keys(after).forEach(k=>{ if(k!=="id"&&k!=="created_at"&&JSON.stringify(after[k])!==JSON.stringify(before[k])) patch[k]=after[k]; });
         if(Object.keys(patch).length) sbUpdate("subcon_work_orders",id,patch).catch(e=>console.error("FabHub updateSWO:",e?.message));
@@ -23162,6 +23162,21 @@ function SubconWOView({jos=[],embedded=false,onEmbeddedDone,woDraft=null,clearWo
       toastEmit&&toastEmit(`${w.woNumber} signed — Finance (Paolo Gomez) signs next`,"success");
     }
   };
+  // Manager-only reopen of an issued WO (reopen_wo RPC, migration 20261127010000):
+  // reason 10+ chars, refused once the WO has a bill; back to Pending Approval with
+  // both signatures cleared. A save can't do this (trg_swo_aa_issued_no_revert).
+  const canReopenWo=canonRole(role)==="Manager";
+  const reopenWo=async w=>{
+    if(!isSupabaseReady()){toastEmit&&toastEmit("No server connection: a work order is reopened online only.","error",8000);return;}
+    const reason=await uiPrompt(`Reopen ${w.woNumber||"this work order"}?\n\nIt goes back to Pending Approval and BOTH signatures are cleared: Cost Control and Finance sign it again. Not possible once it has a bill.\n\nReason (10+ characters, sent to management):`,"");
+    if(reason==null) return;
+    if(String(reason).trim().length<10){toastEmit&&toastEmit("Give a reason of at least 10 characters.","error",7000);return;}
+    const{error}=await supabase.rpc("reopen_wo",{p_id:w.id,p_reason:String(reason).trim()});
+    if(error){toastEmit&&toastEmit(`Not reopened: ${error.message}`,"error",9000);return;}
+    // Local mirror only: the server already changed the row (the realtime echo confirms it).
+    updateSWO(w.id,{status:"Pending Approval",approvedBy:"",ccApprovedBy:null,ccApprovedAt:null,acctStatus:w.acctStatus==="For Accounting"?"":w.acctStatus},{localOnly:true});
+    toastEmit&&toastEmit(`${w.woNumber} reopened: Cost Control and Finance sign again`,"success");
+  };
   // Down payment gate (same rule as POs): no work order is issued on a deal the
   // client hasn't paid on, unless a Manager waived the down payment.
   const WO_ISSUED=["Issued","In Progress","Completed"];
@@ -23945,7 +23960,7 @@ function SubconWOView({jos=[],embedded=false,onEmbeddedDone,woDraft=null,clearWo
                           if(st==="Issued"&&woIssueBlocked(w)){toastEmit&&toastEmit(`${WO_SIGN_MSG} Use the Sign button.`,"error",8000);return;}
                           if(st==="Issued"&&(w.status==="Pending Approval"||w.status==="Draft")&&!canApprovePO(role,session?.name||"",w.requestedBy)){toastEmit&&toastEmit("Needs a Manager or the Procurement Manager to approve.","error");return;}
                           updateSWO(w.id,{status:st,...(st==="Issued"&&w.status!=="Issued"?{approvedBy:session?.name||"",acctStatus:w.acctStatus||"For Accounting"}:{})});}} style={{border:"1.5px solid #e2e8f0",borderRadius:6,padding:"3px 6px",fontFamily:"inherit",fontSize:".7rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
-                          {SWO_STATUSES.map(s=><option key={s}>{s}</option>)}
+                          {woStatusOptions(w.status).map(s=><option key={s}>{s}</option>)}
                         </select>
                         {w.acctStatus&&<span style={{fontSize:".62rem",background:(ACCT_CLR[w.acctStatus]||"#94a3b8")+"22",color:ACCT_CLR[w.acctStatus]||"#94a3b8",border:`1px solid ${(ACCT_CLR[w.acctStatus]||"#94a3b8")}44`,borderRadius:20,padding:"1px 8px",fontWeight:700}}>🧾 {w.acctStatus}{w.acctStatus==="Payment Ordered"&&w.paymentBank?` · ${(BANKS.find(b=>b.id===w.paymentBank)||{}).short||w.paymentBank}`:""}</span>}
                         <div style={{marginLeft:"auto",display:"flex",gap:6}}>
@@ -23975,6 +23990,7 @@ function SubconWOView({jos=[],embedded=false,onEmbeddedDone,woDraft=null,clearWo
                           {!PO_TIERS_ON&&(w.status==="Pending Approval"||w.status==="Draft")&&!canApprovePO(role,session?.name||"",w.requestedBy)&&(
                             <span style={{fontSize:".68rem",color:"#b45309",fontWeight:600,alignSelf:"center"}}>⏳ Awaiting approval</span>
                           )}
+                          {canReopenWo&&WO_ISSUED.includes(w.status)&&<button aria-label={`Reopen work order ${w.woNumber||""}`.trim()} title="Manager: send this issued WO back to Pending Approval (both signatures cleared)" onClick={()=>reopenWo(w)} style={{background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#c2410c",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>↩ Reopen</button>}
                           <button aria-label={`Print work order ${w.woNumber||""}`.trim()} title="Print work order" onClick={()=>printWO(w)} style={{background:"#eff6ff",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨 Print</button>
                           <button aria-label="Generate subcontractor contract" onClick={()=>printSubconContract(w)} title="Generate the Standard Subcontractor Contract" style={{background:"#0B2545",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>📄 Contract</button>
                           {role!=="QS"&&<button aria-label={`Edit work order ${w.woNumber||""}`.trim()} title="Edit work order" onClick={()=>openEdit(w)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏ Edit</button>}
