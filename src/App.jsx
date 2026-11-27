@@ -11720,7 +11720,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         {pageOn("costanalysis")&&<button onClick={()=>setPage("costanalysis")} style={{background:"#8b5cf6",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📈 Cost Analysis</button>}
       </div>
       {/* PO approvals: Cost Control approves POs up to ₱150,000 (2026-11-07). */}
-      <POApprovals prs={prs} deals={deals} role={role} session={session} approvePOs={approvePOs}/>
+      <POApprovals prs={prs} deals={deals} role={role} session={session} approvePOs={approvePOs} dpGate={id=><DpGate deal={deals.find(x=>x.id===id)} deals={deals} role={role} onWaiveDp={waiveDp} onCreditTerms={setClientCreditTerms}/>}/>
 
       {(()=>{
         const noBudget=wonDeals.filter(d=>!budgets[d.id]||(!budgets[d.id].Materials&&!budgets[d.id].Labor&&!budgets[d.id].Overhead&&!budgets[d.id].Subcon));
@@ -25014,7 +25014,7 @@ function ProcurementView2({jos=[],embedded=false,onEmbeddedDone,poDraft=null,cle
         <ErpStat tone="ok" label="Total Value" value={"Php "+totalValue.toLocaleString("en-PH",{minimumFractionDigits:0,maximumFractionDigits:0})} foot="materials value"/>
       </div>
       {/* Pending POs the viewer may approve, approved in bulk (hidden when none). */}
-      {approvePOs&&<POApprovals prs={prs} deals={allDeals||wonDeals} role={role} session={session} approvePOs={approvePOs}/>}
+      {approvePOs&&<POApprovals prs={prs} deals={allDeals||wonDeals} role={role} session={session} approvePOs={approvePOs} dpGate={id=>{const ds=allDeals||wonDeals;return <DpGate deal={ds.find(x=>x.id===id)} deals={ds} role={role} onWaiveDp={onWaiveDp} onCreditTerms={onCreditTerms}/>;}}/>}
 
       <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
         <select value={filterProj} onChange={e=>setFilterProj(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
