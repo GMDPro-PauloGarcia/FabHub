@@ -1,6 +1,6 @@
 import React,{useMemo,useState} from "react";
 import {cashMovements} from "../data/ledger";
-import {Modal,uid,toastEmit,uiConfirm,BANKS} from "../shared";
+import {Modal,uid,toastEmit,uiConfirm,uiPrompt,uiAlert,BANKS,cashCanEdit,cashDayLocked} from "../shared";
 import {supabase,isSupabaseReady,loanFromSb,loanToSb,loanEntryToSb} from "../supabaseClient";
 
 // ─── LOANS (Executive › Loans) — PREVIEW, 2026-11-08 ───────────────────────
@@ -28,7 +28,14 @@ export const bankLoanStatus=(l,today)=>{
   const principalPaid=pays.reduce((s,p)=>s+lnNum(p.principal),0);
   const interestPaid=pays.reduce((s,p)=>s+lnNum(p.interest),0);
   const balance=Math.max(0,lnNum(l.principal)-principalPaid);
-  const paidCount=pays.length;
+  // Installments paid, by amount: a "paid before FabHub" entry covering
+  // installments 1–39 is one entry but 39 installments. Counting entries put
+  // First Circle, Security Bank and the Stella L300 months behind ("Missed",
+  // next due in 2023) until 2026-11-27. Entry count only when there's no
+  // monthly amount on file.
+  const monthly=lnNum(l.monthlyPayment);
+  const paidTotal=pays.reduce((s,p)=>s+lnNum(p.principal)+lnNum(p.interest),0);
+  const paidCount=monthly>0?Math.floor(paidTotal/monthly+0.01):pays.length;
   const term=lnNum(l.termMonths)||0;
   const nextDue=balance>0&&l.firstDue?addMonths(l.firstDue,paidCount):null;
   const dueIn=nextDue?daysBetween(today,nextDue):null;
@@ -63,8 +70,17 @@ const lnGuessLoan=(loans,text,bank)=>{
 };
 const lnErr=e=>String(e?.message||e||"").replace(/^.*?ERROR:\s*/,"");
 
-export default function LoansView({loans=[],cashPositions={},today,canEdit=false,canDelete=false,isMobile=false,sample=false,onLoans}){
+export default function LoansView({loans=[],cashPositions={},today,canEdit=false,canDelete=false,isMobile=false,sample=false,onLoans,
+  role="",username="",userName="",saveDayPos=null,cashDayIsCurrent=null}){
   const[open,setOpen]=useState(null);
+  // "Mark paid" / "Add to cash sheet" (Paulo, 2026-11-27): records the payment
+  // AND writes its disbursement row on that day's Daily Cash Position, linked.
+  // Same rules as any sheet edit: Managers and the cash preparer only
+  // (cashCanEdit), a locked day only by a Manager with a reason (logged and sent
+  // to management by saveDayPos), and only from the server's latest copy of the
+  // day (cashDayIsCurrent).
+  const canSheet=canEdit&&!sample&&cashCanEdit(role,username)&&!!saveDayPos&&!!cashDayIsCurrent;
+  const[payForm,setPayForm]=useState(null);   // {loan, entry?} mark paid / put an entry on the sheet
   const[loanForm,setLoanForm]=useState(null);   // {kind, ...} add / edit a loan
   const[entryForm,setEntryForm]=useState(null); // {loanId, type, cashKey, ...} record a draw / payment
   const reload=async()=>{try{onLoans&&onLoans(await fetchLoans());}catch(e){toastEmit("Could not reload loans: "+lnErr(e),"error");}};
@@ -101,7 +117,8 @@ export default function LoansView({loans=[],cashPositions={},today,canEdit=false
   const Activity=({l})=>{
     const actions=canEdit&&!sample&&(<div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
       {l.kind==="credit_line"&&<button onClick={()=>setEntryForm({loanId:l.id,type:"draw",date:today})} style={lnBtn}>+ Draw</button>}
-      <button onClick={()=>setEntryForm({loanId:l.id,type:"payment",date:today})} style={lnBtn}>+ Payment</button>
+      {canSheet&&<button onClick={()=>setPayForm({loan:l})} style={{...lnBtn,background:LN.green,color:"#fff",borderColor:LN.green}}>✓ Mark paid</button>}
+      <button onClick={()=>setEntryForm({loanId:l.id,type:"payment",date:today})} style={lnBtn}>{canSheet?"Link a sheet row…":"+ Payment"}</button>
       <button onClick={()=>setLoanForm({...l})} style={lnBtn}>Edit loan</button>
     </div>);
     const rows=[...(l.draws||[]).map(d=>({...d,t:"Draw",amt:lnNum(d.amount),inn:true})),...(l.payments||[]).map(p=>({...p,t:"Payment",amt:lnNum(p.principal)+lnNum(p.interest)}))].sort((a,b)=>String(b.date).localeCompare(String(a.date)));
@@ -115,6 +132,7 @@ export default function LoansView({loans=[],cashPositions={},today,canEdit=false
         {!r.inn&&<span style={{color:LN.faint}}>principal {lnPeso(r.principal)} · interest {lnPeso(r.interest)}</span>}
         {r.note&&<span style={{color:LN.faint,fontStyle:"italic"}}>{r.note}</span>}
         <span style={{marginLeft:"auto"}}><CashChip x={r}/></span>
+        {canSheet&&!r.inn&&!r.cashKey&&r.id&&<button onClick={()=>setPayForm({loan:l,entry:r})} title="Write this payment on the Daily Cash Position for the day it left the bank" style={{...lnBtn,padding:"3px 9px",fontSize:".68rem"}}>Add to cash sheet</button>}
         {canDelete&&!sample&&r.id&&<button onClick={()=>delEntry(r)} title="Delete (Manager)" style={{border:"none",background:"none",color:LN.red,cursor:"pointer",fontSize:".8rem"}}>✕</button>}
       </div>))}
     </div>);
@@ -198,7 +216,8 @@ export default function LoansView({loans=[],cashPositions={},today,canEdit=false
                 <td style={td}>{lnPeso(l.monthlyPayment)}</td>
                 <td style={{...td,whiteSpace:"nowrap"}}>{s.nextDue||"—"}</td>
                 <td style={{...td,whiteSpace:"nowrap"}}>{s.term?`${s.paidCount} of ${s.term}`:s.paidCount}</td>
-                <td style={td}><Pill state={s.state} dueIn={s.dueIn}/></td>
+                <td style={td}><Pill state={s.state} dueIn={s.dueIn}/>
+                  {canSheet&&s.balance>0&&<div><button onClick={e=>{e.stopPropagation();setPayForm({loan:l});}} style={{...lnBtn,marginTop:6,background:LN.green,color:"#fff",borderColor:LN.green,whiteSpace:"nowrap"}}>✓ Mark paid</button></div>}</td>
               </tr>
               {open===l.id&&<tr><td colSpan={8} style={{padding:0}}><Activity l={l}/></td></tr>}
             </React.Fragment>))}
@@ -206,6 +225,8 @@ export default function LoansView({loans=[],cashPositions={},today,canEdit=false
         </table>
       </div>
       {loanForm&&<LoanForm init={loanForm} onClose={()=>setLoanForm(null)} onSaved={()=>{setLoanForm(null);reload();}}/>}
+      {payForm&&<PayForm init={payForm} cashPositions={cashPositions} today={today} isMgr={role==="Manager"} userName={userName}
+        saveDayPos={saveDayPos} cashDayIsCurrent={cashDayIsCurrent} onClose={()=>setPayForm(null)} onSaved={()=>{setPayForm(null);reload();}}/>}
       {entryForm&&<EntryForm init={entryForm} loans={loans} cashPositions={cashPositions} linkedKeys={linkedKeys} today={today} onClose={()=>setEntryForm(null)} onSaved={()=>{setEntryForm(null);reload();}}/>}
       <div style={{fontSize:".7rem",color:LN.faint,marginTop:10}}>Only principal lowers a balance. Interest is a finance cost in the P&L. Employee advances and SSS / Pag-IBIG loan remittances are not GMD loans and are kept out of this page.</div>
     </div>
@@ -328,5 +349,100 @@ function EntryForm({init,loans,cashPositions,linkedKeys,today,onClose,onSaved}){
     {!draw&&f.onSheet&&f.cashKey&&Math.abs((Number(f.principal)||0)+(Number(f.interest)||0)-(Number(f.amount)||0))>0.009&&<div style={{fontSize:".72rem",color:"#b91c1c",fontWeight:700,marginBottom:8}}>Principal + interest (₱{((Number(f.principal)||0)+(Number(f.interest)||0)).toLocaleString("en-PH")}) is not the cash-sheet amount (₱{Number(f.amount).toLocaleString("en-PH")}).</div>}
     <LnField label={f.onSheet?"Note (optional)":"Note (required)"}><input value={f.note||""} onChange={e=>set("note",e.target.value)} placeholder={f.onSheet?"":"e.g. Balance as of 11 Aug per BPI statement / paid before FabHub"} style={lnInp}/></LnField>
     <div style={{display:"flex",justifyContent:"flex-end",gap:8}}><button onClick={onClose} style={{...lnSave,background:"#f1f5f9",color:"#475569"}}>Cancel</button><button disabled={busy} onClick={save} style={lnSave}>{busy?"Saving…":"Save"}</button></div>
+  </Modal>);
+}
+
+// ─── Mark paid: loan payment + its Daily Cash Position row, in one step ─────
+// New payment: the installment's principal / interest (suggested, editable) is
+// recorded on the loan and a disbursement row (lender, installment, bank,
+// amount, tagged "Loan / financing") is added to the chosen day's sheet, linked
+// by cash_key. Existing payment not on the sheet ("Add to cash sheet"): the row
+// is added for its amount and the entry is linked to it. The sheet is written
+// first (that is the money); if the loan entry then fails, the row stays on the
+// sheet and shows in the "to link" list above.
+const lnBankGuess=(loan)=>{
+  const last=[...(loan.payments||[])].reverse().find(p=>p.bank);
+  if(last&&BANKS.some(b=>b.id===last.bank)) return last.bank;
+  const ln=String(loan.lender||"").toLowerCase();
+  return (BANKS.find(b=>ln.startsWith(b.short.toLowerCase())||ln.startsWith(b.name.toLowerCase()))||{}).id||"";
+};
+function PayForm({init,cashPositions,today,isMgr,userName,saveDayPos,cashDayIsCurrent,onClose,onSaved}){
+  const loan=init.loan, ent=init.entry||null;
+  const st=bankLoanStatus(loan,today);
+  const instNo=ent?null:st.paidCount+1;
+  const sheetDays=useMemo(()=>Object.keys(cashPositions||{}).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d)).sort().reverse(),[cashPositions]);
+  const[f,setF]=useState(()=>{
+    const amt=ent?lnNum(ent.principal)+lnNum(ent.interest):lnNum(loan.monthlyPayment);
+    // Split: from the loan's rate when it has one (interest on the balance);
+    // otherwise the last regular installment's split (fixed-amortization loans
+    // like Security Bank and First Circle repeat it every month).
+    const lastReg=[...(loan.payments||[])].filter(p=>!p.void&&Math.abs(lnNum(p.principal)+lnNum(p.interest)-amt)<0.01).sort((a,b)=>String(b.date).localeCompare(String(a.date)))[0];
+    const sp=ent?{principal:lnNum(ent.principal),interest:lnNum(ent.interest)}
+      :Number(loan.interestRate)>0?lnSplit(loan,amt,"",today)
+      :lastReg?{principal:lnNum(lastReg.principal),interest:lnNum(lastReg.interest)}:{principal:amt,interest:0};
+    const date=ent?(cashPositions[ent.date]?ent.date:""):(cashPositions[today]?today:"");
+    return{date,bank:ent&&ent.bank?ent.bank:lnBankGuess(loan),ref:"",...sp};
+  });
+  const[busy,setBusy]=useState(false);
+  const set=(k,v)=>setF(x=>({...x,[k]:v}));
+  const amt=Math.round(((Number(f.principal)||0)+(Number(f.interest)||0))*100)/100;
+  const locked=!!f.date&&cashDayLocked(f.date);
+  const hasSheet=!!f.date&&!!cashPositions[f.date];
+  const label=`${loan.name||"Loan"} amortization${instNo?` #${instNo}`:""}${f.ref.trim()?` · ref ${f.ref.trim()}`:""}`;
+  const save=async()=>{
+    if(busy) return;
+    if(!f.date){await uiAlert("Pick the day the money left the bank.");return;}
+    if(!hasSheet){await uiAlert(`There's no cash sheet for ${f.date} yet. Open Cash Position, start that day's sheet, then mark the payment here.`);return;}
+    if(!BANKS.some(b=>b.id===f.bank)){await uiAlert("Pick the bank it was paid from.");return;}
+    if(!(amt>0)){await uiAlert("Enter the amount paid (principal + interest).");return;}
+    if(locked&&!isMgr){await uiAlert(`${f.date} is locked. Only a Manager can add to a locked day. Ask a Manager, or pick today's sheet.`);return;}
+    let pastEdit=null;
+    if(locked){
+      const why=await uiPrompt({title:`${f.date} is locked`,tone:"warning",confirmLabel:"Add to locked day",message:"This cash-position day has locked. As a Manager you can still add the loan payment; the reason is kept in the Audit Trail and sent to management.\n\nWhy? (e.g. Security Bank auto-debit, missed on the sheet)"});
+      if(!why||!String(why).trim()) return;
+      pastEdit={reason:String(why).trim()};
+    }
+    setBusy(true);
+    try{
+      const fresh=await cashDayIsCurrent(f.date);
+      if(!fresh.ok){await uiAlert(fresh.why);return;}
+      const day=cashPositions[f.date];
+      const row={id:uid(),bank:f.bank,payee:loan.lender||"",particulars:label,amount:String(amt),noBill:"Loan / financing"};
+      const at=new Date().toISOString();
+      const entry={at,by:userName||"—",action:"Edited",changes:[{field:`Loan payment from Loans · ${loan.lender||""} ${label} ₱${amt.toLocaleString("en-PH",{minimumFractionDigits:2})}`,note:true}]};
+      if(pastEdit) entry.pastEdit=pastEdit;
+      const ok=await saveDayPos(f.date,{...day,disbursements:{...(day.disbursements||{}),manual:[...(day.disbursements?.manual||[]),row]},
+        audit:[...(Array.isArray(day.audit)?day.audit:[]),entry],savedAt:at});
+      if(ok===false){await uiAlert(`The ${f.date} cash sheet didn't reach the server, so the loan payment wasn't recorded. If the row shows up on the sheet once you're back online, link it from "Link a sheet row…"; otherwise try again.`);return;}
+      const cashKey=`${f.date}#out#${row.id}`;
+      const{error}=ent
+        ?await supabase.from("loan_payments").update({cash_key:cashKey,cash_date:f.date,bank:f.bank}).eq("id",ent.id)
+        :await supabase.from("loan_payments").insert(loanEntryToSb({id:uid(),loanId:loan.id,type:"payment",date:f.date,bank:f.bank,
+            principal:Number(f.principal)||0,interest:Number(f.interest)||0,cashKey,cashDate:f.date,note:label}));
+      if(error){toastEmit(`The row is on the ${f.date} cash sheet, but the loan entry didn't save: ${lnErr(error)}. Link it from "Link a sheet row…".`,"error",12000);onSaved();return;}
+      toastEmit(`✓ ${loan.lender} ₱${amt.toLocaleString("en-PH")} recorded and added to the ${f.date} cash sheet`,"success");
+      onSaved();
+    }finally{setBusy(false);}
+  };
+  return(<Modal open onClose={onClose} title={ent?"Add this payment to the cash sheet":`Mark paid · ${loan.lender}`}>
+    <div style={{fontSize:".78rem",color:"#475569",marginBottom:10,lineHeight:1.5}}>
+      {ent?<>Payment of <b>₱{amt.toLocaleString("en-PH")}</b> recorded on {ent.date} isn't on the Daily Cash Position. Pick the day it actually left the bank (check the bank statement).</>
+        :<>{loan.name||"Loan"}{instNo?` · installment ${instNo}${st.term?` of ${st.term}`:""}`:""} · balance ₱{Math.round(st.balance).toLocaleString("en-PH")}{st.nextDue?` · due ${st.nextDue}`:""}</>}
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}>
+      <LnField label="Paid on (cash sheet day)" hint={!f.date?"":!hasSheet?"No sheet for this day yet":locked?(isMgr?"Locked: you'll be asked for a reason":"Locked: a Manager must add it"):"Open day"}>
+        <input type="date" value={f.date} max={today} onChange={e=>set("date",e.target.value)} list="ln-sheet-days" style={lnInp}/>
+        <datalist id="ln-sheet-days">{sheetDays.slice(0,60).map(d=><option key={d} value={d}/>)}</datalist>
+      </LnField>
+      <LnField label="Paid from"><select value={f.bank} onChange={e=>set("bank",e.target.value)} style={lnInp}><option value="">Choose bank…</option>{BANKS.map(b=><option key={b.id} value={b.id}>{b.short}</option>)}</select></LnField>
+      <LnField label="Principal (₱)" hint="Lowers the balance"><input type="number" value={f.principal??""} disabled={!!ent} onChange={e=>set("principal",e.target.value)} style={lnInp}/></LnField>
+      <LnField label="Interest (₱)" hint="Finance cost in the P&L"><input type="number" value={f.interest??""} disabled={!!ent} onChange={e=>set("interest",e.target.value)} style={lnInp}/></LnField>
+    </div>
+    {!ent&&<LnField label="Reference (optional)" hint="Bank ref / debit memo no."><input value={f.ref} onChange={e=>set("ref",e.target.value)} style={lnInp}/></LnField>}
+    <div style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontSize:".74rem",color:"#334155",marginBottom:10}}>
+      Adds to the <b>{f.date||"—"}</b> cash sheet, money out: <b>{loan.lender}</b> · {label} · {(BANKS.find(b=>b.id===f.bank)||{}).short||"—"} · <b>₱{amt.toLocaleString("en-PH",{minimumFractionDigits:2})}</b>
+    </div>
+    <div style={{display:"flex",justifyContent:"flex-end",gap:8}}><button onClick={onClose} style={{...lnSave,background:"#f1f5f9",color:"#475569"}}>Cancel</button>
+      <button disabled={busy} onClick={save} style={{...lnSave,background:"#047857"}}>{busy?"Saving…":ent?"Add to cash sheet":"Mark paid"}</button></div>
   </Modal>);
 }
