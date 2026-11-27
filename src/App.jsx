@@ -12,6 +12,7 @@ import DailyActivityModal,{openDailyActivity} from "./views/DailyActivity";
 import MultiInvoicePay from "./views/MultiInvoicePay";
 import CollectionsLog from "./views/CollectionsLog";
 import {buildOrders,payIsOpen,payBalance} from "./data/ledger";
+import {bankLoanSchedule} from "./data/loanSchedule";
 import {fmt,addPrintClose,docLogo,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,dropPhantomCashDays,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable,HIDDEN_NAV_IDS,AP_HIDDEN,WAREHOUSE_HIDDEN,isHiddenView,HIDDEN_FIN_TABS,HIDDEN_PIPE_TABS,pageOn,cashCanEdit,ProjectSelect,setProjectSearchIndex,setLanding,takeLanding} from './shared';
 import {T} from './theme';
 import {Icon,NavIcon} from './icons';
@@ -3541,17 +3542,33 @@ function CashFlowView({billings,payables,vouchers,loans,cashPositions,setPage,Wr
   commit.flows.forEach(x=>flows.push({date:parse(x.date),amt:x.amt,dir:"out",label:x.label,ref:x.ref}));
   const commit30=commit.flows.filter(x=>parse(x.date)<=today+30*DAY).reduce((s,x)=>s+x.amt,0);
   const horizonEnd=today+(WEEKS+4)*7*DAY;
+  // Loan amortizations from the same payment schedule the Loans page shows
+  // (bankLoanSchedule): each unpaid installment on its due date; an overdue one
+  // is owed now, so it goes on today. Before 2026-11-27 this used the release
+  // date's day of month, never subtracted principal/interest payments, and
+  // dropped missed installments, so it disagreed with Loans.
   (loans||[]).forEach(l=>{
+    if(l.kind==="credit_line") return;
     const mp=Number(l.monthlyPayment)||0; if(mp<=0) return;
-    let bal=(Number(l.principal)||0)-(l.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
-    if(bal<=0.5) return;
+    const{rows,st}=bankLoanSchedule(l,todayIso);
+    if(st.balance<=0.5) return;
+    if(rows.length){
+      rows.filter(r=>r.state!=="paid").forEach(r=>{
+        const d=parse(r.due+"T00:00:00"); if(d==null||d>horizonEnd) return;
+        flows.push({date:Math.max(d,today),amt:r.amount,dir:"out",label:l.lender||"Loan",ref:d<today?`Amortization #${r.no} (overdue since ${r.due})`:`Amortization #${r.no}`});
+      });
+      return;
+    }
+    // No schedule on file (first due date / term missing): monthly on the
+    // release date's day, as before, until the loan's schedule is filled in.
+    let bal=st.balance;
     const dd=l.disbursedDate?new Date(l.disbursedDate):start; const day=dd.getDate();
     let d=new Date(start.getFullYear(),start.getMonth(),day); d.setHours(0,0,0,0);
     if(d.getTime()<today) d=new Date(start.getFullYear(),start.getMonth()+1,day);
     let guard=0;
     while(d.getTime()<=horizonEnd&&bal>0.5&&guard++<24){
       const amt=Math.min(mp,bal);
-      flows.push({date:d.getTime(),amt,dir:"out",label:l.lender||"Loan",ref:"Amortization"});
+      flows.push({date:d.getTime(),amt,dir:"out",label:l.lender||"Loan",ref:"Amortization (no schedule on file)"});
       bal-=amt; d=new Date(d.getFullYear(),d.getMonth()+1,day);
     }
   });

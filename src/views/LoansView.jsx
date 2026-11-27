@@ -2,6 +2,8 @@ import React,{useMemo,useState} from "react";
 import {cashMovements} from "../data/ledger";
 import {Modal,uid,toastEmit,uiConfirm,uiPrompt,uiAlert,BANKS,cashCanEdit,cashDayLocked} from "../shared";
 import {supabase,isSupabaseReady,loanFromSb,loanToSb,loanEntryToSb} from "../supabaseClient";
+import {bankLoanStatus,bankLoanSchedule} from "../data/loanSchedule";
+export {bankLoanStatus,bankLoanSchedule};
 
 // ─── LOANS (Executive › Loans) — PREVIEW, 2026-11-08 ───────────────────────
 // Two kinds of borrowing, as Paulo described them:
@@ -19,61 +21,7 @@ const lnPeso=v=>"₱"+Math.round(lnNum(v)).toLocaleString("en-PH");
 const lnShort=v=>{const n=lnNum(v);return n>=1e6?"₱"+(n/1e6).toFixed(2).replace(/\.?0+$/,"")+"M":n>=1e3?"₱"+Math.round(n/1e3)+"K":"₱"+Math.round(n);};
 const LN={ink:"#0f172a",muted:"#475569",faint:"#64748b",line:"#e2e8f0",navy:"#0B2545",red:"#b91c1c",amber:"#b45309",green:"#047857",blue:"#2563eb"};
 const LOAN_TEXT=/(proceed.*loan|loan.*proceed|credit\s*line|interest\s*bpi|bank\s*loan|amorti[sz]ation|loan\s*bpi|bpi\s*loan)/i;
-// Calendar math on the date string itself: the old version went through local
-// midnight → toISOString, which in Manila (UTC+8) gave the day before. A 31st
-// due date lands on the month's last day (Jan 31 + 1 → Feb 28), not March.
-const addMonths=(iso,n)=>{const[y,m,d]=String(iso).slice(0,10).split("-").map(Number);const t=new Date(Date.UTC(y,m-1+n,1));
-  const last=new Date(Date.UTC(t.getUTCFullYear(),t.getUTCMonth()+1,0)).getUTCDate();t.setUTCDate(Math.min(d,last));return t.toISOString().slice(0,10);};
-const daysBetween=(a,b)=>Math.round((new Date(b+"T00:00:00")-new Date(a+"T00:00:00"))/86400000);
 
-// A bank loan's position today: principal paid, balance, months paid, next due.
-export const bankLoanStatus=(l,today)=>{
-  const pays=(l.payments||[]).filter(p=>!p.void);
-  const principalPaid=pays.reduce((s,p)=>s+lnNum(p.principal),0);
-  const interestPaid=pays.reduce((s,p)=>s+lnNum(p.interest),0);
-  const balance=Math.max(0,lnNum(l.principal)-principalPaid);
-  // Installments paid, by amount: a "paid before FabHub" entry covering
-  // installments 1–39 is one entry but 39 installments. Counting entries put
-  // First Circle, Security Bank and the Stella L300 months behind ("Missed",
-  // next due in 2023) until 2026-11-27. Entry count only when there's no
-  // monthly amount on file.
-  const monthly=lnNum(l.monthlyPayment);
-  const paidTotal=pays.reduce((s,p)=>s+lnNum(p.principal)+lnNum(p.interest),0);
-  const paidCount=monthly>0?Math.floor(paidTotal/monthly+0.01):pays.length;
-  const term=lnNum(l.termMonths)||0;
-  const nextDue=balance>0&&l.firstDue?addMonths(l.firstDue,paidCount):null;
-  const dueIn=nextDue?daysBetween(today,nextDue):null;
-  const state=balance<=0?"paid":dueIn==null?"no-schedule":dueIn<0?"missed":dueIn<=3?"due":"ok";
-  return{principalPaid,interestPaid,balance,paidCount,term,nextDue,dueIn,state};
-};
-// A bank loan's payment schedule (Paolo Gomez, 2026-11-27): one row per
-// installment, due monthly from firstDue, for termMonths. Installments are
-// covered in order by what has been paid (by amount, like bankLoanStatus), so a
-// "paid before FabHub" lump entry ticks off many rows. The date shown is the
-// payment entry that completed the installment. Equal installments: a bank's
-// own amortization table can differ month to month; the amount here is the
-// loan's monthly payment.
-export const bankLoanSchedule=(l,today)=>{
-  const st=bankLoanStatus(l,today);
-  const monthly=lnNum(l.monthlyPayment);
-  if(!l.firstDue||!(st.term>0)) return{rows:[],st};
-  const pays=(l.payments||[]).filter(p=>!p.void).map(p=>({...p,amt:lnNum(p.principal)+lnNum(p.interest)}))
-    .sort((a,b)=>String(a.date).localeCompare(String(b.date)));
-  let cum=0,pi=0;const rows=[];
-  for(let i=1;i<=st.term;i++){
-    const due=addMonths(l.firstDue,i-1);
-    let paid=null;
-    if(i<=st.paidCount){
-      // Walk the payments until they add up to i installments.
-      while(pi<pays.length&&cum+0.01<i*monthly){cum+=pays[pi].amt;pi++;}
-      paid=pays[Math.max(0,pi-1)]||null;
-    }
-    const dueIn=daysBetween(today,due);
-    const state=i<=st.paidCount||st.balance<=0?"paid":i===st.paidCount+1?(dueIn<0?"late":dueIn<=3?"due":"next"):dueIn<0?"late":"upcoming";
-    rows.push({no:i,due,amount:monthly,state,dueIn,paidOn:paid?paid.date:null,onSheet:paid?!!paid.cashKey:null});
-  }
-  return{rows,st};
-};
 // A credit line's position today: drawn = draws − principal repaid.
 export const creditLineStatus=l=>{
   const draws=(l.draws||[]).reduce((s,d)=>s+lnNum(d.amount),0);
@@ -318,11 +266,20 @@ function LoanForm({init,onClose,onSaved}){
   const[busy,setBusy]=useState(false);
   const cl=f.kind==="credit_line";
   const set=(k,v)=>setF(x=>({...x,[k]:v}));
+  // Equal monthly installment from amount, yearly rate and term (a suggestion:
+  // banks round differently and some add fees, so their figure wins).
+  const pmt=(()=>{const P=Number(f.principal)||0,n=Number(f.termMonths)||0,r=(Number(f.interestRate)||0)/1200;
+    if(cl||!(P>0)||!(n>0)) return 0;const v=r>0?P*r/(1-Math.pow(1+r,-n)):P/n;return Math.round(v*100)/100;})();
   const save=async()=>{
     if(!isSupabaseReady()){toastEmit("Offline: not saved","error");return;}
     if(!String(f.lender||"").trim()){toastEmit("Enter the bank","error");return;}
     if(cl&&!(Number(f.limit)>0)){toastEmit("Enter the credit limit","error");return;}
     if(!cl&&!(Number(f.principal)>0)){toastEmit("Enter the amount borrowed","error");return;}
+    // The payment schedule is built from these three (Paolo Gomez, 2026-11-27):
+    // a bank loan isn't saved without them, so every loan gets its schedule.
+    if(!cl&&!(Number(f.termMonths)>0)){toastEmit("Enter the term in months: the payment schedule is built from it","error");return;}
+    if(!cl&&!(Number(f.monthlyPayment)>0)){toastEmit("Enter the monthly payment (from the bank's amortization schedule)","error");return;}
+    if(!cl&&!f.firstDue){toastEmit("Enter the first payment due date: the schedule runs monthly from it","error");return;}
     setBusy(true);
     const{error}=await supabase.from("loans").upsert(loanToSb({...f,id:f.id||uid()}),{onConflict:"id"});
     setBusy(false);
@@ -340,7 +297,7 @@ function LoanForm({init,onClose,onSaved}){
       {!cl&&<>
         <LnField label="Released on"><input type="date" value={f.disbursedDate||""} onChange={e=>set("disbursedDate",e.target.value)} style={lnInp}/></LnField>
         <LnField label="Term (months)"><input type="number" value={f.termMonths||""} onChange={e=>set("termMonths",e.target.value)} style={lnInp}/></LnField>
-        <LnField label="Monthly payment (₱)"><input type="number" value={f.monthlyPayment||""} onChange={e=>set("monthlyPayment",e.target.value)} style={lnInp}/></LnField>
+        <LnField label="Monthly payment (₱)" hint={pmt>0&&Math.abs(pmt-Number(f.monthlyPayment||0))>1?<>Standard amortization: ₱{pmt.toLocaleString("en-PH",{minimumFractionDigits:2})} <button type="button" onClick={()=>set("monthlyPayment",String(pmt))} style={{border:"none",background:"none",color:"#2563eb",fontWeight:700,cursor:"pointer",padding:0,fontSize:"inherit",fontFamily:"inherit"}}>Use</button> · use the bank's figure if it differs</>:"From the bank's amortization schedule"}><input type="number" value={f.monthlyPayment||""} onChange={e=>set("monthlyPayment",e.target.value)} style={lnInp}/></LnField>
         <LnField label="First payment due" hint="Next due dates follow monthly from this date"><input type="date" value={f.firstDue||""} onChange={e=>set("firstDue",e.target.value)} style={lnInp}/></LnField>
       </>}
     </div>
