@@ -1396,6 +1396,32 @@ export const dealDpClear = (deal, deals = []) => {
       || (parent.standbyPO && deals.some(s => s.parentDealId === parent.id && _paidOrWaived(s))))) return true;
   return !!deal.standbyPO && deals.some(c => c.parentDealId === deal.id && _paidOrWaived(c));
 };
+// The rule is a prompt on an awarded project (Paulo, 2026-11-27: "if a project is
+// awarded we can start creating Work Orders and Purchase Orders; it is the job of
+// the other departments to make sure we can fund / collect"). Not clear + awarded
+// (the deal, or its parent for a sub-project) = whoever issues confirms and gives a
+// reason (DP_OVERRIDE_MIN+ chars): logged and sent to management. Not awarded = still
+// refused. Mirrors deal_dp_awarded() / po_require_dp() / swo_require_dp() and
+// approve_po(po, reason) / sign_wo(id, reason), migration
+// 20261128010000_dp_rule_prompt_on_awarded.sql. Keep in sync.
+export const DP_OVERRIDE_MIN = 10;
+export const dealDpAwarded = (deal, deals = []) => {
+  if (!deal) return false;
+  if (WON_STAGES.includes(deal.stage)) return true;
+  const parent = deal.parentDealId && deals.find(d => d.id === deal.parentDealId);
+  return !!(parent && WON_STAGES.includes(parent.stage));
+};
+// The prompt shown before issuing. Returns the reason (trimmed, DP_OVERRIDE_MIN+
+// chars) or null when cancelled / too short. `ask` is uiPrompt.
+export const askDpOverride = async (ask, { what, deal, amount, toast }) => {
+  const label = `${deal?.ceNo || "this project"}${deal?.client ? " · " + deal.client : ""}`;
+  const r = await ask(`The client hasn't paid anything yet on ${label}.\n\nIssue ${what} anyway? GMD fronts${amount ? " ₱" + Number(amount).toLocaleString("en-PH", { maximumFractionDigits: 2 }) : " the cost"} until the client pays. Management is told on Telegram so Sales / Finance can collect.\n\nReason (${DP_OVERRIDE_MIN}+ characters), e.g. "Client PO 4500123 received, pays 30 days after delivery":`, "");
+  if (r == null) return null;
+  const t = String(r).trim();
+  if (t.length < DP_OVERRIDE_MIN) { toast && toast(`Not issued: give a reason of at least ${DP_OVERRIDE_MIN} characters.`, "error", 8000); return null; }
+  return t;
+};
+export const DP_NOT_AWARDED_MSG = (deal) => `${deal?.ceNo || "This project"} is not awarded yet: no PO or work order is issued before award. Move the deal to Kickoff when it's won, or ask a Manager to waive the down payment.`;
 // "No approved PRF = no project PO" (Paulo, 2026-11-22). From 1 Dec 2026 (Manila)
 // a PO line on a client project is issued only when it comes from an approved PRF
 // (prfLineId, set by the Order Board) or a Manager overrode the rule for that PO.
