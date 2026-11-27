@@ -2015,6 +2015,15 @@ export const recomputePayableFromPayments=(p,pays)=>{
 };
 
 export const SWO_STATUSES=["Draft","Pending Approval","Issued","In Progress","Completed","Cancelled"];
+// Once a WO is issued its status only moves forward (or to Cancelled): the database
+// keeps an issued WO from being moved back by a save (trg_swo_aa_issued_no_revert,
+// migration 20261127010000). A Manager reopens one with the reopen_wo RPC. Keep in sync.
+const WO_STATUS_RANK={"Issued":1,"In Progress":2,"Completed":3};
+export const woStatusRank=s=>WO_STATUS_RANK[s]||0;
+export const woStatusOptions=orig=>{
+  const r=woStatusRank(orig);
+  return r?SWO_STATUSES.filter(s=>s==="Cancelled"||s===orig||woStatusRank(s)>=r):SWO_STATUSES;
+};
 
 export const SWO_STATUS_CLR={Draft:"#94a3b8","Pending Approval":"#f59e0b",Issued:"#6366f1","In Progress":"#3b82f6",Completed:"#10b981",Cancelled:"#ef4444"};
 
