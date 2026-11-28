@@ -1923,7 +1923,10 @@ export const PO_TIERS_ON=true;
 // Mirrors po_split_total() / po_line_approver_name() (migration 20261114030000).
 // Raised to ₱150,000 (same as Cost Control) on 2026-11-22 (procurement audit:
 // she had approved no PO since her tier went live). Migration 20261123010000.
-export const PO_PROC_MGR_LIMIT=150000;
+// REMOVED 2026-11-28 (Paulo): Cost Control approves POs, not the team that buys
+// (and she had approved none in two weeks). 0 = no Procurement Manager tier.
+// Migration 20261128110000_po_approval_cost_control_only.sql.
+export const PO_PROC_MGR_LIMIT=0;
 // Small POs (Paulo, 2026-11-22; migration 20261123010000): a PO of ₱10,000 or less,
 // with everything ordered from that supplier that day ₱10,000 or less (poSplitTotal,
 // so an order can't be cut into small POs), is issued by Procurement / the
@@ -1957,11 +1960,11 @@ export const canApprovePOLine=(role,sessionName,requestedBy,total,split=null)=>{
   if(canAutoIssuePO(role,t,split)) return true;
   if(role==="Manager") return !PO_TIERS_ON||t<PO_MANAGER_LIMIT||isTopApprover(sessionName);
   if(role==="QS") return t<=PO_COST_CONTROL_LIMIT&&notMine;
-  if(role==="ProcurementManager") return PO_TIERS_ON&&!!requestedBy&&notMine
-    &&split!=null&&t<=PO_PROC_MGR_LIMIT&&Number(split)<=PO_PROC_MGR_LIMIT;
+  // No Procurement Manager tier since 2026-11-28: she issues only the ≤₱10K
+  // POs every Procurement user may (canAutoIssuePO above).
   return false;
 };
-export const PO_APPROVER_MSG=PO_TIERS_ON?"POs of ₱10,000 or less (all of that supplier's POs that day) are issued by Procurement; Marian approves her team's POs and Cost Control up to ₱150,000, Paolo Gomez up to ₱250,000, and Paulo, Mar or Arrius from ₱250,000":"Needs Cost Control (POs up to ₱150,000) or a Manager (above ₱150,000: Paolo Gomez)";
+export const PO_APPROVER_MSG=PO_TIERS_ON?"POs of ₱10,000 or less (all of that supplier's POs that day) are issued by Procurement; Cost Control (Ardrin, Rodney) approves up to ₱150,000, Paolo Gomez up to ₱250,000, and Paulo, Mar or Arrius from ₱250,000":"Needs Cost Control (POs up to ₱150,000) or a Manager (above ₱150,000: Paolo Gomez)";
 
 export const canApprovePO=(role,sessionName,requestedBy)=>{
   // Only a Manager or a Procurement Manager may approve (issue) a PO or subcon
