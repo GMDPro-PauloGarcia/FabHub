@@ -74,7 +74,7 @@ export const clientMatchKey=(s)=>clientKey(s).replace(/[-&/]+/g," ").replace(COR
 // Existing client names close to a typed one (Paulo, 2026-11-27: the client field
 // is a pick list; Add client must not create "Primer Group" next to "PRIMER GROUP OF
 // COMPANIES"). Same match key, one key starting with the other, or the same first
-// word of 4+ letters. Mirrors add_client() (migration 20261128020000), which refuses
+// word of 4+ letters. Mirrors add_client() (migration 20261128030000), which refuses
 // these unless the user confirmed a different company. Keep them in sync.
 export const clientNearMatches=(typed,names=[])=>{
   const k=clientMatchKey(typed);

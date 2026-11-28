@@ -1607,7 +1607,7 @@ function CollectionsPanel({wonDeals,infs,onUpdatePayment,onLogPayment,readonly=f
 // The list is the clients master table plus every client name already on a deal.
 // Typing only searches: the deal keeps its client until one is picked from the list
 // or added with "+ Add new client". Adding goes through add_client (migration
-// 20261128020000): Manager / Sales / SalesOpsAdmin, refuses a duplicate spelling,
+// 20261128030000): Manager / Sales / SalesOpsAdmin, refuses a duplicate spelling,
 // and a close name ("Primer Group" next to "PRIMER GROUP OF COMPANIES") needs an
 // explicit "different company" confirmation. Credit terms and reports match on the
 // exact name, so a stray spelling silently loses them.

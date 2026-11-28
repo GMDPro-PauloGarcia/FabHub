@@ -128,7 +128,7 @@ create or replace trigger trg_deals_link_client
   before insert or update of client on public.deals
   for each row execute function public.deals_link_client();
 
-select 'Migration 20261128020000 applied: add_client RPC, client_match_key, deals linked to clients' as status;
+select 'Migration 20261128030000 applied: add_client RPC, client_match_key, deals linked to clients' as status;
 
 -- ROLLBACK (run by hand):
 --   drop trigger if exists trg_deals_link_client on public.deals;
