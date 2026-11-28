@@ -1,5 +1,5 @@
 -- ============================================================================
--- Migration 20261128040000 — merge duplicate client spellings, fill the client list
+-- Migration 20261128050000 — merge duplicate client spellings, fill the client list
 --
 -- Why (Paulo, 2026-11-28): the deal form's Client field is now a pick list over
 -- the clients master table (20261128030000). Credit terms and client reports
@@ -22,7 +22,7 @@
 --     (Diageo, Diageo Ecom, Diageo Kariella, Diageo Global, Diageo Travel Retail PH;
 --     Paulo 2026-11-25), are set is_active = false (hidden from the picker, not deleted);
 --   * every client name used on a deal that is not on the list is added
---     (created_by 'migration 20261128040000'), so the picker and
+--     (created_by 'migration 20261128050000'), so the picker and
 --     trg_deals_link_client know them;
 --   * deals.client_id is linked for every deal whose client is on the list.
 --
@@ -94,7 +94,7 @@ update public.ce_requests r set client_name = t.new_name from _client_target t w
 
 -- Client list: kept names in, old spellings and stray Diageo entries hidden
 insert into public.clients (name, is_active, created_by)
-select distinct new_name, true, 'migration 20261128040000' from _client_map
+select distinct new_name, true, 'migration 20261128050000' from _client_map
 on conflict ((lower(name))) do update set is_active = true;
 update public.clients c set is_active = false, updated_at = now()
  where c.is_active
@@ -106,7 +106,7 @@ update public.clients c set name = btrim(c.name), updated_at = now()
 
 -- Every client name on a deal is on the list
 insert into public.clients (name, is_active, created_by)
-select distinct on (lower(btrim(d.client))) btrim(d.client), true, 'migration 20261128040000'
+select distinct on (lower(btrim(d.client))) btrim(d.client), true, 'migration 20261128050000'
   from public.deals d
  where coalesce(btrim(d.client), '') <> '' and not coalesce(d.is_cost_center, false)
    and not exists (select 1 from public.clients c where lower(c.name) = lower(btrim(d.client)))
