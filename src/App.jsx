@@ -8139,7 +8139,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const msg=`📌 <b>Project Stage Updated</b>\nClient: <b>${deal.client}</b>${deal.ceNo?`\nCE: ${deal.ceNo}`:""}${deal.contact?`\nProject: ${deal.contact}`:""}\nStage: ${st}\nBy: ${session?.name}${note?`\n\n${note}`:""}`;
     ["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,msg));
     if(st==="12 · Close-Out"){
-      const finMsg=`💰 <b>Final Billing Ready</b>\nProject: <b>${deal.contact||deal.client}</b>${deal.ceNo?`\nCE: ${deal.ceNo}`:""}\nClient: ${deal.client}\nContract Value: ₱${Number(deal.value||0).toLocaleString("en-PH")}\n\nThis project has moved to Close-Out. Please issue the final invoice.\n\n— ${session?.name}`;
+      const finMsg=`💰 <b>Final Billing Ready</b>\nProject: <b>${deal.contact||deal.client}</b>${deal.ceNo?`\nCE: ${deal.ceNo}`:""}\nClient: ${deal.client}\nContract Value: ₱${Number(deal.value||0).toLocaleString("en-PH")}${opts.finNote?`\n${opts.finNote}`:""}\n\nThis project has moved to Close-Out. Please issue the final invoice.\n\n— ${session?.name}`;
       ["sales","finance"].forEach(ch=>sendTelegramNotification(ch,finMsg));
     }
     return true;
@@ -27041,22 +27041,27 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     // Billing ≠ Contract: the VAT-ex schedule differs from the contract (as
     // billing_contract_gaps() checks), or the milestones' receipt type (VAT /
     // non-VAT) makes what the client is billed differ from the contract.
-    const vatMismatch=active.length>0&&contract>0&&Math.abs(contract-total)>1&&Math.abs(contractGap)<=1;
+    const dealRt=d.receiptType||"OR";
+    const rtDiffers=active.some(m=>(m.receiptType??m.receipt_type??dealRt)!==dealRt);
+    const vatMismatch=rtDiffers&&active.length>0&&contract>0&&Math.abs(contract-total)>1&&Math.abs(contractGap)<=1;
     const gapOff=Math.abs(contractGap)>1||vatMismatch;
     // Done: the whole contract is invoiced and collected and nothing needs fixing.
     // The default "Open" view hides these; the "Done" filter lists them.
+    // Done on site (Close-Out / Completed) but contract still to invoice:
+    // Finance sends the final billing. Counts under Needs action.
+    const billFinal=["12 · Close-Out","14 · Completed"].includes(d.stage)&&notInvoiced>0;
     const done=fullyPaid&&!gapOff&&!hasOverdue&&!hasUnsent;
-    return{d,done,vatMismatch,contract,invoiced,dueNow,ewtPaid,notInvoiced,noMilestone,draftsReady,ms,grossBase,vat,total,collected,collectible,balance,hasOverdue,maxOverdue,odBalance,odCount:odMs.length,ageKeys,hasUnsent,fullyPaid,toBill,milestoneCount:ms.length,contractGap,gapOff};
+    return{d,done,billFinal,vatMismatch,contract,invoiced,dueNow,ewtPaid,notInvoiced,noMilestone,draftsReady,ms,grossBase,vat,total,collected,collectible,balance,hasOverdue,maxOverdue,odBalance,odCount:odMs.length,ageKeys,hasUnsent,fullyPaid,toBill,milestoneCount:ms.length,contractGap,gapOff};
   });
   // Count of awarded projects with no billing set up yet — hidden by default.
   const notBilledCount=_allSummaries.filter(s=>s.milestoneCount===0).length;
   const gapCount=_allSummaries.filter(s=>s.gapOff).length;
   const doneCount=_allSummaries.filter(s=>s.done&&s.milestoneCount>0).length;
   const openCount=_allSummaries.filter(s=>!s.done&&s.milestoneCount>0).length;
-  const projectSummaries=_allSummaries.filter(({d,done,total,collected,balance,dueNow,notInvoiced,hasOverdue,ageKeys,hasUnsent,fullyPaid,milestoneCount,gapOff})=>{
+  const projectSummaries=_allSummaries.filter(({d,done,billFinal,total,collected,balance,dueNow,notInvoiced,hasOverdue,ageKeys,hasUnsent,fullyPaid,milestoneCount,gapOff})=>{
     const q=billingSearch.toLowerCase();
     const matchSearch=!q||(d.client||"").toLowerCase().includes(q)||(d.ceNo||"").toLowerCase().includes(q)||(d.contact||"").toLowerCase().includes(q);
-    const matchFilter=billingFilter==="all"||(billingFilter==="open"&&!done)||(billingFilter==="done"&&done)||(billingFilter==="action"&&(hasOverdue||hasUnsent||gapOff))||(billingFilter==="outstanding"&&dueNow>0)||(billingFilter==="paid"&&done)||(billingFilter==="overdue"&&hasOverdue)||(billingFilter.startsWith("age:")&&ageKeys.has(billingFilter.slice(4)))||(billingFilter==="unsent"&&hasUnsent)||(billingFilter==="collected"&&collected>0)||(billingFilter==="uncollected"&&total>0&&collected===0)||(billingFilter==="gap"&&gapOff)||(billingFilter==="toinvoice"&&notInvoiced>0)||(billingFilter==="notbilled"&&milestoneCount===0);
+    const matchFilter=billingFilter==="all"||(billingFilter==="open"&&!done)||(billingFilter==="done"&&done)||(billingFilter==="action"&&(hasOverdue||hasUnsent||gapOff||billFinal))||(billingFilter==="outstanding"&&dueNow>0)||(billingFilter==="paid"&&done)||(billingFilter==="overdue"&&hasOverdue)||(billingFilter.startsWith("age:")&&ageKeys.has(billingFilter.slice(4)))||(billingFilter==="unsent"&&hasUnsent)||(billingFilter==="collected"&&collected>0)||(billingFilter==="uncollected"&&total>0&&collected===0)||(billingFilter==="gap"&&gapOff)||(billingFilter==="toinvoice"&&notInvoiced>0)||(billingFilter==="notbilled"&&milestoneCount===0);
     // Hide "Not billed" (0-milestone) projects unless the toggle is on or the user is searching.
     const matchNotBilled=milestoneCount>0||showNotBilled||!!q||billingFilter==="notbilled"||billingFilter==="toinvoice";
     return matchSearch&&matchFilter&&matchNotBilled;
@@ -27131,7 +27136,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       billingRows.push({clientHead:true,contract:sumAll("contract"),invoiced:sum("invoiced"),dueNow:sum("dueNow"),ewtPaid:sum("ewtPaid"),notInvoiced:sumAll("notInvoiced"),noMilestone:sumAll("noMilestone"),draftsReady:sum("draftsReady"),noSchedCount:withHidden.filter(x=>x.milestoneCount===0&&x.contract>0).length,key,name,soaClient:gs[0].parent.d.client,projects:gs.length,addenda:gs.reduce((t,g)=>t+g.kids.length,0),
         grossBase:sum("grossBase"),vat:sum("vat"),total:sum("total"),collected:sum("collected"),balance:sum("balance"),
         hasOverdue:all.some(x=>x.hasOverdue),maxOverdue:all.reduce((t,x)=>Math.max(t,x.maxOverdue||0),0),odCount:all.reduce((t,x)=>t+(x.odCount||0),0),
-        hasUnsent:all.some(x=>x.hasUnsent),gapOff:all.some(x=>x.gapOff),
+        hasUnsent:all.some(x=>x.hasUnsent),gapOff:all.some(x=>x.gapOff),billFinal:all.some(x=>x.billFinal),
         fullyPaid:all.some(x=>x.total>0)&&all.every(x=>x.total===0||x.fullyPaid),latest:gs.reduce((t,g)=>{const v=_gLatest(g);return v>t?v:t;},""),open});
       if(open) gs.forEach(g=>_pushGroup(g,billingRows));
     });
@@ -27437,7 +27442,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
           <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",position:"relative"}}>
             {MAIN.map(([v,l])=>(
               <button key={v} onClick={()=>setBillingFilter(v)} style={chip(billingFilter===v)}
-                title={v==="action"?"Overdue invoices, Drafts past their bill-on date, or billing that doesn't add up to the contract":undefined}>{l}</button>
+                title={v==="action"?"Overdue invoices, Drafts past their bill-on date, billing that doesn't add up to the contract, or projects done on site but not fully invoiced":undefined}>{l}</button>
             ))}
             {moreOn&&<button onClick={()=>setBillingFilter("open")} title="Clear this filter" style={chip(true)}>{moreOn[1]} ✕</button>}
             {billingFilter.startsWith("age:")&&(
@@ -27511,6 +27516,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
               <span style={{display:"inline-flex",gap:4,flexWrap:"wrap"}}>
                 {r.hasOverdue&&<span title={`${r.odCount} overdue invoice${r.odCount===1?"":"s"}, oldest ${r.maxOverdue} days`} style={{fontSize:".66rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"2px 8px",fontWeight:700,whiteSpace:"nowrap"}}>📞 {r.maxOverdue}d overdue</span>}
                 {r.hasUnsent&&<span style={{fontSize:".66rem",background:"#fffbeb",color:"#b45309",border:"1px solid #fcd34d",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Not sent</span>}
+                {r.billFinal&&<span title="A project is done on site but not fully invoiced. Open the client to see which." style={{fontSize:".66rem",background:"#ecfdf5",color:"#047857",border:"1px solid #6ee7b7",borderRadius:20,padding:"2px 8px",fontWeight:700,whiteSpace:"nowrap"}}>Done · bill final</span>}
                 {r.gapOff&&<span title="A project's billing milestones don't add up to its contract. Open the client to see which." style={{fontSize:".66rem",background:"#fdf2f8",color:"#be185d",border:"1px solid #f9a8d4",borderRadius:20,padding:"2px 8px",fontWeight:700,whiteSpace:"nowrap"}}>Billing ≠ Contract</span>}
                 {r.fullyPaid&&<span style={{fontSize:".66rem",background:"#f0fdf4",color:"#059669",border:"1px solid #6ee7b7",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Paid</span>}
               </span>
@@ -27577,11 +27583,12 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
               </div>
             );
           }
-          const {d,ms,grossBase,vat,total,collected,collectible,balance,hasOverdue,maxOverdue,odCount,hasUnsent,fullyPaid,toBill,milestoneCount,groupOverdue,childOf,addendumCount,contractGap,gapOff}=row;
+          const {d,billFinal,ms,grossBase,vat,total,collected,collectible,balance,hasOverdue,maxOverdue,odCount,hasUnsent,fullyPaid,toBill,milestoneCount,groupOverdue,childOf,addendumCount,contractGap,gapOff}=row;
           const statusBadge=(
             <>
               {hasOverdue&&<span style={{fontSize:".68rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Overdue</span>}
               {gapOff&&<span title={row.vatMismatch?`The milestones' receipt type (VAT / non-VAT) doesn't match the project's: the client is billed ${fmt(total)} against a ${fmt(row.contract)} contract. Open the project to fix.`:`Billing milestones ${contractGap<0?"are short of":"exceed"} the contract by ${fmt(Math.abs(contractGap))}. Open the project to fix.`} style={{fontSize:".68rem",background:"#fdf2f8",color:"#be185d",border:"1px solid #f9a8d4",borderRadius:20,padding:"2px 8px",fontWeight:700,whiteSpace:"nowrap"}}>Billing ≠ Contract</span>}
+              {billFinal&&<span title="The project is done (Close-Out / Completed) but part of the contract isn't invoiced yet. Send the final billing." style={{fontSize:".68rem",background:"#ecfdf5",color:"#047857",border:"1px solid #6ee7b7",borderRadius:20,padding:"2px 8px",fontWeight:700,whiteSpace:"nowrap"}}>Done · bill final</span>}
               {hasUnsent&&<span title="A Draft milestone is past its due date and hasn't been sent" style={{fontSize:".68rem",background:"#fffbeb",color:"#b45309",border:"1px solid #fcd34d",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Not sent</span>}
               {fullyPaid&&<span style={{fontSize:".68rem",background:"#f0fdf4",color:"#059669",border:"1px solid #6ee7b7",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Paid</span>}
               {!hasOverdue&&!hasUnsent&&!fullyPaid&&milestoneCount>0&&<span style={{fontSize:".68rem",background:"#eff6ff",color:"#3b82f6",border:"1px solid #93c5fd",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Active</span>}
@@ -28589,7 +28596,42 @@ function ProjectCards({changeDealStage,syncProjectCard,saveCardFields,updateProj
   // global confirm modal → delDeal), it vanishes from wonDeals/completedDeals;
   // fall back to the grid (selDeal above already renders it as unselected).
   useEffect(()=>{if(selDealRaw&&!deal)setSelDeal(null);},[selDealRaw,deal]);
-  const[viewMode,setViewMode]=useState("card");
+  // List is the default (Paulo, 2026-11-28); each viewer's choice is remembered.
+  const[viewMode,setViewModeRaw]=useState(()=>{try{return localStorage.getItem("gmdv5:pc:view")||"list";}catch{return "list";}});
+  const setViewMode=v=>{setViewModeRaw(v);try{localStorage.setItem("gmdv5:pc:view",v);}catch{}};
+  // What's left to bill on a project and its approved addenda, VAT-inclusive
+  // (same rules as the Billing list): contract − invoiced, Drafts ready, and
+  // the part with no milestone yet.
+  const billLeftOf=d=>{
+    const fam=[d,...(deals||[]).filter(k=>k.parentDealId===d.id&&isApprovedAddendumDeal(k))];
+    let con=0,inv=0,sched=0,drafts=0;
+    fam.forEach(x=>{
+      if(!x.standbyPO) con+=calcTax(Number(x.value)||0,x.receiptType||"OR").gross;
+      (billings||[]).filter(m=>m.dealId===x.id&&m.status!=="Cancelled").forEach(m=>{
+        const g=calcTax(Number(m.amount)||0,m.receiptType??m.receipt_type??x.receiptType??"OR").gross;
+        sched+=g; if(m.status!=="Draft"||milestonePaid(m)>0) inv+=g; else drafts++;
+      });
+    });
+    const r=v=>Math.round(v*100)/100;
+    const left=r(con-inv), noMs=r(con-sched);
+    return {left:left>1?left:0,noMs:noMs>1?noMs:0,drafts};
+  };
+  // "Mark as done" = 12 · Close-Out (the "Done" step of the project flow).
+  // changeDealStage keeps every rule (who may, Completed for Manager/Sales only)
+  // and sends Finance the "Final Billing Ready" Telegram, here with what is left
+  // to bill. Billing then shows the project as "Done · bill final".
+  const DONE_STAGE="12 · Close-Out";
+  const markDone=async d=>{
+    const pc=pcards[d.id];
+    const pct=projProgressPct(pc,d);
+    const b=billLeftOf(d);
+    const peso=v=>"₱"+v.toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+    const billLine=b.left>0?`Left to invoice: ${peso(b.left)} (VAT-inclusive)${b.drafts?` · ${b.drafts} Draft${b.drafts===1?"":"s"} ready to send`:""}${b.noMs>0?` · ${peso(b.noMs)} has no billing milestone yet`:""}`:"Nothing left to invoice: the whole contract is billed.";
+    const ok=await uiConfirm(`Mark "${d.contact||d.client}" as done?\n\nIt moves to ${DONE_STAGE} and Finance is told to send the final billing.\n${billLine}${pct<100?`\n\n⚠️ Progress shows ${pct}%. Mark it done only if the work is finished (punchlist included).`:""}`);
+    if(!ok) return;
+    const done=await changeDealStage(d.id,DONE_STAGE,{note:"Marked as done from Projects.",finNote:billLine});
+    if(done) toastEmit(`✓ ${d.contact||d.client} marked as done. Finance has been told to bill.`,"success",6000);
+  };
   const[showTeamLoad,setShowTeamLoad]=useState(false);
   const[teamLoadTab,setTeamLoadTab]=useState("pm");
   const[pcOwner,setPcOwner]=useState(null); // {tab:"pm"|"coor"|"subcon",name}
@@ -29041,9 +29083,33 @@ function ProjectCards({changeDealStage,syncProjectCard,saveCardFields,updateProj
                                 {pcL?.warehouseOnly&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:600,padding:"1px 5px",borderRadius:3,background:"#fffbeb",color:"#92400e",border:"1px solid #fde68a"}}>📦 WH</span>}
                               </div>
                             </td>
-                            {/* Stage pill */}
-                            <td style={{padding:"10px 14px",verticalAlign:"middle",whiteSpace:"nowrap"}}>
-                              <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:600,letterSpacing:".05em",textTransform:"uppercase",padding:"3px 8px",borderRadius:4,background:hcL+"18",color:hcL,border:`1px solid ${hcL}44`,whiteSpace:"nowrap"}}>{stageLabel}</span>
+                            {/* Stage: change it here (same rules as anywhere), or mark the project done */}
+                            <td style={{padding:"10px 14px",verticalAlign:"middle",whiteSpace:"nowrap"}} onClick={e=>e.stopPropagation()}>
+                              {(()=>{
+                                const opts=WON_STAGES.filter(s=>s===d.stage||canSetDealStage(role,d.stage,s));
+                                // The button shows only near the end (Installation / Punchlist, or 90%+ done)
+                                // so 100+ rows don't each carry one; earlier, picking Close-Out in the
+                                // dropdown runs the same Mark as done step.
+                                const nearEnd=["10 · Installation","11 · Punchlist"].includes(d.stage)||projProgressPct(pcL,d)>=PUNCHLIST_MIN_PCT;
+                                const canDone=nearEnd&&WON_STAGES.indexOf(d.stage)>-1&&WON_STAGES.indexOf(d.stage)<WON_STAGES.indexOf(DONE_STAGE)&&canSetDealStage(role,d.stage,DONE_STAGE);
+                                return(<>
+                                  {opts.length>1?(
+                                    <select value={d.stage||""} aria-label={`Stage of ${d.contact||d.client}`} title={stageLabel}
+                                      onChange={async e=>{const st=e.target.value;if(st===d.stage)return;if(st===DONE_STAGE){await markDone(d);return;}await changeDealStage(d.id,st);}}
+                                      style={{fontFamily:"inherit",fontSize:".72rem",fontWeight:600,padding:"4px 6px",borderRadius:6,border:`1.5px solid ${hcL}66`,background:hcL+"12",color:"#0f172a",maxWidth:170,cursor:"pointer"}}>
+                                      {opts.map(s=><option key={s} value={s}>{s}</option>)}
+                                    </select>
+                                  ):(
+                                    <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:600,letterSpacing:".05em",textTransform:"uppercase",padding:"3px 8px",borderRadius:4,background:hcL+"18",color:hcL,border:`1px solid ${hcL}44`,whiteSpace:"nowrap"}}>{stageLabel}</span>
+                                  )}
+                                  {canDone&&(
+                                    <div style={{marginTop:5}}>
+                                      <button onClick={()=>markDone(d)} title="Move to Close-Out and tell Finance to send the final billing"
+                                        style={{background:"#059669",border:"none",borderRadius:6,padding:"4px 10px",fontFamily:"inherit",fontSize:".68rem",fontWeight:700,color:"#fff",cursor:"pointer"}}>✓ Mark as done</button>
+                                    </div>
+                                  )}
+                                </>);
+                              })()}
                             </td>
                             {/* Location */}
                             <td style={{padding:"10px 14px",fontSize:".78rem",color:"#475569",verticalAlign:"middle",maxWidth:130,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.location||joL?.location||<span style={{color:"#cbd5e1"}}>—</span>}</td>
