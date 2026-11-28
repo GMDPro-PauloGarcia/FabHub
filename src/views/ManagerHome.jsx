@@ -1,5 +1,5 @@
 import React,{useMemo} from "react";
-import {poLinesTotal,PO_COST_CONTROL_LIMIT,PO_MANAGER_LIMIT,PO_TIERS_ON,isTopApprover,dealDpClear,dealDpAwarded,isBillingOverdue,milestoneBalance,isCashPayment,WON_STAGES} from "../core";
+import {poLinesTotal,PO_COST_CONTROL_LIMIT,PO_MANAGER_LIMIT,PO_TIERS_ON,isTopApprover,dealDpClear,dealDpAwarded,isBillingOverdue,milestoneBalance,isCashPayment,WON_STAGES,FAB_PROGRESS_STEPS,PROGRESS_STEP_CLR} from "../core";
 import {payBalance,payIsOpen} from "../data/ledger";
 
 // ─── MANAGER HOME (2026-11-07) ──────────────────────────────────────────────
@@ -14,8 +14,8 @@ import {payBalance,payIsOpen} from "../data/ledger";
 const mhNum=v=>Number(String(v??"").replace(/,/g,""))||0;
 const mhPeso=v=>{const n=Math.round(mhNum(v));return n>=1e6?"₱"+(n/1e6).toFixed(n>=1e7?1:2).replace(/\.?0+$/,"")+"M":n>=1e3?"₱"+Math.round(n/1e3)+"K":"₱"+n;};
 const MH={ink:"#0f172a",muted:"#475569",faint:"#64748b",line:"#e2e8f0",navy:"#0B2545",red:"#b91c1c",amber:"#b45309",green:"#047857"};
-const STEPS=[30,60,90,100];
-const STEP_CLR={30:"#f59e0b",60:"#3b82f6",90:"#8b5cf6",100:"#059669"};
+const STEPS=FAB_PROGRESS_STEPS;
+const STEP_CLR=PROGRESS_STEP_CLR;
 
 // Every button lands on its page already showing what it counted (2026-11-26):
 // goPOApprovals opens the PO approvals list, goBills(kind) filters Bills,
@@ -72,7 +72,7 @@ export default function ManagerHome({session,today,deals=[],billings=[],payables
   // ── 3. Projects ──────────────────────────────────────────────────────────
   const proj=useMemo(()=>{
     const active=deals.filter(d=>!d.isCostCenter&&!d.standbyPO&&WON_STAGES.includes(d.stage)&&d.stage!=="14 · Completed"&&pcards[d.id]);
-    const dist={none:0,30:0,60:0,90:0,100:0};
+    const dist={none:0};STEPS.forEach(s=>{dist[s]=0;});
     active.forEach(d=>{const p=pcards[d.id]?.manualProgress;dist[STEPS.includes(p)?p:"none"]++;});
     const late=active.filter(d=>{const t=pcards[d.id]?.targetEndDate;return t&&t<today&&pcards[d.id]?.manualProgress!==100;})
       .map(d=>({d,t:pcards[d.id].targetEndDate,p:pcards[d.id]?.manualProgress}))

@@ -1,17 +1,17 @@
 import React,{useState,useMemo} from "react";
 import {toastEmit,useIsMobile} from "../shared";
 import ProgressReportModal from "./ProgressReportModal";
-import {projDisplayName,isConstructionDeal,PUNCHLIST_MIN_PCT,LOST_STAGES,isMotherPO} from "../core";
+import {projDisplayName,isConstructionDeal,PUNCHLIST_MIN_PCT,LOST_STAGES,isMotherPO,FAB_PROGRESS_STEPS,PROGRESS_STEP_CLR,progressStepLabel} from "../core";
 
 // ─── PROGRESS (Operations › Progress) ───────────────────────────────────────
 // Agreed with Paulo 2026-11-07: instead of PM Updates, Blockers and Scope
-// Changes, the PM gives each active project one estimate: 30, 60, 90 or 100 %.
+// Changes, the PM gives each active project one estimate: 10, 30, 60, 80, 90 or 100 % (2026-11-28).
 // Saved through set_project_progress (migration 20261107020000) into
 // project_cards.manual_progress, the figure Project Cards already shows, with
 // who set it and when; every change is in audit_log. PMs, Operations and
 // Managers set it on any project; Coordinators on the projects they coordinate.
 
-const STEPS=[30,60,90,100];
+const STEPS=FAB_PROGRESS_STEPS;
 // Construction projects (CE type Construction / Retail Fit-Out) take any whole
 // % from 0 to 100 (migration 20261111150000); everything else 30/60/90/100.
 function PctInput({pct,min,disabled,onSave,lowerBlocked}){
@@ -31,7 +31,7 @@ function PctInput({pct,min,disabled,onSave,lowerBlocked}){
     </div>
   );
 }
-const STEP_CLR={30:"#f59e0b",60:"#3b82f6",90:"#8b5cf6",100:"#059669"};
+const STEP_CLR=PROGRESS_STEP_CLR;
 const C={ink:"#0f172a",muted:"#475569",faint:"#64748b",line:"#e2e8f0",navy:"#0B2545"};
 const pgNorm=s=>String(s||"").replace(/\s*\([^)]*\)\s*$/,"").trim().toLowerCase();
 // Not on this page: work already done (Close-Out = punchlist complete, waiting
@@ -81,10 +81,10 @@ export default function ProjectProgress({deals=[],pcards={},role,session,upPcard
     <div>
       <div style={{marginBottom:12}}>
         <div style={{fontWeight:800,color:C.navy,fontSize:"1.15rem"}}>Progress</div>
-        <div style={{fontSize:".78rem",color:C.muted,marginTop:2}}>One estimate per project still in production or on site (Close-Out and Completed jobs are not listed): 30, 60, 90 or 100 % done (construction projects: the actual % on site, 0–100). Each change asks for a short update (work done, next step with a date, issues); it goes to Team Updates and the Operations chat. Only a Manager can lower it.</div>
+        <div style={{fontSize:".78rem",color:C.muted,marginTop:2}}>One estimate per project still in production or on site (Close-Out and Completed jobs are not listed): 10, 30, 60, 80, 90 or 100 % done (90 % = installed, punchlist starts; last progress billing) (construction projects: the actual % on site, 0–100). Each change asks for a short update (work done, next step with a date, issues); it goes to Team Updates and the Operations chat. Only a Manager can lower it.</div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:mob?"repeat(3,1fr)":"repeat(5,1fr)",gap:8,marginBottom:12}}>
-        {[["Not set",notSet,C.faint],...BANDS.map(([a,b],i)=>[`${a}–${b}%`,counts[i],STEP_CLR[STEPS[i]]])].map(([l,v,c])=>(
+        {[["Not set",notSet,C.faint],...BANDS.map(([a,b],i)=>[`${a}–${b}%`,counts[i],STEP_CLR[[30,60,90,100][i]]])].map(([l,v,c])=>(
           <div key={l} style={{...box,padding:"8px 12px"}}><div style={{fontSize:".62rem",fontWeight:800,color:C.faint,textTransform:"uppercase"}}>{l}</div><div style={{fontSize:"1.15rem",fontWeight:800,color:c}}>{v}</div></div>
         ))}
       </div>
@@ -111,8 +111,8 @@ export default function ProjectProgress({deals=[],pcards={},role,session,upPcard
             ):(
             <div role="group" aria-label="Progress" style={{display:"flex",gap:4}}>
               {STEPS.map(s=>{const on=pct===s;const dis=!canSet(pc)||(pct!=null&&s<pct&&role!=="Manager");return(
-                <button key={s} disabled={dis} onClick={()=>!on&&set(d,s)} aria-pressed={on}
-                  style={{minWidth:52,border:`1.5px solid ${on?STEP_CLR[s]:C.line}`,borderRadius:8,padding:"6px 8px",background:on?STEP_CLR[s]:"#fff",color:on?"#fff":C.muted,fontWeight:800,fontSize:".78rem",cursor:dis?"default":"pointer",fontFamily:"inherit"}}>{s}%</button>);})}
+                <button key={s} disabled={dis} onClick={()=>!on&&set(d,s)} aria-pressed={on} title={`${s}% = ${progressStepLabel(s,false)}`}
+                  style={{minWidth:44,border:`1.5px solid ${on?STEP_CLR[s]:C.line}`,borderRadius:8,padding:"6px 8px",background:on?STEP_CLR[s]:"#fff",color:on?"#fff":C.muted,fontWeight:800,fontSize:".78rem",cursor:dis?"default":"pointer",fontFamily:"inherit"}}>{s}%</button>);})}
             </div>
             )}
           </div>

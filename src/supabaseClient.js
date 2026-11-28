@@ -795,6 +795,11 @@ export const sbLoadAll = async () => {
         progressSetBy: card.progress_set_by || null,
         progressSetAt: card.progress_set_at || null,
         warehouseOnly: card.warehouse_only || false,
+        // Project status flag (On hold, Back job…): set only through set_project_status.
+        siteStatus: card.site_status || null,
+        siteStatusNote: card.site_status_note || null,
+        siteStatusBy: card.site_status_by || null,
+        siteStatusAt: card.site_status_at || null,
         departments: Object.fromEntries(DEPT_ORDER.map(d => [d, { done: false, doneAt: null, doneBy: null, tasks: [] }]))
       }
     })

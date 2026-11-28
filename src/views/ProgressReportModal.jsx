@@ -1,7 +1,7 @@
 import React,{useState,useEffect} from "react";
 import {supabase,isSupabaseReady} from "../supabaseClient";
 import {toastEmit,useIsMobile} from "../shared";
-import {projDisplayName,isConstructionDeal,PUNCHLIST_MIN_PCT} from "../core";
+import {projDisplayName,isConstructionDeal,PUNCHLIST_MIN_PCT,FAB_PROGRESS_STEPS,PROGRESS_STEP_CLR,progressStepLabel} from "../core";
 
 // ─── PROGRESS UPDATE (one form for every % change) ──────────────────────────
 // Agreed with Paulo 2026-11-11. A % change is saved only with a full update:
@@ -13,8 +13,8 @@ import {projDisplayName,isConstructionDeal,PUNCHLIST_MIN_PCT} from "../core";
 // posts it to Team Updates and sends it to the Operations Telegram chat.
 // Keep these checks in sync with that function.
 
-const STEPS=[30,60,90,100];
-const STEP_CLR={30:"#f59e0b",60:"#3b82f6",90:"#8b5cf6",100:"#059669"};
+const STEPS=FAB_PROGRESS_STEPS;
+const STEP_CLR=PROGRESS_STEP_CLR;
 const manilaToday=()=>new Date().toLocaleDateString("en-CA",{timeZone:"Asia/Manila"});
 const words=s=>String(s||"").trim().split(/\s+/).filter(Boolean).length;
 
@@ -43,7 +43,7 @@ export default function ProgressReportModal({deal,pc,initialPct,role,onClose,onS
   const today=manilaToday();
   const errs={};
   if(n==null||isNaN(n)) errs.pct="Pick the new %.";
-  else if(!constr&&!STEPS.includes(n)) errs.pct="Fabrication progress is 30, 60, 90 or 100%.";
+  else if(!constr&&!STEPS.includes(n)) errs.pct="Progress is 10, 30, 60, 80, 90 or 100%.";
   else if(n<min||n>100) errs.pct=`Enter ${min} to 100${min?" (Punchlist is at least 90%)":""}.`;
   else if(lowering&&!isMgr) errs.pct=`Only a Manager can lower progress (now ${old}%).`;
   if(done.trim().length<20||words(done)<4) errs.done="Describe the work completed since the last update (a full sentence).";
@@ -92,11 +92,14 @@ export default function ProgressReportModal({deal,pc,initialPct,role,onClose,onS
               <span style={{color:"#64748b"}}>%</span>
             </div>
           ):(
-            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6}}>
+            <>
+            <div style={{display:"grid",gridTemplateColumns:mob?"repeat(3,1fr)":"repeat(6,1fr)",gap:6}}>
               {STEPS.map(s=>{const on=n===s;const dis=s<min||(old!=null&&s<old&&!isMgr);return(
-                <button key={s} type="button" disabled={dis} aria-pressed={on} onClick={()=>setPct(String(s))}
+                <button key={s} type="button" disabled={dis} aria-pressed={on} onClick={()=>setPct(String(s))} title={progressStepLabel(s,false)}
                   style={{border:`1.5px solid ${on?STEP_CLR[s]:"#e2e8f0"}`,borderRadius:8,padding:"8px 0",background:on?STEP_CLR[s]:"#fff",color:on?"#fff":"#475569",fontWeight:800,fontSize:".86rem",cursor:dis?"default":"pointer",opacity:dis?.35:1,fontFamily:"inherit"}}>{s}%</button>);})}
             </div>
+            {n!=null&&STEPS.includes(n)&&<div style={{fontSize:".72rem",color:"#475569",marginTop:5}}>{n}% = {progressStepLabel(n,false)}</div>}
+            </>
           )}
           {err("pct")}
         </div>

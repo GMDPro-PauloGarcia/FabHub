@@ -19,7 +19,7 @@ import {checkSupplier,supplierSavePrompt,checkBill} from './dataGuard';
 import SupplierHint from './SupplierHint';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,payableFromSb,payablePaymentToSb,payablePaymentFromSb,ceReqFromSb,commissionPayoutToSb,commissionPayoutFromSb,toolToSb,toolFromSb,drToSb,drFromSb} from './data/mappers';
-import {projProgressPct, CONTRACT_LOCK_MSG, dealBillingStarted, contractLocked, billingContractGap, rescaleDraftMilestones, vatIncSavedAsAr, isConstructionDeal, projStageFlow, projStepIndex, projStepLabel, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, clientNearMatches, CLIENT_ADD_ROLES, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestonePaid, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, dealBaseValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, dealDpAwarded, askDpOverride, DP_NOT_AWARDED_MSG, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, canApproveAddendum, ADDENDUM_APPROVER_MSG, PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, woStatusOptions, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, canRecordDeduction, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel, pendingCostByProject, poSplitTotal, canRaiseOrder, canCreateCostCenter, woSignStep, WO_SIGN_MSG, arAgeBucket, arCallOrder, dealHasBoq, MOTHER_PO_BOQ_MSG, ledgerCosts, poVatSet, isBilledRevenue, paymentBaseFactor, invoiceContractProgress, billingScheduleRows, billingPosition, statementLine, orderForLabel, PO_ISSUED_STATUSES, WO_COMMITTED_STATUSES, billingDueTerms, billingDefaultNetDays, billingTermsLabel, projectProgressPct, prfRuleOn, poLineNeedsPrf, PRF_RULE_MSG, poSplitTotalFor, paymentNeedsRef, paymentRefOk, PAYMENT_REF_MSG, nearDuplicatePayment, nearDuplicateMsg, payrollForecast, OPEX_STREAMS, orderCommitments, ORDER_COMMIT_MAX_DAYS} from './core';
+import {FAB_PROGRESS_STEPS, PROGRESS_STEP_CLR, progressStepLabel, projProgressPct, CONTRACT_LOCK_MSG, dealBillingStarted, contractLocked, billingContractGap, rescaleDraftMilestones, vatIncSavedAsAr, isConstructionDeal, projStageFlow, projStepIndex, projStepLabel, PUNCHLIST_MIN_PCT, projStageLabel, DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, clientMatchKey, titleSimilar, clientNearMatches, CLIENT_ADD_ROLES, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, canSetDealStage, PM_SETTABLE_STAGES, DEAL_TEMPS, TEMP_META, HOT_AGE_DAYS, COLD_STALE_DAYS, deriveTemp, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, DESIGN_ACTIVE_STATUSES, DESIGN_CLOSED_STATUSES, isDesignClosed, DESIGN_DELIVERABLES, ARTWORK_DELIVERABLES, designNeedsArtwork, openBlockers, designPromisedDate, isProductionBriefed, designUrgency, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, PO_TERMS, PO_TERMS_DEFAULT, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, leadOriginPending, effectiveLeadOrigin, collectedBase, milestoneBalance, milestonePaid, milestoneBalanceParts, isBillingOverdue, isBillingUnsentLate, milestoneReceivable, arSummary, costNet, costSummary, poTotals, commissionRate, commissionEarned, ownsDealCommission, salesOwnerLocked, commissionProjected, PAYOUT_STATUS, isPayoutApproved, isPayoutPending, payoutsPaid, payoutsPending, commissionPayable, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_CATEGORIES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, dealFinancials, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, dealBaseValue, findCrossMechanismCO, findAddendumDoubleBilling, MILESTONE_TYPES, defaultBillDate, buildMilestoneSchedule, termsFromSchedule, scheduleSummary, billingIntegrityIssues, isMotherPO, dealDpClear, dealDpAwarded, askDpOverride, DP_NOT_AWARDED_MSG, findDuplicatePayments, NET_DAY_OPTIONS, RETENTION_RELEASE_OPTIONS, coMilestoneMatches, isApprovedAddendumDeal, CO_MILESTONE_PREFIX, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, canApprovePOLine, canApproveAddendum, ADDENDUM_APPROVER_MSG, PO_TIERS_ON, poLinesTotal, PO_APPROVER_MSG, isProcurementRole, canonRole, woRetentionAmt, AP_RULES, isSubconPayable, woDefaultDpPct, isPayrollScope, setCreditTermClients, clientOnCreditTerms, subconDpAllowPct, SUBCON_DP_MAX_NON_MANAGER, supplierPayBlock, supplierDocsStatus, subconNeedsWo, subconNoWoBlock, payableRetentionPct, payableClaimed, recomputePayableFromPayments, SWO_STATUSES, woStatusOptions, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, OFFSET_METHOD, isOffsetPayment, isCashPayment, canRecordDeduction, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, dealJo, dropStaleJos, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS, PERMISSIONS, PERM_ROLES, PERM_NOTES, PERM_ACTIONS, roleCan, rolesAllowedLabel, pendingCostByProject, poSplitTotal, canRaiseOrder, canCreateCostCenter, woSignStep, WO_SIGN_MSG, arAgeBucket, arCallOrder, dealHasBoq, MOTHER_PO_BOQ_MSG, ledgerCosts, poVatSet, isBilledRevenue, paymentBaseFactor, invoiceContractProgress, billingScheduleRows, billingPosition, statementLine, orderForLabel, PO_ISSUED_STATUSES, WO_COMMITTED_STATUSES, billingDueTerms, billingDefaultNetDays, billingTermsLabel, projectProgressPct, prfRuleOn, poLineNeedsPrf, PRF_RULE_MSG, poSplitTotalFor, paymentNeedsRef, paymentRefOk, PAYMENT_REF_MSG, nearDuplicatePayment, nearDuplicateMsg, payrollForecast, OPEX_STREAMS, orderCommitments, ORDER_COMMIT_MAX_DAYS} from './core';
 import ProgressReportModal from './views/ProgressReportModal';
 
 // Returns a component whose function IDENTITY is stable across renders while its
@@ -28701,6 +28701,54 @@ function ProjectCards({changeDealStage,syncProjectCard,saveCardFields,updateProj
   const[pcOwner,setPcOwner]=useState(null); // {tab:"pm"|"coor"|"subcon",name}
   const[pcFilter,setPcFilter]=useState(null);
   const[pcSort,setPcSort]=useState("tat");
+  // Project status flags (2026-11-28, migration 20261128060000): the list lives
+  // in project_statuses (Managers add to it); a card carries one through
+  // set_project_status. A flag with pauses_health (On hold) isn't judged late.
+  // Until the list loads (or offline): the four statuses the migration seeds.
+  const[projStatuses,setProjStatuses]=useState([
+    {id:"s-hold",name:"On hold",color:"#64748b",pauses_health:true,is_active:true,sort:10},
+    {id:"s-back",name:"Back job / Punchlisting",color:"#db2777",pauses_health:false,is_active:true,sort:20},
+    {id:"s-add",name:"Additional works",color:"#7c3aed",pauses_health:false,is_active:true,sort:30},
+    {id:"s-pull",name:"For pull-out / Egress",color:"#0891b2",pauses_health:false,is_active:true,sort:40},
+  ]);
+  const loadProjStatuses=async()=>{
+    if(!isSupabaseReady()) return;
+    const{data,error}=await supabase.from("project_statuses").select("id,name,color,pauses_health,is_active,sort").order("sort");
+    if(!error&&data) setProjStatuses(data);
+  };
+  useEffect(()=>{loadProjStatuses();},[]);
+  const statusMeta=name=>name?(projStatuses.find(s=>s.name===name)||{name,color:"#64748b",pauses_health:false}):null;
+  const[stForm,setStForm]=useState(null);     // {status, note} while editing a card's status
+  const[stBusy,setStBusy]=useState(false);
+  const[newSt,setNewSt]=useState(null);       // {name, color, pauses} while a Manager adds a status
+  const setProjectStatus=async(dealId,status,note)=>{
+    if(!isSupabaseReady()){toastEmit("Offline: the status can't be saved now.","error");return false;}
+    setStBusy(true);
+    const{data,error}=await supabase.rpc("set_project_status",{p_deal:dealId,p_status:status||null,p_note:note||null});
+    setStBusy(false);
+    if(error){toastEmit(error.message||"The server refused this change.","error",9000);return false;}
+    upPcards(ps=>({...ps,[dealId]:{...(ps[dealId]||{}),siteStatus:status||null,siteStatusNote:status?note:null,siteStatusBy:status?(session?.name||""):null,siteStatusAt:status?data:null}}));
+    toastEmit(status?`Status set: ${status}`:"Status cleared","success");
+    return true;
+  };
+  const addProjectStatus=async()=>{
+    const name=String(newSt?.name||"").trim().replace(/\s+/g," ");
+    if(name.length<3||name.length>40){toastEmit("A status name is 3 to 40 characters.","error");return;}
+    if(projStatuses.some(s=>s.name.toLowerCase()===name.toLowerCase())){toastEmit(`There is already a status called "${name}".`,"error");return;}
+    setStBusy(true);
+    const{error}=await supabase.rpc("add_project_status",{p_name:name,p_color:newSt.color||null,p_pauses_health:!!newSt.pauses});
+    setStBusy(false);
+    if(error){toastEmit(error.message||"The server refused this change.","error",9000);return;}
+    await loadProjStatuses();
+    setStForm(f=>f?{...f,status:name}:f);
+    setNewSt(null);
+    toastEmit(`Status added: ${name}`,"success");
+  };
+  const toggleProjStatus=async s=>{
+    const{error}=await supabase.rpc("set_project_status_active",{p_id:s.id,p_active:!s.is_active});
+    if(error){toastEmit(error.message||"The server refused this change.","error",9000);return;}
+    await loadProjStatuses();
+  };
   const[pcShowClosed,setPcShowClosed]=useState(false);
   const[pcSearch,setPcSearch]=useState("");
   const[showBForm,setShowBForm]=useState(false);
@@ -28778,6 +28826,8 @@ function ProjectCards({changeDealStage,syncProjectCard,saveCardFields,updateProj
   const healthOf=(d,pc)=>{
     if(!d) return {key:"none",why:""};
     if(isClosedDeal(d)) return {key:"done",why:"Closed out"};
+    const sm=statusMeta(pc?.siteStatus);
+    if(sm?.pauses_health) return {key:"hold",why:pc.siteStatusNote||`${sm.name}: not judged late`};
     if(!pc||!pc.targetEndDate) return {key:"none",why:"No turnover date"};
     const dl=dLeftOf(pc.targetEndDate);
     if(dl<0) return {key:"red",why:`${Math.abs(dl)}d past turnover`};
@@ -28795,8 +28845,8 @@ function ProjectCards({changeDealStage,syncProjectCard,saveCardFields,updateProj
     return {key:"green",why:used!=null?`${used}% of time used${pct!=null?`, ${pct}% done`:""}`:"On track"};
   };
   const getHealth=(d,pc)=>healthOf(d,pc).key;
-  const HC={green:["#10b981","On Track"],yellow:["#f59e0b","At Risk"],red:["#ef4444","Behind / Overdue"],done:["#059669","Closed"],none:["#94a3b8","No TAT"]};
-  const H_RANK={red:0,yellow:1,none:2,green:3,done:4};
+  const HC={green:["#10b981","On Track"],yellow:["#f59e0b","At Risk"],red:["#ef4444","Behind / Overdue"],done:["#059669","Closed"],none:["#94a3b8","No TAT"],hold:["#64748b","On hold"]};
+  const H_RANK={red:0,yellow:1,none:2,hold:3,green:4,done:5};
   const activeWon=wonDeals.filter(d=>!isClosedDeal(d));
   const isPastDeadline=d=>!isClosedDeal(d)&&!!pcards[d.id]?.targetEndDate&&pcards[d.id].targetEndDate<todayStr;
 
@@ -29175,6 +29225,10 @@ function ProjectCards({changeDealStage,syncProjectCard,saveCardFields,updateProj
             };
             // "David Melendez (PM)" → "David Melendez": the column already says PM.
             const personName=n=>String(n||"").replace(/\s*\([^)]*\)\s*$/,"");
+            const statusChip=pcL=>{
+              const sm=statusMeta(pcL?.siteStatus);if(!sm) return null;
+              return <span title={pcL.siteStatusNote||sm.name} style={{display:"inline-block",fontSize:".62rem",fontWeight:800,textTransform:"uppercase",letterSpacing:".04em",padding:"2px 7px",borderRadius:4,background:sm.color,color:"#fff",whiteSpace:"nowrap"}}>{sm.name}</span>;
+            };
             const codeChip=(txt,bg,fg,bd)=><span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:600,padding:"1px 5px",borderRadius:3,background:bg,color:fg,border:`1px solid ${bd}`,whiteSpace:"nowrap"}}>{txt}</span>;
 
             if(isMobile) return(
@@ -29189,6 +29243,7 @@ function ProjectCards({changeDealStage,syncProjectCard,saveCardFields,updateProj
                   return(
                     <div key={d.id} {...clickable(()=>{setSelDeal(d.id);setShowTeamEdit(false);})} aria-label={`Open ${d.contact||d.client}`}
                       style={{background:"#fff",border:"1px solid #e2e8f0",borderLeft:`4px solid ${hc}`,borderRadius:10,padding:"11px 12px",cursor:"pointer"}}>
+                      {pcL?.siteStatus&&<div style={{marginBottom:4}}>{statusChip(pcL)}</div>}
                       <div style={{fontWeight:700,fontSize:".88rem",color:"#0d1117",lineHeight:1.25}}>{d.contact||d.client}</div>
                       <div style={{display:"flex",gap:5,alignItems:"center",flexWrap:"wrap",marginTop:3}}>
                         {d.client!==d.contact&&<span style={{fontSize:".7rem",color:"#7c3aed"}}>{d.client}</span>}
@@ -29248,6 +29303,7 @@ function ProjectCards({changeDealStage,syncProjectCard,saveCardFields,updateProj
                             <td style={{width:4,padding:0,background:hcL}}></td>
                             {/* Project / Client / location */}
                             <td style={{padding:"10px 14px",verticalAlign:"middle",maxWidth:260}}>
+                              {pcL?.siteStatus&&<div style={{marginBottom:3}}>{statusChip(pcL)}</div>}
                               <div style={{fontWeight:700,fontSize:".82rem",color:"#0d1117",lineHeight:1.25}}>{d.contact||d.client}</div>
                               <div style={{fontSize:".68rem",color:"#7c3aed",marginTop:1}}>{d.client!==d.contact?d.client:""}{locL&&<span style={{color:"#64748b"}}>{d.client!==d.contact?" · ":""}{locL}</span>}</div>
                               <div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:4}}>
@@ -29661,7 +29717,7 @@ function ProjectCards({changeDealStage,syncProjectCard,saveCardFields,updateProj
                   checkboxes are gone from this page (never used: 0 of 3,627
                   sub-tasks ticked). */}
               {(()=>{
-                const STEP_CLR={30:"#f59e0b",60:"#3b82f6",90:"#8b5cf6",100:"#059669"};
+                const STEP_CLR=PROGRESS_STEP_CLR;
                 const closed=deal?.stage==="12 · Close-Out"||deal?.stage==="14 · Completed";
                 const barClr=pct==null?"#e2e8f0":pct>=100?"#059669":isOver?"#ef4444":"#3b82f6";
                 return(
@@ -29704,14 +29760,14 @@ function ProjectCards({changeDealStage,syncProjectCard,saveCardFields,updateProj
                     );
                   })()}
                   {card&&!closed&&!isConstructionDeal(deal)&&(
-                    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,maxWidth:420}}>
-                      {[30,60,90,100].map(s=>{
+                    <div style={{display:"grid",gridTemplateColumns:isMobile?"repeat(3,1fr)":"repeat(6,1fr)",gap:6,maxWidth:520}}>
+                      {FAB_PROGRESS_STEPS.map(s=>{
                         const on=card.manualProgress===s;
                         const belowPunch=deal?.stage==="11 · Punchlist"&&s<PUNCHLIST_MIN_PCT;
                         const lowerBlocked=card.manualProgress!=null&&s<card.manualProgress&&role!=="Manager";
                         const dis=!canSetPct||belowPunch||lowerBlocked;
                         return(
-                          <button key={s} disabled={dis} aria-pressed={on} onClick={()=>!on&&setPctRpc(s)} title={belowPunch?`A project at Punchlist is at least ${PUNCHLIST_MIN_PCT}%`:lowerBlocked?"Only a Manager can lower progress":undefined}
+                          <button key={s} disabled={dis} aria-pressed={on} onClick={()=>!on&&setPctRpc(s)} title={belowPunch?`A project at Punchlist is at least ${PUNCHLIST_MIN_PCT}%`:lowerBlocked?"Only a Manager can lower progress":`${s}% = ${progressStepLabel(s,false)}`}
                             style={{border:`1.5px solid ${on?STEP_CLR[s]:"#e2e8f0"}`,borderRadius:8,padding:"8px 0",background:on?STEP_CLR[s]:"#fff",color:on?"#fff":"#475569",fontWeight:800,fontSize:".86rem",cursor:dis?"default":"pointer",fontFamily:"inherit",opacity:(belowPunch||lowerBlocked)?.35:1}}>{s}%</button>
                         );
                       })}
@@ -29719,7 +29775,60 @@ function ProjectCards({changeDealStage,syncProjectCard,saveCardFields,updateProj
                   )}
                   {card&&!closed&&!canSetPct&&<div style={{fontSize:".68rem",color:"#94a3b8",marginTop:6}}>Set by the PM, Operations or a Manager (Coordinators on their own projects).</div>}
                   {card&&!closed&&canSetPct&&<div style={{fontSize:".66rem",color:"#94a3b8",marginTop:6}}>Every change asks for a short update (work done, next step, issues); it goes to Team Updates and the Operations chat.{role!=="Manager"?" Only a Manager can lower the %.":""}</div>}
-                  {card&&!isConstructionDeal(deal)&&card.manualProgress!=null&&![30,60,90,100].includes(card.manualProgress)&&<div style={{fontSize:".68rem",color:"#8b5cf6",marginTop:6}}>{card.manualProgress}% was typed in before the 30/60/90/100 rule. Pick one of the four.</div>}
+                  {card&&card.manualProgress!=null&&<div style={{fontSize:".7rem",color:"#475569",marginTop:6}}>{card.manualProgress}% = {progressStepLabel(card.manualProgress,isConstructionDeal(deal))}</div>}
+                  {card&&!isConstructionDeal(deal)&&card.manualProgress!=null&&!FAB_PROGRESS_STEPS.includes(card.manualProgress)&&<div style={{fontSize:".68rem",color:"#8b5cf6",marginTop:6}}>{card.manualProgress}% was typed in before the step rule. Pick one of the steps.</div>}
+                </div>
+                );
+              })()}
+
+              {/* ── Project status flag (On hold, Back job…) ── */}
+              {card&&!isClosedDeal(deal)&&(()=>{
+                const sm=statusMeta(card.siteStatus);
+                const active=projStatuses.filter(s=>s.is_active);
+                const isMgrSt=role==="Manager";
+                const noteOk=String(stForm?.note||"").trim().length>=10;
+                const inpSt={padding:"7px 9px",borderRadius:8,border:"1.5px solid #e2e8f0",fontFamily:"inherit",fontSize:".8rem",boxSizing:"border-box"};
+                return(
+                <div style={{background:"#fff",borderRadius:14,border:`1.5px solid ${sm?sm.color+"66":"#e2e8f0"}`,padding:isMobile?"12px 14px":"14px 20px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                      <span style={{fontWeight:800,fontSize:".88rem",color:"#0f172a"}}>🏷 Status</span>
+                      {sm?<span style={{fontSize:".7rem",fontWeight:800,textTransform:"uppercase",padding:"2px 8px",borderRadius:4,background:sm.color,color:"#fff"}}>{sm.name}</span>
+                        :<span style={{fontSize:".74rem",color:"#94a3b8"}}>Normal (no flag)</span>}
+                    </div>
+                    {canSetPct&&!stForm&&<button onClick={()=>setStForm({status:card.siteStatus||"",note:""})} style={hqBtn("#f8fafc","#e2e8f0","#334155")}>{sm?"Change":"Set status"}</button>}
+                  </div>
+                  {sm&&card.siteStatusNote&&<div style={{fontSize:".74rem",color:"#475569",marginTop:6}}>{card.siteStatusNote}<span style={{color:"#94a3b8"}}>{card.siteStatusBy?` · ${card.siteStatusBy}`:""}{card.siteStatusAt?` · ${String(card.siteStatusAt).slice(0,10)}`:""}</span></div>}
+                  {sm?.pauses_health&&<div style={{fontSize:".68rem",color:"#64748b",marginTop:4}}>While it carries this status the project isn't counted as late.</div>}
+                  {stForm&&(
+                    <div style={{marginTop:10,display:"flex",flexDirection:"column",gap:8}}>
+                      <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                        {active.map(s=>{const on=stForm.status===s.name;return(
+                          <button key={s.id} onClick={()=>setStForm(f=>({...f,status:on?"":s.name}))} aria-pressed={on}
+                            style={{border:`1.5px solid ${s.color}`,background:on?s.color:"#fff",color:on?"#fff":s.color,borderRadius:20,padding:"4px 11px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,cursor:"pointer"}}>{s.name}</button>);})}
+                        {isMgrSt&&!newSt&&<button onClick={()=>setNewSt({name:"",color:"#ea580c",pauses:false})} style={{border:"1.5px dashed #94a3b8",background:"#fff",color:"#475569",borderRadius:20,padding:"4px 11px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,cursor:"pointer"}}>+ New status</button>}
+                      </div>
+                      {newSt&&(
+                        <div style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:10,padding:10,display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+                          <input value={newSt.name} onChange={e=>setNewSt(n=>({...n,name:e.target.value}))} placeholder="e.g. Waiting for mall permit" maxLength={40} style={{...inpSt,flex:"1 1 180px"}}/>
+                          <input type="color" value={newSt.color} onChange={e=>setNewSt(n=>({...n,color:e.target.value}))} aria-label="Status colour" style={{width:36,height:32,border:"none",background:"none",cursor:"pointer"}}/>
+                          <label style={{fontSize:".72rem",color:"#475569",display:"flex",alignItems:"center",gap:5}}><input type="checkbox" checked={newSt.pauses} onChange={e=>setNewSt(n=>({...n,pauses:e.target.checked}))}/>Don't count as late</label>
+                          <button disabled={stBusy} onClick={addProjectStatus} style={hqBtn("#0f172a","#0f172a","#fff")}>Add</button>
+                          <button onClick={()=>setNewSt(null)} style={hqBtn("#fff","#e2e8f0","#64748b")}>Cancel</button>
+                          <div style={{flexBasis:"100%",fontSize:".66rem",color:"#94a3b8"}}>Added to the list for every project. Managers only; logged.</div>
+                        </div>
+                      )}
+                      {stForm.status&&<textarea value={stForm.note} onChange={e=>setStForm(f=>({...f,note:e.target.value}))} rows={2} placeholder="Why? e.g. Client asked to stop until the mall approves the new layout" style={{...inpSt,resize:"vertical",borderColor:stForm.note&&!noteOk?"#fca5a5":"#e2e8f0"}}/>}
+                      {stForm.status&&!noteOk&&<div style={{fontSize:".66rem",color:"#94a3b8"}}>Say why (at least 10 characters). It goes to Team Updates and the Operations chat.</div>}
+                      <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                        <button disabled={stBusy||(stForm.status?!noteOk:!card.siteStatus)} onClick={async()=>{if(await setProjectStatus(deal.id,stForm.status,stForm.note.trim()))setStForm(null);}}
+                          style={hqBtn(stForm.status?"#0f172a":"#fef2f2",stForm.status?"#0f172a":"#fecaca",stForm.status?"#fff":"#dc2626")}>{stForm.status?"Save status":"Clear status"}</button>
+                        <button onClick={()=>{setStForm(null);setNewSt(null);}} style={hqBtn("#fff","#e2e8f0","#64748b")}>Cancel</button>
+                      </div>
+                      {isMgrSt&&projStatuses.some(s=>!s.is_active)&&<div style={{fontSize:".66rem",color:"#94a3b8"}}>Hidden: {projStatuses.filter(s=>!s.is_active).map(s=><button key={s.id} onClick={()=>toggleProjStatus(s)} style={{background:"none",border:"none",color:"#2563eb",cursor:"pointer",fontSize:".66rem",padding:"0 4px"}}>{s.name} (show)</button>)}</div>}
+                      {isMgrSt&&active.length>0&&<div style={{fontSize:".66rem",color:"#94a3b8"}}>Hide from the list: {active.map(s=><button key={s.id} onClick={()=>toggleProjStatus(s)} style={{background:"none",border:"none",color:"#64748b",cursor:"pointer",fontSize:".66rem",padding:"0 4px",textDecoration:"underline"}}>{s.name}</button>)}</div>}
+                    </div>
+                  )}
                 </div>
                 );
               })()}
