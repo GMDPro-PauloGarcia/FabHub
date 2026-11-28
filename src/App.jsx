@@ -23704,7 +23704,7 @@ function SubconWOView({jos=[],embedded=false,onEmbeddedDone,woDraft=null,clearWo
   };
   // 🖨 WO: the PDF (ordersPdf.js) in a new tab. Plain "how you get paid"
   // (down payment, certified progress, retention), both GMD signatures, the
-  // client + project highlighted at the top, and a "not yet issued" stamp until it is.
+  // client + project in the details strip, and a "not yet issued" stamp until it is.
   const printWO=w=>{
     const deal=(deals||wonDeals||[]).find(d=>d.id===w.projectId)||(wonDeals||[]).find(d=>d.id===w.projectId);
     const contract=n(w.contractAmount),dpPct=Number(w.dpPct)||0,retPct=n(w.retentionPct);
@@ -24600,11 +24600,8 @@ function ProcurementView2({jos=[],embedded=false,onEmbeddedDone,poDraft=null,cle
         const unitPrice=Number(i.actUnitCost)||Number(i.estUnitCost)||0,qty=Number(i.qty)||0;
         const deal=i.projectId==="__gmd_stocks__"?null:allProjDeals.find(d=>d.id===(i.projectId||i.dealId));
         return{item:i.itemName||"—",note:i.description&&i.description!==i.itemName?i.description:"",qty:String(qty),unit:i.unit||"",unitPrice,amount:unitPrice*qty,
-          forLabel:orderForLabel(deal,jos,i.projectId)};
+          forLabel:orderForLabel(deal,jos,i.projectId),project:orderProject(deal,jos,i.projectId)};
       }),
-      // One highlighted CLIENT / PROJECT row per project on the PO (a PO can
-      // carry lines of several projects); stock / cost-center lines add none.
-      projects:(()=>{const seen=new Map();items.forEach(i=>{if(i.projectId==="__gmd_stocks__")return;const deal=allProjDeals.find(d=>d.id===(i.projectId||i.dealId));const p=orderProject(deal,jos,i.projectId);if(p&&!seen.has(deal.id))seen.set(deal.id,p);});return[...seen.values()];})(),
       termsLines:((items[0]?.termsText||"").trim()||PO_TERMS_DEFAULT).split("\n").map(x=>x.trim()).filter(Boolean),
     };
     openPdfTabShared(async()=>{const {buildPoPdf}=await import("./views/ordersPdf");return buildPoPdf(model);},`PO ${poNo}`,toastEmit);
