@@ -356,6 +356,35 @@ export const billingContractGap=(deal, billings)=>{
   const contract=Math.round((Number(deal?.value)||0)*100)/100;
   return {count:ms.length, sched, contract, gap:Math.round((sched-contract)*100)/100};
 };
+// A VAT-inclusive amount saved on an AR (non-VAT) milestone of an OR (VAT) deal
+// (Hiessence CE-2026-1308 / 1309, 2026-11-28: two ₱417,822 milestones = ₱373,055
+// + 12% VAT, typed in as AR). The schedule then reads ~112% of the contract while
+// the cash collected is right. Returns the fix when restating those milestones as
+// OR at amount ÷ 1.12 brings the schedule to the contract (within 1%), else null.
+// Each new base is the one whose OR gross is closest to, and not above, the old
+// amount, so what the client paid still covers the invoice.
+export const vatIncSavedAsAr=(deal, billings)=>{
+  const drt=deal?.receiptType||"OR";
+  if(!deal||drt!=="OR") return null;
+  const ms=(billings||[]).filter(b=>b.dealId===deal.id&&b.status!=="Cancelled");
+  const bad=ms.filter(b=>b.receiptType==="AR");
+  if(!bad.length) return null;
+  const r2=x=>Math.round(x*100)/100;
+  const contract=r2(Number(deal.value)||0);
+  if(contract<=0) return null;
+  const rows=bad.map(b=>{
+    const old=r2(Number(b.amount)||0);
+    let to=r2(old/1.12);
+    while(to>0&&calcTax(to,"OR",false).gross>old) to=r2(to-0.01);
+    return {id:b.id, label:b.invoiceNo||b.name||"", from:old, to};
+  });
+  const others=ms.filter(b=>!bad.includes(b)).reduce((s,b)=>s+(Number(b.amount)||0),0);
+  const before=r2(others+rows.reduce((s,r)=>s+r.from,0));
+  const after=r2(others+rows.reduce((s,r)=>s+r.to,0));
+  const tol=Math.max(1,contract*0.01);
+  if(Math.abs(after-contract)>tol||Math.abs(before-contract)<=tol) return null;
+  return {rows, before, after, contract, gap:r2(after-contract)};
+};
 // Change-order lines (isCoMilestone, below) keep their own amount.
 // Scale the Draft, unpaid base milestones so the schedule adds up to the contract.
 // Returns null when it can't (billing started, nothing to scale). Last line takes
