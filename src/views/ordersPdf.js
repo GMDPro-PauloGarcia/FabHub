@@ -4,8 +4,9 @@
 // Both take a plain model built on the page (poPdfModel / woPdfModel in
 // App.jsx); nothing here does money math. What a supplier or subcon reads:
 //  - who GMD is (logo header), the order number, date and terms;
-//  - where it is for as a project code + site only, never the client's name
-//    (Paulo, 2026-11-19: a supplier shouldn't learn who GMD's client is);
+//  - whose project it is: CLIENT and PROJECT NAME on each PO line (a PO can
+//    carry several projects) and in the WO's details strip (Paulo, 2026-11-28,
+//    reversing the 2026-11-19 "code + site only" rule), with code + site;
 //  - whether the order is approved: an order that isn't is stamped across
 //    every page ("NOT APPROVED – DO NOT SUPPLY" / "NOT YET ISSUED – DO NOT
 //    START WORK"), so a pending copy can't be taken for a real order;
@@ -64,11 +65,13 @@ const signatures=(doc,y,L,R,sigs)=>{
     doc.setFont(F,"bold");doc.setFontSize(8.5);doc.setTextColor(INK);doc.text(doc.splitTextToSize(name||" ",sw)[0],x,y+16);
     doc.setFont(F,"normal");doc.setFontSize(7.5);doc.setTextColor(SLATE);doc.text(role,x,y+20);
   });
-  return y+26;
+  return y+23;
 };
 
 const footerLine=(doc,y,L,R,W)=>{
-  if(y+10>doc.internal.pageSize.getHeight()-14){doc.addPage();y=24;}
+  // Only the address line itself must clear the page footer (~H-8); it used to
+  // need 24 mm and pushed onto a near-empty page 2 on most POs.
+  if(y+6>doc.internal.pageSize.getHeight()-12){doc.addPage();y=24;}
   doc.setDrawColor(LINE);doc.setLineWidth(0.3);doc.line(L,y,R,y);
   doc.setFont(F,"normal");doc.setFontSize(7);doc.setTextColor("#94a3b8");doc.text(CO_FOOTER,W/2,y+4.5,{align:"center"});
 };
@@ -102,15 +105,31 @@ export function buildPoPdf(m){
   });
   y=Math.max(y,my)+3;
 
-  // Lines, with what each one is for (project code + site).
+  // Lines, with what each one is for: project name (bold), client (bold,
+  // orange), then code + site. Drawn by hand in didDrawCell so the parts can
+  // differ in weight and colour; the plain text only sizes the row.
+  const FOR_W=50,FOR_FS=7.5,FOR_LH=FOR_FS*1.15*25.4/72;
+  const forParts=l=>{
+    doc.setFont(F,"bold");doc.setFontSize(FOR_FS);
+    const w=FOR_W-4.2,p=l.project;
+    if(!p) return [[doc.splitTextToSize(l.forLabel||"—",w),"normal",SLATE]];
+    return [[doc.splitTextToSize(p.project||"—",w),"bold",INK],[doc.splitTextToSize(p.client||"—",w),"bold",ORANGE],
+      ...([p.code,p.site].some(Boolean)?[[doc.splitTextToSize([p.code,p.site].filter(Boolean).join(" · "),w),"normal",SLATE]]:[])];
+  };
+  const forCells=m.lines.map(forParts);
   autoTable(doc,{
     startY:y,margin:{left:L,right:W-R,bottom:18},theme:"plain",
-    head:[["#","ITEM","QTY","UNIT","UNIT PRICE","AMOUNT","FOR (PROJECT · SITE)"]],
-    body:m.lines.map((l,i)=>[String(i+1),l.item+(l.note?`\n${l.note}`:""),l.qty,l.unit,pdfNum(l.unitPrice),pdfNum(l.amount),l.forLabel]),
+    head:[["#","ITEM","QTY","UNIT","UNIT PRICE","AMOUNT","FOR (PROJECT · CLIENT)"]],
+    body:m.lines.map((l,i)=>[String(i+1),l.item+(l.note?`\n${l.note}`:""),l.qty,l.unit,pdfNum(l.unitPrice),pdfNum(l.amount),forCells[i].flatMap(([ls])=>ls).join("\n")]),
     styles:{font:F,fontSize:8.5,textColor:INK,cellPadding:2.1,valign:"top",lineColor:"#e2e8f0",lineWidth:{bottom:0.2}},
     headStyles:{font:F,fontStyle:"bold",fillColor:NAVY,textColor:255,fontSize:6.5},
-    columnStyles:{0:{cellWidth:8,textColor:SLATE},2:{cellWidth:14,halign:"right"},3:{cellWidth:13},4:{cellWidth:25,halign:"right"},5:{cellWidth:27,halign:"right",fontStyle:"bold"},6:{cellWidth:42,textColor:SLATE,fontSize:7.5}},
-    didParseCell:d=>{if(d.section==="head"&&[2,4,5].includes(d.column.index))d.cell.styles.halign="right";},
+    columnStyles:{0:{cellWidth:8,textColor:SLATE},2:{cellWidth:13,halign:"right"},3:{cellWidth:12},4:{cellWidth:23,halign:"right"},5:{cellWidth:25,halign:"right",fontStyle:"bold"},6:{cellWidth:FOR_W,fontSize:FOR_FS,fontStyle:"bold",textColor:255}},
+    didParseCell:d=>{if(d.section==="head"&&[2,4,5].includes(d.column.index))d.cell.styles.halign="right";if(d.section==="head"&&d.column.index===6)d.cell.styles.textColor=255;},
+    didDrawCell:d=>{
+      if(d.section!=="body"||d.column.index!==6) return;
+      const parts=forCells[d.row.index]||[];let ty=d.cell.y+2.1+FOR_FS*25.4/72*0.85;
+      parts.forEach(([ls,st,clr])=>{doc.setFont(F,st);doc.setFontSize(FOR_FS);doc.setTextColor(clr);ls.forEach(t=>{doc.text(t,d.cell.x+2.1,ty);ty+=FOR_LH;});});
+    },
   });
   y=doc.lastAutoTable.finalY+5;
 
@@ -158,7 +177,8 @@ export function buildWoPdf(m){
     ?`ISSUED${m.status&&m.status!=="Issued"?` (${m.status})`:""}: you may start work as scheduled below.`
     :`NOT YET ISSUED (${m.status||"Draft"}): do not start work or mobilise against this copy.`);
 
-  y=strip(doc,y,L,R,[["Subcontractor",m.subcon],["For (project · site)",m.forLabel],["Work type",m.workType],["Schedule",m.schedule]]);
+  if(m.project) y=strip(doc,y,L,R,[["Project name",m.project.project],["Client",m.project.client],["Project code · site",m.forLabel]]);
+  y=strip(doc,y,L,R,[["Subcontractor",m.subcon],...(m.project?[]:[["For (project · site)",m.forLabel]]),["Work type",m.workType],["Schedule",m.schedule]]);
 
   doc.setFont(F,"bold");doc.setFontSize(8.5);doc.setTextColor(NAVY);doc.text("SCOPE OF WORK",L,y);y+=2;
   doc.setDrawColor(NAVY);doc.setLineWidth(0.4);doc.line(L,y,R,y);y+=5;

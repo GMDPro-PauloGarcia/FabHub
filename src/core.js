@@ -142,7 +142,8 @@ export const isActivePipeline = (stage)=>!WON_STAGES.includes(stage)&&!isLostSta
 export const CONSTRUCTION_CE_TYPES=["Construction","Retail Fit-Out"];
 export const isConstructionDeal=d=>CONSTRUCTION_CE_TYPES.includes(d?.ceType);
 const _K={key:"kickoff", label:"Kickoff",     target:"06 · Kickoff",     color:"#8b5cf6",stages:["06 · Kickoff"]};
-const _P={key:"punch",   label:"Punchlist",   target:"11 · Punchlist",   color:"#ef4444",stages:["11 · Punchlist"]};
+// Teal, not red: Punchlist is a step near the end, not a warning (red is kept for health).
+const _P={key:"punch",   label:"Punchlist",   target:"11 · Punchlist",   color:"#0d9488",stages:["11 · Punchlist"]};
 const _D={key:"done",    label:"Done",        target:"12 · Close-Out",   color:"#059669",stages:["12 · Close-Out"],
   hint:"All punchlist items completed; ready to receive retention"};
 const _C={key:"complete",label:"Completed",   target:"14 · Completed",   color:"#047857",stages:["14 · Completed"]};
@@ -170,6 +171,25 @@ export const projStageLabel=(deal,pc)=>{
 };
 // Punchlist is the sign a project has reached 90 %.
 export const PUNCHLIST_MIN_PCT=90;
+// Progress steps for non-construction projects (Operations' tracker, Paulo 2026-11-28).
+// 90% = installed: punchlist starts and progress billing stops; the last 10% is turnover.
+// Mirror of the step check in set_project_progress (migration 20261128060000). Keep in sync.
+export const FAB_PROGRESS_STEPS=[10,30,60,80,90,100];
+export const PROGRESS_STEP_CLR={10:"#94a3b8",30:"#f59e0b",60:"#3b82f6",80:"#6366f1",90:"#0d9488",100:"#059669"};
+export const PROGRESS_STEP_LABELS={
+  10: {fab:"Briefing done",                       con:"Briefing done"},
+  30: {fab:"Carcass done (carpentry / metal)",    con:"Partitions / framing & MEPF rough-ins done"},
+  60: {fab:"Electrical & specialty works done",   con:"Ceiling / wall boarding & flooring done"},
+  80: {fab:"Painting / finishing done",           con:"Finishes, millwork & fixtures installed"},
+  90: {fab:"Installed · punchlist (last progress billing)", con:"Mall punchlist & full load test (last progress billing)"},
+  100:{fab:"Turned over / COC signed",            con:"Turned over / COC signed"},
+};
+// What a % means: the highest step at or below it ("For briefing" under 10%).
+export const progressStepLabel=(pct,construction)=>{
+  if(pct==null||pct==="") return "";
+  const k=[...FAB_PROGRESS_STEPS].reverse().find(s=>Number(pct)>=s);
+  return k?PROGRESS_STEP_LABELS[k][construction?"con":"fab"]:"For briefing";
+};
 
 export const STAGE_EDITOR_ROLES = ["Manager","Sales","SalesOpsAdmin","QS"];
 export const PM_STAGE_ROLES     = ["ProjectMover","Operations"];
@@ -260,6 +280,16 @@ export const PO_UNITS        = ["pcs","sheets","meters","sqm","sqft","lnm","kg",
 // N-day credit terms. dueDateFromTerms() parses these into a payable due date.
 export const PO_TERMS        = ["COD","7 Days","15 Days","30 Days","60 Days","90 Days","120 Days"];
 
+// No direct dealing (Paulo, 2026-11-28): the PO now names GMD's client on each
+// line, so the supplier agrees not to deal with that client directly. Always
+// printed on the PO PDF (appended when a PO's own terms text lacks it, e.g. the
+// 909 POs saved with the older default), so it can't be edited off one PO.
+export const PO_NO_DIRECT_DEALING = "No direct dealing: the client named on this order is GMD's client. The Supplier shall not, directly or through any related company or person, solicit, quote to, or accept orders from that client for the same or similar goods or work, during this order and for twelve (12) months after its last delivery, without GMD's prior written consent. The client's name and the details of this order are confidential. A breach entitles GMD to recover its lost profit on the business so diverted, without prejudice to its other remedies.";
+export const poTermsWithNoDirectDealing=lines=>{
+  const ls=(lines||[]).filter(Boolean);
+  return ls.some(l=>/^no direct dealing/i.test(l))?ls:[...ls,PO_NO_DIRECT_DEALING];
+};
+
 // Standard Terms & Conditions printed on the PO PDF. This is the boilerplate a
 // PO carries when the buyer doesn't type custom terms; the per-PO free-text
 // `termsText` (captured on the form) overrides this when set.
@@ -270,6 +300,7 @@ export const PO_TERMS_DEFAULT = [
   "Payment is released only after complete delivery and receipt of a valid Delivery Receipt and Invoice / Official Receipt.",
   "Items are warranted against defects per the supplier's standard warranty; defective items are replaced or repaired at the supplier's cost.",
   "This PO number must be referenced on all invoices, delivery receipts, and correspondence relating to this order.",
+  PO_NO_DIRECT_DEALING,
 ].join("\n");
 
 export const EXP_CATS        = ["Materials","Labor","Overhead","Utilities","Rent","Transport","Marketing","Salaries","Subcontractor","Reimbursement","Other"];
@@ -1155,9 +1186,9 @@ export const projProgressPct=(pc,deal=null)=>{
   return n;
 };
 
-// What a PO / WO line is for, as a supplier or subcon may see it: the project
-// code (JO, else CE no.) and the site, never the client's name (Paulo,
-// 2026-11-19). GMD stock and cost-center lines say so.
+// What a PO / WO line is for: the project code (JO, else CE no.) and the site.
+// GMD stock and cost-center lines say so. The client and project name come
+// from orderProject.
 export const orderForLabel=(deal,jos,projectId)=>{
   if(projectId==="__gmd_stocks__") return "GMD warehouse stock";
   if(!deal) return "—";
@@ -1165,6 +1196,20 @@ export const orderForLabel=(deal,jos,projectId)=>{
   const jo=dealJo(jos,deal.id);
   const code=(jo&&(jo.joNo||jo.joNum))||deal.ceNo||"";
   return [code,deal.location||""].filter(Boolean).join(" · ")||"—";
+};
+// The project a PO line / WO is for, as printed on its PDF: client, project
+// name, code and site (Paulo, 2026-11-28: suppliers
+// and subcons should know whose project it is; this reverses the 2026-11-19
+// "code + site only" rule). null for GMD stock / cost centers / no project.
+export const orderProject=(deal,jos,projectId)=>{
+  if(projectId==="__gmd_stocks__"||!deal||deal.isCostCenter) return null;
+  const jo=dealJo(jos,deal.id);
+  return{
+    client:String(deal.client||"").trim(),
+    project:String(deal.contact||deal.product||"").trim(),
+    code:(jo&&(jo.joNo||jo.joNum))||deal.ceNo||"",
+    site:String(deal.location||"").trim(),
+  };
 };
 export const dealJo=(jos,dealId)=>{
   let best=null;
