@@ -142,7 +142,8 @@ export const isActivePipeline = (stage)=>!WON_STAGES.includes(stage)&&!isLostSta
 export const CONSTRUCTION_CE_TYPES=["Construction","Retail Fit-Out"];
 export const isConstructionDeal=d=>CONSTRUCTION_CE_TYPES.includes(d?.ceType);
 const _K={key:"kickoff", label:"Kickoff",     target:"06 · Kickoff",     color:"#8b5cf6",stages:["06 · Kickoff"]};
-const _P={key:"punch",   label:"Punchlist",   target:"11 · Punchlist",   color:"#ef4444",stages:["11 · Punchlist"]};
+// Teal, not red: Punchlist is a step near the end, not a warning (red is kept for health).
+const _P={key:"punch",   label:"Punchlist",   target:"11 · Punchlist",   color:"#0d9488",stages:["11 · Punchlist"]};
 const _D={key:"done",    label:"Done",        target:"12 · Close-Out",   color:"#059669",stages:["12 · Close-Out"],
   hint:"All punchlist items completed; ready to receive retention"};
 const _C={key:"complete",label:"Completed",   target:"14 · Completed",   color:"#047857",stages:["14 · Completed"]};

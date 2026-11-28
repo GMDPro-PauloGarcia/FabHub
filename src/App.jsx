@@ -1313,7 +1313,9 @@ function AwardModal({deal,session,today,onClose,onConfirm,drfs}){
     triggerNote:req.triggerNote||"",
     pm1:req.pm1Suggestion||"",pm2:"",pm3:"",coordinator:"",
     aeAssigned:req.aeAssigned||deal?.salesOwner||"",
-    startDate:today,commsLink:deal?.commsGroup||"",
+    // Turnover starts blank (2026-11-28): defaulting to today gave 11 projects a
+    // same-day turnover that showed red from the day after award. Blank = "No TAT".
+    startDate:"",commsLink:deal?.commsGroup||"",
     scopeNotes:req.scopeNotes||"",
     specialInstructions:req.specialInstructions||"",
     designer:req.designer||drf.designer||"",
@@ -1410,6 +1412,8 @@ function AwardModal({deal,session,today,onClose,onConfirm,drfs}){
           <Fld label="Target Turnover Date" hint="When do we hand over the project to the client?">
             <Inp type="date" value={form.startDate} onChange={e=>f("startDate",e.target.value)}/>
             {form.startDate&&form.startDate<today&&<div style={{fontSize:".7rem",color:"#f59e0b",marginTop:3,fontWeight:600}}>⚠ Date is in the past — please confirm this is correct.</div>}
+            {form.startDate&&form.startDate===(form.triggerDate||today)&&<div style={{fontSize:".7rem",color:"#f59e0b",marginTop:3,fontWeight:600}}>⚠ Same day as the award. Leave it blank if the turnover date isn't known yet.</div>}
+            {!form.startDate&&<div style={{fontSize:".7rem",color:"#64748b",marginTop:3}}>Leave blank if not known yet; Operations sets it on the project card.</div>}
           </Fld>
           <div style={{gridColumn:"1/-1"}}>
             <Fld label="Comms Group Link" hint="WhatsApp or Viber group — add all stakeholders">
@@ -28792,6 +28796,7 @@ function ProjectCards({changeDealStage,syncProjectCard,saveCardFields,updateProj
   };
   const getHealth=(d,pc)=>healthOf(d,pc).key;
   const HC={green:["#10b981","On Track"],yellow:["#f59e0b","At Risk"],red:["#ef4444","Behind / Overdue"],done:["#059669","Closed"],none:["#94a3b8","No TAT"]};
+  const H_RANK={red:0,yellow:1,none:2,green:3,done:4};
   const activeWon=wonDeals.filter(d=>!isClosedDeal(d));
   const isPastDeadline=d=>!isClosedDeal(d)&&!!pcards[d.id]?.targetEndDate&&pcards[d.id].targetEndDate<todayStr;
 
@@ -28855,19 +28860,22 @@ function ProjectCards({changeDealStage,syncProjectCard,saveCardFields,updateProj
 
       {/* KPI bar — only on list view */}
       {!selDeal&&(
-        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(5,1fr)",gap:10,marginBottom:16}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:isMobile?6:10,marginBottom:16}}>
           {[
             {l:"Active",       v:activeWon.length, c:"#0f172a",    f:null},
             {l:"Completed",    v:wonDeals.length-activeWon.length, c:"#059669", f:"completed"},
             {l:"Needs Attention",v:needsAttn,c:"#f59e0b",f:"attention"},
             {l:"Open Blockers",v:openBCount,c:openBCount>0?"#ef4444":"#94a3b8",f:"blockers"},
             {l:"Past Deadline",v:wonDeals.filter(isPastDeadline).length,c:"#c2410c",f:"overdue"},
+            // Data gaps: a project with no turnover date or no % can't be judged on time or late.
+            {l:"No Turnover Date",v:activeWon.filter(d=>!pcards[d.id]?.targetEndDate).length,c:"#64748b",f:"notat"},
+            {l:"No Progress %",v:activeWon.filter(d=>projPct(pcards[d.id],d)==null).length,c:"#64748b",f:"noprog"},
             {l:"All Projects", v:wonDeals.length,c:"#64748b",f:"all"},
           ].map(({l,v,c,f})=>(
             <div key={l} {...clickable(()=>setPcFilter(x=>x===f?null:f))} aria-label={`Filter ${l}`}
-              style={{background:pcFilter===f?"#1e293b":"#fff",borderRadius:12,padding:"14px 16px",border:`1.5px solid ${pcFilter===f?c:"#e2e8f0"}`,cursor:"pointer",transition:"all .15s"}}>
-              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:pcFilter===f?"#fff":c}}>{v}</div>
-              <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:pcFilter===f?"rgba(255,255,255,.6)":"#94a3b8",marginTop:5}}>{l}</div>
+              style={{background:pcFilter===f?"#1e293b":"#fff",borderRadius:isMobile?9:12,padding:isMobile?"8px 8px":"14px 16px",border:`1.5px solid ${pcFilter===f?c:"#e2e8f0"}`,cursor:"pointer",transition:"all .15s"}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:isMobile?"1.1rem":"1.3rem",color:pcFilter===f?"#fff":c}}>{v}</div>
+              <div style={{fontSize:isMobile?".52rem":".63rem",textTransform:"uppercase",letterSpacing:isMobile?".3px":"1px",lineHeight:1.25,color:pcFilter===f?"rgba(255,255,255,.6)":"#94a3b8",marginTop:isMobile?2:5}}>{l}</div>
             </div>
           ))}
         </div>
@@ -28974,12 +28982,15 @@ function ProjectCards({changeDealStage,syncProjectCard,saveCardFields,updateProj
             if(pcFilter==="attention") list=list.filter(d=>{const h=getHealth(d,pcards[d.id]);return h==="yellow"||h==="red";});
             if(pcFilter==="blockers") list=list.filter(d=>(blockers||[]).some(b=>b.dealId===d.id&&b.status==="Open"));
             if(pcFilter==="overdue") list=list.filter(isPastDeadline);
+            if(pcFilter==="notat") list=list.filter(d=>!pcards[d.id]?.targetEndDate);
+            if(pcFilter==="noprog") list=list.filter(d=>projPct(pcards[d.id],d)==null);
             if(pcOwner) list=list.filter(d=>ownerKeys(d,pcOwner.tab).includes(pcOwner.name));
             list=[...list].sort((a,b)=>{
               if(pcSort==="client")return a.client.localeCompare(b.client);
               if(pcSort==="project")return (a.contact||a.client).localeCompare(b.contact||b.client);
               if(pcSort==="pct")return (projPct(pcards[a.id],a)??-1)-(projPct(pcards[b.id],b)??-1);
-              if(pcSort==="tat") return (dLeftOf(pcards[a.id]?.targetEndDate)??999)-(dLeftOf(pcards[b.id]?.targetEndDate)??999);
+              // Urgent: health first (red, at risk, no turnover, on track, closed), then days left.
+              if(pcSort==="tat") return (H_RANK[getHealth(a,pcards[a.id])]??9)-(H_RANK[getHealth(b,pcards[b.id])]??9)||(dLeftOf(pcards[a.id]?.targetEndDate)??999)-(dLeftOf(pcards[b.id]?.targetEndDate)??999);
               return 0;
             });
             // Standby PO umbrellas carry no production of their own — their
@@ -29101,14 +29112,116 @@ function ProjectCards({changeDealStage,syncProjectCard,saveCardFields,updateProj
             );
 
             // ── LIST VIEW ────────────────────────────────────────────────────
+            // Stage and health are two things (2026-11-28): the stage chip is
+            // the step's own colour, never red; health is a dot with its reason
+            // in words ("12d past turnover"). On a phone each project is a card,
+            // not a row of an 820px table whose Turnover column is off-screen.
+            const stepOf=d=>projStageFlow(d)[projStepIndex(d)];
+            const stageCtl=(d,pcL)=>{
+              const stageLabel=projStageLabel(d,pcL);
+              const sc=stepOf(d)?.color||"#64748b";
+              const opts=WON_STAGES.filter(s=>s===d.stage||canSetDealStage(role,d.stage,s));
+              // The button shows only near the end (Installation / Punchlist, or 90%+ done)
+              // so 100+ rows don't each carry one; earlier, picking Close-Out in the
+              // dropdown runs the same Mark as done step.
+              const nearEnd=["10 · Installation","11 · Punchlist"].includes(d.stage)||projProgressPct(pcL,d)>=PUNCHLIST_MIN_PCT;
+              const canDone=nearEnd&&WON_STAGES.indexOf(d.stage)>-1&&WON_STAGES.indexOf(d.stage)<WON_STAGES.indexOf(DONE_STAGE)&&canSetDealStage(role,d.stage,DONE_STAGE);
+              return(
+                <span onClick={e=>e.stopPropagation()} style={{display:"inline-flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                  {opts.length>1?(
+                    <select value={d.stage||""} aria-label={`Stage of ${d.contact||d.client}`} title={stageLabel}
+                      onChange={async e=>{const st=e.target.value;if(st===d.stage)return;if(st===DONE_STAGE){await markDone(d);return;}await changeDealStage(d.id,st);}}
+                      style={{fontFamily:"inherit",fontSize:".72rem",fontWeight:600,padding:"4px 6px",borderRadius:6,border:`1.5px solid ${sc}55`,background:sc+"10",color:"#0f172a",maxWidth:170,cursor:"pointer"}}>
+                      {opts.map(s=><option key={s} value={s}>{s}</option>)}
+                    </select>
+                  ):(
+                    <span style={{fontSize:".7rem",fontWeight:700,padding:"3px 9px",borderRadius:20,background:sc+"14",color:sc,border:`1px solid ${sc}40`,whiteSpace:"nowrap"}}>{stageLabel}</span>
+                  )}
+                  {canDone&&(
+                    <button onClick={()=>markDone(d)} title="Move to Close-Out and tell Finance to send the final billing"
+                      style={{background:"#059669",border:"none",borderRadius:6,padding:"4px 10px",fontFamily:"inherit",fontSize:".68rem",fontWeight:700,color:"#fff",cursor:"pointer",whiteSpace:"nowrap"}}>✓ Mark as done</button>
+                  )}
+                </span>
+              );
+            };
+            const healthLine=(d,pcL)=>{
+              const h=healthOf(d,pcL);const[c,l]=HC[h.key];
+              return(
+                <span title={l} style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:".7rem",fontWeight:600,color:h.key==="green"||h.key==="done"?"#475569":c,lineHeight:1.3}}>
+                  <span style={{width:8,height:8,borderRadius:"50%",background:c,flexShrink:0}}/>
+                  {h.why||l}
+                </span>
+              );
+            };
+            const progressBar=(d,pcL)=>{
+              const p=projPct(pcL,d);
+              if(p==null) return <span style={{fontSize:".7rem",color:"#94a3b8",fontStyle:"italic",whiteSpace:"nowrap"}}>No % yet</span>;
+              const c=p>=100?"#059669":p>=PUNCHLIST_MIN_PCT?"#0d9488":"#3b82f6";
+              return(
+                <span style={{display:"inline-flex",alignItems:"center",gap:6,minWidth:0}}>
+                  <span style={{flex:1,minWidth:44,maxWidth:90,height:6,borderRadius:3,background:"#e2e8f0",overflow:"hidden"}}>
+                    <span style={{display:"block",height:"100%",width:`${Math.min(100,p)}%`,background:c}}/>
+                  </span>
+                  <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".7rem",fontWeight:700,color:"#0f172a"}}>{p}%</span>
+                </span>
+              );
+            };
+            // The date, plus days left while there are some; once it's past, the
+            // Health line already says "Nd past turnover", so it isn't said twice.
+            const turnoverTxt=pcL=>{
+              const dl=dLeftOf(pcL?.targetEndDate);
+              if(dl==null) return {t:"—",c:"#cbd5e1"};
+              return {t:dl<0?pcL.targetEndDate:`${pcL.targetEndDate} · ${dl===0?"due today":`${dl}d left`}`,c:dl<0?"#dc2626":dl<=7?"#d97706":"#475569"};
+            };
+            // "David Melendez (PM)" → "David Melendez": the column already says PM.
+            const personName=n=>String(n||"").replace(/\s*\([^)]*\)\s*$/,"");
+            const codeChip=(txt,bg,fg,bd)=><span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:600,padding:"1px 5px",borderRadius:3,background:bg,color:fg,border:`1px solid ${bd}`,whiteSpace:"nowrap"}}>{txt}</span>;
+
+            if(isMobile) return(
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {parentList.map(d=>{
+                  const pcL=pcards[d.id];
+                  const hc=HC[getHealth(d,pcL)][0];
+                  const joL=dealJo(jos,d.id);
+                  const pmL=personName(pcL?.pm1||joL?.pm1||"");
+                  const coL=personName(pcL?.coordinator||joL?.coordinator||"");
+                  const due=pcL?.targetEndDate;
+                  return(
+                    <div key={d.id} {...clickable(()=>{setSelDeal(d.id);setShowTeamEdit(false);})} aria-label={`Open ${d.contact||d.client}`}
+                      style={{background:"#fff",border:"1px solid #e2e8f0",borderLeft:`4px solid ${hc}`,borderRadius:10,padding:"11px 12px",cursor:"pointer"}}>
+                      <div style={{fontWeight:700,fontSize:".88rem",color:"#0d1117",lineHeight:1.25}}>{d.contact||d.client}</div>
+                      <div style={{display:"flex",gap:5,alignItems:"center",flexWrap:"wrap",marginTop:3}}>
+                        {d.client!==d.contact&&<span style={{fontSize:".7rem",color:"#7c3aed"}}>{d.client}</span>}
+                        {d.ceNo&&codeChip(d.ceNo,"#eff6ff","#1d4ed8","#bfdbfe")}
+                        {joL&&codeChip(joL.joNo,"#f0fdf4","#166534","#bbf7d0")}
+                        {pcL?.warehouseOnly&&codeChip("📦 WH","#fffbeb","#92400e","#fde68a")}
+                      </div>
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,marginTop:9}}>
+                        {stageCtl(d,pcL)}
+                        {progressBar(d,pcL)}
+                      </div>
+                      <div style={{marginTop:8,display:"flex",alignItems:"baseline",gap:6,flexWrap:"wrap"}}>
+                        {healthLine(d,pcL)}
+                        {due&&<span style={{fontSize:".68rem",color:"#64748b"}}>· due {due}</span>}
+                      </div>
+                      <div style={{marginTop:4,fontSize:".68rem",color:"#64748b",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                        {pmL?<>PM <b style={{color:"#334155",fontWeight:600}}>{pmL}</b></>:<span style={{color:"#94a3b8",fontStyle:"italic"}}>No PM</span>}
+                        {coL&&<> · Coor <b style={{color:"#334155",fontWeight:600}}>{coL}</b></>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+
             return(
               <div style={{background:"#fff",borderRadius:10,border:"1px solid #e2e8f0",overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.05)"}}>
                 <div style={{overflowX:"auto"}}>
-                  <table style={{width:"100%",borderCollapse:"collapse",minWidth:820}}>
+                  <table style={{width:"100%",borderCollapse:"collapse",minWidth:980}}>
                     <thead>
                       <tr style={{background:"#f8fafc",borderBottom:"2px solid #e2e8f0"}}>
                         <th style={{width:4,padding:0}}></th>
-                        {["Project / Client","Stage","Location","AE","PM","Coordinator","Subcons","Turnover"].map(h=>(
+                        {["Project / Client","Stage","Progress","Health","Turnover","PM","Coordinator","AE","Subcons"].map(h=>(
                           <th key={h} style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".1em",color:"#94a3b8",padding:"10px 14px",textAlign:"left",whiteSpace:"nowrap"}}>{h}</th>
                         ))}
                       </tr>
@@ -29118,91 +29231,47 @@ function ProjectCards({changeDealStage,syncProjectCard,saveCardFields,updateProj
                         const pcL=pcards[d.id];
                         const hL=getHealth(d,pcL);const[hcL]=HC[hL];
                         const joL=dealJo(jos,d.id);
-                        const dLeftL=dLeftOf(pcL?.targetEndDate);
-                        const isOverL=dLeftL!==null&&dLeftL<0;
                         const aeL=pcL?.aeAssigned||joL?.aeAssigned||d.salesOwner||"—";
-                        const pm1L=pcL?.pm1||joL?.pm1||"";
-                        const pm2L=pcL?.pm2||joL?.pm2||"";
-                        const coordL=pcL?.coordinator||joL?.coordinator||"—";
+                        const pm1L=personName(pcL?.pm1||joL?.pm1||"");
+                        const pm2L=personName(pcL?.pm2||joL?.pm2||"");
+                        const coordL=personName(pcL?.coordinator||joL?.coordinator||"")||"—";
                         const projSwosL=(swos||[]).filter(w=>w.projectId===d.id||w.dealId===d.id);
-                        const stageLabel=projStageLabel(d,pcL);
+                        const locL=d.location||joL?.location||"";
+                        const tt=turnoverTxt(pcL);
+                        const dash=<span style={{color:"#cbd5e1"}}>—</span>;
                         return(
                           <tr key={d.id} style={{borderBottom:"1px solid #e2e8f0",cursor:"pointer"}}
                             onClick={()=>{setSelDeal(d.id);setShowTeamEdit(false);}}
                             onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
                             onMouseLeave={e=>e.currentTarget.style.background=""}>
-                            {/* Stage color bar */}
+                            {/* Health colour bar */}
                             <td style={{width:4,padding:0,background:hcL}}></td>
-                            {/* Project / Client */}
-                            <td style={{padding:"10px 14px",verticalAlign:"middle"}}>
+                            {/* Project / Client / location */}
+                            <td style={{padding:"10px 14px",verticalAlign:"middle",maxWidth:260}}>
                               <div style={{fontWeight:700,fontSize:".82rem",color:"#0d1117",lineHeight:1.25}}>{d.contact||d.client}</div>
-                              {d.client!==d.contact&&<div style={{fontSize:".68rem",color:"#7c3aed",marginTop:1}}>{d.client}</div>}
+                              <div style={{fontSize:".68rem",color:"#7c3aed",marginTop:1}}>{d.client!==d.contact?d.client:""}{locL&&<span style={{color:"#64748b"}}>{d.client!==d.contact?" · ":""}{locL}</span>}</div>
                               <div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:4}}>
-                                {d.ceNo&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:600,padding:"1px 5px",borderRadius:3,background:"#eff6ff",color:"#1d4ed8",border:"1px solid #bfdbfe"}}>{d.ceNo}</span>}
-                                {joL&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:600,padding:"1px 5px",borderRadius:3,background:"#f0fdf4",color:"#166534",border:"1px solid #bbf7d0"}}>{joL.joNo}</span>}
-                                {pcL?.warehouseOnly&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:600,padding:"1px 5px",borderRadius:3,background:"#fffbeb",color:"#92400e",border:"1px solid #fde68a"}}>📦 WH</span>}
+                                {d.ceNo&&codeChip(d.ceNo,"#eff6ff","#1d4ed8","#bfdbfe")}
+                                {joL&&codeChip(joL.joNo,"#f0fdf4","#166534","#bbf7d0")}
+                                {pcL?.warehouseOnly&&codeChip("📦 WH","#fffbeb","#92400e","#fde68a")}
                               </div>
                             </td>
-                            {/* Stage: change it here (same rules as anywhere), or mark the project done */}
-                            <td style={{padding:"10px 14px",verticalAlign:"middle",whiteSpace:"nowrap"}} onClick={e=>e.stopPropagation()}>
-                              {(()=>{
-                                const opts=WON_STAGES.filter(s=>s===d.stage||canSetDealStage(role,d.stage,s));
-                                // The button shows only near the end (Installation / Punchlist, or 90%+ done)
-                                // so 100+ rows don't each carry one; earlier, picking Close-Out in the
-                                // dropdown runs the same Mark as done step.
-                                const nearEnd=["10 · Installation","11 · Punchlist"].includes(d.stage)||projProgressPct(pcL,d)>=PUNCHLIST_MIN_PCT;
-                                const canDone=nearEnd&&WON_STAGES.indexOf(d.stage)>-1&&WON_STAGES.indexOf(d.stage)<WON_STAGES.indexOf(DONE_STAGE)&&canSetDealStage(role,d.stage,DONE_STAGE);
-                                return(<>
-                                  {opts.length>1?(
-                                    <select value={d.stage||""} aria-label={`Stage of ${d.contact||d.client}`} title={stageLabel}
-                                      onChange={async e=>{const st=e.target.value;if(st===d.stage)return;if(st===DONE_STAGE){await markDone(d);return;}await changeDealStage(d.id,st);}}
-                                      style={{fontFamily:"inherit",fontSize:".72rem",fontWeight:600,padding:"4px 6px",borderRadius:6,border:`1.5px solid ${hcL}66`,background:hcL+"12",color:"#0f172a",maxWidth:170,cursor:"pointer"}}>
-                                      {opts.map(s=><option key={s} value={s}>{s}</option>)}
-                                    </select>
-                                  ):(
-                                    <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:600,letterSpacing:".05em",textTransform:"uppercase",padding:"3px 8px",borderRadius:4,background:hcL+"18",color:hcL,border:`1px solid ${hcL}44`,whiteSpace:"nowrap"}}>{stageLabel}</span>
-                                  )}
-                                  {canDone&&(
-                                    <div style={{marginTop:5}}>
-                                      <button onClick={()=>markDone(d)} title="Move to Close-Out and tell Finance to send the final billing"
-                                        style={{background:"#059669",border:"none",borderRadius:6,padding:"4px 10px",fontFamily:"inherit",fontSize:".68rem",fontWeight:700,color:"#fff",cursor:"pointer"}}>✓ Mark as done</button>
-                                    </div>
-                                  )}
-                                </>);
-                              })()}
-                            </td>
-                            {/* Location */}
-                            <td style={{padding:"10px 14px",fontSize:".78rem",color:"#475569",verticalAlign:"middle",maxWidth:130,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.location||joL?.location||<span style={{color:"#cbd5e1"}}>—</span>}</td>
-                            {/* AE */}
-                            <td style={{padding:"10px 14px",fontSize:".78rem",fontWeight:500,color:"#0d1117",verticalAlign:"middle",whiteSpace:"nowrap"}}>{aeL==="—"?<span style={{color:"#cbd5e1"}}>—</span>:aeL}</td>
-                            {/* PM */}
+                            <td style={{padding:"10px 14px",verticalAlign:"middle"}}>{stageCtl(d,pcL)}</td>
+                            <td style={{padding:"10px 14px",verticalAlign:"middle",minWidth:120}}>{progressBar(d,pcL)}</td>
+                            <td style={{padding:"10px 14px",verticalAlign:"middle",maxWidth:220}}>{healthLine(d,pcL)}</td>
+                            <td style={{padding:"10px 14px",verticalAlign:"middle",whiteSpace:"nowrap",fontFamily:"'IBM Plex Mono',monospace",fontSize:".7rem",fontWeight:600,color:tt.c}}>{tt.t}</td>
                             <td style={{padding:"10px 14px",verticalAlign:"middle"}}>
-                              {pm1L?<><div style={{fontSize:".78rem",fontWeight:500,color:"#0d1117"}}>{pm1L}</div>{pm2L&&<div style={{fontSize:".68rem",color:"#94a3b8",marginTop:1}}>+ {pm2L}</div>}</>:<span style={{fontSize:".78rem",color:"#cbd5e1",fontStyle:"italic"}}>—</span>}
+                              {pm1L?<><div style={{fontSize:".78rem",fontWeight:500,color:"#0d1117"}}>{pm1L}</div>{pm2L&&<div style={{fontSize:".68rem",color:"#94a3b8",marginTop:1}}>+ {pm2L}</div>}</>:dash}
                             </td>
-                            {/* Coordinator */}
-                            <td style={{padding:"10px 14px",fontSize:".78rem",fontWeight:500,color:"#0d1117",verticalAlign:"middle",whiteSpace:"nowrap"}}>{coordL==="—"?<span style={{color:"#cbd5e1"}}>—</span>:coordL}</td>
-                            {/* Subcons */}
+                            <td style={{padding:"10px 14px",fontSize:".78rem",fontWeight:500,color:"#0d1117",verticalAlign:"middle",whiteSpace:"nowrap"}}>{coordL==="—"?dash:coordL}</td>
+                            <td style={{padding:"10px 14px",fontSize:".78rem",fontWeight:500,color:"#0d1117",verticalAlign:"middle",whiteSpace:"nowrap"}}>{aeL==="—"?dash:aeL}</td>
                             <td style={{padding:"10px 14px",verticalAlign:"middle"}}>
                               {projSwosL.length>0?(
                                 <div style={{display:"flex",flexWrap:"wrap",gap:3}}>
                                   {projSwosL.slice(0,2).map(w=><span key={w.id} style={{fontSize:".68rem",fontWeight:600,padding:"1px 7px",borderRadius:20,background:"#eff6ff",border:"1px solid #bfdbfe",color:"#1d4ed8",whiteSpace:"nowrap"}}>{w.subcontractor||"?"}</span>)}
                                   {projSwosL.length>2&&<span style={{fontSize:".65rem",color:"#94a3b8"}}>+{projSwosL.length-2}</span>}
                                 </div>
-                              ):<span style={{color:"#cbd5e1",fontSize:".72rem",fontStyle:"italic"}}>—</span>}
-                            </td>
-                            {/* Turnover */}
-                            <td style={{padding:"10px 14px",verticalAlign:"middle",whiteSpace:"nowrap"}}>
-                              {pcL?.targetEndDate?(
-                                <>
-                                  <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".72rem",fontWeight:700,color:isOverL?"#dc2626":dLeftL!==null&&dLeftL<=7?"#d97706":"#059669"}}>{pcL.targetEndDate}</div>
-                                  {dLeftL!==null&&<span style={{display:"inline-block",marginTop:2,fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:700,padding:"1px 6px",borderRadius:3,
-                                    color:isOverL?"#991b1b":dLeftL<=7?"#92400e":"#065f46",
-                                    background:isOverL?"#fef2f2":dLeftL<=7?"#fffbeb":"#ecfdf5",
-                                    border:`1px solid ${isOverL?"#fecaca":dLeftL<=7?"#fde68a":"#a7f3d0"}`}}>
-                                    {isOverL?`⚠ ${Math.abs(dLeftL)}d over`:`${dLeftL}d left`}
-                                  </span>}
-                                </>
-                              ):<span style={{color:"#cbd5e1",fontSize:".72rem"}}>—</span>}
+                              ):dash}
                             </td>
                           </tr>
                         );
