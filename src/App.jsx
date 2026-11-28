@@ -28710,6 +28710,7 @@ function ProjectCards({changeDealStage,syncProjectCard,saveCardFields,updateProj
   const[teamLoadTab,setTeamLoadTab]=useState("pm");
   const[pcOwner,setPcOwner]=useState(null); // {tab:"pm"|"coor"|"subcon",name}
   const[pcFilter,setPcFilter]=useState(null);
+  const[missKind,setMissKind]=useState("all");   // Missing Info: all | tat | same | pct | pm
   const[pcSort,setPcSort]=useState("tat");
   // Project status flags (2026-11-28, migration 20261128060000): the list lives
   // in project_statuses (Managers add to it); a card carries one through
@@ -28857,6 +28858,23 @@ function ProjectCards({changeDealStage,syncProjectCard,saveCardFields,updateProj
   const getHealth=(d,pc)=>healthOf(d,pc).key;
   const HC={green:["#10b981","On Track"],yellow:["#f59e0b","At Risk"],red:["#ef4444","Behind / Overdue"],done:["#059669","Closed"],none:["#94a3b8","No TAT"],hold:["#64748b","On hold"]};
   const H_RANK={red:0,yellow:1,none:2,hold:3,green:4,done:5};
+  // What a project still lacks in FabHub (2026-11-28, Paulo: "a filter for those
+  // missing in FabHub"). Only open projects; each key is one quick filter.
+  const MISS_KINDS=[["tat","No turnover date"],["same","Turnover = award date"],["pct","No progress %"],["pm","No PM"]];
+  // Rows the list shows (same rule as parentList): standby umbrellas hidden,
+  // addenda / change orders sit under their parent, standby sub-jobs are rows.
+  const standbyIdsPc=new Set((deals||[]).filter(x=>x.standbyPO).map(x=>x.id));
+  const isListRow=d=>!(d.standbyPO&&!d.parentDealId)&&(!d.parentDealId||standbyIdsPc.has(d.parentDealId));
+  const missingOf=d=>{
+    if(!d||isClosedDeal(d)||!isListRow(d)) return [];
+    const pc=pcards[d.id],jo=dealJo(jos,d.id),out=[];
+    if(!pc?.targetEndDate) out.push("tat");
+    else if(pc.awardDate&&pc.targetEndDate===pc.awardDate) out.push("same");
+    if(projPct(pc,d)==null) out.push("pct");
+    if(!(pc?.pm1||jo?.pm1)) out.push("pm");
+    return out;
+  };
+  const missLabel=k=>(MISS_KINDS.find(m=>m[0]===k)||[k,k])[1];
   const activeWon=wonDeals.filter(d=>!isClosedDeal(d));
   const isPastDeadline=d=>!isClosedDeal(d)&&!!pcards[d.id]?.targetEndDate&&pcards[d.id].targetEndDate<todayStr;
 
@@ -28928,8 +28946,8 @@ function ProjectCards({changeDealStage,syncProjectCard,saveCardFields,updateProj
             {l:"Open Blockers",v:openBCount,c:openBCount>0?"#ef4444":"#94a3b8",f:"blockers"},
             {l:"Past Deadline",v:wonDeals.filter(isPastDeadline).length,c:"#c2410c",f:"overdue"},
             // Data gaps: a project with no turnover date or no % can't be judged on time or late.
-            {l:"No Turnover Date",v:activeWon.filter(d=>!pcards[d.id]?.targetEndDate).length,c:"#64748b",f:"notat"},
-            {l:"No Progress %",v:activeWon.filter(d=>projPct(pcards[d.id],d)==null).length,c:"#64748b",f:"noprog"},
+            // Data gaps: no turnover date, turnover = award date, no %, no PM.
+            {l:"Missing Info",v:activeWon.filter(d=>missingOf(d).length>0).length,c:"#db2777",f:"missing"},
             {l:"All Projects", v:wonDeals.length,c:"#64748b",f:"all"},
           ].map(({l,v,c,f})=>(
             <div key={l} {...clickable(()=>setPcFilter(x=>x===f?null:f))} aria-label={`Filter ${l}`}
@@ -29030,6 +29048,16 @@ function ProjectCards({changeDealStage,syncProjectCard,saveCardFields,updateProj
               </button>
             ))}
             {pcOwner&&<button onClick={()=>setPcOwner(null)} style={{padding:"3px 10px",borderRadius:20,border:`1.5px solid ${teamTabMeta[pcOwner.tab]?SC_CLR.green[0]:"#c7d2fe"}`,background:"#eef2ff",color:"#4338ca",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer",whiteSpace:"nowrap"}}>{teamTabMeta[pcOwner.tab][0]} {pcOwner.name} ✕</button>}
+            {pcFilter==="missing"&&(
+              <div role="group" aria-label="What is missing" style={{display:"flex",gap:4,flexWrap:"wrap",flexBasis:"100%",marginTop:2}}>
+                {[["all","All gaps"],...MISS_KINDS].map(([k,l])=>{
+                  const n=activeWon.filter(d=>{const m=missingOf(d);return k==="all"?m.length>0:m.includes(k);}).length;
+                  const on=missKind===k;
+                  return <button key={k} onClick={()=>setMissKind(k)} aria-pressed={on}
+                    style={{padding:"3px 10px",borderRadius:20,border:`1.5px solid ${on?"#db2777":"#fbcfe8"}`,background:on?"#db2777":"#fdf2f8",color:on?"#fff":"#9d174d",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer"}}>{l} · {n}</button>;
+                })}
+              </div>
+            )}
             {(pcFilter||pcSearch||pcOwner)&&<button onClick={()=>{setPcFilter(null);setPcSearch("");setPcOwner(null);}} style={{padding:"3px 10px",borderRadius:20,border:"1.5px solid #fecaca",background:"#fef2f2",color:"#dc2626",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer"}}>✕ Clear</button>}
           </div>
           {(()=>{
@@ -29044,6 +29072,7 @@ function ProjectCards({changeDealStage,syncProjectCard,saveCardFields,updateProj
             if(pcFilter==="overdue") list=list.filter(isPastDeadline);
             if(pcFilter==="notat") list=list.filter(d=>!pcards[d.id]?.targetEndDate);
             if(pcFilter==="noprog") list=list.filter(d=>projPct(pcards[d.id],d)==null);
+            if(pcFilter==="missing") list=list.filter(d=>{const m=missingOf(d);return missKind==="all"?m.length>0:m.includes(missKind);});
             if(pcOwner) list=list.filter(d=>ownerKeys(d,pcOwner.tab).includes(pcOwner.name));
             list=[...list].sort((a,b)=>{
               if(pcSort==="client")return a.client.localeCompare(b.client);
@@ -29235,6 +29264,10 @@ function ProjectCards({changeDealStage,syncProjectCard,saveCardFields,updateProj
             };
             // "David Melendez (PM)" → "David Melendez": the column already says PM.
             const personName=n=>String(n||"").replace(/\s*\([^)]*\)\s*$/,"");
+            const missLine=d=>{
+              const m=missingOf(d);if(!m.length) return null;
+              return <div style={{marginTop:4,fontSize:".66rem",fontWeight:700,color:"#be185d"}}>⚠ Missing: {m.map(missLabel).join(" · ")}</div>;
+            };
             const statusChip=pcL=>{
               const sm=statusMeta(pcL?.siteStatus);if(!sm) return null;
               return <span title={pcL.siteStatusNote||sm.name} style={{display:"inline-block",fontSize:".62rem",fontWeight:800,textTransform:"uppercase",letterSpacing:".04em",padding:"2px 7px",borderRadius:4,background:sm.color,color:"#fff",whiteSpace:"nowrap"}}>{sm.name}</span>;
@@ -29261,6 +29294,7 @@ function ProjectCards({changeDealStage,syncProjectCard,saveCardFields,updateProj
                         {joL&&codeChip(joL.joNo,"#f0fdf4","#166534","#bbf7d0")}
                         {pcL?.warehouseOnly&&codeChip("📦 WH","#fffbeb","#92400e","#fde68a")}
                       </div>
+                      {missLine(d)}
                       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,marginTop:9}}>
                         {stageCtl(d,pcL)}
                         {progressBar(d,pcL)}
@@ -29321,6 +29355,7 @@ function ProjectCards({changeDealStage,syncProjectCard,saveCardFields,updateProj
                                 {joL&&codeChip(joL.joNo,"#f0fdf4","#166534","#bbf7d0")}
                                 {pcL?.warehouseOnly&&codeChip("📦 WH","#fffbeb","#92400e","#fde68a")}
                               </div>
+                              {missLine(d)}
                             </td>
                             <td style={{padding:"10px 14px",verticalAlign:"middle"}}>{stageCtl(d,pcL)}</td>
                             <td style={{padding:"10px 14px",verticalAlign:"middle",minWidth:120}}>{progressBar(d,pcL)}</td>
