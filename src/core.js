@@ -280,6 +280,16 @@ export const PO_UNITS        = ["pcs","sheets","meters","sqm","sqft","lnm","kg",
 // N-day credit terms. dueDateFromTerms() parses these into a payable due date.
 export const PO_TERMS        = ["COD","7 Days","15 Days","30 Days","60 Days","90 Days","120 Days"];
 
+// No direct dealing (Paulo, 2026-11-28): the PO now names GMD's client on each
+// line, so the supplier agrees not to deal with that client directly. Always
+// printed on the PO PDF (appended when a PO's own terms text lacks it, e.g. the
+// 909 POs saved with the older default), so it can't be edited off one PO.
+export const PO_NO_DIRECT_DEALING = "No direct dealing: the client named on this order is GMD's client. The Supplier shall not, directly or through any related company or person, solicit, quote to, or accept orders from that client for the same or similar goods or work, during this order and for twelve (12) months after its last delivery, without GMD's prior written consent. The client's name and the details of this order are confidential. A breach entitles GMD to recover its lost profit on the business so diverted, without prejudice to its other remedies.";
+export const poTermsWithNoDirectDealing=lines=>{
+  const ls=(lines||[]).filter(Boolean);
+  return ls.some(l=>/^no direct dealing/i.test(l))?ls:[...ls,PO_NO_DIRECT_DEALING];
+};
+
 // Standard Terms & Conditions printed on the PO PDF. This is the boilerplate a
 // PO carries when the buyer doesn't type custom terms; the per-PO free-text
 // `termsText` (captured on the form) overrides this when set.
@@ -290,6 +300,7 @@ export const PO_TERMS_DEFAULT = [
   "Payment is released only after complete delivery and receipt of a valid Delivery Receipt and Invoice / Official Receipt.",
   "Items are warranted against defects per the supplier's standard warranty; defective items are replaced or repaired at the supplier's cost.",
   "This PO number must be referenced on all invoices, delivery receipts, and correspondence relating to this order.",
+  PO_NO_DIRECT_DEALING,
 ].join("\n");
 
 export const EXP_CATS        = ["Materials","Labor","Overhead","Utilities","Rent","Transport","Marketing","Salaries","Subcontractor","Reimbursement","Other"];
