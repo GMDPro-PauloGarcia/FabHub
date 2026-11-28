@@ -1925,7 +1925,7 @@ export const PO_TIERS_ON=true;
 // she had approved no PO since her tier went live). Migration 20261123010000.
 // REMOVED 2026-11-28 (Paulo): Cost Control approves POs, not the team that buys
 // (and she had approved none in two weeks). 0 = no Procurement Manager tier.
-// Migration 20261128080000_po_approval_cost_control_only.sql.
+// Migration 20261128110000_po_approval_cost_control_only.sql.
 export const PO_PROC_MGR_LIMIT=0;
 // Small POs (Paulo, 2026-11-22; migration 20261123010000): a PO of ₱10,000 or less,
 // with everything ordered from that supplier that day ₱10,000 or less (poSplitTotal,
