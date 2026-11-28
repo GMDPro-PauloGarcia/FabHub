@@ -21885,7 +21885,25 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
   const[profileForm, setProfileForm]=useState({});
   const[,forceUpdate]              = useState(0);
   const fp2=(k,v)=>setProfileForm(p=>({...p,[k]:v}));
+  // Credit terms in the profile modal (Paulo, 2026-11-28): the real terms that skip the
+  // down-payment rule (client_credit_terms through set_client_credit_terms; Manager only,
+  // reason required, logged, Telegram). Matched case-insensitively on the client name.
+  const[ctDays,setCtDays]=useState("30");
+  const[ctReason,setCtReason]=useState("");
+  const[ctBusy,setCtBusy]=useState(false);
+  const termsOf=name=>(creditTerms||[]).find(r=>String(r.client_name||"").trim().toLowerCase()===String(name||"").trim().toLowerCase())||null;
+  const saveTerms=async(on)=>{
+    if(!profileModal||!onCreditTerms||ctBusy) return;
+    const days=Math.round(Number(ctDays));
+    if(on&&!(days>=1&&days<=365)){alert("Credit terms must be 1 to 365 days.");return;}
+    setCtBusy(true);
+    const cur=termsOf(profileModal);
+    const ok=await onCreditTerms(cur?cur.client_name:profileModal,on,on?days:(cur?.days||30),ctReason);
+    setCtBusy(false);
+    if(ok) setCtReason("");
+  };
   const openProfile=(name)=>{
+    {const cur=termsOf(name);setCtDays(String(cur&&cur.active?cur.days:30));setCtReason("");}
     setProfileForm({...({parentGroup:"",contactPerson:"",email:"",phone:"",mobile:"",website:"",billingAddress:"",city:"",province:"",zipCode:"",country:"Philippines",tin:"",paymentTerms:"Due on receipt",notes:""}),...((clientProfiles||{})[name]||{})});
     setProfileModal(name);
   };
@@ -21942,7 +21960,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
           <button type="button" onClick={()=>setCtOpen(v=>!v)} aria-expanded={ctOpen} style={{background:"none",border:"none",padding:0,cursor:"pointer",fontFamily:"inherit",fontSize:".82rem",fontWeight:700,color:"#0f172a"}}>
             {ctOpen?"▾":"▸"} Clients on credit terms ({on.length})
           </button>
-          <div style={{fontSize:".72rem",color:"#64748b",marginTop:2}}>Their projects do not wait for a down payment before POs and Work Orders. A Manager puts a client on terms from a blocked PO or Work Order.</div>
+          <div style={{fontSize:".72rem",color:"#64748b",marginTop:2}}>Their projects do not wait for a down payment before POs and Work Orders. A Manager sets or changes the days in the client profile (Credit terms), or from a blocked PO or Work Order.</div>
           {ctOpen&&(on.length===0?<div style={{fontSize:".76rem",color:"#94a3b8",marginTop:8}}>None yet.</div>:
             <div style={{display:"flex",flexDirection:"column",gap:4,marginTop:8}}>
               {on.map(r=>(
@@ -22276,7 +22294,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
               <div style={{fontWeight:700,fontSize:".8rem",color:"#475569",marginBottom:10}}>🏢 Business Details</div>
               <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10}}>
                 <Fld label="Client TIN"><Inp value={profileForm.tin||""} onChange={e=>fp2("tin",e.target.value)} placeholder="000-000-000-000"/></Fld>
-                <Fld label="Payment Terms">
+                <Fld label="Invoice terms (note only)" hint="Printed for reference. It does not change the down-payment rule: that is Credit terms below.">
                   <Sel value={profileForm.paymentTerms||"Due on receipt"} onChange={e=>fp2("paymentTerms",e.target.value)}>
                     <option>Due on receipt</option>
                     <option>Net 15</option>
@@ -22288,6 +22306,24 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
                 <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp rows={2} value={profileForm.notes||""} onChange={e=>fp2("notes",e.target.value)} placeholder="Special billing instructions, key contacts…"/></Fld></div>
               </div>
             </div>
+
+            {/* Credit terms: the setting the down-payment rule reads (client_credit_terms). */}
+            {(()=>{const cur=termsOf(profileModal);const on=!!(cur&&cur.active);const mgr=canonRole(role)==="Manager";const rOk=ctReason.trim().length>=5;return(
+            <div style={{background:on?"#f0fdf4":"#f8fafc",borderRadius:10,padding:"14px 16px",marginBottom:16,border:"1px solid "+(on?"#bbf7d0":"#e2e8f0")}}>
+              <div style={{fontWeight:700,fontSize:".8rem",color:"#475569",marginBottom:6}}>{"🧾 Credit terms (down-payment rule)"}</div>
+              <div style={{fontSize:".78rem",color:on?"#166534":"#475569",marginBottom:8}}>
+                {on?<><b>{"On, "+cur.days+" days."}</b>{" POs and Work Orders on this client’s projects don’t wait for a down payment. "}<span style={{color:"#64748b"}}>{"Set by "+(cur.set_by||"?")+" on "+String(cur.set_at||"").slice(0,10)+": "+(cur.reason||"")}</span></>
+                   :"Off. This client’s projects need a down payment (or a reason from whoever issues) before POs and Work Orders."}
+              </div>
+              {mgr&&onCreditTerms?(
+                <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"flex-end"}}>
+                  <div style={{width:110}}><Fld label="Days"><Inp type="number" min="1" max="365" value={ctDays} onChange={e=>setCtDays(e.target.value)}/></Fld></div>
+                  <div style={{flex:"1 1 220px",minWidth:0}}><Fld label="Reason (logged, sent to management)"><Inp value={ctReason} onChange={e=>setCtReason(e.target.value)} placeholder="e.g. Pays on its PO, 30 days after invoice"/></Fld></div>
+                  <button type="button" disabled={ctBusy||!rOk} onClick={()=>saveTerms(true)} style={{background:rOk?"#15803d":"#86efac",border:"none",borderRadius:8,padding:"9px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#fff",cursor:rOk?"pointer":"not-allowed"}}>{ctBusy?"Saving…":on?"Change days":"Put on credit terms"}</button>
+                  {on&&<button type="button" disabled={ctBusy||!rOk} onClick={()=>saveTerms(false)} style={{background:"#fff",border:"1.5px solid #fecaca",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#b91c1c",cursor:rOk?"pointer":"not-allowed"}}>Remove</button>}
+                </div>
+              ):<div style={{fontSize:".74rem",color:"#94a3b8"}}>Only a Manager changes credit terms.</div>}
+            </div>);})()}
 
             <div style={{display:"flex",gap:10}}>
               {CLIENT_PROFILE_EDITORS.includes(role)?(
