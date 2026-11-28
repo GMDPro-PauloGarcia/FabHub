@@ -4,8 +4,9 @@
 // Both take a plain model built on the page (poPdfModel / woPdfModel in
 // App.jsx); nothing here does money math. What a supplier or subcon reads:
 //  - who GMD is (logo header), the order number, date and terms;
-//  - where it is for as a project code + site only, never the client's name
-//    (Paulo, 2026-11-19: a supplier shouldn't learn who GMD's client is);
+//  - whose project it is: CLIENT and PROJECT NAME in a highlighted box near
+//    the top (Paulo, 2026-11-28, reversing the 2026-11-19 "code + site only"
+//    rule), plus the project code + site on each line;
 //  - whether the order is approved: an order that isn't is stamped across
 //    every page ("NOT APPROVED – DO NOT SUPPLY" / "NOT YET ISSUED – DO NOT
 //    START WORK"), so a pending copy can't be taken for a real order;
@@ -37,6 +38,37 @@ const banner=(doc,y,L,R,ok,text)=>{
   doc.roundedRect(L,y,R-L,8,1.2,1.2,"FD");
   doc.setFont(F,"bold");doc.setFontSize(8.5);doc.setTextColor(ok?GREEN:RED);doc.text(text,L+4,y+5.3);
   return y+12;
+};
+
+// The highlighted CLIENT / PROJECT box: one row per project, client and project
+// name large and bold, code + site under them. Nothing printed for stock /
+// cost-center orders (projects empty).
+const projectBox=(doc,y,L,R,projects)=>{
+  const list=(projects||[]).filter(Boolean);
+  if(!list.length) return y;
+  const cw=(R-L-12)/2;
+  const rows=list.map(p=>{
+    doc.setFont(F,"bold");doc.setFontSize(12);
+    const c=doc.splitTextToSize(p.client||"—",cw-4).slice(0,2),pr=doc.splitTextToSize(p.project||"—",cw-4).slice(0,2);
+    const sub=[p.code,p.site].filter(Boolean).join(" · ");
+    return{c,pr,sub,h:6+Math.max(c.length,pr.length)*5.2+(sub?4.6:0)+2};
+  });
+  const h=4+rows.reduce((s,r)=>s+r.h,0)+2;
+  if(y+h>doc.internal.pageSize.getHeight()-18){doc.addPage();y=18;}
+  doc.setFillColor("#fff7ed");doc.setDrawColor(ORANGE);doc.setLineWidth(0.8);doc.roundedRect(L,y,R-L,h,1.8,1.8,"FD");
+  doc.setFillColor(ORANGE);doc.rect(L,y+0.4,2.2,h-0.8,"F");
+  let ry=y+4;
+  rows.forEach((r,i)=>{
+    if(i){doc.setDrawColor("#fed7aa");doc.setLineWidth(0.3);doc.line(L+6,ry-1,R-4,ry-1);}
+    [["CLIENT",r.c,L+6],["PROJECT NAME",r.pr,L+6+cw+4]].forEach(([k,v,x])=>{
+      doc.setFont(F,"bold");doc.setFontSize(6.5);doc.setTextColor(ORANGE);doc.text(k,x,ry+2.5);
+      doc.setFontSize(12);doc.setTextColor(INK);v.forEach((l,j)=>doc.text(l,x,ry+7.6+j*5.2));
+    });
+    if(r.sub){doc.setFont(F,"normal");doc.setFontSize(8);doc.setTextColor(SLATE);
+      doc.text(r.sub,L+6,ry+7.6+Math.max(r.c.length,r.pr.length)*5.2-0.6);}
+    ry+=r.h;
+  });
+  return y+h+5;
 };
 
 // A titled box of short lines (numbered when `numbered`).
@@ -86,6 +118,7 @@ export function buildPoPdf(m){
   y=banner(doc,y,L,R,m.approved,m.approved
     ?`APPROVED${m.approvedBy?` by ${m.approvedBy}`:""}: please supply as listed below.`
     :`NOT APPROVED YET (${m.status||"Draft"}): do not supply or deliver against this copy.`);
+  y=projectBox(doc,y,L,R,m.projects);
 
   // To (supplier) on the left, order details on the right.
   const top=y;
@@ -158,7 +191,8 @@ export function buildWoPdf(m){
     ?`ISSUED${m.status&&m.status!=="Issued"?` (${m.status})`:""}: you may start work as scheduled below.`
     :`NOT YET ISSUED (${m.status||"Draft"}): do not start work or mobilise against this copy.`);
 
-  y=strip(doc,y,L,R,[["Subcontractor",m.subcon],["For (project · site)",m.forLabel],["Work type",m.workType],["Schedule",m.schedule]]);
+  y=projectBox(doc,y,L,R,m.project?[m.project]:[]);
+  y=strip(doc,y,L,R,[["Subcontractor",m.subcon],["Project code · site",m.forLabel],["Work type",m.workType],["Schedule",m.schedule]]);
 
   doc.setFont(F,"bold");doc.setFontSize(8.5);doc.setTextColor(NAVY);doc.text("SCOPE OF WORK",L,y);y+=2;
   doc.setDrawColor(NAVY);doc.setLineWidth(0.4);doc.line(L,y,R,y);y+=5;
