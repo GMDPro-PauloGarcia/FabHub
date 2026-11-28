@@ -4,9 +4,9 @@
 // Both take a plain model built on the page (poPdfModel / woPdfModel in
 // App.jsx); nothing here does money math. What a supplier or subcon reads:
 //  - who GMD is (logo header), the order number, date and terms;
-//  - whose project it is: CLIENT and PROJECT NAME in a highlighted box near
-//    the top (Paulo, 2026-11-28, reversing the 2026-11-19 "code + site only"
-//    rule), plus the project code + site on each line;
+//  - whose project it is: CLIENT and PROJECT NAME on each PO line (a PO can
+//    carry several projects) and in the WO's details strip (Paulo, 2026-11-28,
+//    reversing the 2026-11-19 "code + site only" rule), with code + site;
 //  - whether the order is approved: an order that isn't is stamped across
 //    every page ("NOT APPROVED – DO NOT SUPPLY" / "NOT YET ISSUED – DO NOT
 //    START WORK"), so a pending copy can't be taken for a real order;
@@ -38,37 +38,6 @@ const banner=(doc,y,L,R,ok,text)=>{
   doc.roundedRect(L,y,R-L,8,1.2,1.2,"FD");
   doc.setFont(F,"bold");doc.setFontSize(8.5);doc.setTextColor(ok?GREEN:RED);doc.text(text,L+4,y+5.3);
   return y+12;
-};
-
-// The highlighted CLIENT / PROJECT box: one row per project, client and project
-// name large and bold, code + site under them. Nothing printed for stock /
-// cost-center orders (projects empty).
-const projectBox=(doc,y,L,R,projects)=>{
-  const list=(projects||[]).filter(Boolean);
-  if(!list.length) return y;
-  const cw=(R-L-12)/2;
-  const rows=list.map(p=>{
-    doc.setFont(F,"bold");doc.setFontSize(12);
-    const c=doc.splitTextToSize(p.client||"—",cw-4).slice(0,2),pr=doc.splitTextToSize(p.project||"—",cw-4).slice(0,2);
-    const sub=[p.code,p.site].filter(Boolean).join(" · ");
-    return{c,pr,sub,h:6+Math.max(c.length,pr.length)*5.2+(sub?4.6:0)+2};
-  });
-  const h=4+rows.reduce((s,r)=>s+r.h,0)+2;
-  if(y+h>doc.internal.pageSize.getHeight()-18){doc.addPage();y=18;}
-  doc.setFillColor("#fff7ed");doc.setDrawColor(ORANGE);doc.setLineWidth(0.8);doc.roundedRect(L,y,R-L,h,1.8,1.8,"FD");
-  doc.setFillColor(ORANGE);doc.rect(L,y+0.4,2.2,h-0.8,"F");
-  let ry=y+4;
-  rows.forEach((r,i)=>{
-    if(i){doc.setDrawColor("#fed7aa");doc.setLineWidth(0.3);doc.line(L+6,ry-1,R-4,ry-1);}
-    [["CLIENT",r.c,L+6],["PROJECT NAME",r.pr,L+6+cw+4]].forEach(([k,v,x])=>{
-      doc.setFont(F,"bold");doc.setFontSize(6.5);doc.setTextColor(ORANGE);doc.text(k,x,ry+2.5);
-      doc.setFontSize(12);doc.setTextColor(INK);v.forEach((l,j)=>doc.text(l,x,ry+7.6+j*5.2));
-    });
-    if(r.sub){doc.setFont(F,"normal");doc.setFontSize(8);doc.setTextColor(SLATE);
-      doc.text(r.sub,L+6,ry+7.6+Math.max(r.c.length,r.pr.length)*5.2-0.6);}
-    ry+=r.h;
-  });
-  return y+h+5;
 };
 
 // A titled box of short lines (numbered when `numbered`).
@@ -118,7 +87,6 @@ export function buildPoPdf(m){
   y=banner(doc,y,L,R,m.approved,m.approved
     ?`APPROVED${m.approvedBy?` by ${m.approvedBy}`:""}: please supply as listed below.`
     :`NOT APPROVED YET (${m.status||"Draft"}): do not supply or deliver against this copy.`);
-  y=projectBox(doc,y,L,R,m.projects);
 
   // To (supplier) on the left, order details on the right.
   const top=y;
@@ -135,15 +103,31 @@ export function buildPoPdf(m){
   });
   y=Math.max(y,my)+3;
 
-  // Lines, with what each one is for (project code + site).
+  // Lines, with what each one is for: project name (bold), client (bold,
+  // orange), then code + site. Drawn by hand in didDrawCell so the parts can
+  // differ in weight and colour; the plain text only sizes the row.
+  const FOR_W=50,FOR_FS=7.5,FOR_LH=FOR_FS*1.15*25.4/72;
+  const forParts=l=>{
+    doc.setFont(F,"bold");doc.setFontSize(FOR_FS);
+    const w=FOR_W-4.2,p=l.project;
+    if(!p) return [[doc.splitTextToSize(l.forLabel||"—",w),"normal",SLATE]];
+    return [[doc.splitTextToSize(p.project||"—",w),"bold",INK],[doc.splitTextToSize(p.client||"—",w),"bold",ORANGE],
+      ...([p.code,p.site].some(Boolean)?[[doc.splitTextToSize([p.code,p.site].filter(Boolean).join(" · "),w),"normal",SLATE]]:[])];
+  };
+  const forCells=m.lines.map(forParts);
   autoTable(doc,{
     startY:y,margin:{left:L,right:W-R,bottom:18},theme:"plain",
-    head:[["#","ITEM","QTY","UNIT","UNIT PRICE","AMOUNT","FOR (PROJECT · SITE)"]],
-    body:m.lines.map((l,i)=>[String(i+1),l.item+(l.note?`\n${l.note}`:""),l.qty,l.unit,pdfNum(l.unitPrice),pdfNum(l.amount),l.forLabel]),
+    head:[["#","ITEM","QTY","UNIT","UNIT PRICE","AMOUNT","FOR (PROJECT · CLIENT)"]],
+    body:m.lines.map((l,i)=>[String(i+1),l.item+(l.note?`\n${l.note}`:""),l.qty,l.unit,pdfNum(l.unitPrice),pdfNum(l.amount),forCells[i].flatMap(([ls])=>ls).join("\n")]),
     styles:{font:F,fontSize:8.5,textColor:INK,cellPadding:2.1,valign:"top",lineColor:"#e2e8f0",lineWidth:{bottom:0.2}},
     headStyles:{font:F,fontStyle:"bold",fillColor:NAVY,textColor:255,fontSize:6.5},
-    columnStyles:{0:{cellWidth:8,textColor:SLATE},2:{cellWidth:14,halign:"right"},3:{cellWidth:13},4:{cellWidth:25,halign:"right"},5:{cellWidth:27,halign:"right",fontStyle:"bold"},6:{cellWidth:42,textColor:SLATE,fontSize:7.5}},
-    didParseCell:d=>{if(d.section==="head"&&[2,4,5].includes(d.column.index))d.cell.styles.halign="right";},
+    columnStyles:{0:{cellWidth:8,textColor:SLATE},2:{cellWidth:13,halign:"right"},3:{cellWidth:12},4:{cellWidth:23,halign:"right"},5:{cellWidth:25,halign:"right",fontStyle:"bold"},6:{cellWidth:FOR_W,fontSize:FOR_FS,fontStyle:"bold",textColor:255}},
+    didParseCell:d=>{if(d.section==="head"&&[2,4,5].includes(d.column.index))d.cell.styles.halign="right";if(d.section==="head"&&d.column.index===6)d.cell.styles.textColor=255;},
+    didDrawCell:d=>{
+      if(d.section!=="body"||d.column.index!==6) return;
+      const parts=forCells[d.row.index]||[];let ty=d.cell.y+2.1+FOR_FS*25.4/72*0.85;
+      parts.forEach(([ls,st,clr])=>{doc.setFont(F,st);doc.setFontSize(FOR_FS);doc.setTextColor(clr);ls.forEach(t=>{doc.text(t,d.cell.x+2.1,ty);ty+=FOR_LH;});});
+    },
   });
   y=doc.lastAutoTable.finalY+5;
 
@@ -191,8 +175,8 @@ export function buildWoPdf(m){
     ?`ISSUED${m.status&&m.status!=="Issued"?` (${m.status})`:""}: you may start work as scheduled below.`
     :`NOT YET ISSUED (${m.status||"Draft"}): do not start work or mobilise against this copy.`);
 
-  y=projectBox(doc,y,L,R,m.project?[m.project]:[]);
-  y=strip(doc,y,L,R,[["Subcontractor",m.subcon],["Project code · site",m.forLabel],["Work type",m.workType],["Schedule",m.schedule]]);
+  if(m.project) y=strip(doc,y,L,R,[["Project name",m.project.project],["Client",m.project.client],["Project code · site",m.forLabel]]);
+  y=strip(doc,y,L,R,[["Subcontractor",m.subcon],...(m.project?[]:[["For (project · site)",m.forLabel]]),["Work type",m.workType],["Schedule",m.schedule]]);
 
   doc.setFont(F,"bold");doc.setFontSize(8.5);doc.setTextColor(NAVY);doc.text("SCOPE OF WORK",L,y);y+=2;
   doc.setDrawColor(NAVY);doc.setLineWidth(0.4);doc.line(L,y,R,y);y+=5;
