@@ -24416,6 +24416,16 @@ function ProcurementView2({jos=[],embedded=false,onEmbeddedDone,poDraft=null,cle
     finally{setCcBusy(false);}
   };
   const activeDeals=React.useMemo(()=>(allDeals||wonDeals||[]).filter(d=>!isLostStage(d.stage)),[allDeals,wonDeals]);
+  // Projects a PO line may be charged to: awarded projects (or a sub-project of
+  // one), cost centers and internal GMD jobs. Pipeline deals and mother POs
+  // (standby umbrellas, which earn ₱0; their sub-projects carry the cost) are
+  // left out: on 2026-11-28, 6 POs sat on Trilliant CE-2026-1103 (Did Not Win;
+  // the work was CE-2026-060) and the cancelled Erbe umbrella CE-2026-1431
+  // (the job became CE-2026-1453). A line already on another project keeps it
+  // in its own list (labelled) so an edit never drops the link silently.
+  const poPickDeals=React.useMemo(()=>{const all=allDeals||wonDeals||[];return activeDeals.filter(d=>d.isCostCenter||/^gmd productions/i.test(d.client||"")||(!d.standbyPO&&dealDpAwarded(d,all)));},[activeDeals,allDeals,wonDeals]);
+  const poPickOpts=sel=>{const cur=sel&&!poPickDeals.some(d=>d.id===sel)&&(allDeals||wonDeals||[]).find(d=>d.id===sel);return [...(cur?[{...cur,_notPickable:true}]:[]),...poPickDeals];};
+  const poPickLabel=d=>projDisplayName(d)+(d._notPickable?` — ${d.standbyPO?"mother PO":(d.stage||"").replace(/^\d+ · /,"")}, not awarded: pick the project`:"");
   // A PO line's project label comes from its deal (store name · CE no.), not the
   // stored project_name: 93% of lines carry only the client name, so a client's
   // projects (Yobo SM North Edsa, Yobo SM Nuvali) merged into one unsearchable row.
@@ -24710,7 +24720,7 @@ function ProcurementView2({jos=[],embedded=false,onEmbeddedDone,poDraft=null,cle
       sendTelegramNotification("management",poMsg);
       if(effStatus==="Pending Approval"){
         const tot=poLinesTotal(poItems.map(i=>({qty:i.qty,estUnitCost:i.estUnitCost})));
-        sendTelegramNotification("financialcontrol",`🧾 <b>PO ${poNo} needs approval</b> · ₱${Math.round(tot).toLocaleString("en-PH")}\n${PO_TIERS_ON&&tot>=250000?"₱250,000 and above: Paulo, Mar or Arrius approves.":tot>150000?(PO_TIERS_ON?"₱150,000 to ₱250,000: Paolo Gomez approves.":"Above ₱150,000: Paolo Gomez approves."):PO_TIERS_ON&&tot<=150000?"Up to ₱150,000: Marian (her team's POs) or Cost Control approves.":"Cost Control approves (up to ₱150,000)."}\nSupplier: ${poSupplier} · Project: ${projects}`);
+        sendTelegramNotification("financialcontrol",`🧾 <b>PO ${poNo} needs approval</b> · ₱${Math.round(tot).toLocaleString("en-PH")}\n${PO_TIERS_ON&&tot>=250000?"₱250,000 and above: Paulo, Mar or Arrius approves.":tot>150000?(PO_TIERS_ON?"₱150,000 to ₱250,000: Paolo Gomez approves.":"Above ₱150,000: Paolo Gomez approves."):PO_TIERS_ON&&tot<=150000?"Up to ₱150,000: Cost Control (Ardrin, Rodney) approves.":"Cost Control approves (up to ₱150,000)."}\nSupplier: ${poSupplier} · Project: ${projects}`);
       }
       toastEmit&&toastEmit(`PO ${poNo} saved — ${poItems.length} item${poItems.length>1?"s":""}`,"success");
     }
@@ -24828,7 +24838,7 @@ function ProcurementView2({jos=[],embedded=false,onEmbeddedDone,poDraft=null,cle
               <ProjectSelect value={editForm.projectId} onChange={e=>{const v=e.target.value;if(v==="__gmd_stocks__"){ef("projectId","__gmd_stocks__");ef("projectName","GMD Stocks");return;}const d=activeDeals.find(x=>x.id===v);ef("projectId",v);ef("projectName",projDisplayName(d));}}>
                 <option value="">— Select Project —</option>
                 <option value="__gmd_stocks__">GMD Stocks</option>
-                {activeDeals.map(d=><option key={d.id} value={d.id}>{projDisplayName(d)}</option>)}
+                {poPickOpts(editForm.projectId).map(d=><option key={d.id} value={d.id}>{poPickLabel(d)}</option>)}
               </ProjectSelect>
             </Fld>
             <Fld label="Budget Category">
@@ -24963,7 +24973,7 @@ function ProcurementView2({jos=[],embedded=false,onEmbeddedDone,poDraft=null,cle
                     <Fld label="Project" required>
                       {/* Pick from the list only: a typed name that matched no project used
                           to save the line with no project link (34 POs, ₱1.18M, 2026-11-11). */}
-                      <ProjectSelect value={item.projectId&&(item.projectId==="__gmd_stocks__"||activeDeals.some(d=>d.id===item.projectId))?item.projectId:""}
+                      <ProjectSelect value={item.projectId&&(item.projectId==="__gmd_stocks__"||poPickOpts(item.projectId).some(d=>d.id===item.projectId))?item.projectId:""}
                         onChange={e=>{
                           const v=e.target.value;
                           if(v==="__gmd_stocks__"){updatePoItem(item._id,"projectName","GMD Stocks");updatePoItem(item._id,"projectId","__gmd_stocks__");return;}
@@ -24973,7 +24983,7 @@ function ProcurementView2({jos=[],embedded=false,onEmbeddedDone,poDraft=null,cle
                         }}>
                         <option value="">— Select project —</option>
                         <option value="__gmd_stocks__">GMD Stocks</option>
-                        {activeDeals.map(d=><option key={d.id} value={d.id}>{projDisplayName(d)}</option>)}
+                        {poPickOpts(item.projectId).map(d=><option key={d.id} value={d.id}>{poPickLabel(d)}</option>)}
                       </ProjectSelect>
                       {item.projectName&&item.projectId&&!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.projectId)&&item.projectId!=="__gmd_stocks__"&&(
                         <div style={{fontSize:".67rem",color:"#c2410c",marginTop:3}}>⚠ “{item.projectName}” isn't linked to a project in FabHub. Pick the project from the list.</div>
