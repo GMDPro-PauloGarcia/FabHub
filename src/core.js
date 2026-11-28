@@ -2282,12 +2282,20 @@ export const PAYROLL_STREAMS = [
 // remittances are worded consistently ("SSS CONTRIBUTION OCTOBER 2026", "SSS
 // LOAN …", "PHILHEALTH CONTRIBUTION …", "PAGIBIG CONTRIBUTION / LOAN …"), about
 // PHP 370K a month; "SSS SICKNESS" (a benefit) is not a remittance.
+// Correction (Paulo, 2026-11-27: "Mark has been entering details on cash
+// position bdo, bpi, metrobank"): BDO payments are cheques, kept in the sheet's
+// floatingChecks, which the first search missed. There: "RENTAL PAYMENT
+// (OCTOBER 16, 2026)" PHP 110,000 monthly, Meralco, Manila Water and Globe bill
+// plans. So rent and the utilities are matched by wording too; "GENSET RENTAL",
+// "TRUCK RENTAL" and "PURIFIED WATER" are not.
 export const OPEX_STREAMS = [
   { key:"sss",        tag:"Gov't – SSS",        label:"SSS remittance",        re:/\bsss\s+(contribution|loan)/i,       when:"monthly" },
   { key:"philhealth", tag:"Gov't – PhilHealth", label:"PhilHealth remittance", re:/phil\s*health\s+contribution/i,      when:"monthly" },
   { key:"pagibig",    tag:"Gov't – Pag-IBIG",   label:"Pag-IBIG remittance",   re:/pag-?\s*ibig\s+(contribution|loan)/i, when:"monthly" },
-  { key:"rent",       tag:"Rent",               label:"Rent",                  re:null,                                  when:"monthly" },
-  { key:"utilities",  tag:"Utilities",          label:"Utilities",             re:null,                                  when:"monthly" },
+  { key:"rent",       tag:"Rent",               label:"Rent",                  re:/\brental\s+payment\b|\boffice\s+rent\b/i, when:"monthly" },
+  { key:"power",      tag:"Utilities – electricity", label:"Electricity (Meralco)", re:/\bmeralco\b/i,                 when:"monthly" },
+  { key:"water",      tag:"Utilities – water",  label:"Water",                 re:/\bmanila\s+water\b|\bmaynilad\b/i, when:"monthly" },
+  { key:"telecom",    tag:"Utilities – phone / internet", label:"Phone / internet", re:/\bglobe\s+(bill|telecom)|\bpldt\b|\bconverge\b/i, when:"monthly" },
 ];
 const _allStreams = () => [...PAYROLL_STREAMS, ...OPEX_STREAMS];
 const _ymd = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -2295,17 +2303,28 @@ const _dt = iso => new Date(String(iso).slice(0,10)+"T00:00:00");
 // One pay event = the rows of one stream within a few days of each other
 // (a payroll is sometimes split over two days or two banks).
 export const payrollEvents = (cashPositions, stream) => {
-  const rows = [];
+  const rows = [], seenChecks = new Map();
+  const take = (r, date) => {
+    // The 🔗 tag decides when a row has a stream tag; otherwise the wording.
+    const nb = String(r.noBill || "");
+    if (_allStreams().some(x => x.tag === nb) ? nb !== stream.tag : !(stream.re && stream.re.test(String(r.particulars || "")))) return;
+    const amt = Number(String(r.amount == null ? 0 : r.amount).replace(/,/g, "")) || 0;
+    if (amt > 0) rows.push({ date, amt });
+  };
   Object.values(cashPositions || {}).forEach(p => {
     if (!p || !p.date) return;
-    (p.disbursements?.manual || []).forEach(r => {
-      // The 🔗 tag decides when a row has a stream tag; otherwise the wording.
-      const nb = String(r.noBill || "");
-      if (_allStreams().some(x => x.tag === nb) ? nb !== stream.tag : !(stream.re && stream.re.test(String(r.particulars || "")))) return;
-      const amt = Number(String(r.amount == null ? 0 : r.amount).replace(/,/g, "")) || 0;
-      if (amt > 0) rows.push({ date: String(p.date).slice(0,10), amt });
+    (p.disbursements?.manual || []).forEach(r => take(r, String(p.date).slice(0,10)));
+    // Cheques (BDO pays rent and utilities by cheque) are in floatingChecks,
+    // carried from day to day until cleared: count each cheque once, on the
+    // first sheet it appears on.
+    (p.floatingChecks || []).forEach(r => {
+      const k = r && (r.id || `${r.bank}|${r.checkNo}|${r.amount}`);
+      if (!k) return;
+      const d = String(p.date).slice(0,10), prev = seenChecks.get(k);
+      if (!prev || d < prev.date) seenChecks.set(k, { r, date: d });
     });
   });
+  seenChecks.forEach(({ r, date }) => take(r, date));
   rows.sort((a, b) => a.date.localeCompare(b.date));
   const gap = stream.when === "weekly" ? 3 : 5, ev = [];
   rows.forEach(r => {

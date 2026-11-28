@@ -149,7 +149,7 @@ export const cashMovements=(cashPositions={})=>{
 // Payroll is split by stream so the Cash-Flow Forecast (payrollForecast,
 // PAYROLL_STREAMS in core.js) can learn each one from the tag, whatever the
 // particulars say. "Payroll" stays for site / other payroll and older rows.
-export const NO_BILL_KINDS=["Payroll – office","Payroll – production","Payroll – project-based","Payroll","Gov't – SSS","Gov't – PhilHealth","Gov't – Pag-IBIG","Rent","Utilities","Bank transfer (GMD to GMD)","Loan / financing","Petty cash / liquidation","Tax / government","Owner / officer","Other (no bill)"];
+export const NO_BILL_KINDS=["Payroll – office","Payroll – production","Payroll – project-based","Payroll","Gov't – SSS","Gov't – PhilHealth","Gov't – Pag-IBIG","Rent","Utilities – electricity","Utilities – water","Utilities – phone / internet","Bank transfer (GMD to GMD)","Loan / financing","Petty cash / liquidation","Tax / government","Owner / officer","Other (no bill)"];
 export const isTransferKind=k=>/^Bank transfer/.test(String(k||""));
 
 // Match each disbursement to the AP payment(s) it paid, and each collection to
