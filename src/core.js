@@ -171,6 +171,25 @@ export const projStageLabel=(deal,pc)=>{
 };
 // Punchlist is the sign a project has reached 90 %.
 export const PUNCHLIST_MIN_PCT=90;
+// Progress steps for non-construction projects (Operations' tracker, Paulo 2026-11-28).
+// 90% = installed: punchlist starts and progress billing stops; the last 10% is turnover.
+// Mirror of the step check in set_project_progress (migration 20261128060000). Keep in sync.
+export const FAB_PROGRESS_STEPS=[10,30,60,80,90,100];
+export const PROGRESS_STEP_CLR={10:"#94a3b8",30:"#f59e0b",60:"#3b82f6",80:"#6366f1",90:"#0d9488",100:"#059669"};
+export const PROGRESS_STEP_LABELS={
+  10: {fab:"Briefing done",                       con:"Briefing done"},
+  30: {fab:"Carcass done (carpentry / metal)",    con:"Partitions / framing & MEPF rough-ins done"},
+  60: {fab:"Electrical & specialty works done",   con:"Ceiling / wall boarding & flooring done"},
+  80: {fab:"Painting / finishing done",           con:"Finishes, millwork & fixtures installed"},
+  90: {fab:"Installed · punchlist (last progress billing)", con:"Mall punchlist & full load test (last progress billing)"},
+  100:{fab:"Turned over / COC signed",            con:"Turned over / COC signed"},
+};
+// What a % means: the highest step at or below it ("For briefing" under 10%).
+export const progressStepLabel=(pct,construction)=>{
+  if(pct==null||pct==="") return "";
+  const k=[...FAB_PROGRESS_STEPS].reverse().find(s=>Number(pct)>=s);
+  return k?PROGRESS_STEP_LABELS[k][construction?"con":"fab"]:"For briefing";
+};
 
 export const STAGE_EDITOR_ROLES = ["Manager","Sales","SalesOpsAdmin","QS"];
 export const PM_STAGE_ROLES     = ["ProjectMover","Operations"];
