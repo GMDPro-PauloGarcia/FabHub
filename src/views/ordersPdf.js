@@ -65,11 +65,13 @@ const signatures=(doc,y,L,R,sigs)=>{
     doc.setFont(F,"bold");doc.setFontSize(8.5);doc.setTextColor(INK);doc.text(doc.splitTextToSize(name||" ",sw)[0],x,y+16);
     doc.setFont(F,"normal");doc.setFontSize(7.5);doc.setTextColor(SLATE);doc.text(role,x,y+20);
   });
-  return y+26;
+  return y+23;
 };
 
 const footerLine=(doc,y,L,R,W)=>{
-  if(y+10>doc.internal.pageSize.getHeight()-14){doc.addPage();y=24;}
+  // Only the address line itself must clear the page footer (~H-8); it used to
+  // need 24 mm and pushed onto a near-empty page 2 on most POs.
+  if(y+6>doc.internal.pageSize.getHeight()-12){doc.addPage();y=24;}
   doc.setDrawColor(LINE);doc.setLineWidth(0.3);doc.line(L,y,R,y);
   doc.setFont(F,"normal");doc.setFontSize(7);doc.setTextColor("#94a3b8");doc.text(CO_FOOTER,W/2,y+4.5,{align:"center"});
 };
