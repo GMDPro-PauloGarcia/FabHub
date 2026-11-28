@@ -24716,7 +24716,7 @@ function ProcurementView2({jos=[],embedded=false,onEmbeddedDone,poDraft=null,cle
       sendTelegramNotification("management",poMsg);
       if(effStatus==="Pending Approval"){
         const tot=poLinesTotal(poItems.map(i=>({qty:i.qty,estUnitCost:i.estUnitCost})));
-        sendTelegramNotification("financialcontrol",`🧾 <b>PO ${poNo} needs approval</b> · ₱${Math.round(tot).toLocaleString("en-PH")}\n${PO_TIERS_ON&&tot>=250000?"₱250,000 and above: Paulo, Mar or Arrius approves.":tot>150000?(PO_TIERS_ON?"₱150,000 to ₱250,000: Paolo Gomez approves.":"Above ₱150,000: Paolo Gomez approves."):PO_TIERS_ON&&tot<=150000?"Up to ₱150,000: Marian (her team's POs) or Cost Control approves.":"Cost Control approves (up to ₱150,000)."}\nSupplier: ${poSupplier} · Project: ${projects}`);
+        sendTelegramNotification("financialcontrol",`🧾 <b>PO ${poNo} needs approval</b> · ₱${Math.round(tot).toLocaleString("en-PH")}\n${PO_TIERS_ON&&tot>=250000?"₱250,000 and above: Paulo, Mar or Arrius approves.":tot>150000?(PO_TIERS_ON?"₱150,000 to ₱250,000: Paolo Gomez approves.":"Above ₱150,000: Paolo Gomez approves."):PO_TIERS_ON&&tot<=150000?"Up to ₱150,000: Cost Control (Ardrin, Rodney) approves.":"Cost Control approves (up to ₱150,000)."}\nSupplier: ${poSupplier} · Project: ${projects}`);
       }
       toastEmit&&toastEmit(`PO ${poNo} saved — ${poItems.length} item${poItems.length>1?"s":""}`,"success");
     }
