@@ -1155,9 +1155,9 @@ export const projProgressPct=(pc,deal=null)=>{
   return n;
 };
 
-// What a PO / WO line is for, as a supplier or subcon may see it: the project
-// code (JO, else CE no.) and the site, never the client's name (Paulo,
-// 2026-11-19). GMD stock and cost-center lines say so.
+// What a PO / WO line is for: the project code (JO, else CE no.) and the site.
+// GMD stock and cost-center lines say so. The client and project name are
+// printed in the highlighted PROJECT box (orderProject), not on each line.
 export const orderForLabel=(deal,jos,projectId)=>{
   if(projectId==="__gmd_stocks__") return "GMD warehouse stock";
   if(!deal) return "—";
@@ -1165,6 +1165,20 @@ export const orderForLabel=(deal,jos,projectId)=>{
   const jo=dealJo(jos,deal.id);
   const code=(jo&&(jo.joNo||jo.joNum))||deal.ceNo||"";
   return [code,deal.location||""].filter(Boolean).join(" · ")||"—";
+};
+// The project a PO / WO is for, as printed in the highlighted box at the top of
+// its PDF: client, project name, code and site (Paulo, 2026-11-28: suppliers
+// and subcons should know whose project it is; this reverses the 2026-11-19
+// "code + site only" rule). null for GMD stock / cost centers / no project.
+export const orderProject=(deal,jos,projectId)=>{
+  if(projectId==="__gmd_stocks__"||!deal||deal.isCostCenter) return null;
+  const jo=dealJo(jos,deal.id);
+  return{
+    client:String(deal.client||"").trim(),
+    project:String(deal.contact||deal.product||"").trim(),
+    code:(jo&&(jo.joNo||jo.joNum))||deal.ceNo||"",
+    site:String(deal.location||"").trim(),
+  };
 };
 export const dealJo=(jos,dealId)=>{
   let best=null;
